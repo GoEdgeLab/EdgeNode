@@ -4,6 +4,7 @@ type ServerConfig struct {
 	Id          string             `yaml:"id"`          // ID
 	IsOn        bool               `yaml:"isOn"`        // 是否开启
 	Components  []*ComponentConfig `yaml:"components"`  // 组件
+	Filters     []*FilterConfig    `yaml:"filters"`     // 过滤器
 	Name        string             `yaml:"name"`        // 名称
 	Description string             `yaml:"description"` // 描述
 	ServerNames []string           `yaml:"serverNames"` // 域名
