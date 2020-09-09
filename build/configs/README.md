@@ -1,0 +1,1 @@
+* `global.yaml` - 全局配置

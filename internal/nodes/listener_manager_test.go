@@ -12,15 +12,29 @@ func TestListenerManager_Listen(t *testing.T) {
 			{
 				IsOn: true,
 				HTTP: &configs.HTTPProtocolConfig{
-					IsOn:   true,
-					Listen: []string{"127.0.0.1:1234"},
+					BaseProtocol: configs.BaseProtocol{
+						IsOn: true,
+						Listen: []*configs.NetworkAddressConfig{
+							{
+								Protocol:  configs.ProtocolHTTP,
+								PortRange: "1234",
+							},
+						},
+					},
 				},
 			},
 			{
 				IsOn: true,
 				HTTP: &configs.HTTPProtocolConfig{
-					IsOn:   true,
-					Listen: []string{"127.0.0.1:1235"},
+					BaseProtocol: configs.BaseProtocol{
+						IsOn: true,
+						Listen: []*configs.NetworkAddressConfig{
+							{
+								Protocol:  configs.ProtocolHTTP,
+								PortRange: "1235",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -34,15 +48,29 @@ func TestListenerManager_Listen(t *testing.T) {
 			{
 				IsOn: true,
 				HTTP: &configs.HTTPProtocolConfig{
-					IsOn:   true,
-					Listen: []string{"127.0.0.1:1234"},
+					BaseProtocol: configs.BaseProtocol{
+						IsOn: true,
+						Listen: []*configs.NetworkAddressConfig{
+							{
+								Protocol:  configs.ProtocolHTTP,
+								PortRange: "1234",
+							},
+						},
+					},
 				},
 			},
 			{
 				IsOn: true,
 				HTTP: &configs.HTTPProtocolConfig{
-					IsOn:   true,
-					Listen: []string{"127.0.0.1:1236"},
+					BaseProtocol: configs.BaseProtocol{
+						IsOn: true,
+						Listen: []*configs.NetworkAddressConfig{
+							{
+								Protocol:  configs.ProtocolHTTP,
+								PortRange: "1236",
+							},
+						},
+					},
 				},
 			},
 		},

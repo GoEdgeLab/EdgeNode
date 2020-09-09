@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
 	"testing"
@@ -27,18 +28,37 @@ func TestSharedNodeConfig(t *testing.T) {
 
 func TestNodeConfig_Groups(t *testing.T) {
 	config := &NodeConfig{}
-	config.Servers = []*ServerConfig{
+	config.Servers = []*serverconfigs.ServerConfig{
 		{
 			IsOn: true,
-			HTTP: &HTTPProtocolConfig{
-				IsOn:   true,
-				Listen: []string{"127.0.0.1:1234", ":8080"},
+			HTTP: &serverconfigs.HTTPProtocolConfig{
+				BaseProtocol: serverconfigs.BaseProtocol{
+					IsOn: true,
+					Listen: []*serverconfigs.NetworkAddressConfig{
+						{
+							Protocol:  serverconfigs.ProtocolHTTP,
+							Host:      "127.0.0.1",
+							PortRange: "1234",
+						},
+						{
+							Protocol:  serverconfigs.ProtocolHTTP,
+							PortRange: "8080",
+						},
+					},
+				},
 			},
 		},
 		{
-			HTTP: &HTTPProtocolConfig{
-				IsOn:   true,
-				Listen: []string{":8080"},
+			HTTP: &serverconfigs.HTTPProtocolConfig{
+				BaseProtocol: serverconfigs.BaseProtocol{
+					IsOn: true,
+					Listen: []*serverconfigs.NetworkAddressConfig{
+						{
+							Protocol:  serverconfigs.ProtocolHTTP,
+							PortRange: "8080",
+						},
+					},
+				},
 			},
 		},
 	}

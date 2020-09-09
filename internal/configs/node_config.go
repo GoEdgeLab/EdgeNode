@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
 	"github.com/go-yaml/yaml"
 	"github.com/iwind/TeaGo/Tea"
 	"io/ioutil"
@@ -9,10 +10,13 @@ import (
 var sharedNodeConfig *NodeConfig = nil
 
 type NodeConfig struct {
-	Id      string          `yaml:"id"`
-	Servers []*ServerConfig `yaml:"servers"`
+	Id      string                        `yaml:"id" json:"id"`
+	IsOn    bool                          `yaml:"isOn" json:"isOn"`
+	Servers []*serverconfigs.ServerConfig `yaml:"servers" json:"servers"`
+	Version int                           `yaml:"version" json:"version"`
 }
 
+// 取得当前节点配置单例
 func SharedNodeConfig() (*NodeConfig, error) {
 	sharedLocker.Lock()
 	defer sharedLocker.Unlock()
@@ -36,9 +40,19 @@ func SharedNodeConfig() (*NodeConfig, error) {
 	return config, nil
 }
 
+// 刷新当前节点配置
+func ReloadNodeConfig() error {
+	sharedLocker.Lock()
+	sharedNodeConfig = nil
+	sharedLocker.Unlock()
+
+	_, err := SharedNodeConfig()
+	return err
+}
+
 // 根据网络地址和协议分组
-func (this *NodeConfig) AvailableGroups() []*ServerGroup {
-	groupMapping := map[string]*ServerGroup{} // protocol://addr => Server Group
+func (this *NodeConfig) AvailableGroups() []*serverconfigs.ServerGroup {
+	groupMapping := map[string]*serverconfigs.ServerGroup{} // protocol://addr => Server Group
 	for _, server := range this.Servers {
 		if !server.IsOn {
 			continue
@@ -48,15 +62,39 @@ func (this *NodeConfig) AvailableGroups() []*ServerGroup {
 			if ok {
 				group.Add(server)
 			} else {
-				group = NewServerGroup(addr)
+				group = serverconfigs.NewServerGroup(addr)
 				group.Add(server)
 			}
 			groupMapping[addr] = group
 		}
 	}
-	result := []*ServerGroup{}
+	result := []*serverconfigs.ServerGroup{}
 	for _, group := range groupMapping {
 		result = append(result, group)
 	}
 	return result
+}
+
+func (this *NodeConfig) Init() error {
+	for _, server := range this.Servers {
+		err := server.Init()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// 写入到文件
+func (this *NodeConfig) Save() error {
+	sharedLocker.Lock()
+	defer sharedLocker.Unlock()
+
+	data, err := yaml.Marshal(this)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(Tea.ConfigFile("node.yaml"), data, 0777)
 }

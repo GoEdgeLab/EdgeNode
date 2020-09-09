@@ -3,17 +3,16 @@ package nodes
 import (
 	"context"
 	"errors"
-	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
 	"github.com/iwind/TeaGo/logs"
 	"net"
-	"net/http"
 	"sync"
 )
 
 type Listener struct {
-	group       *configs.ServerGroup
+	group       *serverconfigs.ServerGroup
 	isListening bool
-	listener    interface{} // 监听器
+	listener    ListenerImpl // 监听器
 
 	locker sync.RWMutex
 }
@@ -22,7 +21,7 @@ func NewListener() *Listener {
 	return &Listener{}
 }
 
-func (this *Listener) Reload(group *configs.ServerGroup) {
+func (this *Listener) Reload(group *serverconfigs.ServerGroup) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 	this.group = group
@@ -40,78 +39,67 @@ func (this *Listener) Listen() error {
 		return nil
 	}
 	protocol := this.group.Protocol()
-	switch protocol {
-	case configs.ProtocolHTTP, configs.ProtocolHTTP4, configs.ProtocolHTTP6:
-		return this.listenHTTP()
-	case configs.ProtocolHTTPS, configs.ProtocolHTTPS4, configs.ProtocolHTTPS6:
-		return this.ListenHTTPS()
-	case configs.ProtocolTCP, configs.ProtocolTCP4, configs.ProtocolTCP6:
-		return this.listenTCP()
-	case configs.ProtocolTLS, configs.ProtocolTLS4, configs.ProtocolTLS6:
-		return this.listenTLS()
-	case configs.ProtocolUnix:
-		return this.listenUnix()
-	case configs.ProtocolUDP:
-		return this.listenUDP()
-	default:
-		return errors.New("unknown protocol '" + protocol + "'")
-	}
-}
 
-func (this *Listener) Close() error {
-	// TODO 需要实现
-	return nil
-}
-
-func (this *Listener) listenHTTP() error {
-	listener, err := this.createListener()
+	netListener, err := this.createListener()
 	if err != nil {
 		return err
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		_, _ = writer.Write([]byte("Hello, World"))
-	})
-	server := &http.Server{
-		Addr:    this.group.Addr(),
-		Handler: mux,
+	switch protocol {
+	case serverconfigs.ProtocolHTTP, serverconfigs.ProtocolHTTP4, serverconfigs.ProtocolHTTP6:
+		this.listener = &HTTPListener{
+			Group:    this.group,
+			Listener: netListener,
+		}
+	case serverconfigs.ProtocolHTTPS, serverconfigs.ProtocolHTTPS4, serverconfigs.ProtocolHTTPS6:
+		this.listener = &HTTPListener{
+			Group:    this.group,
+			Listener: netListener,
+		}
+	case serverconfigs.ProtocolTCP, serverconfigs.ProtocolTCP4, serverconfigs.ProtocolTCP6:
+		this.listener = &TCPListener{
+			Group:    this.group,
+			Listener: netListener,
+		}
+	case serverconfigs.ProtocolTLS, serverconfigs.ProtocolTLS4, serverconfigs.ProtocolTLS6:
+		this.listener = &TCPListener{
+			Group:    this.group,
+			Listener: netListener,
+		}
+	case serverconfigs.ProtocolUnix:
+		this.listener = &UnixListener{
+			Group:    this.group,
+			Listener: netListener,
+		}
+	case serverconfigs.ProtocolUDP:
+		this.listener = &UDPListener{
+			Group:    this.group,
+			Listener: netListener,
+		}
+	default:
+		return errors.New("unknown protocol '" + protocol + "'")
 	}
 
+	this.listener.Init()
+
 	go func() {
-		err = server.Serve(listener)
+		err := this.listener.Serve()
 		if err != nil {
 			logs.Println("[LISTENER]" + err.Error())
 		}
 	}()
+
 	return nil
 }
 
-func (this *Listener) ListenHTTPS() error {
-	// TODO 需要实现
-	return nil
+func (this *Listener) Close() error {
+	if this.listener == nil {
+		return nil
+	}
+	return this.listener.Close()
 }
 
-func (this *Listener) listenTCP() error {
-	// TODO 需要实现
-	return nil
-}
-
-func (this *Listener) listenTLS() error {
-	// TODO 需要实现
-	return nil
-}
-
-func (this *Listener) listenUnix() error {
-	// TODO 需要实现
-	return nil
-}
-
-func (this *Listener) listenUDP() error {
-	// TODO 需要实现
-	return nil
-}
-
+// 创建监听器
 func (this *Listener) createListener() (net.Listener, error) {
 	listenConfig := net.ListenConfig{
 		Control:   nil,
@@ -119,9 +107,9 @@ func (this *Listener) createListener() (net.Listener, error) {
 	}
 
 	switch this.group.Protocol() {
-	case configs.ProtocolHTTP4, configs.ProtocolHTTPS4, configs.ProtocolTLS4:
+	case serverconfigs.ProtocolHTTP4, serverconfigs.ProtocolHTTPS4, serverconfigs.ProtocolTLS4:
 		return listenConfig.Listen(context.Background(), "tcp4", this.group.Addr())
-	case configs.ProtocolHTTP6, configs.ProtocolHTTPS6, configs.ProtocolTLS6:
+	case serverconfigs.ProtocolHTTP6, serverconfigs.ProtocolHTTPS6, serverconfigs.ProtocolTLS6:
 		return listenConfig.Listen(context.Background(), "tcp6", this.group.Addr())
 	}
 

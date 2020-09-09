@@ -1,0 +1,172 @@
+package nodes
+
+import (
+	"encoding/json"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/rpc/pb"
+	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/logs"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
+	"os"
+	"runtime"
+	"strings"
+	"time"
+)
+
+type NodeStatusExecutor struct {
+	isFirstTime bool
+
+	cpuUpdatedTime   time.Time
+	cpuLogicalCount  int
+	cpuPhysicalCount int
+}
+
+func NewNodeStatusExecutor() *NodeStatusExecutor {
+	return &NodeStatusExecutor{}
+}
+
+func (this *NodeStatusExecutor) Listen() {
+	this.isFirstTime = true
+	this.cpuUpdatedTime = time.Now()
+	this.update()
+
+	ticker := time.NewTicker(60 * time.Second)
+	for range ticker.C {
+		this.isFirstTime = false
+		this.update()
+	}
+}
+
+func (this *NodeStatusExecutor) update() {
+	status := &NodeStatus{}
+	status.Version = teaconst.Version
+	status.IsActive = true
+
+	hostname, _ := os.Hostname()
+	status.Hostname = hostname
+
+	this.updateCPU(status)
+	this.updateMem(status)
+	this.updateLoad(status)
+	this.updateDisk(status)
+	status.UpdatedAt = time.Now().Unix()
+
+	//  发送数据
+	jsonData, err := json.Marshal(status)
+	if err != nil {
+		logs.Println("[NODE]serial NodeStatus fail: " + err.Error())
+		return
+	}
+	rpcClient, err := rpc.SharedRPC()
+	if err != nil {
+		logs.Println("[NODE]failed to open rpc: " + err.Error())
+		return
+	}
+	_, err = rpcClient.NodeRPC().UpdateNodeStatus(rpcClient.Context(), &pb.UpdateNodeStatusRequest{
+		StatusJSON: jsonData,
+	})
+	if err != nil {
+		logs.Println("[NODE]rpc UpdateNodeStatus() failed: " + err.Error())
+		return
+	}
+}
+
+// 更新CPU
+func (this *NodeStatusExecutor) updateCPU(status *NodeStatus) {
+	duration := time.Duration(0)
+	if this.isFirstTime {
+		duration = 100 * time.Millisecond
+	}
+	percents, err := cpu.Percent(duration, false)
+	if err != nil {
+		status.Error = err.Error()
+		return
+	}
+	if len(percents) == 0 {
+		return
+	}
+	status.CPUUsage = percents[0] / 100
+
+	if time.Since(this.cpuUpdatedTime) > 300*time.Second { // 每隔5分钟才会更新一次
+		this.cpuUpdatedTime = time.Now()
+
+		status.CPULogicalCount, err = cpu.Counts(true)
+		if err != nil {
+			status.Error = err.Error()
+			return
+		}
+		status.CPUPhysicalCount, err = cpu.Counts(false)
+		if err != nil {
+			status.Error = err.Error()
+			return
+		}
+		this.cpuLogicalCount = status.CPULogicalCount
+		this.cpuPhysicalCount = status.CPUPhysicalCount
+	} else {
+		status.CPULogicalCount = this.cpuLogicalCount
+		status.CPUPhysicalCount = this.cpuPhysicalCount
+	}
+}
+
+// 更新硬盘
+func (this *NodeStatusExecutor) updateDisk(status *NodeStatus) {
+	partitions, err := disk.Partitions(false)
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+	lists.Sort(partitions, func(i int, j int) bool {
+		p1 := partitions[i]
+		p2 := partitions[j]
+		return p1.Mountpoint > p2.Mountpoint
+	})
+
+	// 当前TeaWeb所在的fs
+	rootFS := ""
+	rootTotal := uint64(0)
+	if lists.ContainsString([]string{"darwin", "linux", "freebsd"}, runtime.GOOS) {
+		for _, p := range partitions {
+			if p.Mountpoint == "/" {
+				rootFS = p.Fstype
+				usage, _ := disk.Usage(p.Mountpoint)
+				if usage != nil {
+					rootTotal = usage.Total
+				}
+				break
+			}
+		}
+	}
+
+	total := rootTotal
+	totalUsage := uint64(0)
+	maxUsage := float64(0)
+	for _, partition := range partitions {
+		if runtime.GOOS != "windows" && !strings.Contains(partition.Device, "/") && !strings.Contains(partition.Device, "\\") {
+			continue
+		}
+
+		// 跳过不同fs的
+		if len(rootFS) > 0 && rootFS != partition.Fstype {
+			continue
+		}
+
+		usage, err := disk.Usage(partition.Mountpoint)
+		if err != nil {
+			continue
+		}
+
+		if partition.Mountpoint != "/" && (usage.Total != rootTotal || total == 0) {
+			total += usage.Total
+		}
+		totalUsage += usage.Used
+		if usage.UsedPercent >= maxUsage {
+			maxUsage = usage.UsedPercent
+			status.DiskMaxUsagePartition = partition.Mountpoint
+		}
+	}
+	status.DiskTotal = total
+	status.DiskUsage = float64(totalUsage) / float64(total)
+	status.DiskMaxUsage = maxUsage / 100
+}

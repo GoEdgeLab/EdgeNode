@@ -10,6 +10,8 @@ type APIConfig struct {
 	RPC struct {
 		Endpoints []string `yaml:"endpoints"`
 	} `yaml:"rpc"`
+	NodeId string `yaml:"nodeId"`
+	Secret string `yaml:"secret"`
 }
 
 func LoadAPIConfig() (*APIConfig, error) {
