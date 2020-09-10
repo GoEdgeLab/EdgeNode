@@ -19,7 +19,7 @@ import (
 // SSL证书
 type SSLCertConfig struct {
 	Id          string `yaml:"id" json:"id"`
-	On          bool   `yaml:"on" json:"on"`
+	IsOn        bool   `yaml:"isOn" json:"isOn"`
 	Description string `yaml:"description" json:"description"` // 说明
 	CertFile    string `yaml:"certFile" json:"certFile"`
 	KeyFile     string `yaml:"keyFile" json:"keyFile"`
@@ -39,7 +39,7 @@ type SSLCertConfig struct {
 // 获取新的SSL证书
 func NewSSLCertConfig(certFile string, keyFile string) *SSLCertConfig {
 	return &SSLCertConfig{
-		On:       true,
+		IsOn:     true,
 		Id:       stringutil.Rand(16),
 		CertFile: certFile,
 		KeyFile:  keyFile,

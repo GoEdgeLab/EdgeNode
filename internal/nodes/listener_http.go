@@ -59,8 +59,10 @@ func (this *HTTPListener) Serve() error {
 }
 
 func (this *HTTPListener) Close() error {
-	// TODO
-	return nil
+	if this.httpServer != nil {
+		_ = this.httpServer.Close()
+	}
+	return this.Listener.Close()
 }
 
 func (this *HTTPListener) handleHTTP(writer http.ResponseWriter, req *http.Request) {

@@ -97,7 +97,7 @@ func (this *SSLConfig) Init() error {
 			if cert == nil {
 				continue
 			}
-			if !cert.On {
+			if !cert.IsOn {
 				continue
 			}
 			data, err := ioutil.ReadFile(cert.FullCertPath())
