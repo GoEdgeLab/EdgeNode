@@ -3,8 +3,8 @@ package nodes
 import (
 	"crypto/tls"
 	"errors"
-	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs/sslconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/sslconfigs"
 	http2 "golang.org/x/net/http2"
 	"sync"
 )

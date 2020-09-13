@@ -1,7 +1,7 @@
 package configs
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
 	"testing"

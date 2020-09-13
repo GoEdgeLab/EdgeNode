@@ -1,8 +1,8 @@
 package rpc
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
-	"github.com/TeaOSLab/EdgeNode/internal/rpc/pb"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"testing"
 	"time"

@@ -1,7 +1,7 @@
 package configs
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/go-yaml/yaml"
 	"github.com/iwind/TeaGo/Tea"
 	"io/ioutil"

@@ -1,6 +1,6 @@
 package nodes
 
-import "github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
+import "github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 
 // 域名和服务映射
 type NamedServer struct {

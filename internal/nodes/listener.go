@@ -3,7 +3,7 @@ package nodes
 import (
 	"context"
 	"errors"
-	"github.com/TeaOSLab/EdgeNode/internal/configs/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/iwind/TeaGo/logs"
 	"net"
 	"sync"
