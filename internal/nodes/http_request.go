@@ -7,7 +7,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"net/http"
@@ -42,15 +41,17 @@ type HTTPRequest struct {
 
 	// 内部参数
 	writer          *HTTPWriter
-	web             *serverconfigs.HTTPWebConfig
-	rawURI          string                      // 原始的URI
-	uri             string                      // 经过rewrite等运算之后的URI
-	varMapping      map[string]string           // 变量集合
-	requestFromTime time.Time                   // 请求开始时间
-	requestCost     float64                     // 请求耗时
-	filePath        string                      // 请求的文件名，仅在读取Root目录下的内容时不为空
-	origin          *serverconfigs.OriginConfig // 源站
-	errors          []string                    // 错误信息
+	web             *serverconfigs.HTTPWebConfig      // Web配置，重要提示：由于引用了别的共享的配置，所以操作中只能读取不要修改
+	reverseProxyRef *serverconfigs.ReverseProxyRef    // 反向代理引用
+	reverseProxy    *serverconfigs.ReverseProxyConfig // 反向代理配置，重要提示：由于引用了别的共享的配置，所以操作中只能读取不要修改
+	rawURI          string                            // 原始的URI
+	uri             string                            // 经过rewrite等运算之后的URI
+	varMapping      map[string]string                 // 变量集合
+	requestFromTime time.Time                         // 请求开始时间
+	requestCost     float64                           // 请求耗时
+	filePath        string                            // 请求的文件名，仅在读取Root目录下的内容时不为空
+	origin          *serverconfigs.OriginConfig       // 源站
+	errors          []string                          // 错误信息
 }
 
 // 初始化
@@ -68,7 +69,13 @@ func (this *HTTPRequest) Do() {
 	// 初始化
 	this.init()
 
-	// 配置
+	// 当前服务的反向代理配置
+	if this.Server.ReverseProxyRef != nil && this.Server.ReverseProxy != nil {
+		this.reverseProxyRef = this.Server.ReverseProxyRef
+		this.reverseProxy = this.Server.ReverseProxy
+	}
+
+	// Web配置
 	err := this.configureWeb(this.Server.Web, true, 0)
 	if err != nil {
 		this.write500()
@@ -99,7 +106,7 @@ func (this *HTTPRequest) Do() {
 // 开始调用
 func (this *HTTPRequest) doBegin() {
 	// 重写规则
-	// TODO
+	// TODO 需要实现
 
 	// 临时关闭页面
 	if this.web.Shutdown != nil && this.web.Shutdown.IsOn {
@@ -107,11 +114,10 @@ func (this *HTTPRequest) doBegin() {
 		return
 	}
 
+	// 缓存
+	// TODO
+
 	// root
-	// TODO 从本地文件中读取
-	// TODO 增加stripPrefix
-	// TODO 增加URLEncode的处理方式
-	// TODO ROOT支持变量
 	if this.web.Root != nil && this.web.Root.IsOn {
 		// 如果处理成功，则终止请求的处理
 		if this.doRoot() {
@@ -124,12 +130,11 @@ func (this *HTTPRequest) doBegin() {
 		}
 	}
 
-	// Reverse
-	// TODO
-	logs.Println("reverse proxy")
-
-	// WebSocket
-	// TODO
+	// Reverse Proxy
+	if this.reverseProxyRef != nil && this.reverseProxyRef.IsOn && this.reverseProxy != nil && this.reverseProxy.IsOn {
+		this.doReverseProxy()
+		return
+	}
 
 	// Fastcgi
 	// TODO
@@ -210,6 +215,12 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.Charset = web.Charset
 	}
 
+	// websocket
+	if web.WebsocketRef != nil && (web.WebsocketRef.IsPrior || isTop) {
+		this.web.WebsocketRef = web.WebsocketRef
+		this.web.Websocket = web.Websocket
+	}
+
 	// locations
 	if len(web.LocationRefs) > 0 {
 		var resultLocation *serverconfigs.HTTPLocationConfig
@@ -232,10 +243,19 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 				}
 			}
 		}
-		if resultLocation != nil && resultLocation.Web != nil {
-			err := this.configureWeb(resultLocation.Web, false, redirects)
-			if err != nil {
-				return err
+		if resultLocation != nil {
+			// Reverse Proxy
+			if resultLocation.ReverseProxyRef != nil && resultLocation.ReverseProxyRef.IsPrior {
+				this.reverseProxyRef = resultLocation.ReverseProxyRef
+				this.reverseProxy = resultLocation.ReverseProxy
+			}
+
+			// Web
+			if resultLocation.Web != nil {
+				err := this.configureWeb(resultLocation.Web, false, redirects)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -707,6 +727,7 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 }
 
 // 处理自定义Request Header
+// TODO 处理一些被Golang转换了的Header，比如Websocket
 func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 	if this.web.RequestHeaderPolicy != nil && this.web.RequestHeaderPolicy.IsOn {
 		// 删除某些Header

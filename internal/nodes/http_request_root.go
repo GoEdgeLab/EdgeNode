@@ -48,6 +48,9 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	rootDir := this.web.Root.Dir
+	if this.web.Root.HasVariables() {
+		rootDir = this.Format(rootDir)
+	}
 	if !filepath.IsAbs(rootDir) {
 		rootDir = Tea.Root + Tea.DS + rootDir
 	}
@@ -149,22 +152,24 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	respHeader := this.writer.Header()
 
 	// mime type
-	if !(this.web.ResponseHeaderPolicy != nil && this.web.ResponseHeaderPolicy.IsOn && this.web.ResponseHeaderPolicy.ContainsHeader("CONTENT-TYPE")) {
+	if this.web.ResponseHeaderPolicy == nil || !this.web.ResponseHeaderPolicy.IsOn || !this.web.ResponseHeaderPolicy.ContainsHeader("CONTENT-TYPE") {
 		ext := filepath.Ext(requestPath)
 		if len(ext) > 0 {
 			mimeType := mime.TypeByExtension(ext)
 			if len(mimeType) > 0 {
-				if _, found := textMimeMap[mimeType]; found {
+				semicolonIndex := strings.Index(mimeType, ";")
+				mimeTypeKey := mimeType
+				if semicolonIndex > 0 {
+					mimeTypeKey = mimeType[:semicolonIndex]
+				}
+
+				if _, found := textMimeMap[mimeTypeKey]; found {
 					if this.web.Charset != nil && this.web.Charset.IsOn && len(this.web.Charset.Charset) > 0 {
 						charset := this.web.Charset.Charset
-
-						// 去掉里面的charset设置
-						index := strings.Index(mimeType, "charset=")
-						if index > 0 {
-							respHeader.Set("Content-Type", mimeType[:index+len("charset=")]+charset)
-						} else {
-							respHeader.Set("Content-Type", mimeType+"; charset="+charset)
+						if this.web.Charset.IsUpper {
+							charset = strings.ToUpper(charset)
 						}
+						respHeader.Set("Content-Type", mimeTypeKey+"; charset="+charset)
 					} else {
 						respHeader.Set("Content-Type", mimeType)
 					}

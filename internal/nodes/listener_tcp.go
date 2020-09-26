@@ -100,7 +100,7 @@ func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyC
 		if origin == nil {
 			continue
 		}
-		conn, err = origin.Connect()
+		conn, err = OriginConnect(origin)
 		if err != nil {
 			logs.Println("[TCP_LISTENER]unable to connect origin: " + origin.Addr.Host + ":" + origin.Addr.PortRange + ": " + err.Error())
 			continue
