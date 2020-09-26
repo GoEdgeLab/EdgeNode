@@ -41,6 +41,10 @@ func TestSharedRPC_Stream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = client.Send(&pb.NodeStreamRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for {
 		resp, err := client.Recv()
 		if err != nil {

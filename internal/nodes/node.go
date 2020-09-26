@@ -3,8 +3,8 @@ package nodes
 import (
 	"encoding/json"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
-	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/logs"
@@ -12,7 +12,8 @@ import (
 )
 
 var stop = make(chan bool)
-var lastVersion = -1
+var lastVersion = int64(-1)
+var sharedNodeConfig *nodeconfigs.NodeConfig
 
 // 节点
 type Node struct {
@@ -36,11 +37,17 @@ func (this *Node) Start() {
 	go NewNodeStatusExecutor().Listen()
 
 	// 读取配置
-	nodeConfig, err := configs.SharedNodeConfig()
+	nodeConfig, err := nodeconfigs.SharedNodeConfig()
 	if err != nil {
 		logs.Println("[NODE]start failed: read node config failed: " + err.Error())
 		return
 	}
+	err = nodeConfig.Init()
+	if err != nil {
+		logs.Println("[NODE]init node config failed: " + err.Error())
+		return
+	}
+	sharedNodeConfig = nodeConfig
 
 	// 设置rlimit
 	_ = utils.SetRLimit(1024 * 1024)
@@ -61,13 +68,14 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 	if err != nil {
 		return errors.New("[NODE]create rpc client failed: " + err.Error())
 	}
+	// TODO 这里考虑只同步版本号有变更的
 	configResp, err := rpcClient.NodeRPC().ComposeNodeConfig(rpcClient.Context(), &pb.ComposeNodeConfigRequest{})
 	if err != nil {
 		return errors.New("[NODE]read config from rpc failed: " + err.Error())
 	}
-	configBytes := configResp.ConfigJSON
-	nodeConfig := &configs.NodeConfig{}
-	err = json.Unmarshal(configBytes, nodeConfig)
+	configJSON := configResp.NodeJSON
+	nodeConfig := &nodeconfigs.NodeConfig{}
+	err = json.Unmarshal(configJSON, nodeConfig)
 	if err != nil {
 		return errors.New("[NODE]decode config failed: " + err.Error())
 	}
@@ -84,11 +92,15 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 	}
 	lastVersion = nodeConfig.Version
 
-	// 刷新配置
-	err = configs.ReloadNodeConfig()
+	err = nodeConfig.Init()
 	if err != nil {
 		return err
 	}
+
+	// 刷新配置
+	logs.Println("[NODE]reload config ...")
+	nodeconfigs.ResetNodeConfig(nodeConfig)
+	sharedNodeConfig = nodeConfig
 
 	if !isFirstTime {
 		return sharedListenerManager.Start(nodeConfig)
@@ -99,7 +111,8 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 
 // 启动同步计时器
 func (this *Node) startSyncTimer() {
-	ticker := time.NewTicker(60 * time.Second)
+	// TODO 这个时间间隔可以自行设置
+	ticker := time.NewTicker(30 * time.Second)
 	go func() {
 		for range ticker.C {
 			err := this.syncConfig(false)

@@ -1,22 +1,23 @@
 package nodes
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"testing"
 )
 
 func TestListenerManager_Listen(t *testing.T) {
 	manager := NewListenerManager()
-	err := manager.Start(&configs.NodeConfig{
-		Servers: []*configs.ServerConfig{
+	err := manager.Start(&nodeconfigs.NodeConfig{
+		Servers: []*serverconfigs.ServerConfig{
 			{
 				IsOn: true,
-				HTTP: &configs.HTTPProtocolConfig{
-					BaseProtocol: configs.BaseProtocol{
+				HTTP: &serverconfigs.HTTPProtocolConfig{
+					BaseProtocol: serverconfigs.BaseProtocol{
 						IsOn: true,
-						Listen: []*configs.NetworkAddressConfig{
+						Listen: []*serverconfigs.NetworkAddressConfig{
 							{
-								Protocol:  configs.ProtocolHTTP,
+								Protocol:  serverconfigs.ProtocolHTTP,
 								PortRange: "1234",
 							},
 						},
@@ -25,12 +26,12 @@ func TestListenerManager_Listen(t *testing.T) {
 			},
 			{
 				IsOn: true,
-				HTTP: &configs.HTTPProtocolConfig{
-					BaseProtocol: configs.BaseProtocol{
+				HTTP: &serverconfigs.HTTPProtocolConfig{
+					BaseProtocol: serverconfigs.BaseProtocol{
 						IsOn: true,
-						Listen: []*configs.NetworkAddressConfig{
+						Listen: []*serverconfigs.NetworkAddressConfig{
 							{
-								Protocol:  configs.ProtocolHTTP,
+								Protocol:  serverconfigs.ProtocolHTTP,
 								PortRange: "1235",
 							},
 						},
@@ -43,16 +44,16 @@ func TestListenerManager_Listen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = manager.Start(&configs.NodeConfig{
-		Servers: []*configs.ServerConfig{
+	err = manager.Start(&nodeconfigs.NodeConfig{
+		Servers: []*serverconfigs.ServerConfig{
 			{
 				IsOn: true,
-				HTTP: &configs.HTTPProtocolConfig{
-					BaseProtocol: configs.BaseProtocol{
+				HTTP: &serverconfigs.HTTPProtocolConfig{
+					BaseProtocol: serverconfigs.BaseProtocol{
 						IsOn: true,
-						Listen: []*configs.NetworkAddressConfig{
+						Listen: []*serverconfigs.NetworkAddressConfig{
 							{
-								Protocol:  configs.ProtocolHTTP,
+								Protocol:  serverconfigs.ProtocolHTTP,
 								PortRange: "1234",
 							},
 						},
@@ -61,12 +62,12 @@ func TestListenerManager_Listen(t *testing.T) {
 			},
 			{
 				IsOn: true,
-				HTTP: &configs.HTTPProtocolConfig{
-					BaseProtocol: configs.BaseProtocol{
+				HTTP: &serverconfigs.HTTPProtocolConfig{
+					BaseProtocol: serverconfigs.BaseProtocol{
 						IsOn: true,
-						Listen: []*configs.NetworkAddressConfig{
+						Listen: []*serverconfigs.NetworkAddressConfig{
 							{
-								Protocol:  configs.ProtocolHTTP,
+								Protocol:  serverconfigs.ProtocolHTTP,
 								PortRange: "1236",
 							},
 						},

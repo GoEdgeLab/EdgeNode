@@ -77,7 +77,7 @@ func (this *Listener) Listen() error {
 			Listener: netListener,
 		}
 	default:
-		return errors.New("unknown protocol '" + protocol + "'")
+		return errors.New("unknown protocol '" + protocol.String() + "'")
 	}
 
 	this.listener.Init()

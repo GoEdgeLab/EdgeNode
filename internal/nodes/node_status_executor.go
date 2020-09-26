@@ -32,7 +32,8 @@ func (this *NodeStatusExecutor) Listen() {
 	this.cpuUpdatedTime = time.Now()
 	this.update()
 
-	ticker := time.NewTicker(60 * time.Second)
+	// TODO 这个时间间隔可以配置
+	ticker := time.NewTicker(30 * time.Second)
 	for range ticker.C {
 		this.isFirstTime = false
 		this.update()
@@ -40,8 +41,13 @@ func (this *NodeStatusExecutor) Listen() {
 }
 
 func (this *NodeStatusExecutor) update() {
+	if sharedNodeConfig == nil {
+		return
+	}
+
 	status := &NodeStatus{}
-	status.Version = teaconst.Version
+	status.BuildVersion = teaconst.Version
+	status.ConfigVersion = sharedNodeConfig.Version
 	status.IsActive = true
 
 	hostname, _ := os.Hostname()

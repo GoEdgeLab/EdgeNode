@@ -1,7 +1,7 @@
 package nodes
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/logs"
 	"net/url"
@@ -14,7 +14,7 @@ var sharedListenerManager = NewListenerManager()
 type ListenerManager struct {
 	listenersMap map[string]*Listener // addr => *Listener
 	locker       sync.Mutex
-	lastConfig   *configs.NodeConfig
+	lastConfig   *nodeconfigs.NodeConfig
 }
 
 func NewListenerManager() *ListenerManager {
@@ -23,7 +23,7 @@ func NewListenerManager() *ListenerManager {
 	}
 }
 
-func (this *ListenerManager) Start(node *configs.NodeConfig) error {
+func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 

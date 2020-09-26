@@ -80,7 +80,7 @@ func (this *BaseListener) matchSSL(group *serverconfigs.ServerGroup, domain stri
 	// 如果域名为空，则取第一个
 	// 通常域名为空是因为是直接通过IP访问的
 	if len(domain) == 0 {
-		if serverconfigs.SharedGlobalConfig().HTTPAll.MatchDomainStrictly {
+		if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
 			return nil, nil, errors.New("no tls server name matched")
 		}
 
@@ -148,7 +148,7 @@ func (this *BaseListener) findNamedServer(group *serverconfigs.ServerGroup, name
 	maxNamedServers := 10240
 
 	// 是否严格匹配域名
-	matchDomainStrictly := serverconfigs.SharedGlobalConfig().HTTPAll.MatchDomainStrictly
+	matchDomainStrictly := sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
 
 	// 如果只有一个server，则默认为这个
 	if countServers == 1 && !matchDomainStrictly {

@@ -1,14 +1,14 @@
 package nodes
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"testing"
 )
 
 func TestListener_Listen(t *testing.T) {
 	listener := NewListener()
 
-	group := configs.NewServerGroup("http://:1234")
+	group := serverconfigs.NewServerGroup("http://:1234")
 
 	listener.Reload(group)
 	err := listener.Listen()
