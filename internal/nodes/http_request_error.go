@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func (this *HTTPRequest) writeNotFoundError() {
+func (this *HTTPRequest) write404() {
 	if this.doPage(http.StatusNotFound) {
 		return
 	}
@@ -17,7 +17,7 @@ func (this *HTTPRequest) writeNotFoundError() {
 	_, _ = this.writer.Write([]byte(msg))
 }
 
-func (this *HTTPRequest) writeInternalServerError() {
+func (this *HTTPRequest) write500() {
 	statusCode := http.StatusInternalServerError
 	if this.doPage(statusCode) {
 		return

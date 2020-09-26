@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"net/http"
@@ -70,7 +71,7 @@ func (this *HTTPRequest) Do() {
 	// 配置
 	err := this.configureWeb(this.Server.Web, true, 0)
 	if err != nil {
-		this.writeInternalServerError()
+		this.write500()
 		this.doEnd()
 		return
 	}
@@ -106,8 +107,26 @@ func (this *HTTPRequest) doBegin() {
 		return
 	}
 
-	// Origin
+	// root
+	// TODO 从本地文件中读取
+	// TODO 增加stripPrefix
+	// TODO 增加URLEncode的处理方式
+	// TODO ROOT支持变量
+	if this.web.Root != nil && this.web.Root.IsOn {
+		// 如果处理成功，则终止请求的处理
+		if this.doRoot() {
+			return
+		}
+
+		// 如果明确设置了终止，则也会自动终止
+		if this.web.Root.IsBreak {
+			return
+		}
+	}
+
+	// Reverse
 	// TODO
+	logs.Println("reverse proxy")
 
 	// WebSocket
 	// TODO
@@ -118,14 +137,8 @@ func (this *HTTPRequest) doBegin() {
 	// Server Event Sent
 	// TODO 实现Location的AutoFlush
 
-	// root
-	// TODO 从本地文件中读取
-	// TODO 增加root优先级：High：优先从Root读取，Low：优先从反向代理等条件中读取
-	// TODO 增加stripPrefix
-	// TODO 增加URLEncode的处理方式
-
 	// 返回404页面
-	this.writeNotFoundError()
+	this.write404()
 }
 
 // 结束调用
@@ -185,6 +198,16 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	if web.ResponseHeaderPolicyRef != nil && (web.ResponseHeaderPolicyRef.IsPrior || isTop) && web.ResponseHeaderPolicy != nil {
 		// TODO 现在是只能选一个有效的设置，未来可以选择是否合并多级别的设置
 		this.web.ResponseHeaderPolicy = web.ResponseHeaderPolicy
+	}
+
+	// root
+	if web.Root != nil && (web.Root.IsPrior || isTop) {
+		this.web.Root = web.Root
+	}
+
+	// charset
+	if web.Charset != nil && (web.Charset.IsPrior || isTop) {
+		this.web.Charset = web.Charset
 	}
 
 	// locations
@@ -270,8 +293,8 @@ func (this *HTTPRequest) Format(source string) string {
 				return filename
 			}
 
-			if len(this.web.Root) > 0 {
-				return filepath.Clean(this.web.Root + this.requestPath())
+			if this.web.Root != nil && this.web.Root.IsOn {
+				return filepath.Clean(this.web.Root.Dir + this.requestPath())
 			}
 
 			return ""
@@ -322,7 +345,10 @@ func (this *HTTPRequest) Format(source string) string {
 		case "hostname":
 			return HOSTNAME
 		case "documentRoot":
-			return this.web.Root
+			if this.web.Root != nil {
+				return this.web.Root.Dir
+			}
+			return ""
 		}
 
 		dotIndex := strings.Index(varName, ".")
