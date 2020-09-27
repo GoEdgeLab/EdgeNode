@@ -73,6 +73,16 @@ func (this *HTTPListener) Close() error {
 	return this.Listener.Close()
 }
 
+func (this *HTTPListener) Reload(group *serverconfigs.ServerGroup) {
+	this.Group = group
+
+	if this.isHTTPS {
+		this.httpServer.TLSConfig = this.buildTLSConfig(this.Group)
+	}
+
+	this.Reset()
+}
+
 // 处理HTTP请求
 func (this *HTTPListener) handleHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
 	// 域名

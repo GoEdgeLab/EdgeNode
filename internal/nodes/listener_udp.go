@@ -21,3 +21,8 @@ func (this *UDPListener) Close() error {
 	// TODO
 	return nil
 }
+
+func (this *UDPListener) Reload(group *serverconfigs.ServerGroup) {
+	this.Group = group
+	this.Reset()
+}

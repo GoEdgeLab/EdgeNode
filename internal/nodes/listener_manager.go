@@ -11,18 +11,21 @@ import (
 
 var sharedListenerManager = NewListenerManager()
 
+// 端口监听管理器
 type ListenerManager struct {
 	listenersMap map[string]*Listener // addr => *Listener
 	locker       sync.Mutex
 	lastConfig   *nodeconfigs.NodeConfig
 }
 
+// 获取新对象
 func NewListenerManager() *ListenerManager {
 	return &ListenerManager{
 		listenersMap: map[string]*Listener{},
 	}
 }
 
+// 启动监听
 func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -78,6 +81,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	return nil
 }
 
+// 返回更加友好格式的地址
 func (this *ListenerManager) prettyAddress(addr string) string {
 	u, err := url.Parse(addr)
 	if err != nil {

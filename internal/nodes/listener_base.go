@@ -20,6 +20,13 @@ func (this *BaseListener) Init() {
 	this.namedServers = map[string]*NamedServer{}
 }
 
+// 清除既有配置
+func (this *BaseListener) Reset() {
+	this.namedServersLocker.Lock()
+	this.namedServers = map[string]*NamedServer{}
+	this.namedServersLocker.Unlock()
+}
+
 // 构造TLS配置
 func (this *BaseListener) buildTLSConfig(group *serverconfigs.ServerGroup) *tls.Config {
 	return &tls.Config{

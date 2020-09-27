@@ -21,3 +21,8 @@ func (this *UnixListener) Close() error {
 	// TODO
 	return nil
 }
+
+func (this *UnixListener) Reload(group *serverconfigs.ServerGroup) {
+	this.Group = group
+	this.Reset()
+}

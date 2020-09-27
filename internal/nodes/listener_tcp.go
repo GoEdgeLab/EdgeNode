@@ -29,6 +29,11 @@ func (this *TCPListener) Serve() error {
 	return nil
 }
 
+func (this *TCPListener) Reload(group *serverconfigs.ServerGroup) {
+	this.Group = group
+	this.Reset()
+}
+
 func (this *TCPListener) handleConn(conn net.Conn) error {
 	firstServer := this.Group.FirstServer()
 	if firstServer == nil {

@@ -7,7 +7,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"net/http"
@@ -141,9 +140,6 @@ func (this *HTTPRequest) doBegin() {
 	// Fastcgi
 	// TODO
 
-	// Server Event Sent
-	// TODO 实现Location的AutoFlush
-
 	// 返回404页面
 	this.write404()
 }
@@ -234,7 +230,6 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 			if !location.IsOn {
 				continue
 			}
-			logs.Println("rawPath:", rawPath, "location:", location.Pattern) // TODO
 			if varMapping, isMatched := location.Match(rawPath, this.Format); isMatched {
 				if len(varMapping) > 0 {
 					this.addVarMapping(varMapping)

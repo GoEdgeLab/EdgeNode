@@ -190,7 +190,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	this.processResponseHeaders(resp.StatusCode)
 
 	// 是否需要刷新
-	shouldFlush := this.RawReq.Header.Get("Accept") == "text/event-stream"
+	shouldAutoFlush := this.reverseProxy.AutoFlush || this.RawReq.Header.Get("Accept") == "text/event-stream"
 
 	// 准备
 	this.writer.Prepare(resp.ContentLength)
@@ -201,7 +201,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 输出到客户端
 	pool := this.bytePool(resp.ContentLength)
 	buf := pool.Get()
-	if shouldFlush {
+	if shouldAutoFlush {
 		for {
 			n, readErr := resp.Body.Read(buf)
 			if n > 0 {
@@ -226,7 +226,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		logs.Error(err1)
 	}
 
-	if err != nil {
+	if err != nil && err != io.EOF {
 		logs.Error(err)
 		this.addError(err)
 	}

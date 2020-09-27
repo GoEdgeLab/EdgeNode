@@ -12,7 +12,7 @@ import (
 type Listener struct {
 	group       *serverconfigs.ServerGroup
 	isListening bool
-	listener    ListenerImpl // 监听器
+	listener    ListenerInterface // 监听器
 
 	locker sync.RWMutex
 }
@@ -23,8 +23,11 @@ func NewListener() *Listener {
 
 func (this *Listener) Reload(group *serverconfigs.ServerGroup) {
 	this.locker.Lock()
-	defer this.locker.Unlock()
 	this.group = group
+	if this.listener != nil {
+		this.listener.Reload(group)
+	}
+	this.locker.Unlock()
 }
 
 func (this *Listener) FullAddr() string {
