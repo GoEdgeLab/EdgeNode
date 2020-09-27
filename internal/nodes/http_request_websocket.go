@@ -16,6 +16,8 @@ func (this *HTTPRequest) doWebsocket() {
 		return
 	}
 
+	// TODO 实现handshakeTimeout
+
 	// 校验来源
 	requestOrigin := this.RawReq.Header.Get("Origin")
 	if len(requestOrigin) > 0 {
@@ -38,7 +40,9 @@ func (this *HTTPRequest) doWebsocket() {
 		return
 	}
 
+	// 处理Header
 	this.processRequestHeaders(this.RawReq.Header)
+	this.fixRequestHeader(this.RawReq.Header) // 处理 Websocket -> WebSocket
 
 	// 设置指定的来源域
 	if !this.web.Websocket.RequestSameOrigin && len(this.web.Websocket.RequestOrigin) > 0 {
@@ -49,11 +53,7 @@ func (this *HTTPRequest) doWebsocket() {
 		this.RawReq.Header.Set("Origin", newRequestOrigin)
 	}
 
-	// TODO 修改RequestURI
-	// TODO 实现handshakeTimeout
-	// TODO 修改 Websocket- 为 WebSocket-
-
-	// TODO 增加N次错误重试
+	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
 	originConn, err := OriginConnect(origin)
 	if err != nil {
 		logs.Error(err)

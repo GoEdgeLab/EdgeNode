@@ -727,7 +727,6 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 }
 
 // 处理自定义Request Header
-// TODO 处理一些被Golang转换了的Header，比如Websocket
 func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 	if this.web.RequestHeaderPolicy != nil && this.web.RequestHeaderPolicy.IsOn {
 		// 删除某些Header
@@ -765,6 +764,18 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 
 		// Replace
 		// TODO 需要实现
+	}
+}
+
+// 处理一些被Golang转换了的Header
+// TODO 可以自定义要转换的Header
+func (this *HTTPRequest) fixRequestHeader(header http.Header) {
+	for k, v := range header {
+		if strings.Contains(k, "-Websocket-") {
+			header.Del(k)
+			k = strings.ReplaceAll(k, "-Websocket-", "-WebSocket-")
+			header[k] = v
+		}
 	}
 }
 
