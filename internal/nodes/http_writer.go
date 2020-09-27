@@ -118,6 +118,9 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 		return
 	}
 	for key, value := range header {
+		if key == "Connection" {
+			continue
+		}
 		for _, v := range value {
 			this.writer.Header().Add(key, v)
 		}

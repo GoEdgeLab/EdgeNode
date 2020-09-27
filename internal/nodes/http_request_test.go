@@ -16,7 +16,7 @@ func TestHTTPRequest_RedirectToHTTPS(t *testing.T) {
 				},
 			},
 		}
-		req.Run()
+		req.Do()
 		a.IsBool(req.web.RedirectToHttps.IsOn == false)
 	}
 	{
@@ -29,7 +29,7 @@ func TestHTTPRequest_RedirectToHTTPS(t *testing.T) {
 				},
 			},
 		}
-		req.Run()
+		req.Do()
 		a.IsBool(req.web.RedirectToHttps.IsOn == true)
 	}
 }

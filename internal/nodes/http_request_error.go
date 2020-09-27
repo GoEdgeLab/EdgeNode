@@ -17,7 +17,11 @@ func (this *HTTPRequest) write404() {
 	_, _ = this.writer.Write([]byte(msg))
 }
 
-func (this *HTTPRequest) write500() {
+func (this *HTTPRequest) write500(err error) {
+	if err != nil {
+		this.addError(err)
+	}
+
 	statusCode := http.StatusInternalServerError
 	if this.doPage(statusCode) {
 		return

@@ -1,8 +1,6 @@
 package nodes
 
 import (
-	"errors"
-	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/iwind/TeaGo/logs"
 	"io"
 	"net/http"
@@ -30,20 +28,6 @@ func (this *HTTPRequest) doWebsocket() {
 		}
 	}
 
-	requestCall := shared.NewRequestCall()
-	origin := this.reverseProxy.NextOrigin(requestCall)
-	if origin == nil {
-		err := errors.New(this.requestPath() + ": no available backends for websocket")
-		logs.Error(err)
-		this.addError(err)
-		this.write500()
-		return
-	}
-
-	// 处理Header
-	this.processRequestHeaders(this.RawReq.Header)
-	this.fixRequestHeader(this.RawReq.Header) // 处理 Websocket -> WebSocket
-
 	// 设置指定的来源域
 	if !this.web.Websocket.RequestSameOrigin && len(this.web.Websocket.RequestOrigin) > 0 {
 		newRequestOrigin := this.web.Websocket.RequestOrigin
@@ -54,11 +38,10 @@ func (this *HTTPRequest) doWebsocket() {
 	}
 
 	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
-	originConn, err := OriginConnect(origin)
+	originConn, err := OriginConnect(this.origin)
 	if err != nil {
 		logs.Error(err)
-		this.addError(err)
-		this.write500()
+		this.write500(err)
 		return
 	}
 	defer func() {
@@ -68,16 +51,14 @@ func (this *HTTPRequest) doWebsocket() {
 	err = this.RawReq.Write(originConn)
 	if err != nil {
 		logs.Error(err)
-		this.addError(err)
-		this.write500()
+		this.write500(err)
 		return
 	}
 
 	clientConn, _, err := this.writer.Hijack()
 	if err != nil {
 		logs.Error(err)
-		this.addError(err)
-		this.write500()
+		this.write500(err)
 		return
 	}
 	defer func() {

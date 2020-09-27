@@ -107,9 +107,8 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			}
 			return
 		} else {
-			this.write500()
+			this.write500(err)
 			logs.Error(err)
-			this.addError(err)
 			return true
 		}
 	}
@@ -137,9 +136,8 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 					}
 					return
 				} else {
-					this.write500()
+					this.write500(err)
 					logs.Error(err)
-					this.addError(err)
 					return true
 				}
 			}
@@ -220,9 +218,8 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 
 	reader, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
 	if err != nil {
-		this.write500()
+		this.write500(err)
 		logs.Error(err)
-		this.addError(err)
 		return true
 	}
 

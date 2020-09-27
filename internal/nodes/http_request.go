@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"net/http"
@@ -51,6 +52,7 @@ type HTTPRequest struct {
 	requestCost     float64                           // 请求耗时
 	filePath        string                            // 请求的文件名，仅在读取Root目录下的内容时不为空
 	origin          *serverconfigs.OriginConfig       // 源站
+	originAddr      string                            // 源站实际地址
 	errors          []string                          // 错误信息
 }
 
@@ -78,7 +80,7 @@ func (this *HTTPRequest) Do() {
 	// Web配置
 	err := this.configureWeb(this.Server.Web, true, 0)
 	if err != nil {
-		this.write500()
+		this.write500(err)
 		this.doEnd()
 		return
 	}
@@ -232,6 +234,7 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 			if !location.IsOn {
 				continue
 			}
+			logs.Println("rawPath:", rawPath, "location:", location.Pattern) // TODO
 			if varMapping, isMatched := location.Match(rawPath, this.Format); isMatched {
 				if len(varMapping) > 0 {
 					this.addVarMapping(varMapping)
@@ -398,9 +401,9 @@ func (this *HTTPRequest) Format(source string) string {
 			if this.origin != nil {
 				switch suffix {
 				case "address", "addr":
-					return this.origin.RealAddr()
+					return this.originAddr
 				case "host":
-					addr := this.origin.RealAddr()
+					addr := this.originAddr
 					index := strings.Index(addr, ":")
 					if index > -1 {
 						return addr[:index]
@@ -674,7 +677,9 @@ func (this *HTTPRequest) requestServerPort() int {
 // 设置代理相关头部信息
 // 参考：https://tools.ietf.org/html/rfc7239
 func (this *HTTPRequest) setForwardHeaders(header http.Header) {
-	delete(header, "Connection")
+	if this.RawReq.Header.Get("Connection") == "close" {
+		this.RawReq.Header.Set("Connection", "keep-alive")
+	}
 
 	remoteAddr := this.RawReq.RemoteAddr
 	host, _, err := net.SplitHostPort(remoteAddr)
@@ -728,6 +733,8 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 
 // 处理自定义Request Header
 func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
+	this.fixRequestHeader(reqHeader)
+
 	if this.web.RequestHeaderPolicy != nil && this.web.RequestHeaderPolicy.IsOn {
 		// 删除某些Header
 		for name := range reqHeader {
@@ -742,12 +749,17 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 				continue
 			}
 			oldValues, _ := this.RawReq.Header[header.Name]
+			newHeaderValue := header.Value // 因为我们不能修改header，所以在这里使用新变量
 			if header.HasVariables() {
-				oldValues = append(oldValues, this.Format(header.Value))
-			} else {
-				oldValues = append(oldValues, header.Value)
+				newHeaderValue = this.Format(header.Value)
 			}
+			oldValues = append(oldValues, newHeaderValue)
 			reqHeader[header.Name] = oldValues
+
+			// 支持修改Host
+			if header.Name == "Host" && len(header.Value) > 0 {
+				this.RawReq.Host = newHeaderValue
+			}
 		}
 
 		// Set
@@ -755,10 +767,15 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 			if !header.IsOn {
 				continue
 			}
+			newHeaderValue := header.Value // 因为我们不能修改header，所以在这里使用新变量
 			if header.HasVariables() {
-				reqHeader[header.Name] = []string{this.Format(header.Value)}
-			} else {
-				reqHeader[header.Name] = []string{header.Value}
+				newHeaderValue = this.Format(header.Value)
+			}
+			reqHeader[header.Name] = []string{newHeaderValue}
+
+			// 支持修改Host
+			if header.Name == "Host" && len(header.Value) > 0 {
+				this.RawReq.Host = newHeaderValue
 			}
 		}
 
