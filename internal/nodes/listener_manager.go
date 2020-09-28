@@ -44,7 +44,13 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 
 	// 所有的新地址
 	groupAddrs := []string{}
-	for _, group := range node.AvailableGroups() {
+	availableServerGroups := node.AvailableGroups()
+
+	if len(availableServerGroups) == 0 {
+		logs.Println("[LISTENER_MANAGER]no available servers to startup")
+	}
+
+	for _, group := range availableServerGroups {
 		addr := group.FullAddr()
 		groupAddrs = append(groupAddrs, addr)
 	}
@@ -59,7 +65,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	}
 
 	// 启动新的或修改老的
-	for _, group := range node.AvailableGroups() {
+	for _, group := range availableServerGroups {
 		addr := group.FullAddr()
 		listener, ok := this.listenersMap[addr]
 		if ok {

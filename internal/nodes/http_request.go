@@ -40,19 +40,22 @@ type HTTPRequest struct {
 	IsHTTPS    bool
 
 	// 内部参数
-	writer          *HTTPWriter
-	web             *serverconfigs.HTTPWebConfig      // Web配置，重要提示：由于引用了别的共享的配置，所以操作中只能读取不要修改
-	reverseProxyRef *serverconfigs.ReverseProxyRef    // 反向代理引用
-	reverseProxy    *serverconfigs.ReverseProxyConfig // 反向代理配置，重要提示：由于引用了别的共享的配置，所以操作中只能读取不要修改
-	rawURI          string                            // 原始的URI
-	uri             string                            // 经过rewrite等运算之后的URI
-	varMapping      map[string]string                 // 变量集合
-	requestFromTime time.Time                         // 请求开始时间
-	requestCost     float64                           // 请求耗时
-	filePath        string                            // 请求的文件名，仅在读取Root目录下的内容时不为空
-	origin          *serverconfigs.OriginConfig       // 源站
-	originAddr      string                            // 源站实际地址
-	errors          []string                          // 错误信息
+	writer               *HTTPWriter
+	web                  *serverconfigs.HTTPWebConfig      // Web配置，重要提示：由于引用了别的共享的配置，所以操作中只能读取不要修改
+	reverseProxyRef      *serverconfigs.ReverseProxyRef    // 反向代理引用
+	reverseProxy         *serverconfigs.ReverseProxyConfig // 反向代理配置，重要提示：由于引用了别的共享的配置，所以操作中只能读取不要修改
+	rawURI               string                            // 原始的URI
+	uri                  string                            // 经过rewrite等运算之后的URI
+	varMapping           map[string]string                 // 变量集合
+	requestFromTime      time.Time                         // 请求开始时间
+	requestCost          float64                           // 请求耗时
+	filePath             string                            // 请求的文件名，仅在读取Root目录下的内容时不为空
+	origin               *serverconfigs.OriginConfig       // 源站
+	originAddr           string                            // 源站实际地址
+	errors               []string                          // 错误信息
+	rewriteRule          *serverconfigs.HTTPRewriteRule    // 匹配到的重写规则
+	rewriteReplace       string                            // 重写规则的目标
+	rewriteIsExternalURL bool                              // 重写目标是否为外部URL
 }
 
 // 初始化
@@ -106,13 +109,17 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
-	// 重写规则
-	// TODO 需要实现
-
 	// 临时关闭页面
 	if this.web.Shutdown != nil && this.web.Shutdown.IsOn {
 		this.doShutdown()
 		return
+	}
+
+	// 重写规则
+	if this.rewriteRule != nil {
+		if this.doRewrite() {
+			return
+		}
 	}
 
 	// 缓存
@@ -176,7 +183,6 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	} else {
 		rawPath = this.uri
 	}
-	_ = rawQuery // TODO 暂时不用到这个变量
 
 	// redirect
 	if web.RedirectToHttps != nil && (web.RedirectToHttps.IsPrior || isTop) {
@@ -219,6 +225,61 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.Websocket = web.Websocket
 	}
 
+	// 重写规则
+	if len(web.RewriteRefs) > 0 {
+		for index, ref := range web.RewriteRefs {
+			if !ref.IsOn {
+				continue
+			}
+			rewriteRule := web.RewriteRules[index]
+			if !rewriteRule.IsOn {
+				continue
+			}
+			if replace, varMapping, isMatched := rewriteRule.Match(rawPath, this.Format); isMatched {
+				this.addVarMapping(varMapping)
+				this.rewriteRule = rewriteRule
+
+				if rewriteRule.WithQuery {
+					queryIndex := strings.Index(replace, "?")
+					if queryIndex > -1 {
+						if len(rawQuery) > 0 {
+							replace = replace[:queryIndex] + "?" + rawQuery + "&" + replace[queryIndex+1:]
+						}
+					} else {
+						if len(rawQuery) > 0 {
+							replace += "?" + rawQuery
+						}
+					}
+				}
+
+				this.rewriteReplace = replace
+
+				// 如果是外部URL直接返回
+				if rewriteRule.IsExternalURL(replace) {
+					this.rewriteIsExternalURL = true
+					return nil
+				}
+
+				// 如果是内部URL继续解析
+				if replace == this.uri {
+					// URL不变，则停止解析，防止无限循环跳转
+					return nil
+				}
+				this.uri = replace
+
+				// 终止解析的三个条件：
+				//    isBreak = true
+				//    mode = redirect
+				//    replace = external url
+				if rewriteRule.IsBreak || rewriteRule.Mode == serverconfigs.HTTPRewriteModeRedirect {
+					return nil
+				}
+
+				return this.configureWeb(web, isTop, redirects+1)
+			}
+		}
+	}
+
 	// locations
 	if len(web.LocationRefs) > 0 {
 		var resultLocation *serverconfigs.HTTPLocationConfig
@@ -242,6 +303,9 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 			}
 		}
 		if resultLocation != nil {
+			// reset rewrite rule
+			this.rewriteRule = nil
+
 			// Reverse Proxy
 			if resultLocation.ReverseProxyRef != nil && resultLocation.ReverseProxyRef.IsPrior {
 				this.reverseProxyRef = resultLocation.ReverseProxyRef
@@ -250,7 +314,7 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 
 			// Web
 			if resultLocation.Web != nil {
-				err := this.configureWeb(resultLocation.Web, false, redirects)
+				err := this.configureWeb(resultLocation.Web, false, redirects+1)
 				if err != nil {
 					return err
 				}
