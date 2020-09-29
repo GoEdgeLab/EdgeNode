@@ -8,10 +8,12 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"net"
 	"net/http"
+	"strings"
 )
 
 // 响应Writer
 type HTTPWriter struct {
+	req    *HTTPRequest
 	writer http.ResponseWriter
 
 	gzipConfig *serverconfigs.HTTPGzipConfig
@@ -27,8 +29,9 @@ type HTTPWriter struct {
 }
 
 // 包装对象
-func NewHTTPWriter(httpResponseWriter http.ResponseWriter) *HTTPWriter {
+func NewHTTPWriter(req *HTTPRequest, httpResponseWriter http.ResponseWriter) *HTTPWriter {
 	return &HTTPWriter{
+		req:    req,
 		writer: httpResponseWriter,
 	}
 }
@@ -60,14 +63,29 @@ func (this *HTTPWriter) Prepare(size int64) {
 		return
 	}
 
-	// 尺寸和类型
-	if size < this.gzipConfig.MinBytes() {
+	// 判断Accept是否支持gzip
+	if !strings.Contains(this.req.requestHeader("Accept-Encoding"), "gzip") {
 		return
 	}
 
-	contentType := this.Header().Get("Content-Type")
-	if !this.gzipConfig.MatchContentType(contentType) {
+	// 尺寸和类型
+	if size < this.gzipConfig.MinBytes() || (this.gzipConfig.MaxBytes() > 0 && size > this.gzipConfig.MaxBytes()) {
 		return
+	}
+
+	// 校验其他条件
+	if this.gzipConfig.Conds != nil {
+		if len(this.gzipConfig.Conds.Groups) > 0 {
+			if !this.gzipConfig.Conds.MatchRequest(this.req.Format) || !this.gzipConfig.Conds.MatchResponse(this.req.Format) {
+				return
+			}
+		} else {
+			// 默认校验文档类型
+			contentType := this.writer.Header().Get("Content-Type")
+			if len(contentType) > 0 && (!strings.HasPrefix(contentType, "text/") && !strings.HasPrefix(contentType, "application/")) {
+				return
+			}
+		}
 	}
 
 	// 如果已经有编码则不处理

@@ -60,7 +60,7 @@ type HTTPRequest struct {
 
 // 初始化
 func (this *HTTPRequest) init() {
-	this.writer = NewHTTPWriter(this.RawWriter)
+	this.writer = NewHTTPWriter(this, this.RawWriter)
 	this.web = &serverconfigs.HTTPWebConfig{}
 	this.uri = this.RawReq.URL.RequestURI()
 	this.rawURI = this.uri
@@ -101,10 +101,18 @@ func (this *HTTPRequest) Do() {
 	}
 
 	// Gzip
-	// TODO 需要实现
+	shouldCloseWriter := false
+	if this.web.Gzip != nil && this.web.Gzip.IsOn && this.web.Gzip.Level > 0 {
+		shouldCloseWriter = true
+		this.writer.Gzip(this.web.Gzip)
+	}
 
 	// 开始调用
 	this.doBegin()
+
+	if shouldCloseWriter {
+		this.writer.Close()
+	}
 }
 
 // 开始调用
@@ -225,6 +233,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.Websocket = web.Websocket
 	}
 
+	// gzip
+	if web.GzipRef != nil && (web.GzipRef.IsPrior || isTop) {
+		this.web.Gzip = web.Gzip
+	}
+
 	// 重写规则
 	if len(web.RewriteRefs) > 0 {
 		for index, ref := range web.RewriteRefs {
@@ -235,7 +248,7 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 			if !rewriteRule.IsOn {
 				continue
 			}
-			if replace, varMapping, isMatched := rewriteRule.Match(rawPath, this.Format); isMatched {
+			if replace, varMapping, isMatched := rewriteRule.MatchRequest(rawPath, this.Format); isMatched {
 				this.addVarMapping(varMapping)
 				this.rewriteRule = rewriteRule
 
@@ -267,10 +280,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 				}
 				this.uri = replace
 
-				// 终止解析的三个条件：
+				// 终止解析的几个个条件：
 				//    isBreak = true
 				//    mode = redirect
 				//    replace = external url
+				//    replace = uri
 				if rewriteRule.IsBreak || rewriteRule.Mode == serverconfigs.HTTPRewriteModeRedirect {
 					return nil
 				}
@@ -363,6 +377,8 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.rawURI
 		case "requestPath":
 			return this.requestPath()
+		case "requestPathExtension": // TODO 需要添加到文档中
+			return filepath.Ext(this.requestPath())
 		case "requestLength":
 			return strconv.FormatInt(this.requestLength(), 10)
 		case "requestTime":
@@ -455,7 +471,26 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.requestHeader(suffix)
 		}
 
-		// backend.
+		// response.
+		// TODO 需要在文档中添加说明
+		if prefix == "response" {
+			switch suffix {
+			case "contentType":
+				return this.writer.Header().Get("Content-Type")
+			}
+
+			// response.xxx.xxx
+			dotIndex := strings.Index(suffix, ".")
+			if dotIndex < 0 {
+				return "${" + varName + "}"
+			}
+			switch suffix[:dotIndex] {
+			case "header":
+				return this.writer.Header().Get(suffix[dotIndex+1:])
+			}
+		}
+
+		// origin.
 		if prefix == "origin" {
 			if this.origin != nil {
 				switch suffix {

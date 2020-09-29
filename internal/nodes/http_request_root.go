@@ -151,7 +151,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 
 	// mime type
 	if this.web.ResponseHeaderPolicy == nil || !this.web.ResponseHeaderPolicy.IsOn || !this.web.ResponseHeaderPolicy.ContainsHeader("CONTENT-TYPE") {
-		ext := filepath.Ext(requestPath)
+		ext := filepath.Ext(filePath)
 		if len(ext) > 0 {
 			mimeType := mime.TypeByExtension(ext)
 			if len(mimeType) > 0 {
