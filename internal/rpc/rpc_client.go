@@ -17,16 +17,14 @@ import (
 )
 
 type RPCClient struct {
-	apiConfig   *configs.APIConfig
-	nodeClients []pb.NodeServiceClient
+	apiConfig *configs.APIConfig
+	conns     []*grpc.ClientConn
 }
 
 func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
 	if apiConfig == nil {
 		return nil, errors.New("api config should not be nil")
 	}
-
-	nodeClients := []pb.NodeServiceClient{}
 
 	conns := []*grpc.ClientConn{}
 	for _, endpoint := range apiConfig.RPC.Endpoints {
@@ -40,22 +38,14 @@ func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
 		return nil, errors.New("[RPC]no available endpoints")
 	}
 
-	// node clients
-	for _, conn := range conns {
-		nodeClients = append(nodeClients, pb.NewNodeServiceClient(conn))
-	}
-
 	return &RPCClient{
-		apiConfig:   apiConfig,
-		nodeClients: nodeClients,
+		apiConfig: apiConfig,
+		conns:     conns,
 	}, nil
 }
 
 func (this *RPCClient) NodeRPC() pb.NodeServiceClient {
-	if len(this.nodeClients) > 0 {
-		return this.nodeClients[rands.Int(0, len(this.nodeClients)-1)]
-	}
-	return nil
+	return pb.NewNodeServiceClient(this.pickConn())
 }
 
 func (this *RPCClient) Context() context.Context {
@@ -78,4 +68,12 @@ func (this *RPCClient) Context() context.Context {
 	token := base64.StdEncoding.EncodeToString(data)
 	ctx = metadata.AppendToOutgoingContext(ctx, "nodeId", this.apiConfig.NodeId, "token", token)
 	return ctx
+}
+
+// 随机选择一个连接
+func (this *RPCClient) pickConn() *grpc.ClientConn {
+	if len(this.conns) == 0 {
+		return nil
+	}
+	return this.conns[rands.Int(0, len(this.conns)-1)]
 }
