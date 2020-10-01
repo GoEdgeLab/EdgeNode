@@ -57,27 +57,27 @@ func (this *Listener) Listen() error {
 	case serverconfigs.ProtocolHTTPS, serverconfigs.ProtocolHTTPS4, serverconfigs.ProtocolHTTPS6:
 		this.listener = &HTTPListener{
 			BaseListener: BaseListener{Group: this.group},
-			Listener: netListener,
+			Listener:     netListener,
 		}
 	case serverconfigs.ProtocolTCP, serverconfigs.ProtocolTCP4, serverconfigs.ProtocolTCP6:
 		this.listener = &TCPListener{
-			Group:    this.group,
-			Listener: netListener,
+			BaseListener: BaseListener{Group: this.group},
+			Listener:     netListener,
 		}
 	case serverconfigs.ProtocolTLS, serverconfigs.ProtocolTLS4, serverconfigs.ProtocolTLS6:
 		this.listener = &TCPListener{
-			Group:    this.group,
-			Listener: netListener,
+			BaseListener: BaseListener{Group: this.group},
+			Listener:     netListener,
 		}
 	case serverconfigs.ProtocolUnix:
 		this.listener = &UnixListener{
-			Group:    this.group,
-			Listener: netListener,
+			BaseListener: BaseListener{Group: this.group},
+			Listener:     netListener,
 		}
 	case serverconfigs.ProtocolUDP:
 		this.listener = &UDPListener{
-			Group:    this.group,
-			Listener: netListener,
+			BaseListener: BaseListener{Group: this.group},
+			Listener:     netListener,
 		}
 	default:
 		return errors.New("unknown protocol '" + protocol.String() + "'")

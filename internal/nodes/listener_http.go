@@ -115,7 +115,7 @@ func (this *HTTPListener) handleHTTP(rawWriter http.ResponseWriter, rawReq *http
 		domain = reqHost
 	}
 
-	server, serverName := this.findNamedServer(this.Group, domain)
+	server, serverName := this.findNamedServer(domain)
 	if server == nil {
 		// 严格匹配域名模式下，我们拒绝用户访问
 		if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {

@@ -8,7 +8,6 @@ import (
 type UnixListener struct {
 	BaseListener
 
-	Group    *serverconfigs.ServerGroup
 	Listener net.Listener
 }
 

@@ -8,7 +8,6 @@ import (
 type UDPListener struct {
 	BaseListener
 
-	Group    *serverconfigs.ServerGroup
 	Listener net.Listener
 }
 

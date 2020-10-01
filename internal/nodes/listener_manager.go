@@ -56,11 +56,13 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	}
 
 	// 停掉老的
-	for _, listener := range this.listenersMap {
+	for listenerKey, listener := range this.listenersMap {
 		addr := listener.FullAddr()
 		if !lists.ContainsString(groupAddrs, addr) {
 			logs.Println("[LISTENER_MANAGER]close '" + addr + "'")
 			_ = listener.Close()
+
+			delete(this.listenersMap, listenerKey)
 		}
 	}
 

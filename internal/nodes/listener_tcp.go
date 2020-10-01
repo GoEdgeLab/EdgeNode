@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/iwind/TeaGo/logs"
@@ -10,13 +11,17 @@ import (
 type TCPListener struct {
 	BaseListener
 
-	Group    *serverconfigs.ServerGroup
 	Listener net.Listener
 }
 
 func (this *TCPListener) Serve() error {
+	listener := this.Listener
+	if this.Group.IsTLS() {
+		listener = tls.NewListener(listener, this.buildTLSConfig())
+	}
+
 	for {
-		conn, err := this.Listener.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			break
 		}

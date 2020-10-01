@@ -88,10 +88,14 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 
 	group := this.Group
 
+	if group == nil {
+		return nil, nil, errors.New("no configure found")
+	}
+
 	// 如果域名为空，则取第一个
 	// 通常域名为空是因为是直接通过IP访问的
 	if len(domain) == 0 {
-		if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
+		if group.IsHTTPS() && sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
 			return nil, nil, errors.New("no tls server name matched")
 		}
 
@@ -106,10 +110,11 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 
 		}
 		return nil, nil, errors.New("no tls server name found")
+
 	}
 
 	// 通过代理服务域名配置匹配
-	server, _ := this.findNamedServer(group, domain)
+	server, _ := this.findNamedServer(domain)
 	if server == nil || server.SSLPolicy() == nil || !server.SSLPolicy().IsOn {
 		// 搜索所有的Server，通过SSL证书内容中的DNSName匹配
 		for _, server := range group.Servers {
@@ -136,7 +141,12 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 }
 
 // 根据域名来查找匹配的域名
-func (this *BaseListener) findNamedServer(group *serverconfigs.ServerGroup, name string) (serverConfig *serverconfigs.ServerConfig, serverName string) {
+func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconfigs.ServerConfig, serverName string) {
+	group := this.Group
+	if group == nil {
+		return nil, ""
+	}
+
 	// 读取缓存
 	this.namedServersLocker.RLock()
 	namedServer, found := this.namedServers[name]
@@ -159,7 +169,7 @@ func (this *BaseListener) findNamedServer(group *serverconfigs.ServerGroup, name
 	maxNamedServers := 10240
 
 	// 是否严格匹配域名
-	matchDomainStrictly := sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
+	matchDomainStrictly := group.IsHTTPS() && sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
 
 	// 如果只有一个server，则默认为这个
 	if countServers == 1 && !matchDomainStrictly {
