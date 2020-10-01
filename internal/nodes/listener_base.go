@@ -13,6 +13,8 @@ type BaseListener struct {
 	serversLocker      sync.RWMutex
 	namedServersLocker sync.RWMutex
 	namedServers       map[string]*NamedServer // 域名 => server
+
+	Group *serverconfigs.ServerGroup
 }
 
 // 初始化
@@ -28,22 +30,22 @@ func (this *BaseListener) Reset() {
 }
 
 // 构造TLS配置
-func (this *BaseListener) buildTLSConfig(group *serverconfigs.ServerGroup) *tls.Config {
+func (this *BaseListener) buildTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: nil,
 		GetConfigForClient: func(info *tls.ClientHelloInfo) (config *tls.Config, e error) {
-			ssl, _, err := this.matchSSL(group, info.ServerName)
+			ssl, _, err := this.matchSSL(info.ServerName)
 			if err != nil {
 				return nil, err
 			}
 
 			cipherSuites := ssl.TLSCipherSuites()
-			if len(cipherSuites) == 0 {
+			if !ssl.CipherSuitesIsOn || len(cipherSuites) == 0 {
 				cipherSuites = nil
 			}
 
 			nextProto := []string{}
-			if !ssl.HTTP2Disabled {
+			if ssl.HTTP2Enabled {
 				nextProto = []string{http2.NextProtoTLS}
 			}
 			return &tls.Config{
@@ -51,7 +53,7 @@ func (this *BaseListener) buildTLSConfig(group *serverconfigs.ServerGroup) *tls.
 				MinVersion:   ssl.TLSMinVersion(),
 				CipherSuites: cipherSuites,
 				GetCertificate: func(info *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-					_, cert, err := this.matchSSL(group, info.ServerName)
+					_, cert, err := this.matchSSL(info.ServerName)
 					if err != nil {
 						return nil, err
 					}
@@ -67,7 +69,7 @@ func (this *BaseListener) buildTLSConfig(group *serverconfigs.ServerGroup) *tls.
 			}, nil
 		},
 		GetCertificate: func(info *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-			_, cert, err := this.matchSSL(group, info.ServerName)
+			_, cert, err := this.matchSSL(info.ServerName)
 			if err != nil {
 				return nil, err
 			}
@@ -80,9 +82,11 @@ func (this *BaseListener) buildTLSConfig(group *serverconfigs.ServerGroup) *tls.
 }
 
 // 根据域名匹配证书
-func (this *BaseListener) matchSSL(group *serverconfigs.ServerGroup, domain string) (*sslconfigs.SSLConfig, *tls.Certificate, error) {
+func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.Certificate, error) {
 	this.serversLocker.RLock()
 	defer this.serversLocker.RUnlock()
+
+	group := this.Group
 
 	// 如果域名为空，则取第一个
 	// 通常域名为空是因为是直接通过IP访问的
@@ -95,7 +99,7 @@ func (this *BaseListener) matchSSL(group *serverconfigs.ServerGroup, domain stri
 		if firstServer == nil {
 			return nil, nil, errors.New("no server available")
 		}
-		sslConfig := firstServer.SSLConfig()
+		sslConfig := firstServer.SSLPolicy()
 
 		if sslConfig != nil {
 			return sslConfig, sslConfig.FirstCert(), nil
@@ -106,15 +110,15 @@ func (this *BaseListener) matchSSL(group *serverconfigs.ServerGroup, domain stri
 
 	// 通过代理服务域名配置匹配
 	server, _ := this.findNamedServer(group, domain)
-	if server == nil || server.SSLConfig() == nil || !server.SSLConfig().IsOn {
+	if server == nil || server.SSLPolicy() == nil || !server.SSLPolicy().IsOn {
 		// 搜索所有的Server，通过SSL证书内容中的DNSName匹配
 		for _, server := range group.Servers {
-			if server.SSLConfig() == nil || !server.SSLConfig().IsOn {
+			if server.SSLPolicy() == nil || !server.SSLPolicy().IsOn {
 				continue
 			}
-			cert, ok := server.SSLConfig().MatchDomain(domain)
+			cert, ok := server.SSLPolicy().MatchDomain(domain)
 			if ok {
-				return server.SSLConfig(), cert, nil
+				return server.SSLPolicy(), cert, nil
 			}
 		}
 
@@ -122,7 +126,7 @@ func (this *BaseListener) matchSSL(group *serverconfigs.ServerGroup, domain stri
 	}
 
 	// 证书是否匹配
-	sslConfig := server.SSLConfig()
+	sslConfig := server.SSLPolicy()
 	cert, ok := sslConfig.MatchDomain(domain)
 	if ok {
 		return sslConfig, cert, nil

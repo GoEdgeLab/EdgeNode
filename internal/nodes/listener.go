@@ -51,12 +51,12 @@ func (this *Listener) Listen() error {
 	switch protocol {
 	case serverconfigs.ProtocolHTTP, serverconfigs.ProtocolHTTP4, serverconfigs.ProtocolHTTP6:
 		this.listener = &HTTPListener{
-			Group:    this.group,
-			Listener: netListener,
+			BaseListener: BaseListener{Group: this.group},
+			Listener:     netListener,
 		}
 	case serverconfigs.ProtocolHTTPS, serverconfigs.ProtocolHTTPS4, serverconfigs.ProtocolHTTPS6:
 		this.listener = &HTTPListener{
-			Group:    this.group,
+			BaseListener: BaseListener{Group: this.group},
 			Listener: netListener,
 		}
 	case serverconfigs.ProtocolTCP, serverconfigs.ProtocolTCP4, serverconfigs.ProtocolTCP6:

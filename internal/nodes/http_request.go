@@ -948,12 +948,12 @@ func (this *HTTPRequest) processResponseHeaders(statusCode int) {
 	// HSTS
 	if this.IsHTTPS &&
 		this.Server.HTTPS != nil &&
-		this.Server.HTTPS.SSL != nil &&
-		this.Server.HTTPS.SSL.IsOn &&
-		this.Server.HTTPS.SSL.HSTS != nil &&
-		this.Server.HTTPS.SSL.HSTS.IsOn &&
-		this.Server.HTTPS.SSL.HSTS.Match(this.Host) {
-		responseHeader.Set(this.Server.HTTPS.SSL.HSTS.HeaderKey(), this.Server.HTTPS.SSL.HSTS.HeaderValue())
+		this.Server.HTTPS.SSLPolicy != nil &&
+		this.Server.HTTPS.SSLPolicy.IsOn &&
+		this.Server.HTTPS.SSLPolicy.HSTS != nil &&
+		this.Server.HTTPS.SSLPolicy.HSTS.IsOn &&
+		this.Server.HTTPS.SSLPolicy.HSTS.Match(this.Host) {
+		responseHeader.Set(this.Server.HTTPS.SSLPolicy.HSTS.HeaderKey(), this.Server.HTTPS.SSLPolicy.HSTS.HeaderValue())
 	}
 }
 

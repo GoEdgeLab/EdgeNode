@@ -13,7 +13,6 @@ import (
 type HTTPListener struct {
 	BaseListener
 
-	Group    *serverconfigs.ServerGroup
 	Listener net.Listener
 
 	addr       string
@@ -49,7 +48,7 @@ func (this *HTTPListener) Serve() error {
 
 	// HTTPS协议
 	if this.isHTTPS {
-		this.httpServer.TLSConfig = this.buildTLSConfig(this.Group)
+		this.httpServer.TLSConfig = this.buildTLSConfig()
 
 		// support http/2
 		err := http2.ConfigureServer(this.httpServer, nil)
@@ -75,10 +74,6 @@ func (this *HTTPListener) Close() error {
 
 func (this *HTTPListener) Reload(group *serverconfigs.ServerGroup) {
 	this.Group = group
-
-	if this.isHTTPS {
-		this.httpServer.TLSConfig = this.buildTLSConfig(this.Group)
-	}
 
 	this.Reset()
 }
