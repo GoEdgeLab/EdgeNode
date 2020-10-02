@@ -11,7 +11,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/iwind/TeaGo v0.0.0-20200923021120-f5d76441fe9e
-	github.com/shirou/gopsutil v2.20.7+incompatible
+	github.com/shirou/gopsutil v2.20.9+incompatible
 	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
 	google.golang.org/grpc v1.32.0
 )

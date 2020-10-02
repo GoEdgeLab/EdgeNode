@@ -87,7 +87,7 @@ func (this *NodeStatusExecutor) updateCPU(status *NodeStatus) {
 	}
 	percents, err := cpu.Percent(duration, false)
 	if err != nil {
-		status.Error = err.Error()
+		status.Error = "cpu.Percent(): " + err.Error()
 		return
 	}
 	if len(percents) == 0 {
@@ -100,12 +100,12 @@ func (this *NodeStatusExecutor) updateCPU(status *NodeStatus) {
 
 		status.CPULogicalCount, err = cpu.Counts(true)
 		if err != nil {
-			status.Error = err.Error()
+			status.Error = "cpu.Counts(): " + err.Error()
 			return
 		}
 		status.CPUPhysicalCount, err = cpu.Counts(false)
 		if err != nil {
-			status.Error = err.Error()
+			status.Error = "cpu.Counts(): " + err.Error()
 			return
 		}
 		this.cpuLogicalCount = status.CPULogicalCount
