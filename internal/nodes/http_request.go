@@ -56,6 +56,8 @@ type HTTPRequest struct {
 	rewriteRule          *serverconfigs.HTTPRewriteRule    // 匹配到的重写规则
 	rewriteReplace       string                            // 重写规则的目标
 	rewriteIsExternalURL bool                              // 重写目标是否为外部URL
+	cachePolicy          *serverconfigs.HTTPCachePolicy    // 缓存策略
+	cacheCond            *serverconfigs.HTTPCacheCond      // 缓存条件
 }
 
 // 初始化

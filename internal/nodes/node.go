@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-var stop = make(chan bool)
 var lastVersion = int64(-1)
 var sharedNodeConfig *nodeconfigs.NodeConfig
 
@@ -52,6 +51,9 @@ func (this *Node) Start() {
 	// 设置rlimit
 	_ = utils.SetRLimit(1024 * 1024)
 
+	// 连接API
+	go NewAPIStream().Start()
+
 	// 启动端口
 	err = sharedListenerManager.Start(nodeConfig)
 	if err != nil {
@@ -59,7 +61,7 @@ func (this *Node) Start() {
 	}
 
 	// hold住进程
-	<-stop
+	select {}
 }
 
 // 读取API配置
