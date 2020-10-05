@@ -1,6 +1,8 @@
 package caches
 
-import "github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+)
 
 // 缓存存储接口
 type StorageInterface interface {
@@ -8,10 +10,10 @@ type StorageInterface interface {
 	Init() error
 
 	// 读取缓存
-	Read(key string, readerBuf []byte, callback func(data []byte, expiredAt int64)) error
+	Read(key string, readerBuf []byte, callback func(data []byte, size int64, expiredAt int64, isEOF bool)) error
 
 	// 打开缓存写入器等待写入
-	Open(key string, expiredAt int64) (*Writer, error)
+	Open(key string, expiredAt int64) (Writer, error)
 
 	// 删除某个键值对应的缓存
 	Delete(key string) error
@@ -30,4 +32,7 @@ type StorageInterface interface {
 
 	// 获取当前存储的Policy
 	Policy() *serverconfigs.HTTPCachePolicy
+
+	// 将缓存添加到列表
+	AddToList(item *Item)
 }

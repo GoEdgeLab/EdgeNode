@@ -123,23 +123,26 @@ func (this *APIStream) handleWriteCache(message *pb.NodeStreamMessage) error {
 		}()
 	}
 
-	writer, err := storage.Open(msg.Key, time.Now().Unix()+msg.LifeSeconds)
+	expiredAt := time.Now().Unix() + msg.LifeSeconds
+	writer, err := storage.Open(msg.Key, expiredAt)
 	if err != nil {
 		this.replyFail(message.RequestId, "prepare writing failed: "+err.Error())
 		return err
 	}
 
-	defer func() {
-		// 不用担心重复
-		_ = writer.Close()
-	}()
-
-	err = writer.Write(msg.Value)
+	_, err = writer.Write(msg.Value)
 	if err != nil {
+		_ = writer.Discard()
 		this.replyFail(message.RequestId, "write failed: "+err.Error())
 		return err
 	}
-	_ = writer.Close()
+	err = writer.Close()
+	if err == nil {
+		storage.AddToList(&caches.Item{
+			Key:       msg.Key,
+			ExpiredAt: expiredAt,
+		})
+	}
 
 	this.replyOk(message.RequestId, "write ok")
 
@@ -167,7 +170,7 @@ func (this *APIStream) handleReadCache(message *pb.NodeStreamMessage) error {
 
 	buf := make([]byte, 1024)
 	size := 0
-	err = storage.Read(msg.Key, buf, func(data []byte, expiredAt int64) {
+	err = storage.Read(msg.Key, buf, func(data []byte, valueSize int64, expiredAt int64, isEOF bool) {
 		size += len(data)
 	})
 	if err != nil {
@@ -324,7 +327,7 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 				locker.Unlock()
 				return
 			}
-			// TODO 可以自定义Header
+			// TODO 可以在管理界面自定义Header
 			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
 			req.Header.Set("Accept-Encoding", "gzip, deflate, br") // TODO 这里需要记录下缓存是否为gzip的
 			resp, err := client.Do(req)
@@ -339,7 +342,8 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 				_ = resp.Body.Close()
 			}()
 
-			writer, err := storage.Open(key, time.Now().Unix()+8600) // TODO 可以设置缓存过期事件
+			expiredAt := time.Now().Unix() + 8600
+			writer, err := storage.Open(key, expiredAt) // TODO 可以设置缓存过期事件
 			if err != nil {
 				locker.Lock()
 				errorMessages = append(errorMessages, "open cache writer failed: "+key+": "+err.Error())
@@ -352,7 +356,7 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
-					writerErr := writer.Write(buf[:n])
+					_, writerErr := writer.Write(buf[:n])
 					if writerErr != nil {
 						locker.Lock()
 						errorMessages = append(errorMessages, "write failed: "+key+": "+writerErr.Error())
@@ -362,7 +366,13 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 				}
 				if err != nil {
 					if err == io.EOF {
-						_ = writer.Close()
+						err = writer.Close()
+						if err == nil {
+							storage.AddToList(&caches.Item{
+								Key:       key,
+								ExpiredAt: expiredAt,
+							})
+						}
 						isClosed = true
 					} else {
 						locker.Lock()

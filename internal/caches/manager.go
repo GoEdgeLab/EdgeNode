@@ -123,9 +123,9 @@ func (this *Manager) FindStorageWithPolicy(policyId int64) StorageInterface {
 // 根据策略获取存储对象
 func (this *Manager) NewStorageWithPolicy(policy *serverconfigs.HTTPCachePolicy) StorageInterface {
 	switch policy.Type {
-	case serverconfigs.CachePolicyTypeFile:
+	case serverconfigs.CachePolicyStorageFile:
 		return NewFileStorage(policy)
-	case serverconfigs.CachePolicyTypeMemory:
+	case serverconfigs.CachePolicyStorageMemory:
 		return nil // TODO 暂时返回nil
 	}
 	return nil

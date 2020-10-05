@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/logs"
 	"net"
 	"net/http"
@@ -26,6 +29,9 @@ type HTTPWriter struct {
 	body           []byte
 	gzipBodyBuffer *bytes.Buffer // 当使用gzip压缩时使用
 	gzipBodyWriter *gzip.Writer  // 当使用gzip压缩时使用
+
+	cacheWriter  caches.Writer // 缓存写入
+	cacheStorage caches.StorageInterface
 }
 
 // 包装对象
@@ -59,62 +65,8 @@ func (this *HTTPWriter) Gzip(config *serverconfigs.HTTPGzipConfig) {
 
 // 准备输出
 func (this *HTTPWriter) Prepare(size int64) {
-	if this.gzipConfig == nil || this.gzipConfig.Level <= 0 {
-		return
-	}
-
-	// 判断Accept是否支持gzip
-	if !strings.Contains(this.req.requestHeader("Accept-Encoding"), "gzip") {
-		return
-	}
-
-	// 尺寸和类型
-	if size < this.gzipConfig.MinBytes() || (this.gzipConfig.MaxBytes() > 0 && size > this.gzipConfig.MaxBytes()) {
-		return
-	}
-
-	// 校验其他条件
-	if this.gzipConfig.Conds != nil {
-		if len(this.gzipConfig.Conds.Groups) > 0 {
-			if !this.gzipConfig.Conds.MatchRequest(this.req.Format) || !this.gzipConfig.Conds.MatchResponse(this.req.Format) {
-				return
-			}
-		} else {
-			// 默认校验文档类型
-			contentType := this.writer.Header().Get("Content-Type")
-			if len(contentType) > 0 && (!strings.HasPrefix(contentType, "text/") && !strings.HasPrefix(contentType, "application/")) {
-				return
-			}
-		}
-	}
-
-	// 如果已经有编码则不处理
-	if len(this.writer.Header().Get("Content-Encoding")) > 0 {
-		return
-	}
-
-	// gzip writer
-	var err error = nil
-	this.gzipWriter, err = gzip.NewWriterLevel(this.writer, int(this.gzipConfig.Level))
-	if err != nil {
-		logs.Error(err)
-		return
-	}
-
-	// body copy
-	if this.bodyCopying {
-		this.gzipBodyBuffer = bytes.NewBuffer([]byte{})
-		this.gzipBodyWriter, err = gzip.NewWriterLevel(this.gzipBodyBuffer, int(this.gzipConfig.Level))
-		if err != nil {
-			logs.Error(err)
-		}
-	}
-
-	header := this.writer.Header()
-	header.Set("Content-Encoding", "gzip")
-	header.Set("Transfer-Encoding", "chunked")
-	header.Set("Vary", "Accept-Encoding")
-	header.Del("Content-Length")
+	this.prepareGzip(size)
+	this.prepareCache(size)
 }
 
 // 包装前的原始的Writer
@@ -155,6 +107,15 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 		}
 		if n > 0 {
 			this.sentBodyBytes += int64(n)
+		}
+
+		// 写入缓存
+		if this.cacheWriter != nil {
+			_, err = this.cacheWriter.Write(data)
+			if err != nil {
+				_ = this.cacheWriter.Discard()
+				logs.Println("write cache failed: " + err.Error())
+			}
 		}
 	} else {
 		if n == 0 {
@@ -239,6 +200,7 @@ func (this *HTTPWriter) HeaderData() []byte {
 
 // 关闭
 func (this *HTTPWriter) Close() {
+	// gzip writer
 	if this.gzipWriter != nil {
 		if this.bodyCopying && this.gzipBodyWriter != nil {
 			_ = this.gzipBodyWriter.Close()
@@ -246,6 +208,17 @@ func (this *HTTPWriter) Close() {
 		}
 		_ = this.gzipWriter.Close()
 		this.gzipWriter = nil
+	}
+
+	// cache writer
+	if this.cacheWriter != nil {
+		err := this.cacheWriter.Close()
+		if err == nil {
+			this.cacheStorage.AddToList(&caches.Item{
+				Key:       this.cacheWriter.Key(),
+				ExpiredAt: this.cacheWriter.ExpiredAt(),
+			})
+		}
 	}
 }
 
@@ -263,5 +236,140 @@ func (this *HTTPWriter) Flush() {
 	flusher, ok := this.writer.(http.Flusher)
 	if ok {
 		flusher.Flush()
+	}
+}
+
+// 准备Gzip
+func (this *HTTPWriter) prepareGzip(size int64) {
+	if this.gzipConfig == nil || this.gzipConfig.Level <= 0 {
+		return
+	}
+
+	// 判断Accept是否支持gzip
+	if !strings.Contains(this.req.requestHeader("Accept-Encoding"), "gzip") {
+		return
+	}
+
+	// 尺寸和类型
+	if size < this.gzipConfig.MinBytes() || (this.gzipConfig.MaxBytes() > 0 && size > this.gzipConfig.MaxBytes()) {
+		return
+	}
+
+	// 校验其他条件
+	if this.gzipConfig.Conds != nil {
+		if len(this.gzipConfig.Conds.Groups) > 0 {
+			if !this.gzipConfig.Conds.MatchRequest(this.req.Format) || !this.gzipConfig.Conds.MatchResponse(this.req.Format) {
+				return
+			}
+		} else {
+			// 默认校验文档类型
+			contentType := this.writer.Header().Get("Content-Type")
+			if len(contentType) > 0 && (!strings.HasPrefix(contentType, "text/") && !strings.HasPrefix(contentType, "application/")) {
+				return
+			}
+		}
+	}
+
+	// 如果已经有编码则不处理
+	if len(this.writer.Header().Get("Content-Encoding")) > 0 {
+		return
+	}
+
+	// gzip writer
+	var err error = nil
+	this.gzipWriter, err = gzip.NewWriterLevel(this.writer, int(this.gzipConfig.Level))
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+
+	// body copy
+	if this.bodyCopying {
+		this.gzipBodyBuffer = bytes.NewBuffer([]byte{})
+		this.gzipBodyWriter, err = gzip.NewWriterLevel(this.gzipBodyBuffer, int(this.gzipConfig.Level))
+		if err != nil {
+			logs.Error(err)
+		}
+	}
+
+	header := this.writer.Header()
+	header.Set("Content-Encoding", "gzip")
+	header.Set("Transfer-Encoding", "chunked")
+	header.Set("Vary", "Accept-Encoding")
+	header.Del("Content-Length")
+}
+
+// 准备缓存
+func (this *HTTPWriter) prepareCache(size int64) {
+	if this.writer == nil || size <= 0 {
+		return
+	}
+
+	cacheRef := this.req.cacheRef
+	if cacheRef == nil ||
+		cacheRef.CachePolicy == nil ||
+		!cacheRef.IsOn ||
+		(cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
+		(cacheRef.CachePolicy.MaxSizeBytes() > 0 && size > cacheRef.CachePolicy.MaxSizeBytes()) {
+		return
+	}
+
+	// 检查状态
+	if len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
+		return
+	}
+
+	// Cache-Control
+	if len(cacheRef.SkipResponseCacheControlValues) > 0 {
+		cacheControl := this.writer.Header().Get("Cache-Control")
+		if len(cacheControl) > 0 {
+			values := strings.Split(cacheControl, ",")
+			for _, value := range values {
+				if cacheRef.ContainsCacheControl(strings.TrimSpace(value)) {
+					return
+				}
+			}
+		}
+	}
+
+	// Set-Cookie
+	if cacheRef.SkipResponseSetCookie && len(this.writer.Header().Get("Set-Cookie")) > 0 {
+		return
+	}
+
+	// 校验其他条件
+	if cacheRef.Conds != nil && cacheRef.Conds.HasResponseConds() && !cacheRef.Conds.MatchResponse(this.req.Format) {
+		return
+	}
+
+	// 打开缓存写入
+	storage := caches.SharedManager.FindStorageWithPolicy(this.req.cacheRef.CachePolicyId)
+	if storage == nil {
+		return
+	}
+	this.cacheStorage = storage
+	life := cacheRef.LifeSeconds()
+	if life <= 60 { // 最小不能少于1分钟
+		life = 60
+	}
+	expiredAt := utils.UnixTime() + life
+	cacheWriter, err := storage.Open(this.req.cacheKey, expiredAt)
+	if err != nil {
+		logs.Println("write cache failed: " + err.Error())
+		return
+	}
+	this.cacheWriter = cacheWriter
+	if this.gzipWriter != nil {
+		this.cacheWriter = caches.NewGzipWriter(this.cacheWriter, this.req.cacheKey, expiredAt)
+	}
+
+	// 写入Header
+	headerData := this.HeaderData()
+	_, err = cacheWriter.Write(headerData)
+	if err != nil {
+		logs.Println("write cache failed: " + err.Error())
+		_ = this.cacheWriter.Discard()
+		this.cacheWriter = nil
+		return
 	}
 }

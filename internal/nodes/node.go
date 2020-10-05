@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/logs"
@@ -102,6 +103,7 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 	// 刷新配置
 	logs.Println("[NODE]reload config ...")
 	nodeconfigs.ResetNodeConfig(nodeConfig)
+	caches.SharedManager.UpdatePolicies(nodeConfig.AllCachePolicies())
 	sharedNodeConfig = nodeConfig
 
 	if !isFirstTime {

@@ -56,17 +56,23 @@ type HTTPRequest struct {
 	rewriteRule          *serverconfigs.HTTPRewriteRule    // 匹配到的重写规则
 	rewriteReplace       string                            // 重写规则的目标
 	rewriteIsExternalURL bool                              // 重写目标是否为外部URL
-	cachePolicy          *serverconfigs.HTTPCachePolicy    // 缓存策略
-	cacheCond            *serverconfigs.HTTPCacheCond      // 缓存条件
+	cacheRef             *serverconfigs.HTTPCacheRef       // 缓存设置
+	cacheKey             string                            // 缓存使用的Key
 }
 
 // 初始化
 func (this *HTTPRequest) init() {
 	this.writer = NewHTTPWriter(this, this.RawWriter)
-	this.web = &serverconfigs.HTTPWebConfig{}
+	this.web = &serverconfigs.HTTPWebConfig{IsOn: true}
 	this.uri = this.RawReq.URL.RequestURI()
 	this.rawURI = this.uri
-	this.varMapping = map[string]string{}
+	this.varMapping = map[string]string{
+		// 缓存相关初始化
+		"cache.status":      "BYPASS",
+		"cache.policy.name": "",
+		"cache.policy.id":   "0",
+		"cache.policy.type": "",
+	}
 	this.requestFromTime = time.Now()
 }
 
@@ -103,18 +109,15 @@ func (this *HTTPRequest) Do() {
 	}
 
 	// Gzip
-	shouldCloseWriter := false
-	if this.web.Gzip != nil && this.web.Gzip.IsOn && this.web.Gzip.Level > 0 {
-		shouldCloseWriter = true
+	if this.web.GzipRef != nil && this.web.GzipRef.IsOn && this.web.Gzip != nil && this.web.Gzip.IsOn && this.web.Gzip.Level > 0 {
 		this.writer.Gzip(this.web.Gzip)
 	}
 
 	// 开始调用
 	this.doBegin()
 
-	if shouldCloseWriter {
-		this.writer.Close()
-	}
+	// 关闭写入
+	this.writer.Close()
 }
 
 // 开始调用
@@ -125,15 +128,19 @@ func (this *HTTPRequest) doBegin() {
 		return
 	}
 
+	// 缓存
+	if this.web.Cache != nil && this.web.Cache.IsOn {
+		if this.doCacheRead() {
+			return
+		}
+	}
+
 	// 重写规则
 	if this.rewriteRule != nil {
 		if this.doRewrite() {
 			return
 		}
 	}
-
-	// 缓存
-	// TODO
 
 	// root
 	if this.web.Root != nil && this.web.Root.IsOn {
@@ -237,7 +244,13 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 
 	// gzip
 	if web.GzipRef != nil && (web.GzipRef.IsPrior || isTop) {
+		this.web.GzipRef = web.GzipRef
 		this.web.Gzip = web.Gzip
+	}
+
+	// cache
+	if web.Cache != nil && (web.Cache.IsPrior || isTop) {
+		this.web.Cache = web.Cache
 	}
 
 	// 重写规则

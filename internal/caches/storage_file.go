@@ -34,7 +34,7 @@ var (
 
 type FileStorage struct {
 	policy      *serverconfigs.HTTPCachePolicy
-	cacheConfig *serverconfigs.HTTPFileCacheConfig
+	cacheConfig *serverconfigs.HTTPFileCacheStorage
 
 	list   *List
 	locker sync.RWMutex
@@ -76,7 +76,7 @@ func (this *FileStorage) Init() error {
 	}()
 
 	// 配置
-	cacheConfig := &serverconfigs.HTTPFileCacheConfig{}
+	cacheConfig := &serverconfigs.HTTPFileCacheStorage{}
 	optionsJSON, err := json.Marshal(this.policy.Options)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (this *FileStorage) Init() error {
 	return nil
 }
 
-func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data []byte, expiredAt int64)) error {
+func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data []byte, size int64, expiredAt int64, isEOF bool)) error {
 	hash, path := this.keyPath(key)
 	if !this.list.Exist(hash) {
 		return ErrNotFound
@@ -185,6 +185,7 @@ func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data [
 	}
 	startOffset := SizeExpiredAt + SizeKeyLength + keyLength + SizeNL
 	size := int(offset) + SizeEnd - startOffset
+	valueSize := offset - int64(startOffset)
 
 	_, err = fp.Seek(int64(startOffset), io.SeekStart)
 	if err != nil {
@@ -199,10 +200,10 @@ func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data [
 				if n <= SizeEnd-size { // 已经到了末尾
 					break
 				} else {
-					callback(readerBuf[:n-(SizeEnd-size)], expiredAt)
+					callback(readerBuf[:n-(SizeEnd-size)], valueSize, expiredAt, true)
 				}
 			} else {
-				callback(readerBuf[:n], expiredAt)
+				callback(readerBuf[:n], valueSize, expiredAt, false)
 			}
 		}
 		if err != nil {
@@ -218,7 +219,7 @@ func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data [
 }
 
 // 打开缓存文件等待写入
-func (this *FileStorage) Open(key string, expiredAt int64) (*Writer, error) {
+func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 	hash := stringutil.Md5(key)
 	dir := this.cacheConfig.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/" + hash[:2] + "/" + hash[2:4]
 	_, err := os.Stat(dir)
@@ -277,7 +278,7 @@ func (this *FileStorage) Open(key string, expiredAt int64) (*Writer, error) {
 
 	isOk = true
 
-	return NewWriter(writer, key, expiredAt, &this.locker), nil
+	return NewFileWriter(writer, key, expiredAt, &this.locker), nil
 }
 
 // 写入缓存数据
@@ -289,6 +290,7 @@ func (this *FileStorage) Write(key string, expiredAt int64, valueReader io.Reade
 
 	hash := stringutil.Md5(key)
 	dir := this.cacheConfig.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/" + hash[:2] + "/" + hash[2:4]
+
 	_, err := os.Stat(dir)
 	if err != nil {
 		if !os.IsNotExist(err) {
