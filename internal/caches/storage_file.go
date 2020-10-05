@@ -220,6 +220,11 @@ func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data [
 
 // 打开缓存文件等待写入
 func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
+	// 检查是否超出最大值
+	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
+		return nil, errors.New("too many keys in cache storage")
+	}
+
 	hash := stringutil.Md5(key)
 	dir := this.cacheConfig.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/" + hash[:2] + "/" + hash[2:4]
 	_, err := os.Stat(dir)

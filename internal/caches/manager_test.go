@@ -17,21 +17,21 @@ func TestManager_UpdatePolicies(t *testing.T) {
 		policies := []*serverconfigs.HTTPCachePolicy{
 			{
 				Id:   1,
-				Type: serverconfigs.CachePolicyTypeFile,
+				Type: serverconfigs.CachePolicyStorageFile,
 				Options: map[string]interface{}{
 					"dir": Tea.Root + "/caches",
 				},
 			},
 			{
 				Id:   2,
-				Type: serverconfigs.CachePolicyTypeFile,
+				Type: serverconfigs.CachePolicyStorageFile,
 				Options: map[string]interface{}{
 					"dir": Tea.Root + "/caches",
 				},
 			},
 			{
 				Id:   3,
-				Type: serverconfigs.CachePolicyTypeFile,
+				Type: serverconfigs.CachePolicyStorageFile,
 				Options: map[string]interface{}{
 					"dir": Tea.Root + "/caches",
 				},
@@ -45,14 +45,14 @@ func TestManager_UpdatePolicies(t *testing.T) {
 		policies := []*serverconfigs.HTTPCachePolicy{
 			{
 				Id:   1,
-				Type: serverconfigs.CachePolicyTypeFile,
+				Type: serverconfigs.CachePolicyStorageFile,
 				Options: map[string]interface{}{
 					"dir": Tea.Root + "/caches",
 				},
 			},
 			{
 				Id:      2,
-				Type:    serverconfigs.CachePolicyTypeFile,
+				Type:    serverconfigs.CachePolicyStorageFile,
 				MaxKeys: 1,
 				Options: map[string]interface{}{
 					"dir": Tea.Root + "/caches",
@@ -60,7 +60,7 @@ func TestManager_UpdatePolicies(t *testing.T) {
 			},
 			{
 				Id:   4,
-				Type: serverconfigs.CachePolicyTypeFile,
+				Type: serverconfigs.CachePolicyStorageFile,
 				Options: map[string]interface{}{
 					"dir": Tea.Root + "/caches",
 				},

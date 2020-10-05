@@ -92,3 +92,11 @@ func (this *List) Stat(check func(hash string) bool) *Stat {
 	}
 	return result
 }
+
+// 总数量
+func (this *List) Count() int64 {
+	this.locker.RLock()
+	count := int64(len(this.m))
+	this.locker.RUnlock()
+	return count
+}

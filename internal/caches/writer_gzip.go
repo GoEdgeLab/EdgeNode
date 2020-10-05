@@ -45,3 +45,7 @@ func (this *gzipWriter) Key() string {
 func (this *gzipWriter) ExpiredAt() int64 {
 	return this.expiredAt
 }
+
+func (this *gzipWriter) Size() int64 {
+	return this.rawWriter.Size()
+}

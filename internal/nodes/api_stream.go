@@ -430,7 +430,7 @@ func (this *APIStream) cacheStorage(message *pb.NodeStreamMessage, cachePolicyJS
 		storage = caches.SharedManager.NewStorageWithPolicy(cachePolicy)
 		if storage == nil {
 			this.replyFail(message.RequestId, "invalid storage type '"+cachePolicy.Type+"'")
-			return nil, false, err
+			return nil, false, errors.New("invalid storage type '" + cachePolicy.Type + "'")
 		}
 		err = storage.Init()
 		if err != nil {

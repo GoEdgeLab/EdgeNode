@@ -217,6 +217,7 @@ func (this *HTTPWriter) Close() {
 			this.cacheStorage.AddToList(&caches.Item{
 				Key:       this.cacheWriter.Key(),
 				ExpiredAt: this.cacheWriter.ExpiredAt(),
+				ValueSize: this.cacheWriter.Size(),
 			})
 		}
 	}

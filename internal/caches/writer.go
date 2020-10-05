@@ -5,6 +5,9 @@ type Writer interface {
 	// 写入数据
 	Write(data []byte) (n int, err error)
 
+	// 写入的总数据大小
+	Size() int64
+
 	// 关闭
 	Close() error
 

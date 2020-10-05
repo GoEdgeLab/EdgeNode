@@ -126,7 +126,7 @@ func (this *Manager) NewStorageWithPolicy(policy *serverconfigs.HTTPCachePolicy)
 	case serverconfigs.CachePolicyStorageFile:
 		return NewFileStorage(policy)
 	case serverconfigs.CachePolicyStorageMemory:
-		return nil // TODO 暂时返回nil
+		return NewMemoryStorage(policy)
 	}
 	return nil
 }

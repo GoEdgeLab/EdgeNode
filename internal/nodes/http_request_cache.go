@@ -64,17 +64,13 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return
 	}
 
-	buf := bytePool32k.Get()
-	defer func() {
-		bytePool32k.Put(buf)
-	}()
-
 	isBroken := false
 	headerBuf := []byte{}
 	statusCode := http.StatusOK
 	statusFound := false
 	headerFound := false
 
+	buf := bytePool32k.Get()
 	err := storage.Read(key, buf, func(data []byte, valueSize int64, expiredAt int64, isEOF bool) {
 		if isBroken {
 			return
@@ -133,6 +129,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			headerBuf = headerBuf[lineIndex+1:]
 		}
 	})
+
+	bytePool32k.Put(buf)
 
 	if err != nil {
 		if err == caches.ErrNotFound {

@@ -61,7 +61,7 @@ func TestFileStorage_Open(t *testing.T) {
 	}
 	t.Log(writer)
 
-	err = writer.Write([]byte("Hello,World"))
+	_, err = writer.Write([]byte("Hello,World"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestFileStorage_Read(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now()
-	t.Log(storage.Read("my-key", make([]byte, 64), func(data []byte, expiredAt int64) {
+	t.Log(storage.Read("my-key", make([]byte, 64), func(data []byte, size int64, expiredAt int64, isEOF bool) {
 		t.Log("[expiredAt]", "["+string(data)+"]")
 	}))
 	t.Log(time.Since(now).Seconds()*1000, "ms")
@@ -133,7 +133,7 @@ func TestFileStorage_Read_NotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now()
-	t.Log(storage.Read("my-key-10000", make([]byte, 64), func(data []byte, expiredAt int64) {
+	t.Log(storage.Read("my-key-10000", make([]byte, 64), func(data []byte, size int64, expiredAt int64, isEOF bool) {
 		t.Log("[" + string(data) + "]")
 	}))
 	t.Log(time.Since(now).Seconds()*1000, "ms")
@@ -277,7 +277,7 @@ func BenchmarkFileStorage_Read(b *testing.B) {
 	}
 	buf := make([]byte, 1024)
 	for i := 0; i < b.N; i++ {
-		_ = storage.Read("my-key", buf, func(data []byte, expiredAt int64) {
+		_ = storage.Read("my-key", buf, func(data []byte, size int64, expiredAt int64, isEOF bool) {
 		})
 	}
 }
