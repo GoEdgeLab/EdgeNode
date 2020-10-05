@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -35,6 +36,7 @@ var (
 type FileStorage struct {
 	policy      *serverconfigs.HTTPCachePolicy
 	cacheConfig *serverconfigs.HTTPFileCacheStorage
+	totalSize   int64
 
 	list   *List
 	locker sync.RWMutex
@@ -55,6 +57,13 @@ func (this *FileStorage) Policy() *serverconfigs.HTTPCachePolicy {
 
 // 初始化
 func (this *FileStorage) Init() error {
+	this.list.OnAdd(func(item *Item) {
+		atomic.AddInt64(&this.totalSize, item.Size)
+	})
+	this.list.OnRemove(func(item *Item) {
+		atomic.AddInt64(&this.totalSize, -item.Size)
+	})
+
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
@@ -222,7 +231,10 @@ func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data [
 func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 	// 检查是否超出最大值
 	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
-		return nil, errors.New("too many keys in cache storage")
+		return nil, errors.New("write file cache failed: too many keys in cache storage")
+	}
+	if this.policy.CapacityBytes() > 0 && this.policy.CapacityBytes() <= this.totalSize {
+		return nil, errors.New("write file cache failed: over disk size, real size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
 	}
 
 	hash := stringutil.Md5(key)
@@ -239,6 +251,9 @@ func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 	}
 
 	this.locker.Lock()
+
+	// 先删除
+	this.list.Remove(hash)
 
 	path := dir + "/" + hash + ".cache"
 	writer, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_SYNC|os.O_WRONLY, 0777)

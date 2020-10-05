@@ -114,6 +114,7 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 			_, err = this.cacheWriter.Write(data)
 			if err != nil {
 				_ = this.cacheWriter.Discard()
+				this.cacheWriter = nil
 				logs.Println("write cache failed: " + err.Error())
 			}
 		}

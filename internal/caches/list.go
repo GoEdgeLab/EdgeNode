@@ -4,8 +4,10 @@ import "sync"
 
 // 缓存列表管理
 type List struct {
-	m      map[string]*Item // hash => item
-	locker sync.RWMutex
+	m        map[string]*Item // hash => item
+	locker   sync.RWMutex
+	onAdd    func(item *Item)
+	onRemove func(item *Item)
 }
 
 func NewList() *List {
@@ -22,6 +24,9 @@ func (this *List) Reset() {
 
 func (this *List) Add(hash string, item *Item) {
 	this.locker.Lock()
+	if this.onAdd != nil {
+		this.onAdd(item)
+	}
 	this.m[hash] = item
 	this.locker.Unlock()
 }
@@ -40,7 +45,15 @@ func (this *List) Exist(hash string) bool {
 
 func (this *List) Remove(hash string) {
 	this.locker.Lock()
-	delete(this.m, hash)
+
+	item, ok := this.m[hash]
+	if ok {
+		if this.onRemove != nil {
+			this.onRemove(item)
+		}
+		delete(this.m, hash)
+	}
+
 	this.locker.Unlock()
 }
 
@@ -56,6 +69,9 @@ func (this *List) Purge(count int, callback func(hash string)) {
 		}
 
 		if item.IsExpired() {
+			if this.onRemove != nil {
+				this.onRemove(item)
+			}
 			delete(this.m, hash)
 			deletedHashList = append(deletedHashList, hash)
 		}
@@ -99,4 +115,14 @@ func (this *List) Count() int64 {
 	count := int64(len(this.m))
 	this.locker.RUnlock()
 	return count
+}
+
+// 添加事件
+func (this *List) OnAdd(f func(item *Item)) {
+	this.onAdd = f
+}
+
+// 删除事件
+func (this *List) OnRemove(f func(item *Item)) {
+	this.onRemove = f
 }

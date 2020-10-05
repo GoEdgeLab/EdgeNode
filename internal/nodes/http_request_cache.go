@@ -147,5 +147,6 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return
 	}
 
+	this.cacheRef = nil // 终止读取不再往下传递
 	return true
 }

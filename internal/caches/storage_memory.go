@@ -8,6 +8,7 @@ import (
 	"github.com/dchest/siphash"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,11 +20,11 @@ type MemoryItem struct {
 type MemoryStorage struct {
 	policy        *serverconfigs.HTTPCachePolicy
 	list          *List
-	totalSize     int64 // 需要实现
 	locker        *sync.RWMutex
 	valuesMap     map[uint64]*MemoryItem
 	ticker        *utils.Ticker
 	purgeDuration time.Duration
+	totalSize     int64
 }
 
 func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
@@ -37,6 +38,13 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
 
 // 初始化
 func (this *MemoryStorage) Init() error {
+	this.list.OnAdd(func(item *Item) {
+		atomic.AddInt64(&this.totalSize, item.Size)
+	})
+	this.list.OnRemove(func(item *Item) {
+		atomic.AddInt64(&this.totalSize, -item.Size)
+	})
+
 	if this.purgeDuration <= 0 {
 		this.purgeDuration = 30 * time.Second
 	}
@@ -64,6 +72,7 @@ func (this *MemoryStorage) Read(key string, readerBuf []byte, callback func(data
 	}
 
 	if item.ExpiredAt > utils.UnixTime() {
+		// 这时如果callback处理比较慢的话，可能会影响性能，但目前没有更好的解决方案
 		callback(item.Value, int64(len(item.Value)), item.ExpiredAt, true)
 		this.locker.RUnlock()
 		return nil
@@ -79,7 +88,16 @@ func (this *MemoryStorage) Read(key string, readerBuf []byte, callback func(data
 func (this *MemoryStorage) Open(key string, expiredAt int64) (Writer, error) {
 	// 检查是否超出最大值
 	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
-		return nil, errors.New("too many keys in cache storage")
+		return nil, errors.New("write memory cache failed: too many keys in cache storage")
+	}
+	if this.policy.CapacityBytes() > 0 && this.policy.CapacityBytes() <= this.totalSize {
+		return nil, errors.New("write memory cache failed: over memory size, real size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
+	}
+
+	// 先删除
+	err := this.Delete(key)
+	if err != nil {
+		return nil, err
 	}
 
 	return NewMemoryWriter(this.valuesMap, key, expiredAt, this.locker), nil
@@ -110,6 +128,7 @@ func (this *MemoryStorage) CleanAll() error {
 	this.locker.Lock()
 	this.valuesMap = map[uint64]*MemoryItem{}
 	this.list.Reset()
+	atomic.StoreInt64(&this.totalSize, 0)
 	this.locker.Unlock()
 	return nil
 }
@@ -144,7 +163,7 @@ func (this *MemoryStorage) Policy() *serverconfigs.HTTPCachePolicy {
 
 // 将缓存添加到列表
 func (this *MemoryStorage) AddToList(item *Item) {
-	item.Size = item.ValueSize + int64(len(item.Key))
+	item.Size = item.ValueSize + int64(len(item.Key)) + 32 /** 32是我们评估的数据结构的长度 **/
 	hash := fmt.Sprintf("%d", this.hash(item.Key))
 	this.list.Add(hash, item)
 }

@@ -43,6 +43,7 @@ func (this *MemoryWriter) Write(data []byte) (n int, err error) {
 		item.Value = append([]byte{}, data...)
 		item.ExpiredAt = this.expiredAt
 		this.m[hash] = item
+		this.isFirstWriting = false
 	}
 	this.locker.Unlock()
 	return len(data), nil
