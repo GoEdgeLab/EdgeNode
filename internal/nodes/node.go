@@ -104,6 +104,7 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 	logs.Println("[NODE]reload config ...")
 	nodeconfigs.ResetNodeConfig(nodeConfig)
 	caches.SharedManager.UpdatePolicies(nodeConfig.AllCachePolicies())
+	sharedWAFManager.UpdatePolicies(nodeConfig.AllHTTPFirewallPolicies())
 	sharedNodeConfig = nodeConfig
 
 	if !isFirstTime {

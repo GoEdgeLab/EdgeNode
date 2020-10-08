@@ -96,7 +96,11 @@ func (this *HTTPRequest) Do() {
 	}
 
 	// WAF
-	// TODO 需要实现
+	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn && this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
+		if this.doWAFRequest() {
+			return
+		}
+	}
 
 	// 访问控制
 	// TODO 需要实现
@@ -251,6 +255,12 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// cache
 	if web.Cache != nil && (web.Cache.IsPrior || isTop) {
 		this.web.Cache = web.Cache
+	}
+
+	// waf
+	if web.FirewallRef != nil && (web.FirewallRef.IsPrior || isTop) {
+		this.web.FirewallRef = web.FirewallRef
+		this.web.FirewallPolicy = web.FirewallPolicy
 	}
 
 	// 重写规则

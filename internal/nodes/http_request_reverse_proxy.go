@@ -166,12 +166,26 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// WAF对出站进行检查
-	// TODO
+	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn && this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
+		if this.doWAFResponse(resp) {
+			err = resp.Body.Close()
+			if err != nil {
+				logs.Error(err)
+			}
+			return
+		}
+	}
 
 	// TODO 清除源站错误次数
 
 	// 特殊页面
-	// TODO
+	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
+		err = resp.Body.Close()
+		if err != nil {
+			logs.Error(err)
+		}
+		return
+	}
 
 	// 设置Charset
 	// TODO 这里应该可以设置文本类型的列表，以及是否强制覆盖所有文本类型的字符集
