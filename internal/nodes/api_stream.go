@@ -70,6 +70,8 @@ func (this *APIStream) loop() error {
 			err = this.handlePurgeCache(message)
 		case messageconfigs.MessageCodePreheatCache: // 预热缓存
 			err = this.handlePreheatCache(message)
+		case messageconfigs.MessageCodeConfigChanged: // 配置变化
+			err = this.handleConfigChanged(message)
 		default:
 			err = this.handleUnknownMessage(message)
 		}
@@ -397,6 +399,17 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 
 	this.replyOk(message.RequestId, "ok")
 
+	return nil
+}
+
+// 处理配置变化
+func (this *APIStream) handleConfigChanged(message *pb.NodeStreamMessage) error {
+	select {
+	case changeNotify <- true:
+	default:
+
+	}
+	this.replyOk(message.RequestId, "ok")
 	return nil
 }
 

@@ -32,6 +32,7 @@ function build() {
 
 	cp configs/api.template.yaml $DIST/configs
 	cp -R www $DIST/
+	cp -R pages $DIST/
 
 	echo "building ..."
 	env GOOS=${1} GOARCH=${2} go build -o $DIST/bin/${NAME} -ldflags="-s -w" ../cmd/edge-node/main.go

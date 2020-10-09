@@ -14,6 +14,7 @@ import (
 
 var lastVersion = int64(-1)
 var sharedNodeConfig *nodeconfigs.NodeConfig
+var changeNotify = make(chan bool, 8)
 
 // 节点
 type Node struct {
@@ -117,13 +118,22 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 // 启动同步计时器
 func (this *Node) startSyncTimer() {
 	// TODO 这个时间间隔可以自行设置
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	go func() {
-		for range ticker.C {
-			err := this.syncConfig(false)
-			if err != nil {
-				logs.Error("NODE", "sync config error: "+err.Error())
-				continue
+		for {
+			select {
+			case <-ticker.C:
+				err := this.syncConfig(false)
+				if err != nil {
+					logs.Error("NODE", "sync config error: "+err.Error())
+					continue
+				}
+			case <-changeNotify:
+				err := this.syncConfig(false)
+				if err != nil {
+					logs.Error("NODE", "sync config error: "+err.Error())
+					continue
+				}
 			}
 		}
 	}()
