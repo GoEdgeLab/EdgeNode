@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/iwind/TeaGo/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"net"
 )
 
@@ -27,7 +27,7 @@ func (this *TCPListener) Serve() error {
 		}
 		err = this.handleConn(conn)
 		if err != nil {
-			logs.Println("[TCP_LISTENER]" + err.Error())
+			logs.Error("TCP_LISTENER", err.Error())
 		}
 	}
 
@@ -112,7 +112,7 @@ func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyC
 		}
 		conn, err = OriginConnect(origin)
 		if err != nil {
-			logs.Println("[TCP_LISTENER]unable to connect origin: " + origin.Addr.Host + ":" + origin.Addr.PortRange + ": " + err.Error())
+			logs.Error("TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
 			continue
 		} else {
 			return

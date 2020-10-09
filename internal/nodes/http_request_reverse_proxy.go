@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/iwind/TeaGo/logs"
 	"io"
 	"net/url"
 	"strconv"
@@ -30,7 +30,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	origin := this.reverseProxy.NextOrigin(requestCall)
 	if origin == nil {
 		err := errors.New(this.requestPath() + ": no available backends for reverse proxy")
-		logs.Error(err)
+		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write500(err)
 		return
 	}
@@ -50,7 +50,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 处理Scheme
 	if origin.Addr == nil {
 		err := errors.New(this.requestPath() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
-		logs.Error(err)
+		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write500(err)
 		return
 	}
@@ -127,7 +127,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 获取请求客户端
 	client, addr, err := SharedHTTPClientPool.Client(this, origin)
 	if err != nil {
-		logs.Error(err)
+		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write500(err)
 		return
 	}
@@ -143,7 +143,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			// TODO 如果超过最大失败次数，则下线
 
 			this.write500(err)
-			logs.Println("[proxy]'" + this.RawReq.URL.String() + "': " + err.Error())
+			logs.Println("REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
 		} else {
 			// 是否为客户端方面的错误
 			isClientError := false
@@ -170,7 +170,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if this.doWAFResponse(resp) {
 			err = resp.Body.Close()
 			if err != nil {
-				logs.Error(err)
+				logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 			}
 			return
 		}
@@ -182,7 +182,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()
 		if err != nil {
-			logs.Error(err)
+			logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		}
 		return
 	}
@@ -237,11 +237,11 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	err1 := resp.Body.Close()
 	if err1 != nil {
-		logs.Error(err1)
+		logs.Error("REQUEST_REVERSE_PROXY", err1.Error())
 	}
 
 	if err != nil && err != io.EOF {
-		logs.Error(err)
+		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.addError(err)
 	}
 }

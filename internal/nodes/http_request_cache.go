@@ -3,7 +3,7 @@ package nodes
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
-	"github.com/iwind/TeaGo/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"strconv"
@@ -139,7 +139,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			return
 		}
 
-		logs.Println("read from cache failed: " + err.Error())
+		logs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 		return
 	}
 

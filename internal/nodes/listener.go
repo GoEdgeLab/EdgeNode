@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/iwind/TeaGo/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"net"
 	"sync"
 )
@@ -88,7 +88,7 @@ func (this *Listener) Listen() error {
 	go func() {
 		err := this.listener.Serve()
 		if err != nil {
-			logs.Println("[LISTENER]" + err.Error())
+			logs.Error("LISTENER", err.Error())
 		}
 	}()
 

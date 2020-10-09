@@ -6,9 +6,9 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/iwind/TeaGo/logs"
 	"time"
 )
 
@@ -27,7 +27,7 @@ func (this *Node) Start() {
 	// 读取API配置
 	err := this.syncConfig(false)
 	if err != nil {
-		logs.Println(err.Error())
+		logs.Error("NODE", err.Error())
 	}
 
 	// 启动同步计时器
@@ -39,12 +39,12 @@ func (this *Node) Start() {
 	// 读取配置
 	nodeConfig, err := nodeconfigs.SharedNodeConfig()
 	if err != nil {
-		logs.Println("[NODE]start failed: read node config failed: " + err.Error())
+		logs.Error("NODE", "start failed: read node config failed: "+err.Error())
 		return
 	}
 	err = nodeConfig.Init()
 	if err != nil {
-		logs.Println("[NODE]init node config failed: " + err.Error())
+		logs.Error("NODE", "init node config failed: "+err.Error())
 		return
 	}
 	sharedNodeConfig = nodeConfig
@@ -58,7 +58,7 @@ func (this *Node) Start() {
 	// 启动端口
 	err = sharedListenerManager.Start(nodeConfig)
 	if err != nil {
-		logs.Println("[NODE]start failed: " + err.Error())
+		logs.Error("NODE", "start failed: "+err.Error())
 	}
 
 	// hold住进程
@@ -101,7 +101,7 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 	}
 
 	// 刷新配置
-	logs.Println("[NODE]reload config ...")
+	logs.Println("NODE", "reload config ...")
 	nodeconfigs.ResetNodeConfig(nodeConfig)
 	caches.SharedManager.UpdatePolicies(nodeConfig.AllCachePolicies())
 	sharedWAFManager.UpdatePolicies(nodeConfig.AllHTTPFirewallPolicies())
@@ -122,7 +122,7 @@ func (this *Node) startSyncTimer() {
 		for range ticker.C {
 			err := this.syncConfig(false)
 			if err != nil {
-				logs.Println("[NODE]sync config error: " + err.Error())
+				logs.Error("NODE", "sync config error: "+err.Error())
 				continue
 			}
 		}

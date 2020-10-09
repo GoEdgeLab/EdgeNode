@@ -3,8 +3,8 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
-	"github.com/iwind/TeaGo/logs"
 	"strconv"
 	"sync"
 )
@@ -33,7 +33,7 @@ func (this *WAFManager) UpdatePolicies(policies []*firewallconfigs.HTTPFirewallP
 	for _, p := range policies {
 		w, err := this.convertWAF(p)
 		if err != nil {
-			logs.Println("[WAF]initialize policy '" + strconv.FormatInt(p.Id, 10) + "' failed: " + err.Error())
+			logs.Error("WAF", "initialize policy '"+strconv.FormatInt(p.Id, 10)+"' failed: "+err.Error())
 			continue
 		}
 		if w == nil {

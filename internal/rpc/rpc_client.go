@@ -48,6 +48,10 @@ func (this *RPCClient) NodeRPC() pb.NodeServiceClient {
 	return pb.NewNodeServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) NodeLogRPC() pb.NodeLogServiceClient {
+	return pb.NewNodeLogServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()
 	m := maps.Map{

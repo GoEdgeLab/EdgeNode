@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"io"
@@ -81,7 +81,7 @@ func (this *FileStorage) Init() error {
 		}
 
 		cost := time.Since(before).Seconds() * 1000
-		logs.Println("[CACHE]init policy "+strconv.FormatInt(this.policy.Id, 10)+", cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+strconv.Itoa(count)+", size: ", fmt.Sprintf("%.3f", float64(size)/1024/1024)+" M")
+		logs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+", cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+strconv.Itoa(count)+", size: "+fmt.Sprintf("%.3f", float64(size)/1024/1024)+" M")
 	}()
 
 	// 配置
@@ -545,7 +545,7 @@ func (this *FileStorage) initList() error {
 		item, err := this.decodeFile(path)
 		if err != nil {
 			if err != ErrNotFound {
-				logs.Println("[CACHE]decode path '" + path + "': " + err.Error())
+				logs.Error("CACHE", "decode path '"+path+"': "+err.Error())
 			}
 			continue
 		}
@@ -634,7 +634,7 @@ func (this *FileStorage) purgeLoop() {
 		path := this.hashPath(hash)
 		err := os.Remove(path)
 		if err != nil && !os.IsNotExist(err) {
-			logs.Println("[CACHE]purge '" + path + "' error: " + err.Error())
+			logs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
 		}
 	})
 }

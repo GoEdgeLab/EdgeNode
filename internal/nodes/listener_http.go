@@ -2,7 +2,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/iwind/TeaGo/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"golang.org/x/net/http2"
 	"net"
 	"net/http"
@@ -53,7 +53,7 @@ func (this *HTTPListener) Serve() error {
 		// support http/2
 		err := http2.ConfigureServer(this.httpServer, nil)
 		if err != nil {
-			logs.Println("[HTTP_LISTENER]configure http2 error: " + err.Error())
+			logs.Error("HTTP_LISTENER", "configure http2 error: "+err.Error())
 		}
 
 		err = this.httpServer.ServeTLS(this.Listener, "", "")

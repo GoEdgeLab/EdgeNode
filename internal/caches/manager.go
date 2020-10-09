@@ -2,7 +2,7 @@ package caches
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/iwind/TeaGo/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"strconv"
 	"sync"
 )
@@ -35,7 +35,7 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 	// 停止旧有的
 	for _, oldPolicy := range this.policyMap {
 		if !this.containsInt64(newPolicyIds, oldPolicy.Id) {
-			logs.Println("[CACHE]remove policy", strconv.FormatInt(oldPolicy.Id, 10))
+			logs.Error("CACHE", "remove policy "+strconv.FormatInt(oldPolicy.Id, 10))
 			delete(this.policyMap, oldPolicy.Id)
 			storage, ok := this.storageMap[oldPolicy.Id]
 			if ok {
@@ -49,13 +49,13 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 	for _, newPolicy := range newPolicies {
 		_, ok := this.policyMap[newPolicy.Id]
 		if !ok {
-			logs.Println("[CACHE]add policy", strconv.FormatInt(newPolicy.Id, 10))
+			logs.Println("CACHE", "add policy "+strconv.FormatInt(newPolicy.Id, 10))
 		}
 
 		// 初始化
 		err := newPolicy.Init()
 		if err != nil {
-			logs.Println("[CACHE]UpdatePolicies: init policy error: " + err.Error())
+			logs.Error("CACHE", "UpdatePolicies: init policy error: "+err.Error())
 			continue
 		}
 		this.policyMap[newPolicy.Id] = newPolicy
@@ -67,19 +67,19 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 		if !ok {
 			storage := this.NewStorageWithPolicy(policy)
 			if storage == nil {
-				logs.Println("[CACHE]can not find storage type '" + policy.Type + "'")
+				logs.Error("CACHE", "can not find storage type '"+policy.Type+"'")
 				continue
 			}
 			err := storage.Init()
 			if err != nil {
-				logs.Println("[CACHE]UpdatePolicies: init storage failed: " + err.Error())
+				logs.Error("CACHE", "UpdatePolicies: init storage failed: "+err.Error())
 				continue
 			}
 			this.storageMap[policy.Id] = storage
 		} else {
 			// 检查policy是否有变化
 			if !storage.Policy().IsSame(policy) {
-				logs.Println("[CACHE]policy " + strconv.FormatInt(policy.Id, 10) + " changed")
+				logs.Println("CACHE", "policy "+strconv.FormatInt(policy.Id, 10)+" changed")
 
 				// 停止老的
 				storage.Stop()
@@ -88,12 +88,12 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 				// 启动新的
 				storage := this.NewStorageWithPolicy(policy)
 				if storage == nil {
-					logs.Println("[CACHE]can not find storage type '" + policy.Type + "'")
+					logs.Error("CACHE", "can not find storage type '"+policy.Type+"'")
 					continue
 				}
 				err := storage.Init()
 				if err != nil {
-					logs.Println("[CACHE]UpdatePolicies: init storage failed: " + err.Error())
+					logs.Error("CACHE", "UpdatePolicies: init storage failed: "+err.Error())
 					continue
 				}
 				this.storageMap[policy.Id] = storage

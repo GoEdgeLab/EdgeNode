@@ -544,7 +544,7 @@ func (this *HTTPRequest) Format(source string) string {
 		if prefix == "node" {
 			switch suffix {
 			case "id":
-				return sharedNodeConfig.Id
+				return strconv.FormatInt(sharedNodeConfig.Id, 10)
 			case "name":
 				return sharedNodeConfig.Name
 			case "role":
