@@ -52,6 +52,10 @@ func (this *RPCClient) NodeLogRPC() pb.NodeLogServiceClient {
 	return pb.NewNodeLogServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) HTTPAccessLogRPC() pb.HTTPAccessLogServiceClient {
+	return pb.NewHTTPAccessLogServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()
 	m := maps.Map{

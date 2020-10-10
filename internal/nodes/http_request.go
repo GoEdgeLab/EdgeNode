@@ -58,6 +58,12 @@ type HTTPRequest struct {
 	rewriteIsExternalURL bool                              // 重写目标是否为外部URL
 	cacheRef             *serverconfigs.HTTPCacheRef       // 缓存设置
 	cacheKey             string                            // 缓存使用的Key
+
+	// WAF相关
+	firewallPolicyId    int64
+	firewallRuleGroupId int64
+	firewallRuleSetId   int64
+	firewallRuleId      int64
 }
 
 // 初始化
@@ -98,6 +104,7 @@ func (this *HTTPRequest) Do() {
 	// WAF
 	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn && this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
 		if this.doWAFRequest() {
+			this.doEnd()
 			return
 		}
 	}
@@ -122,6 +129,9 @@ func (this *HTTPRequest) Do() {
 
 	// 关闭写入
 	this.writer.Close()
+
+	// 结束调用
+	this.doEnd()
 }
 
 // 开始调用
@@ -261,6 +271,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	if web.FirewallRef != nil && (web.FirewallRef.IsPrior || isTop) {
 		this.web.FirewallRef = web.FirewallRef
 		this.web.FirewallPolicy = web.FirewallPolicy
+	}
+
+	// access log
+	if web.AccessLogRef != nil && (web.AccessLogRef.IsPrior || isTop) {
+		this.web.AccessLogRef = web.AccessLogRef
 	}
 
 	// 重写规则
@@ -988,12 +1003,6 @@ func (this *HTTPRequest) addError(err error) {
 		return
 	}
 	this.errors = append(this.errors, err.Error())
-}
-
-// 日志
-func (this *HTTPRequest) log() {
-	// 计算请求时间
-	this.requestCost = time.Since(this.requestFromTime).Seconds()
 }
 
 // 计算合适的buffer size
