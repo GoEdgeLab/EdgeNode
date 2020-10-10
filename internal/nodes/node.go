@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"runtime"
 	"time"
 )
 
@@ -101,8 +102,20 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 		return err
 	}
 
+	// max cpu
+	if nodeConfig.MaxCPU > 0 && nodeConfig.MaxCPU < int32(runtime.NumCPU()) {
+		runtime.GOMAXPROCS(int(nodeConfig.MaxCPU))
+	} else {
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+
 	// 刷新配置
-	logs.Println("NODE", "reload config ...")
+	if isFirstTime {
+		logs.Println("NODE", "reloading config ...")
+	} else {
+		logs.Println("NODE", "loading config ...")
+	}
+
 	nodeconfigs.ResetNodeConfig(nodeConfig)
 	caches.SharedManager.UpdatePolicies(nodeConfig.AllCachePolicies())
 	sharedWAFManager.UpdatePolicies(nodeConfig.AllHTTPFirewallPolicies())

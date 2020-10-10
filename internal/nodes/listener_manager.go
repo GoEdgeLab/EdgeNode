@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/iwind/TeaGo/lists"
 	"net/url"
@@ -45,6 +46,9 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	// 所有的新地址
 	groupAddrs := []string{}
 	availableServerGroups := node.AvailableGroups()
+	if !node.IsOn {
+		availableServerGroups = []*serverconfigs.ServerGroup{}
+	}
 
 	if len(availableServerGroups) == 0 {
 		logs.Println("LISTENER_MANAGER", "no available servers to startup")
