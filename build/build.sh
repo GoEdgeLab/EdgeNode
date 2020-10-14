@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 
 function build() {
-	VERSION_DATA=$(cat ../internal/const/const.go)
-	re="Version[ ]+=[ ]+\"([0-9.]+)\""
-	if [[ $VERSION_DATA =~ $re ]]; then
-		VERSION=${BASH_REMATCH[1]}
-	else
-		echo "could not match version"
+	ROOT=$(dirname $0)
+	NAME="edge-node"
+	VERSION=$(lookup-version $ROOT/../internal/const/const.go)
+	DIST=$ROOT/"../dist/${NAME}"
+	OS=${1}
+	ARCH=${2}
+
+	if [ -z $OS ]; then
+		echo "usage: build.sh OS ARCH"
+		exit
+	fi
+	if [ -z $ARCH ]; then
+		echo "usage: build.sh OS ARCH"
 		exit
 	fi
 
@@ -17,10 +24,8 @@ function build() {
 		exit
 	fi
 
-	echo "building v${VERSION}/${1}/${2} ..."
-	NAME="edge-node"
-	DIST="../dist/${NAME}"
-	ZIP="${NAME}-${1}-${2}-v${VERSION}.zip"
+	echo "building v${VERSION}/${OS}/${ARCH} ..."
+	ZIP="${NAME}-${OS}-${ARCH}-v${VERSION}.zip"
 
 	echo "copying ..."
 	if [ ! -d $DIST ]; then
@@ -30,12 +35,12 @@ function build() {
 		mkdir $DIST/logs
 	fi
 
-	cp configs/api.template.yaml $DIST/configs
-	cp -R www $DIST/
-	cp -R pages $DIST/
+	cp $ROOT/configs/api.template.yaml $DIST/configs
+	cp -R $ROOT/www $DIST/
+	cp -R $ROOT/pages $DIST/
 
 	echo "building ..."
-	env GOOS=${1} GOARCH=${2} go build -o $DIST/bin/${NAME} -ldflags="-s -w" ../cmd/edge-node/main.go
+	env GOOS=${OS} GOARCH=${ARCH} go build -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
 
 	echo "zip files"
 	cd "${DIST}/../" || exit
@@ -49,4 +54,17 @@ function build() {
 	echo "OK"
 }
 
-build "linux" "amd64"
+function lookup-version() {
+	FILE=$1
+	VERSION_DATA=$(cat $FILE)
+	re="Version[ ]+=[ ]+\"([0-9.]+)\""
+	if [[ $VERSION_DATA =~ $re ]]; then
+		VERSION=${BASH_REMATCH[1]}
+		echo $VERSION
+	else
+		echo "could not match version"
+		exit
+	fi
+}
+
+build $1 $2
