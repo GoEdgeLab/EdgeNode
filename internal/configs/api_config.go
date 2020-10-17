@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 )
 
+// 节点API配置
 type APIConfig struct {
 	RPC struct {
 		Endpoints []string `yaml:"endpoints"`
@@ -27,4 +28,14 @@ func LoadAPIConfig() (*APIConfig, error) {
 	}
 
 	return config, nil
+}
+
+// 保存到文件
+func (this *APIConfig) WriteFile(path string) error {
+	data, err := yaml.Marshal(this)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(path, data, 0666)
+	return err
 }

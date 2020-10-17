@@ -72,6 +72,7 @@ func (this *RPCClient) HTTPAccessLogRPC() pb.HTTPAccessLogServiceClient {
 	return pb.NewHTTPAccessLogServiceClient(this.pickConn())
 }
 
+// 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()
 	m := maps.Map{
@@ -91,6 +92,29 @@ func (this *RPCClient) Context() context.Context {
 	}
 	token := base64.StdEncoding.EncodeToString(data)
 	ctx = metadata.AppendToOutgoingContext(ctx, "nodeId", this.apiConfig.NodeId, "token", token)
+	return ctx
+}
+
+// 集群上下文
+func (this *RPCClient) ClusterContext(clusterId string, clusterSecret string) context.Context {
+	ctx := context.Background()
+	m := maps.Map{
+		"timestamp": time.Now().Unix(),
+		"type":      "cluster",
+		"userId":    0,
+	}
+	method, err := encrypt.NewMethodInstance(teaconst.EncryptMethod, clusterSecret, clusterId)
+	if err != nil {
+		utils.PrintError(err)
+		return context.Background()
+	}
+	data, err := method.Encrypt(m.AsJSON())
+	if err != nil {
+		utils.PrintError(err)
+		return context.Background()
+	}
+	token := base64.StdEncoding.EncodeToString(data)
+	ctx = metadata.AppendToOutgoingContext(ctx, "nodeId", clusterId, "token", token)
 	return ctx
 }
 

@@ -1,0 +1,4 @@
+rpc:
+  endpoints: [ "" ]
+clusterId: ""
+secret: ""

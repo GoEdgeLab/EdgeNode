@@ -48,6 +48,7 @@ func (this *APIStream) loop() error {
 		return errors.Wrap(err)
 	}
 	this.stream = nodeStream
+
 	for {
 		message, err := nodeStream.Recv()
 		if err != nil {
