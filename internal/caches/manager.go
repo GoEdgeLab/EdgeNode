@@ -3,6 +3,7 @@ package caches
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/iwind/TeaGo/lists"
 	"strconv"
 	"sync"
 )
@@ -34,7 +35,7 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 
 	// 停止旧有的
 	for _, oldPolicy := range this.policyMap {
-		if !this.containsInt64(newPolicyIds, oldPolicy.Id) {
+		if !lists.ContainsInt64(newPolicyIds, oldPolicy.Id) {
 			logs.Error("CACHE", "remove policy "+strconv.FormatInt(oldPolicy.Id, 10))
 			delete(this.policyMap, oldPolicy.Id)
 			storage, ok := this.storageMap[oldPolicy.Id]
@@ -129,14 +130,4 @@ func (this *Manager) NewStorageWithPolicy(policy *serverconfigs.HTTPCachePolicy)
 		return NewMemoryStorage(policy)
 	}
 	return nil
-}
-
-// 可判断一组数字中是否包含某数
-func (this *Manager) containsInt64(values []int64, value int64) bool {
-	for _, v := range values {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }

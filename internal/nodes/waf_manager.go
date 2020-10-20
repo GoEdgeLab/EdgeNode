@@ -52,16 +52,6 @@ func (this *WAFManager) FindWAF(policyId int64) *waf.WAF {
 	return w
 }
 
-// 判断是否包含int64
-func (this *WAFManager) containsInt64(values []int64, value int64) bool {
-	for _, v := range values {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
-
 // 将Policy转换为WAF
 func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (*waf.WAF, error) {
 	if policy == nil {
