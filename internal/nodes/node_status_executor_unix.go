@@ -3,12 +3,13 @@
 package nodes
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
 )
 
 // 更新内存
-func (this *NodeStatusExecutor) updateMem(status *NodeStatus) {
+func (this *NodeStatusExecutor) updateMem(status *nodeconfigs.NodeStatus) {
 	stat, err := mem.VirtualMemory()
 	if err != nil {
 		return
@@ -24,7 +25,7 @@ func (this *NodeStatusExecutor) updateMem(status *NodeStatus) {
 }
 
 // 更新负载
-func (this *NodeStatusExecutor) updateLoad(status *NodeStatus) {
+func (this *NodeStatusExecutor) updateLoad(status *nodeconfigs.NodeStatus) {
 	stat, err := load.Avg()
 	if err != nil {
 		status.Error = err.Error()

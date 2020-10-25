@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"encoding/json"
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
@@ -45,7 +46,7 @@ func (this *NodeStatusExecutor) update() {
 		return
 	}
 
-	status := &NodeStatus{}
+	status := &nodeconfigs.NodeStatus{}
 	status.BuildVersion = teaconst.Version
 	status.ConfigVersion = sharedNodeConfig.Version
 	status.IsActive = true
@@ -80,7 +81,7 @@ func (this *NodeStatusExecutor) update() {
 }
 
 // 更新CPU
-func (this *NodeStatusExecutor) updateCPU(status *NodeStatus) {
+func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
 	duration := time.Duration(0)
 	if this.isFirstTime {
 		duration = 100 * time.Millisecond
@@ -117,7 +118,7 @@ func (this *NodeStatusExecutor) updateCPU(status *NodeStatus) {
 }
 
 // 更新硬盘
-func (this *NodeStatusExecutor) updateDisk(status *NodeStatus) {
+func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 	partitions, err := disk.Partitions(false)
 	if err != nil {
 		logs.Error("NODE_STATUS", err.Error())
