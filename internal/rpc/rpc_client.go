@@ -72,6 +72,10 @@ func (this *RPCClient) HTTPAccessLogRPC() pb.HTTPAccessLogServiceClient {
 	return pb.NewHTTPAccessLogServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) APINodeRPC() pb.APINodeServiceClient {
+	return pb.NewAPINodeServiceClient(this.pickConn())
+}
+
 // 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()

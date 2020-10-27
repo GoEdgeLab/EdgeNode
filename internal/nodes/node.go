@@ -14,6 +14,7 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	tealogs "github.com/iwind/TeaGo/logs"
 	"io/ioutil"
+	"net"
 	"os"
 	"runtime"
 	"time"
@@ -31,11 +32,35 @@ func NewNode() *Node {
 	return &Node{}
 }
 
+// 检查配置
+func (this *Node) Test() error {
+	// 检查是否能连接API
+	rpcClient, err := rpc.SharedRPC()
+	if err != nil {
+		return errors.New("test rpc failed: " + err.Error())
+	}
+	_, err = rpcClient.APINodeRPC().FindCurrentAPINodeVersion(rpcClient.Context(), &pb.FindCurrentAPINodeVersionRequest{})
+	if err != nil {
+		return errors.New("test rpc failed: " + err.Error())
+	}
+
+	return nil
+}
+
+// 启动
 func (this *Node) Start() {
-	// 读取API配置
-	err := this.syncConfig(false)
+	// 本地Sock
+	err := this.listenSock()
 	if err != nil {
 		logs.Error("NODE", err.Error())
+		return
+	}
+
+	// 读取API配置
+	err = this.syncConfig(false)
+	if err != nil {
+		logs.Error("NODE", err.Error())
+		return
 	}
 
 	// 启动同步计时器
@@ -223,6 +248,39 @@ func (this *Node) checkClusterConfig() error {
 		return err
 	}
 	tealogs.Println("[NODE]wrote 'configs/api.yaml' successfully")
+
+	return nil
+}
+
+// 监听本地sock
+func (this *Node) listenSock() error {
+	path := os.TempDir() + "/edge-node.sock"
+
+	// 检查是否已经存在
+	_, err := os.Stat(path)
+	if err == nil {
+		conn, err := net.Dial("unix", path)
+		if err != nil {
+			_ = os.Remove(path)
+		} else {
+			_ = conn.Close()
+		}
+	}
+
+	// 新的监听任务
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			_, err := listener.Accept()
+			if err != nil {
+				return
+			}
+		}
+	}()
 
 	return nil
 }
