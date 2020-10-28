@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,7 +35,15 @@ func (this *HTTPListener) Serve() error {
 	this.httpServer = &http.Server{
 		Addr:        this.addr,
 		Handler:     handler,
-		IdleTimeout: 2 * time.Minute,
+		IdleTimeout: 2 * time.Minute, // TODO IdleTimeout可以设置
+		ConnState: func(conn net.Conn, state http.ConnState) {
+			switch state {
+			case http.StateNew:
+				atomic.AddInt64(&this.countActiveConnections, 1)
+			case http.StateClosed:
+				atomic.AddInt64(&this.countActiveConnections, -1)
+			}
+		},
 	}
 	this.httpServer.SetKeepAlivesEnabled(true)
 

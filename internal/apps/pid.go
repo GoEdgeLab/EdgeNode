@@ -2,6 +2,8 @@ package apps
 
 import (
 	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
 	"io/ioutil"
 	"os"
@@ -50,11 +52,15 @@ func CheckPid(path string) *os.Process {
 }
 
 // 写入Pid
-func WritePid(path string) error {
+func WritePid() error {
+	path := Tea.Root + "/bin/pid"
 	fp, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_RDONLY, 0666)
 	if err != nil {
 		return err
 	}
+	events.On(events.EventQuit, func() {
+		_ = fp.Close()
+	})
 
 	if runtime.GOOS != "windows" {
 		err = LockFile(fp)

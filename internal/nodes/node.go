@@ -5,8 +5,10 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -16,7 +18,9 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 )
 
@@ -49,6 +53,9 @@ func (this *Node) Test() error {
 
 // 启动
 func (this *Node) Start() {
+	// 处理信号
+	this.listenSignals()
+
 	// 本地Sock
 	err := this.listenSock()
 	if err != nil {
@@ -92,10 +99,44 @@ func (this *Node) Start() {
 	err = sharedListenerManager.Start(nodeConfig)
 	if err != nil {
 		logs.Error("NODE", "start failed: "+err.Error())
+		return
+	}
+
+	// 写入PID
+	err = apps.WritePid()
+	if err != nil {
+		logs.Error("NODE", "write pid failed: "+err.Error())
+		return
 	}
 
 	// hold住进程
 	select {}
+}
+
+// 处理信号
+func (this *Node) listenSignals() {
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGQUIT)
+	go func() {
+		for s := range signals {
+			switch s {
+			case syscall.SIGQUIT:
+				events.Notify(events.EventQuit)
+
+				// 监控连接数，如果连接数为0，则退出进程
+				go func() {
+					for {
+						countActiveConnections := sharedListenerManager.TotalActiveConnections()
+						if countActiveConnections <= 0 {
+							os.Exit(0)
+							return
+						}
+						time.Sleep(1 * time.Second)
+					}
+				}()
+			}
+		}
+	}()
 }
 
 // 读取API配置
@@ -180,6 +221,10 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 func (this *Node) startSyncTimer() {
 	// TODO 这个时间间隔可以自行设置
 	ticker := time.NewTicker(60 * time.Second)
+	events.On(events.EventQuit, func() {
+		logs.Println("NODE", "quit sync timer")
+		ticker.Stop()
+	})
 	go func() {
 		for {
 			select {
@@ -272,6 +317,10 @@ func (this *Node) listenSock() error {
 	if err != nil {
 		return err
 	}
+	events.On(events.EventQuit, func() {
+		logs.Println("NODE", "quit unix sock")
+		_ = listener.Close()
+	})
 
 	go func() {
 		for {

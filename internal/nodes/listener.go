@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"net"
 	"sync"
@@ -47,6 +48,10 @@ func (this *Listener) Listen() error {
 	if err != nil {
 		return err
 	}
+	events.On(events.EventQuit, func() {
+		logs.Println("LISTENER", "quit "+this.group.FullAddr())
+		_ = netListener.Close()
+	})
 
 	switch protocol {
 	case serverconfigs.ProtocolHTTP, serverconfigs.ProtocolHTTP4, serverconfigs.ProtocolHTTP6:
@@ -88,6 +93,13 @@ func (this *Listener) Listen() error {
 	go func() {
 		err := this.listener.Serve()
 		if err != nil {
+			// 在这里屏蔽accept错误，防止在优雅关闭的时候有多余的提示
+			opErr, ok := err.(*net.OpError)
+			if ok && opErr.Op == "accept" {
+				return
+			}
+
+			// 打印其他错误
 			logs.Error("LISTENER", err.Error())
 		}
 	}()

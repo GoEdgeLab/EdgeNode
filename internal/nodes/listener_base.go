@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/sslconfigs"
+	"github.com/iwind/TeaGo/types"
 	http2 "golang.org/x/net/http2"
 	"sync"
 )
@@ -15,6 +16,8 @@ type BaseListener struct {
 	namedServers       map[string]*NamedServer // 域名 => server
 
 	Group *serverconfigs.ServerGroup
+
+	countActiveConnections int64 // 当前活跃的连接数
 }
 
 // 初始化
@@ -27,6 +30,11 @@ func (this *BaseListener) Reset() {
 	this.namedServersLocker.Lock()
 	this.namedServers = map[string]*NamedServer{}
 	this.namedServersLocker.Unlock()
+}
+
+// 获取当前活跃连接数
+func (this *BaseListener) CountActiveListeners() int {
+	return types.Int(this.countActiveConnections)
 }
 
 // 构造TLS配置

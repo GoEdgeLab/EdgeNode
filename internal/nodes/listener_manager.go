@@ -93,6 +93,18 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	return nil
 }
 
+// 获取总的活跃连接数
+func (this *ListenerManager) TotalActiveConnections() int {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	total := 0
+	for _, listener := range this.listenersMap {
+		total += listener.listener.CountActiveListeners()
+	}
+	return total
+}
+
 // 返回更加友好格式的地址
 func (this *ListenerManager) prettyAddress(addr string) string {
 	u, err := url.Parse(addr)

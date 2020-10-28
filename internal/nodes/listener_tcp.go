@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"net"
+	"sync/atomic"
 )
 
 type TCPListener struct {
@@ -25,10 +26,16 @@ func (this *TCPListener) Serve() error {
 		if err != nil {
 			break
 		}
-		err = this.handleConn(conn)
-		if err != nil {
-			logs.Error("TCP_LISTENER", err.Error())
-		}
+
+		atomic.AddInt64(&this.countActiveConnections, 1)
+
+		go func(conn net.Conn) {
+			err = this.handleConn(conn)
+			if err != nil {
+				logs.Error("TCP_LISTENER", err.Error())
+			}
+			atomic.AddInt64(&this.countActiveConnections, -1)
+		}(conn)
 	}
 
 	return nil

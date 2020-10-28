@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
@@ -557,6 +558,13 @@ func (this *FileStorage) initList() error {
 
 	// 启动定时清理任务
 	this.ticker = utils.NewTicker(30 * time.Second)
+	events.On(events.EventQuit, func() {
+		logs.Println("CACHE", "quit clean timer")
+		var ticker = this.ticker
+		if ticker != nil {
+			ticker.Stop()
+		}
+	})
 	go func() {
 		for this.ticker.Next() {
 			this.purgeLoop()

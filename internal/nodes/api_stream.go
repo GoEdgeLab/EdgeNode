@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"io"
@@ -27,7 +28,14 @@ func NewAPIStream() *APIStream {
 }
 
 func (this *APIStream) Start() {
+	isQuiting := false
+	events.On(events.EventQuit, func() {
+		isQuiting = true
+	})
 	for {
+		if isQuiting {
+			return
+		}
 		err := this.loop()
 		if err != nil {
 			logs.Error("API_STREAM", err.Error())
@@ -43,15 +51,29 @@ func (this *APIStream) loop() error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
+	isQuiting := false
+	events.On(events.EventQuit, func() {
+		isQuiting = true
+	})
 	nodeStream, err := rpcClient.NodeRPC().NodeStream(rpcClient.Context())
 	if err != nil {
+		if isQuiting {
+			return nil
+		}
 		return errors.Wrap(err)
 	}
 	this.stream = nodeStream
 
 	for {
+		if isQuiting {
+			break
+		}
+
 		message, err := nodeStream.Recv()
 		if err != nil {
+			if isQuiting {
+				return nil
+			}
 			return errors.Wrap(err)
 		}
 
@@ -80,6 +102,8 @@ func (this *APIStream) loop() error {
 			logs.Error("API_STREAM", "handle message failed: "+err.Error())
 		}
 	}
+
+	return nil
 }
 
 // 连接API节点成功

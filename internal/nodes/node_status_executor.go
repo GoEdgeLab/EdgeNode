@@ -5,6 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/lists"
@@ -35,6 +36,12 @@ func (this *NodeStatusExecutor) Listen() {
 
 	// TODO 这个时间间隔可以配置
 	ticker := time.NewTicker(30 * time.Second)
+
+	events.On(events.EventQuit, func() {
+		logs.Println("NODE_STATUS", "quit executor")
+		ticker.Stop()
+	})
+
 	for range ticker.C {
 		this.isFirstTime = false
 		this.update()
@@ -48,6 +55,8 @@ func (this *NodeStatusExecutor) update() {
 
 	status := &nodeconfigs.NodeStatus{}
 	status.BuildVersion = teaconst.Version
+	status.OS = runtime.GOOS
+	status.Arch = runtime.GOARCH
 	status.ConfigVersion = sharedNodeConfig.Version
 	status.IsActive = true
 

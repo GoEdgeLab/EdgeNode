@@ -150,9 +150,6 @@ func (this *AppCmd) Run(main func()) {
 		return
 	}
 
-	// 记录PID
-	_ = this.writePid()
-
 	// 日志
 	writer := new(LogWriter)
 	writer.Init()
@@ -226,9 +223,4 @@ func (this *AppCmd) runStatus() {
 // 检查PID
 func (this *AppCmd) checkPid() *os.Process {
 	return CheckPid(Tea.Root + "/bin/pid")
-}
-
-// 写入PID
-func (this *AppCmd) writePid() error {
-	return WritePid(Tea.Root + "/bin/pid")
 }

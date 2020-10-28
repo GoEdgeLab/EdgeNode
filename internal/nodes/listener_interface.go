@@ -15,4 +15,7 @@ type ListenerInterface interface {
 
 	// 重载配置
 	Reload(serverGroup *serverconfigs.ServerGroup)
+
+	// 获取当前活跃的连接数
+	CountActiveListeners() int
 }

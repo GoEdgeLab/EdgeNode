@@ -122,6 +122,13 @@ func (this *RPCClient) ClusterContext(clusterId string, clusterSecret string) co
 	return ctx
 }
 
+// 关闭连接
+func (this *RPCClient) Close() {
+	for _, conn := range this.conns {
+		_ = conn.Close()
+	}
+}
+
 // 随机选择一个连接
 func (this *RPCClient) pickConn() *grpc.ClientConn {
 	if len(this.conns) == 0 {
