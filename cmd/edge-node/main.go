@@ -17,21 +17,13 @@ func main() {
 	app := apps.NewAppCmd().
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
-		Usage(teaconst.ProcessName + " [-v|start|stop|restart|quit|sync|update|test]")
+		Usage(teaconst.ProcessName + " [-v|start|stop|restart|quit|test]")
 
 	app.On("test", func() {
 		err := nodes.NewNode().Test()
 		if err != nil {
 			_, _ = os.Stderr.WriteString(err.Error())
 		}
-	})
-	app.On("sync", func() {
-		// TODO
-		fmt.Println("not implemented yet")
-	})
-	app.On("update", func() {
-		// TODO
-		fmt.Println("not implemented yet")
 	})
 	app.On("quit", func() {
 		pidFile := Tea.Root + "/bin/pid"
