@@ -174,10 +174,10 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 	}
 
 	// 只记录N个记录，防止内存耗尽
-	maxNamedServers := 10240
+	maxNamedServers := 100_0000
 
 	// 是否严格匹配域名
-	matchDomainStrictly := group.IsHTTPS() && sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
+	matchDomainStrictly := (group.IsHTTP() || group.IsHTTPS()) && sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
 
 	// 如果只有一个server，则默认为这个
 	if countServers == 1 && !matchDomainStrictly {

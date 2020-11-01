@@ -59,6 +59,7 @@ func (this *NodeStatusExecutor) update() {
 	status.Arch = runtime.GOARCH
 	status.ConfigVersion = sharedNodeConfig.Version
 	status.IsActive = true
+	status.ConnectionCount = sharedListenerManager.TotalActiveConnections()
 
 	hostname, _ := os.Hostname()
 	status.Hostname = hostname
