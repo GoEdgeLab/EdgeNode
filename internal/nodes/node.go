@@ -163,7 +163,7 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 		return errors.New("create rpc client failed: " + err.Error())
 	}
 	// TODO 这里考虑只同步版本号有变更的
-	configResp, err := rpcClient.NodeRPC().ComposeNodeConfig(rpcClient.Context(), &pb.ComposeNodeConfigRequest{})
+	configResp, err := rpcClient.NodeRPC().FindCurrentNodeConfig(rpcClient.Context(), &pb.FindCurrentNodeConfigRequest{})
 	if err != nil {
 		return errors.New("read config from rpc failed: " + err.Error())
 	}
