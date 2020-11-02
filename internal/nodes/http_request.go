@@ -64,6 +64,8 @@ type HTTPRequest struct {
 	firewallRuleGroupId int64
 	firewallRuleSetId   int64
 	firewallRuleId      int64
+
+	logAttrs map[string]string
 }
 
 // 初始化
@@ -79,6 +81,7 @@ func (this *HTTPRequest) init() {
 		"cache.policy.id":   "0",
 		"cache.policy.type": "",
 	}
+	this.logAttrs = map[string]string{}
 	this.requestFromTime = time.Now()
 }
 

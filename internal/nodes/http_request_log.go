@@ -120,6 +120,8 @@ func (this *HTTPRequest) log() {
 		FirewallRuleGroupId: this.firewallRuleGroupId,
 		FirewallRuleSetId:   this.firewallRuleSetId,
 		FirewallRuleId:      this.firewallRuleId,
+
+		Attrs: this.logAttrs,
 	}
 
 	if this.origin != nil {

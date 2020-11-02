@@ -1,7 +1,5 @@
 package waf
 
-// 感谢以下规则来源：
-// - Janusec: https://www.janusec.com/
 func Template() *WAF {
 	waf := NewWAF()
 	waf.Id = "template"
