@@ -104,7 +104,7 @@ func (this *HTTPRequest) log() {
 		Referer:         referer,
 		UserAgent:       userAgent,
 		Request:         this.requestString(),
-		ContentType:     this.requestContentType(),
+		ContentType:     this.writer.Header().Get("Content-Type"),
 		Cookie:          cookies,
 		Args:            queryString,
 		QueryString:     queryString,
