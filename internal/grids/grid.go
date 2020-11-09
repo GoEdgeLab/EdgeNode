@@ -84,7 +84,7 @@ func (this *Grid) WriteInt64(key []byte, value int64, lifeSeconds int64) {
 		Key:        key,
 		Type:       ItemInt64,
 		ValueInt64: value,
-		ExpireAt:   time.Now().Unix() + lifeSeconds,
+		ExpireAt:   UnixTime() + lifeSeconds,
 	})
 }
 

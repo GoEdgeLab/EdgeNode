@@ -53,6 +53,9 @@ func (this *Node) Test() error {
 
 // 启动
 func (this *Node) Start() {
+	// 启动事件
+	events.Notify(events.EventStart)
+
 	// 处理信号
 	this.listenSignals()
 

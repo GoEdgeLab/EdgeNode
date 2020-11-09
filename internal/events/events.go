@@ -3,5 +3,6 @@ package events
 type Event = string
 
 const (
-	EventQuit Event = "quit" // quit node gracefully
+	EventStart Event = "start" // start loading
+	EventQuit  Event = "quit"  // quit node gracefully
 )

@@ -61,6 +61,34 @@ func (this *RPCClient) APINodeRPC() pb.APINodeServiceClient {
 	return pb.NewAPINodeServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) IPLibraryRPC() pb.IPLibraryServiceClient {
+	return pb.NewIPLibraryServiceClient(this.pickConn())
+}
+
+func (this *RPCClient) RegionCountryRPC() pb.RegionCountryServiceClient {
+	return pb.NewRegionCountryServiceClient(this.pickConn())
+}
+
+func (this *RPCClient) RegionProvinceRPC() pb.RegionProvinceServiceClient {
+	return pb.NewRegionProvinceServiceClient(this.pickConn())
+}
+
+func (this *RPCClient) IPListRPC() pb.IPListServiceClient {
+	return pb.NewIPListServiceClient(this.pickConn())
+}
+
+func (this *RPCClient) IPItemRPC() pb.IPItemServiceClient {
+	return pb.NewIPItemServiceClient(this.pickConn())
+}
+
+func (this *RPCClient) FileRPC() pb.FileServiceClient {
+	return pb.NewFileServiceClient(this.pickConn())
+}
+
+func (this *RPCClient) FileChunkRPC() pb.FileChunkServiceClient {
+	return pb.NewFileChunkServiceClient(this.pickConn())
+}
+
 // 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()

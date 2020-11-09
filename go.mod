@@ -13,6 +13,7 @@ require (
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/golang/protobuf v1.4.2
 	github.com/iwind/TeaGo v0.0.0-20201020081413-7cf62d6f420f
+	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/shirou/gopsutil v2.20.9+incompatible
 	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
 	google.golang.org/grpc v1.32.0

@@ -61,9 +61,12 @@ func TestMemoryGrid_Compress(t *testing.T) {
 }
 
 func BenchmarkMemoryGrid_Performance(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
 	grid := NewGrid(1024)
 	for i := 0; i < b.N; i++ {
-		grid.WriteInt64([]byte("key:"+strconv.Itoa(i)), int64(i), 3600)
+		key := "key:" + strconv.Itoa(i)
+		grid.WriteInt64([]byte(key), int64(i), 3600)
 	}
 }
 

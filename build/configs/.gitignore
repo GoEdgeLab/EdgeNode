@@ -1,3 +1,4 @@
 node.json
 api.yaml
 cluster.yaml
+*.cache
