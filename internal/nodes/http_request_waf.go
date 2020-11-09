@@ -34,6 +34,9 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 			this.writer.WriteHeader(http.StatusForbidden)
 			this.writer.Close()
 
+			// 停止日志
+			this.disableLog = true
+
 			return true
 		}
 	}
@@ -54,6 +57,10 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 							// TODO 可以配置对封禁的处理方式等
 							this.writer.WriteHeader(http.StatusForbidden)
 							this.writer.Close()
+
+							// 停止日志
+							this.disableLog = true
+
 							return true
 						}
 					}
@@ -65,6 +72,10 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 							// TODO 可以配置对封禁的处理方式等
 							this.writer.WriteHeader(http.StatusForbidden)
 							this.writer.Close()
+
+							// 停止日志
+							this.disableLog = true
+
 							return true
 						}
 					}
@@ -73,6 +84,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 		}
 	}
 
+	// 规则测试
 	w := sharedWAFManager.FindWAF(this.web.FirewallPolicy.Id)
 	if w == nil {
 		return

@@ -13,6 +13,10 @@ var requestId int64 = 1_0000_0000_0000_0000
 
 // 日志
 func (this *HTTPRequest) log() {
+	if this.disableLog {
+		return
+	}
+
 	// 计算请求时间
 	this.requestCost = time.Since(this.requestFromTime).Seconds()
 

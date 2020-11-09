@@ -66,6 +66,8 @@ type HTTPRequest struct {
 	firewallRuleId      int64
 
 	logAttrs map[string]string
+
+	disableLog bool // 此请求中关闭Log
 }
 
 // 初始化
