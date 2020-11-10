@@ -11,6 +11,7 @@ import (
 )
 
 var SharedIPListManager = NewIPListManager()
+var IPListUpdateNotify = make(chan bool, 1)
 
 func init() {
 	events.On(events.EventStart, func() {
@@ -52,10 +53,21 @@ func (this *IPListManager) Start() {
 	events.On(events.EventQuit, func() {
 		ticker.Stop()
 	})
-	for range ticker.C {
+	for {
+		select {
+		case <-ticker.C:
+		case <-IPListUpdateNotify:
+		}
 		err := this.loop()
 		if err != nil {
 			logs.Println("IP_LIST_MANAGER", err.Error())
+
+			// 方便立即重试
+			select {
+			case IPListUpdateNotify <- true:
+			default:
+
+			}
 		}
 	}
 }

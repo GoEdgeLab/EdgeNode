@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"io"
@@ -95,6 +96,8 @@ func (this *APIStream) loop() error {
 			err = this.handlePreheatCache(message)
 		case messageconfigs.MessageCodeConfigChanged: // 配置变化
 			err = this.handleConfigChanged(message)
+		case messageconfigs.MessageCodeIPListChanged: // IPList变化
+			err = this.handleIPListChanged(message)
 		default:
 			err = this.handleUnknownMessage(message)
 		}
@@ -431,6 +434,17 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 func (this *APIStream) handleConfigChanged(message *pb.NodeStreamMessage) error {
 	select {
 	case changeNotify <- true:
+	default:
+
+	}
+	this.replyOk(message.RequestId, "ok")
+	return nil
+}
+
+// 处理IPList变化
+func (this *APIStream) handleIPListChanged(message *pb.NodeStreamMessage) error {
+	select {
+	case iplibrary.IPListUpdateNotify <- true:
 	default:
 
 	}
