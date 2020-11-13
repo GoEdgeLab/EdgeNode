@@ -43,6 +43,10 @@ function build() {
 	echo "building ..."
 	env GOOS=${OS} GOARCH=${ARCH} go build -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
 
+	# delete hidden files
+	find $DIST -name ".DS_Store" -delete
+	find $DIST -name ".gitignore" -delete
+
 	echo "zip files"
 	cd "${DIST}/../" || exit
 	if [ -f "${ZIP}" ]; then
