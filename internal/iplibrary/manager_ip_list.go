@@ -53,6 +53,7 @@ func (this *IPListManager) Start() {
 	events.On(events.EventQuit, func() {
 		ticker.Stop()
 	})
+	countErrors := 0
 	for {
 		select {
 		case <-ticker.C:
@@ -60,14 +61,19 @@ func (this *IPListManager) Start() {
 		}
 		err := this.loop()
 		if err != nil {
+			countErrors++
+
 			logs.Println("IP_LIST_MANAGER", err.Error())
 
-			// 方便立即重试
-			select {
-			case IPListUpdateNotify <- true:
-			default:
-
+			// 连续错误小于3次的我们立即重试
+			if countErrors <= 3 {
+				select {
+				case IPListUpdateNotify <- true:
+				default:
+				}
 			}
+		} else {
+			countErrors = 0
 		}
 	}
 }
