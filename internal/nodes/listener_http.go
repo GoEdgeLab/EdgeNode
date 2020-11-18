@@ -128,12 +128,23 @@ func (this *HTTPListener) handleHTTP(rawWriter http.ResponseWriter, rawReq *http
 	if server == nil {
 		// 严格匹配域名模式下，我们拒绝用户访问
 		if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
-			hijacker, ok := rawWriter.(http.Hijacker)
-			if ok {
-				conn, _, _ := hijacker.Hijack()
-				if conn != nil {
-					_ = conn.Close()
-					return
+			httpAllConfig := sharedNodeConfig.GlobalConfig.HTTPAll
+			mismatchAction := httpAllConfig.DomainMismatchAction
+			if mismatchAction != nil && mismatchAction.Code == "page" {
+				if mismatchAction.Options != nil {
+					http.Error(rawWriter, mismatchAction.Options.GetString("contentHTML"), mismatchAction.Options.GetInt("statusCode"))
+				} else {
+					http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
+				}
+				return
+			} else {
+				hijacker, ok := rawWriter.(http.Hijacker)
+				if ok {
+					conn, _, _ := hijacker.Hijack()
+					if conn != nil {
+						_ = conn.Close()
+						return
+					}
 				}
 			}
 		}
