@@ -132,7 +132,9 @@ func (this *HTTPListener) handleHTTP(rawWriter http.ResponseWriter, rawReq *http
 			mismatchAction := httpAllConfig.DomainMismatchAction
 			if mismatchAction != nil && mismatchAction.Code == "page" {
 				if mismatchAction.Options != nil {
-					http.Error(rawWriter, mismatchAction.Options.GetString("contentHTML"), mismatchAction.Options.GetInt("statusCode"))
+					rawWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
+					rawWriter.WriteHeader(mismatchAction.Options.GetInt("statusCode"))
+					_, _ = rawWriter.Write([]byte(mismatchAction.Options.GetString("contentHTML")))
 				} else {
 					http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
 				}

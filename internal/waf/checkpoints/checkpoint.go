@@ -11,6 +11,10 @@ func (this *Checkpoint) IsRequest() bool {
 	return true
 }
 
+func (this *Checkpoint) IsComposed() bool {
+	return false
+}
+
 func (this *Checkpoint) ParamOptions() *ParamOptions {
 	return nil
 }

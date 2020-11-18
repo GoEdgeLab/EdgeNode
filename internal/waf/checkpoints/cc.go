@@ -31,7 +31,7 @@ func (this *CCCheckpoint) Start() {
 	this.grid = grids.NewGrid(32, grids.NewLimitCountOpt(1000_0000))
 }
 
-func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, options map[string]interface{}) (value interface{}, sysErr error, userErr error) {
+func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	value = 0
 
 	if this.grid == nil {
@@ -121,7 +121,7 @@ func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, opti
 	return
 }
 
-func (this *CCCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options map[string]interface{}) (value interface{}, sysErr error, userErr error) {
+func (this *CCCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

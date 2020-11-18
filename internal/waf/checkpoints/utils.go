@@ -3,6 +3,13 @@ package checkpoints
 // all check points list
 var AllCheckpoints = []*CheckpointDefinition{
 	{
+		Name:        "通用请求Header长度限制",
+		Prefix:      "requestGeneralHeaderLength",
+		Description: "通用Header比如Cache-Control、Accept之类的长度限制，防止缓冲区溢出攻击",
+		HasParams:   false,
+		Instance:    new(RequestGeneralHeaderLengthCheckpoint),
+	},
+	{
 		Name:        "客户端地址（IP）",
 		Prefix:      "remoteAddr",
 		Description: "试图通过分析X-Forwarded-For等Header获取的客户端地址，比如192.168.1.100",
@@ -183,6 +190,13 @@ var AllCheckpoints = []*CheckpointDefinition{
 		Description: "统计某段时间段内的请求信息",
 		HasParams:   true,
 		Instance:    new(CCCheckpoint),
+	},
+	{
+		Name:        "通用响应Header长度限制",
+		Prefix:      "responseGeneralHeaderLength",
+		Description: "通用Header比如Cache-Control、Accept之类的长度限制，防止缓冲区溢出攻击",
+		HasParams:   false,
+		Instance:    new(ResponseGeneralHeaderLengthCheckpoint),
 	},
 	{
 		Name:        "响应状态码",

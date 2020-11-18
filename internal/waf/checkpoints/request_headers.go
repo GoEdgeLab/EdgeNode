@@ -2,6 +2,7 @@ package checkpoints
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/iwind/TeaGo/maps"
 	"sort"
 	"strings"
 )
@@ -10,7 +11,7 @@ type RequestHeadersCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestHeadersCheckpoint) RequestValue(req *requests.Request, param string, options map[string]interface{}) (value interface{}, sysErr error, userErr error) {
+func (this *RequestHeadersCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	var headers = []string{}
 	for k, v := range req.Header {
 		for _, subV := range v {
@@ -22,7 +23,7 @@ func (this *RequestHeadersCheckpoint) RequestValue(req *requests.Request, param 
 	return
 }
 
-func (this *RequestHeadersCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options map[string]interface{}) (value interface{}, sysErr error, userErr error) {
+func (this *RequestHeadersCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

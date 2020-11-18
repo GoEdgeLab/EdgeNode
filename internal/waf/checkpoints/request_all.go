@@ -2,6 +2,7 @@ package checkpoints
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/iwind/TeaGo/maps"
 )
 
 // ${requestAll}
@@ -9,7 +10,7 @@ type RequestAllCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestAllCheckpoint) RequestValue(req *requests.Request, param string, options map[string]interface{}) (value interface{}, sysErr error, userErr error) {
+func (this *RequestAllCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	valueBytes := []byte{}
 	if len(req.RequestURI) > 0 {
 		valueBytes = append(valueBytes, req.RequestURI...)
@@ -37,7 +38,7 @@ func (this *RequestAllCheckpoint) RequestValue(req *requests.Request, param stri
 	return
 }
 
-func (this *RequestAllCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options map[string]interface{}) (value interface{}, sysErr error, userErr error) {
+func (this *RequestAllCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	value = ""
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)

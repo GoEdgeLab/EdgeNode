@@ -186,6 +186,12 @@ func (this *Rule) MatchRequest(req *requests.Request) (b bool, err error) {
 		if err != nil {
 			return false, err
 		}
+
+		// if is composed checkpoint, we just returns true or false
+		if this.singleCheckpoint.IsComposed() {
+			return types.Bool(value), nil
+		}
+
 		return this.Test(value), nil
 	}
 
@@ -235,6 +241,12 @@ func (this *Rule) MatchResponse(req *requests.Request, resp *requests.Response) 
 		if err != nil {
 			return false, err
 		}
+
+		// if is composed checkpoint, we just returns true or false
+		if this.singleCheckpoint.IsComposed() {
+			return types.Bool(value), nil
+		}
+
 		return this.Test(value), nil
 	}
 
