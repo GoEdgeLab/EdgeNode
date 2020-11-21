@@ -5,7 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/dchest/siphash"
+	"github.com/cespare/xxhash"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -170,7 +170,7 @@ func (this *MemoryStorage) AddToList(item *Item) {
 
 // 计算Key Hash
 func (this *MemoryStorage) hash(key string) uint64 {
-	return siphash.Hash(0, 0, []byte(key))
+	return xxhash.Sum64String(key)
 }
 
 // 清理任务

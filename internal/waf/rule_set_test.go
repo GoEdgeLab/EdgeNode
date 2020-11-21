@@ -3,7 +3,7 @@ package waf
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/dchest/siphash"
+	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/assert"
 	"net/http"
 	"regexp"
@@ -174,7 +174,9 @@ func BenchmarkRuleSet_MatchRequest_Regexp3(b *testing.B) {
 }
 
 func BenchmarkHash(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
 	for i := 0; i < b.N; i++ {
-		_ = siphash.Hash(0, 0, bytes.Repeat([]byte("HELLO"), 10240))
+		_ = xxhash.Sum64(bytes.Repeat([]byte("HELLO"), 10240))
 	}
 }

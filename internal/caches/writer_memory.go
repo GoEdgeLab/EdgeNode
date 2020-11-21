@@ -1,7 +1,7 @@
 package caches
 
 import (
-	"github.com/dchest/siphash"
+	"github.com/cespare/xxhash"
 	"sync"
 )
 
@@ -80,5 +80,5 @@ func (this *MemoryWriter) ExpiredAt() int64 {
 
 // 计算Key Hash
 func (this *MemoryWriter) hash(key string) uint64 {
-	return siphash.Hash(0, 0, []byte(key))
+	return xxhash.Sum64String(key)
 }

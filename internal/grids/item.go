@@ -3,7 +3,7 @@ package grids
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/dchest/siphash"
+	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/logs"
 	"sync/atomic"
 	"unsafe"
@@ -18,7 +18,7 @@ const (
 )
 
 func HashKey(key []byte) uint64 {
-	return siphash.Hash(0, 0, key)
+	return xxhash.Sum64(key)
 }
 
 type Item struct {

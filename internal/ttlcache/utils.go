@@ -1,7 +1,7 @@
 package ttlcache
 
-import "github.com/dchest/siphash"
+import "github.com/cespare/xxhash"
 
 func HashKey(key []byte) uint64 {
-	return siphash.Hash(0, 0, key)
+	return xxhash.Sum64(key)
 }

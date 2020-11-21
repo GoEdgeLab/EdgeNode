@@ -318,7 +318,7 @@ func testTemplate20001(a *assert.Assertion, t *testing.T, template *WAF) {
 	// enable bot rule set
 	for _, g := range template.Inbound {
 		if g.Code == "bot" {
-			g.On = true
+			g.IsOn = true
 			break
 		}
 	}

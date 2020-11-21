@@ -3,8 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/dchest/siphash"
+	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/types"
 	"regexp"
 	"strconv"
@@ -21,7 +20,7 @@ func MatchStringCache(regex *regexp.Regexp, s string) bool {
 		return regex.MatchString(s)
 	}
 
-	hash := siphash.Hash(0, 0, utils.UnsafeStringToBytes(s))
+	hash := xxhash.Sum64String(s)
 	key := fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10)
 	item := cache.Read(key)
 	if item != nil {
@@ -43,7 +42,7 @@ func MatchBytesCache(regex *regexp.Regexp, byteSlice []byte) bool {
 		return regex.Match(byteSlice)
 	}
 
-	hash := siphash.Hash(0, 0, byteSlice)
+	hash := xxhash.Sum64(byteSlice)
 	key := fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10)
 	item := cache.Read(key)
 	if item != nil {

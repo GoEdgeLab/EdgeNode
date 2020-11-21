@@ -2,7 +2,7 @@ package nodes
 
 import (
 	"fmt"
-	"github.com/dchest/siphash"
+	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"io"
@@ -189,7 +189,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	// 支持 ETag
-	eTag := "\"et" + fmt.Sprintf("%0x", siphash.Hash(0, 0, []byte(filename+strconv.FormatInt(stat.ModTime().UnixNano(), 10)+strconv.FormatInt(stat.Size(), 10)))) + "\""
+	eTag := "\"et" + fmt.Sprintf("%0x", xxhash.Sum64String(filename+strconv.FormatInt(stat.ModTime().UnixNano(), 10)+strconv.FormatInt(stat.Size(), 10))) + "\""
 	if len(respHeader.Get("ETag")) == 0 {
 		respHeader.Set("ETag", eTag)
 	}
