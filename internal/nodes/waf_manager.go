@@ -93,11 +93,20 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 					r := &waf.Rule{
 						Description:       rule.Description,
 						Param:             rule.Param,
+						ParamFilters:      []*waf.ParamFilter{},
 						Operator:          rule.Operator,
 						Value:             rule.Value,
 						IsCaseInsensitive: rule.IsCaseInsensitive,
 						CheckpointOptions: rule.CheckpointOptions,
 					}
+
+					for _, paramFilter := range rule.ParamFilters {
+						r.ParamFilters = append(r.ParamFilters, &waf.ParamFilter{
+							Code:    paramFilter.Code,
+							Options: paramFilter.Options,
+						})
+					}
+
 					s.Rules = append(s.Rules, r)
 				}
 

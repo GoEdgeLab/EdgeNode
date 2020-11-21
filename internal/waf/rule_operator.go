@@ -23,6 +23,9 @@ const (
 	RuleOperatorVersionLt    RuleOperator = "version lt"
 	RuleOperatorVersionRange RuleOperator = "version range"
 
+	RuleOperatorContainsBinary    RuleOperator = "contains binary"     // contains binary
+	RuleOperatorNotContainsBinary RuleOperator = "not contains binary" // not contains binary
+
 	// ip
 	RuleOperatorEqIP       RuleOperator = "eq ip"
 	RuleOperatorGtIP       RuleOperator = "gt ip"

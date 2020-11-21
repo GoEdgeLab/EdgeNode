@@ -2,9 +2,12 @@ package waf
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/filterconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
@@ -23,7 +26,8 @@ var singleParamRegexp = regexp.MustCompile("^\\${[\\w.-]+}$")
 // rule
 type Rule struct {
 	Description       string                 `yaml:"description" json:"description"`
-	Param             string                 `yaml:"param" json:"param"`       // such as ${arg.name} or ${args}, can be composite as ${arg.firstName}${arg.lastName}
+	Param             string                 `yaml:"param" json:"param"` // such as ${arg.name} or ${args}, can be composite as ${arg.firstName}${arg.lastName}
+	ParamFilters      []*ParamFilter         `yaml:"paramFilters" json:"paramFilters"`
 	Operator          RuleOperator           `yaml:"operator" json:"operator"` // such as contains, gt,  ...
 	Value             string                 `yaml:"value" json:"value"`       // compared value
 	IsCaseInsensitive bool                   `yaml:"isCaseInsensitive" json:"isCaseInsensitive"`
@@ -122,7 +126,6 @@ func (this *Rule) Init() error {
 		} else {
 			return errors.New("invalid ip range")
 		}
-
 	}
 
 	if singleParamRegexp.MatchString(this.Param) {
@@ -187,6 +190,11 @@ func (this *Rule) MatchRequest(req *requests.Request) (b bool, err error) {
 			return false, err
 		}
 
+		// execute filters
+		if len(this.ParamFilters) > 0 {
+			value = this.execFilter(value)
+		}
+
 		// if is composed checkpoint, we just returns true or false
 		if this.singleCheckpoint.IsComposed() {
 			return types.Bool(value), nil
@@ -233,6 +241,12 @@ func (this *Rule) MatchResponse(req *requests.Request, resp *requests.Response) 
 			if err != nil {
 				return false, err
 			}
+
+			// execute filters
+			if len(this.ParamFilters) > 0 {
+				value = this.execFilter(value)
+			}
+
 			return this.Test(value), nil
 		}
 
@@ -420,6 +434,20 @@ func (this *Rule) Test(value interface{}) bool {
 		} else {
 			return strings.HasSuffix(types.String(value), this.Value)
 		}
+	case RuleOperatorContainsBinary:
+		data, _ := base64.StdEncoding.DecodeString(types.String(this.Value))
+		if this.IsCaseInsensitive {
+			return bytes.Contains(bytes.ToUpper([]byte(types.String(value))), bytes.ToUpper(data))
+		} else {
+			return bytes.Contains([]byte(types.String(value)), data)
+		}
+	case RuleOperatorNotContainsBinary:
+		data, _ := base64.StdEncoding.DecodeString(types.String(this.Value))
+		if this.IsCaseInsensitive {
+			return !bytes.Contains(bytes.ToUpper([]byte(types.String(value))), bytes.ToUpper(data))
+		} else {
+			return !bytes.Contains([]byte(types.String(value)), data)
+		}
 	case RuleOperatorHasKey:
 		if types.IsSlice(value) {
 			index := types.Int(this.Value)
@@ -593,4 +621,25 @@ func (this *Rule) ipToInt64(ip net.IP) int64 {
 		return int64(binary.BigEndian.Uint32(ip[12:16]))
 	}
 	return int64(binary.BigEndian.Uint32(ip))
+}
+
+func (this *Rule) execFilter(value interface{}) interface{} {
+	var goNext bool
+	var err error
+
+	for _, filter := range this.ParamFilters {
+		filterInstance := filterconfigs.FindFilter(filter.Code)
+		if filterInstance == nil {
+			continue
+		}
+		value, goNext, err = filterInstance.Do(value, filter.Options)
+		if err != nil {
+			logs.Println("WAF", "filter error: "+err.Error())
+			break
+		}
+		if !goNext {
+			break
+		}
+	}
+	return value
 }
