@@ -41,6 +41,7 @@ func TestMatchRemoteCache(t *testing.T) {
 func BenchmarkMatchStringCache(b *testing.B) {
 	data := strings.Repeat("HELLO", 512)
 	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+	_ = MatchStringCache(regex, data)
 
 	for i := 0; i < b.N; i++ {
 		_ = MatchStringCache(regex, data)

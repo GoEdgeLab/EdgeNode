@@ -1,4 +1,4 @@
-package cache
+package ttlcache
 
 import "github.com/dchest/siphash"
 

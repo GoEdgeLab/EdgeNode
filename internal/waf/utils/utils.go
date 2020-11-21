@@ -2,14 +2,17 @@ package utils
 
 import (
 	"fmt"
-	"github.com/TeaOSLab/EdgeNode/internal/grids"
+	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/dchest/siphash"
+	"github.com/iwind/TeaGo/types"
 	"regexp"
 	"strconv"
+	"time"
 )
 
-var grid = grids.NewGrid(32, grids.NewLimitCountOpt(1000_0000))
+//var grid = grids.NewGrid(32, grids.NewLimitCountOpt(1000_0000))
+var cache = ttlcache.NewCache()
 
 // 正则表达式匹配字符串，并缓存结果
 func MatchStringCache(regex *regexp.Regexp, s string) bool {
@@ -19,16 +22,16 @@ func MatchStringCache(regex *regexp.Regexp, s string) bool {
 	}
 
 	hash := siphash.Hash(0, 0, utils.UnsafeStringToBytes(s))
-	key := []byte(fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10))
-	item := grid.Read(key)
+	key := fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10)
+	item := cache.Read(key)
 	if item != nil {
-		return item.ValueInt64 == 1
+		return types.Int8(item.Value) == 1
 	}
 	b := regex.MatchString(s)
 	if b {
-		grid.WriteInt64(key, 1, 1800)
+		cache.Write(key, 1, time.Now().Unix()+1800)
 	} else {
-		grid.WriteInt64(key, 0, 1800)
+		cache.Write(key, 0, time.Now().Unix()+1800)
 	}
 	return b
 }
@@ -41,16 +44,19 @@ func MatchBytesCache(regex *regexp.Regexp, byteSlice []byte) bool {
 	}
 
 	hash := siphash.Hash(0, 0, byteSlice)
-	key := []byte(fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10))
-	item := grid.Read(key)
+	key := fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10)
+	item := cache.Read(key)
 	if item != nil {
-		return item.ValueInt64 == 1
+		return types.Int8(item.Value) == 1
+	}
+	if item != nil {
+		return types.Int8(item.Value) == 1
 	}
 	b := regex.Match(byteSlice)
 	if b {
-		grid.WriteInt64(key, 1, 1800)
+		cache.Write(key, 1, time.Now().Unix()+1800)
 	} else {
-		grid.WriteInt64(key, 0, 1800)
+		cache.Write(key, 0, time.Now().Unix()+1800)
 	}
 	return b
 }

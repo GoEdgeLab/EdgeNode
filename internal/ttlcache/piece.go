@@ -1,4 +1,4 @@
-package cache
+package ttlcache
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -7,16 +7,21 @@ import (
 )
 
 type Piece struct {
-	m      map[uint64]*Item
-	locker sync.RWMutex
+	m        map[uint64]*Item
+	maxItems int
+	locker   sync.RWMutex
 }
 
-func NewPiece() *Piece {
-	return &Piece{m: map[uint64]*Item{}}
+func NewPiece(maxItems int) *Piece {
+	return &Piece{m: map[uint64]*Item{}, maxItems: maxItems}
 }
 
 func (this *Piece) Add(key uint64, item *Item) () {
 	this.locker.Lock()
+	if len(this.m) >= this.maxItems {
+		this.locker.Unlock()
+		return
+	}
 	this.m[key] = item
 	this.locker.Unlock()
 }

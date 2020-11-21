@@ -1,4 +1,4 @@
-package cache
+package ttlcache
 
 import (
 	"time"
@@ -14,12 +14,14 @@ import (
 type Cache struct {
 	pieces      []*Piece
 	countPieces uint64
+	maxItems    int
 
 	gcPieceIndex int
 }
 
 func NewCache(opt ...OptionInterface) *Cache {
 	countPieces := 128
+	maxItems := 1_000_000
 	for _, option := range opt {
 		if option == nil {
 			continue
@@ -29,20 +31,25 @@ func NewCache(opt ...OptionInterface) *Cache {
 			if o.Count > 0 {
 				countPieces = o.Count
 			}
+		case *MaxItemsOption:
+			if o.Count > 0 {
+				maxItems = o.Count
+			}
 		}
 	}
 
 	cache := &Cache{
 		countPieces: uint64(countPieces),
+		maxItems:    maxItems,
 	}
 
 	for i := 0; i < countPieces; i++ {
-		cache.pieces = append(cache.pieces, NewPiece())
+		cache.pieces = append(cache.pieces, NewPiece(maxItems/countPieces))
 	}
 
 	// start timer
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(5 * time.Second)
 		for range ticker.C {
 			cache.GC()
 		}
@@ -51,7 +58,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 	return cache
 }
 
-func (this *Cache) Add(key string, value interface{}, expiredAt int64) {
+func (this *Cache) Write(key string, value interface{}, expiredAt int64) {
 	currentTimestamp := time.Now().Unix()
 	if expiredAt <= currentTimestamp {
 		return
@@ -64,12 +71,12 @@ func (this *Cache) Add(key string, value interface{}, expiredAt int64) {
 	uint64Key := HashKey([]byte(key))
 	pieceIndex := uint64Key % this.countPieces
 	this.pieces[pieceIndex].Add(uint64Key, &Item{
-		value:     value,
+		Value:     value,
 		expiredAt: expiredAt,
 	})
 }
 
-func (this *Cache) Read(key string) (value *Item) {
+func (this *Cache) Read(key string) (item *Item) {
 	uint64Key := HashKey([]byte(key))
 	return this.pieces[uint64Key%this.countPieces].Read(uint64Key)
 }

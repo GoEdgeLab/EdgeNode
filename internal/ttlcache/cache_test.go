@@ -1,4 +1,4 @@
-package cache
+package ttlcache
 
 import (
 	"github.com/iwind/TeaGo/rands"
@@ -10,15 +10,15 @@ import (
 
 func TestNewCache(t *testing.T) {
 	cache := NewCache()
-	cache.Add("a", 1, time.Now().Unix()+3600)
-	cache.Add("b", 2, time.Now().Unix()+3601)
-	cache.Add("a", 1, time.Now().Unix()+3602)
-	cache.Add("d", 1, time.Now().Unix()+1)
+	cache.Write("a", 1, time.Now().Unix()+3600)
+	cache.Write("b", 2, time.Now().Unix()+3601)
+	cache.Write("a", 1, time.Now().Unix()+3602)
+	cache.Write("d", 1, time.Now().Unix()+1)
 
 	for _, piece := range cache.pieces {
 		if len(piece.m) > 0 {
 			for k, item := range piece.m {
-				t.Log(k, "=>", item.value, item.expiredAt)
+				t.Log(k, "=>", item.Value, item.expiredAt)
 			}
 		}
 	}
@@ -32,25 +32,25 @@ func BenchmarkCache_Add(b *testing.B) {
 
 	cache := NewCache()
 	for i := 0; i < b.N; i++ {
-		cache.Add(strconv.Itoa(i), i, time.Now().Unix()+int64(i%1024))
+		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(i%1024))
 	}
 }
 
 func TestCache_Read(t *testing.T) {
 	runtime.GOMAXPROCS(1)
 
-	var cache = NewCache(PiecesOption{Count: 512})
+	var cache = NewCache(PiecesOption{Count: 32})
 
 	for i := 0; i < 10_000_000; i++ {
-		cache.Add("HELLO_WORLD_"+strconv.Itoa(i), i, time.Now().Unix()+int64(i%10240)+1)
+		cache.Write("HELLO_WORLD_"+strconv.Itoa(i), i, time.Now().Unix()+int64(i%10240)+1)
 	}
 
-	/**total := 0
+	total := 0
 	for _, piece := range cache.pieces {
-		t.Log(len(piece.m), "keys")
+		//t.Log(len(piece.m), "keys")
 		total += len(piece.m)
 	}
-	t.Log(total, "total keys")**/
+	t.Log(total, "total keys")
 
 	before := time.Now()
 	for i := 0; i < 10_240; i++ {
@@ -61,15 +61,15 @@ func TestCache_Read(t *testing.T) {
 
 func TestCache_GC(t *testing.T) {
 	var cache = NewCache(&PiecesOption{Count: 5})
-	cache.Add("a", 1, time.Now().Unix()+1)
-	cache.Add("b", 2, time.Now().Unix()+2)
-	cache.Add("c", 3, time.Now().Unix()+3)
-	cache.Add("d", 4, time.Now().Unix()+4)
-	cache.Add("e", 5, time.Now().Unix()+10)
+	cache.Write("a", 1, time.Now().Unix()+1)
+	cache.Write("b", 2, time.Now().Unix()+2)
+	cache.Write("c", 3, time.Now().Unix()+3)
+	cache.Write("d", 4, time.Now().Unix()+4)
+	cache.Write("e", 5, time.Now().Unix()+10)
 
 	go func() {
 		for i := 0; i < 1000; i++ {
-			cache.Add("f", 1, time.Now().Unix()+1)
+			cache.Write("f", 1, time.Now().Unix()+1)
 			time.Sleep(10 * time.Millisecond)
 		}
 	}()
@@ -83,7 +83,7 @@ func TestCache_GC(t *testing.T) {
 	t.Log("now:", time.Now().Unix())
 	for _, p := range cache.pieces {
 		for k, v := range p.m {
-			t.Log(k, v.value, v.expiredAt)
+			t.Log(k, v.Value, v.expiredAt)
 		}
 	}
 }
@@ -93,7 +93,7 @@ func TestCache_GC2(t *testing.T) {
 
 	cache := NewCache()
 	for i := 0; i < 1_000_000; i++ {
-		cache.Add(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 100)))
+		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 100)))
 	}
 
 	for i := 0; i < 100; i++ {
