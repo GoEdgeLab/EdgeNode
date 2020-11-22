@@ -1,6 +1,7 @@
 package ttlcache
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"time"
 )
 
@@ -12,11 +13,13 @@ import (
 // KeyMap列表数据结构
 // { timestamp1 => [key1, key2, ...] }, ...
 type Cache struct {
+	isDestroyed bool
 	pieces      []*Piece
 	countPieces uint64
 	maxItems    int
 
 	gcPieceIndex int
+	ticker       *utils.Ticker
 }
 
 func NewCache(opt ...OptionInterface) *Cache {
@@ -49,8 +52,8 @@ func NewCache(opt ...OptionInterface) *Cache {
 
 	// start timer
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
-		for range ticker.C {
+		cache.ticker = utils.NewTicker(5 * time.Second)
+		for cache.ticker.Next() {
 			cache.GC()
 		}
 	}()
@@ -59,6 +62,10 @@ func NewCache(opt ...OptionInterface) *Cache {
 }
 
 func (this *Cache) Write(key string, value interface{}, expiredAt int64) {
+	if this.isDestroyed {
+		return
+	}
+
 	currentTimestamp := time.Now().Unix()
 	if expiredAt <= currentTimestamp {
 		return
@@ -74,6 +81,25 @@ func (this *Cache) Write(key string, value interface{}, expiredAt int64) {
 		Value:     value,
 		expiredAt: expiredAt,
 	})
+}
+
+func (this *Cache) IncreaseInt64(key string, delta int64, expiredAt int64) int64 {
+	if this.isDestroyed {
+		return 0
+	}
+
+	currentTimestamp := time.Now().Unix()
+	if expiredAt <= currentTimestamp {
+		return 0
+	}
+
+	maxExpiredAt := currentTimestamp + 30*86400
+	if expiredAt > maxExpiredAt {
+		expiredAt = maxExpiredAt
+	}
+	uint64Key := HashKey([]byte(key))
+	pieceIndex := uint64Key % this.countPieces
+	return this.pieces[pieceIndex].IncreaseInt64(uint64Key, delta, expiredAt)
 }
 
 func (this *Cache) Read(key string) (item *Item) {
@@ -108,4 +134,16 @@ func (this *Cache) GC() {
 		newIndex = 0
 	}
 	this.gcPieceIndex = newIndex
+}
+
+func (this *Cache) Destroy() {
+	this.isDestroyed = true
+
+	if this.ticker != nil {
+		this.ticker.Stop()
+		this.ticker = nil
+	}
+	for _, piece := range this.pieces {
+		piece.Destroy()
+	}
 }

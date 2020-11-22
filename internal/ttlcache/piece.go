@@ -2,6 +2,7 @@ package ttlcache
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/types"
 	"sync"
 	"time"
 )
@@ -24,6 +25,26 @@ func (this *Piece) Add(key uint64, item *Item) () {
 	}
 	this.m[key] = item
 	this.locker.Unlock()
+}
+
+func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64) (result int64) {
+	this.locker.Lock()
+	item, ok := this.m[key]
+	if ok {
+		result := types.Int64(item.Value) + delta
+		item.Value = result
+		item.expiredAt = expiredAt
+	} else {
+		if len(this.m) < this.maxItems {
+			result = delta
+			this.m[key] = &Item{
+				Value:     delta,
+				expiredAt: expiredAt,
+			}
+		}
+	}
+	this.locker.Unlock()
+	return
 }
 
 func (this *Piece) Delete(key uint64) {
@@ -58,5 +79,11 @@ func (this *Piece) GC() {
 			delete(this.m, k)
 		}
 	}
+	this.locker.Unlock()
+}
+
+func (this *Piece) Destroy() {
+	this.locker.Lock()
+	this.m = nil
 	this.locker.Unlock()
 }

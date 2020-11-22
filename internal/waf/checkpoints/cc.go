@@ -1,7 +1,7 @@
 package checkpoints
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/grids"
+	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ${cc.arg}
@@ -16,8 +17,8 @@ import (
 type CCCheckpoint struct {
 	Checkpoint
 
-	grid *grids.Grid
-	once sync.Once
+	cache *ttlcache.Cache
+	once  sync.Once
 }
 
 func (this *CCCheckpoint) Init() {
@@ -25,20 +26,20 @@ func (this *CCCheckpoint) Init() {
 }
 
 func (this *CCCheckpoint) Start() {
-	if this.grid != nil {
-		this.grid.Destroy()
+	if this.cache != nil {
+		this.cache.Destroy()
 	}
-	this.grid = grids.NewGrid(32, grids.NewLimitCountOpt(1000_0000))
+	this.cache = ttlcache.NewCache()
 }
 
 func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	value = 0
 
-	if this.grid == nil {
+	if this.cache == nil {
 		this.once.Do(func() {
 			this.Start()
 		})
-		if this.grid == nil {
+		if this.cache == nil {
 			return
 		}
 	}
@@ -115,7 +116,7 @@ func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, opti
 		if len(key) == 0 {
 			key = this.ip(req)
 		}
-		value = this.grid.IncreaseInt64([]byte(key), 1, period)
+		value = this.cache.IncreaseInt64(key, int64(1), time.Now().Unix()+period)
 	}
 
 	return
@@ -204,9 +205,9 @@ func (this *CCCheckpoint) Options() []OptionInterface {
 }
 
 func (this *CCCheckpoint) Stop() {
-	if this.grid != nil {
-		this.grid.Destroy()
-		this.grid = nil
+	if this.cache != nil {
+		this.cache.Destroy()
+		this.cache = nil
 	}
 }
 

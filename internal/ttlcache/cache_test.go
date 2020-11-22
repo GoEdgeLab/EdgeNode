@@ -36,6 +36,27 @@ func BenchmarkCache_Add(b *testing.B) {
 	}
 }
 
+func TestCache_IncreaseInt64(t *testing.T) {
+	var cache = NewCache()
+
+	{
+		cache.IncreaseInt64("a", 1, time.Now().Unix()+3600)
+		t.Log(cache.Read("a"))
+	}
+	{
+		cache.IncreaseInt64("a", 1, time.Now().Unix()+3600+1)
+		t.Log(cache.Read("a"))
+	}
+	{
+		cache.Write("b", 1, time.Now().Unix()+3600+2)
+		t.Log(cache.Read("b"))
+	}
+	{
+		cache.IncreaseInt64("b", 1, time.Now().Unix()+3600+3)
+		t.Log(cache.Read("b"))
+	}
+}
+
 func TestCache_Read(t *testing.T) {
 	runtime.GOMAXPROCS(1)
 
