@@ -33,9 +33,10 @@ func (this *HTTPListener) Serve() error {
 	this.isHTTPS = this.Group.IsHTTPS()
 
 	this.httpServer = &http.Server{
-		Addr:        this.addr,
-		Handler:     handler,
-		IdleTimeout: 2 * time.Minute, // TODO IdleTimeout可以设置
+		Addr:              this.addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 3 * time.Second, // TODO 改成可以配置
+		IdleTimeout:       2 * time.Minute, // TODO 改成可以配置
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:
