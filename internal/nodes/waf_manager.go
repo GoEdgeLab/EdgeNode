@@ -163,7 +163,13 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 	}
 
 	// action
-	// TODO
+	if policy.BlockOptions != nil {
+		w.ActionBlock = &waf.BlockAction{
+			StatusCode: policy.BlockOptions.StatusCode,
+			Body:       policy.BlockOptions.Body,
+			URL:        "",
+		}
+	}
 
 	err := w.Init()
 	if err != nil {
