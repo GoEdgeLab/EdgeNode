@@ -384,13 +384,16 @@ func (this *Rule) Test(value interface{}) bool {
 		return !utils.MatchStringCache(this.reg, types.String(value))
 	case RuleOperatorContains:
 		if types.IsSlice(value) {
-			ok := false
-			lists.Each(value, func(k int, v interface{}) {
-				if types.String(v) == this.Value {
-					ok = true
-				}
-			})
-			return ok
+			_, isBytes := value.([]byte)
+			if !isBytes {
+				ok := false
+				lists.Each(value, func(k int, v interface{}) {
+					if types.String(v) == this.Value {
+						ok = true
+					}
+				})
+				return ok
+			}
 		}
 		if types.IsMap(value) {
 			lowerValue := ""
