@@ -30,3 +30,17 @@ func (this *HTTPRequest) write500(err error) {
 	this.writer.WriteHeader(statusCode)
 	_, _ = this.writer.Write([]byte(http.StatusText(statusCode)))
 }
+
+func (this *HTTPRequest) write502(err error) {
+	if err != nil {
+		this.addError(err)
+	}
+
+	statusCode := http.StatusBadGateway
+	if this.doPage(statusCode) {
+		return
+	}
+	this.processResponseHeaders(statusCode)
+	this.writer.WriteHeader(statusCode)
+	_, _ = this.writer.Write([]byte(http.StatusText(statusCode)))
+}

@@ -31,7 +31,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if origin == nil {
 		err := errors.New(this.requestPath() + ": no available backends for reverse proxy")
 		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
-		this.write500(err)
+		this.write502(err)
 		return
 	}
 	this.origin = origin // 设置全局变量是为了日志等处理
@@ -51,7 +51,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if origin.Addr == nil {
 		err := errors.New(this.requestPath() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
-		this.write500(err)
+		this.write502(err)
 		return
 	}
 	this.RawReq.URL.Scheme = origin.Addr.Protocol.Primary().Scheme()
@@ -128,7 +128,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	client, addr, err := SharedHTTPClientPool.Client(this, origin)
 	if err != nil {
 		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
-		this.write500(err)
+		this.write502(err)
 		return
 	}
 
@@ -142,7 +142,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if !ok || httpErr.Err != context.Canceled {
 			// TODO 如果超过最大失败次数，则下线
 
-			this.write500(err)
+			this.write502(err)
 			logs.Println("REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
 		} else {
 			// 是否为客户端方面的错误
@@ -156,7 +156,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			}
 
 			if !isClientError {
-				this.write500(err)
+				this.write502(err)
 			}
 		}
 		if resp != nil && resp.Body != nil {
