@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"errors"
 	"github.com/iwind/TeaGo/logs"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 func (this *HTTPRequest) doWebsocket() {
 	if this.web.WebsocketRef == nil || !this.web.WebsocketRef.IsOn || this.web.Websocket == nil || !this.web.Websocket.IsOn {
 		this.writer.WriteHeader(http.StatusForbidden)
+		this.addError(errors.New("websocket have not been enabled yet"))
 		return
 	}
 
@@ -23,6 +25,7 @@ func (this *HTTPRequest) doWebsocket() {
 		if err == nil {
 			if !this.web.Websocket.MatchOrigin(u.Host) {
 				this.writer.WriteHeader(http.StatusForbidden)
+				this.addError(errors.New("websocket origin '" + requestOrigin + "' not been allowed"))
 				return
 			}
 		}

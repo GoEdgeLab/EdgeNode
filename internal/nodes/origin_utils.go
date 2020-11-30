@@ -24,7 +24,9 @@ func OriginConnect(origin *serverconfigs.OriginConfig) (net.Conn, error) {
 		// TODO 支持指定特定网卡
 		// TODO Addr支持端口范围，如果有多个端口时，随机一个端口使用
 		// TODO 支持使用证书
-		return tls.Dial("tcp", origin.Addr.Host+":"+origin.Addr.PortRange, &tls.Config{})
+		return tls.Dial("tcp", origin.Addr.Host+":"+origin.Addr.PortRange, &tls.Config{
+			InsecureSkipVerify: true,
+		})
 	}
 
 	// TODO 支持从Unix、Pipe、HTTP、HTTPS中读取数据
