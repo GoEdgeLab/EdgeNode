@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -22,7 +23,11 @@ func (this *HTTPRequest) doReverseProxy() {
 	stripPrefix := this.reverseProxy.StripPrefix
 	requestURI := this.reverseProxy.RequestURI
 	requestURIHasVariables := this.reverseProxy.RequestURIHasVariables()
-	requestHost := this.reverseProxy.RequestHost
+
+	var requestHost = ""
+	if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeCustomized {
+		requestHost = this.reverseProxy.RequestHost
+	}
 	requestHostHasVariables := this.reverseProxy.RequestHostHasVariables()
 
 	// 源站
@@ -91,6 +96,13 @@ func (this *HTTPRequest) doReverseProxy() {
 		this.uri = utils.CleanPath(this.uri)
 	}
 
+	// 获取源站地址
+	originAddr := origin.Addr.PickAddress()
+	if origin.Addr.HostHasVariables() {
+		originAddr = this.Format(originAddr)
+	}
+	this.originAddr = originAddr
+
 	// RequestHost
 	if len(requestHost) > 0 {
 		if requestHostHasVariables {
@@ -98,6 +110,9 @@ func (this *HTTPRequest) doReverseProxy() {
 		} else {
 			this.RawReq.Host = this.reverseProxy.RequestHost
 		}
+		this.RawReq.URL.Host = this.RawReq.Host
+	} else if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeOrigin {
+		this.RawReq.Host = originAddr
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else {
 		this.RawReq.URL.Host = this.Host
@@ -125,14 +140,12 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 获取请求客户端
-	client, addr, err := SharedHTTPClientPool.Client(this, origin)
+	client, err := SharedHTTPClientPool.Client(origin, originAddr)
 	if err != nil {
 		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)
 		return
 	}
-
-	this.originAddr = addr
 
 	// 开始请求
 	resp, err := client.Do(this.RawReq)

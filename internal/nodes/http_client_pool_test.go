@@ -21,18 +21,18 @@ func TestHTTPClientPool_Client(t *testing.T) {
 			t.Fatal(err)
 		}
 		{
-			client, addr, err := pool.Client(nil, origin)
+			client, err := pool.Client(origin, origin.Addr.PickAddress())
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Log("addr:", addr, "client:", client)
+			t.Log("client:", client)
 		}
 		for i := 0; i < 10; i++ {
-			client, addr, err := pool.Client(nil, origin)
+			client, err := pool.Client(origin, origin.Addr.PickAddress())
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Log("addr:", addr, "client:", client)
+			t.Log("client:", client)
 		}
 	}
 }
@@ -53,7 +53,7 @@ func TestHTTPClientPool_cleanClients(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		t.Log("get", i)
-		_, _, _ = pool.Client(nil, origin)
+		_, _ = pool.Client(origin, origin.Addr.PickAddress())
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -73,6 +73,6 @@ func BenchmarkHTTPClientPool_Client(b *testing.B) {
 
 	pool := NewHTTPClientPool()
 	for i := 0; i < b.N; i++ {
-		_, _, _ = pool.Client(nil, origin)
+		_, _ = pool.Client(origin, origin.Addr.PickAddress())
 	}
 }

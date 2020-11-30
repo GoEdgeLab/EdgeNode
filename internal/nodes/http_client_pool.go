@@ -36,17 +36,12 @@ func NewHTTPClientPool() *HTTPClientPool {
 }
 
 // 根据地址获取客户端
-func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.OriginConfig) (rawClient *http.Client, realAddr string, err error) {
+func (this *HTTPClientPool) Client(origin *serverconfigs.OriginConfig, originAddr string) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
-		return nil, "", errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
+		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
 
-	key := origin.UniqueKey()
-	originAddr := origin.Addr.PickAddress()
-	if origin.Addr.HostHasVariables() {
-		originAddr = req.Format(originAddr)
-	}
-	key += "@" + originAddr
+	key := origin.UniqueKey() + "@" + originAddr
 
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -54,7 +49,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 	client, found := this.clientsMap[key]
 	if found {
 		client.UpdateAccessTime()
-		return client.RawClient(), originAddr, nil
+		return client.RawClient(), nil
 	}
 
 	maxConnections := origin.MaxConns
@@ -128,7 +123,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 
 	this.clientsMap[key] = NewHTTPClient(rawClient)
 
-	return rawClient, originAddr, nil
+	return rawClient, nil
 }
 
 // 清理不使用的Client
