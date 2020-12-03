@@ -89,6 +89,10 @@ func (this *RPCClient) FileChunkRPC() pb.FileChunkServiceClient {
 	return pb.NewFileChunkServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) ACMEAuthenticationRPC() pb.ACMEAuthenticationServiceClient {
+	return pb.NewACMEAuthenticationServiceClient(this.pickConn())
+}
+
 // 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()

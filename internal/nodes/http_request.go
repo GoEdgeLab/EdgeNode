@@ -141,6 +141,16 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
+	// 特殊URL处理
+	if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
+		// ACME
+		// TODO 需要配置是否启用ACME检测
+		if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
+			this.doACME()
+			return
+		}
+	}
+
 	// 临时关闭页面
 	if this.web.Shutdown != nil && this.web.Shutdown.IsOn {
 		this.doShutdown()
