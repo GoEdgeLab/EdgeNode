@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/logs"
 	"net"
 	"net/http"
 	"runtime"
@@ -36,7 +37,7 @@ func NewHTTPClientPool() *HTTPClientPool {
 }
 
 // 根据地址获取客户端
-func (this *HTTPClientPool) Client(origin *serverconfigs.OriginConfig, originAddr string) (rawClient *http.Client, err error) {
+func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.OriginConfig, originAddr string) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
@@ -97,7 +98,34 @@ func (this *HTTPClientPool) Client(origin *serverconfigs.OriginConfig, originAdd
 
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// 握手配置
+			// 支持TOA的连接
+			toaConfig := sharedTOAManager.Config()
+			if toaConfig != nil && toaConfig.IsOn {
+				retries := 3
+				for i := 1; i <= retries; i++ {
+					port := int(toaConfig.RandLocalPort())
+					// TODO 思考是否支持X-Real-IP/X-Forwarded-IP
+					err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + req.RemoteAddr)
+					if err != nil {
+						logs.Error("TOA", "add failed: "+err.Error())
+					} else {
+						dialer := net.Dialer{
+							Timeout:   connectionTimeout,
+							KeepAlive: 1 * time.Minute,
+							LocalAddr: &net.TCPAddr{
+								Port: port,
+							},
+						}
+						conn, err := dialer.DialContext(ctx, network, originAddr)
+						// TODO 需要在合适的时机删除TOA记录
+						if err == nil || i == retries {
+							return conn, err
+						}
+					}
+				}
+			}
+
+			// 普通的连接
 			return (&net.Dialer{
 				Timeout:   connectionTimeout,
 				KeepAlive: 1 * time.Minute,

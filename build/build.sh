@@ -40,6 +40,12 @@ function build() {
 	cp -R $ROOT/pages $DIST/
 	cp -R $ROOT/resources $DIST/
 
+	# we support TOA on linux/amd64 only
+	if [ $OS == "linux" -a $ARCH == "amd64" ]
+	then
+		cp -R $ROOT/edge-toa $DIST
+	fi
+
 	echo "building ..."
 	env GOOS=${OS} GOARCH=${ARCH} go build -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
 

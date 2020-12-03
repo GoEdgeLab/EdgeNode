@@ -140,7 +140,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 获取请求客户端
-	client, err := SharedHTTPClientPool.Client(origin, originAddr)
+	client, err := SharedHTTPClientPool.Client(this.RawReq, origin, originAddr)
 	if err != nil {
 		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)

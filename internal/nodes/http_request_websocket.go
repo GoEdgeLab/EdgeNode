@@ -41,7 +41,7 @@ func (this *HTTPRequest) doWebsocket() {
 	}
 
 	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
-	originConn, err := OriginConnect(this.origin)
+	originConn, err := OriginConnect(this.origin, this.RawReq.RemoteAddr)
 	if err != nil {
 		logs.Error(err)
 		this.write500(err)

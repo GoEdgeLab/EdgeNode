@@ -92,6 +92,9 @@ func (this *Node) Start() {
 	}
 	sharedNodeConfig = nodeConfig
 
+	// 发送事件
+	events.Notify(events.EventLoaded)
+
 	// 设置rlimit
 	_ = utils.SetRLimit(1024 * 1024)
 
@@ -166,10 +169,16 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 		return errors.New("create rpc client failed: " + err.Error())
 	}
 	// TODO 这里考虑只同步版本号有变更的
-	configResp, err := rpcClient.NodeRPC().FindCurrentNodeConfig(rpcClient.Context(), &pb.FindCurrentNodeConfigRequest{})
+	configResp, err := rpcClient.NodeRPC().FindCurrentNodeConfig(rpcClient.Context(), &pb.FindCurrentNodeConfigRequest{
+		Version: lastVersion,
+	})
 	if err != nil {
 		return errors.New("read config from rpc failed: " + err.Error())
 	}
+	if !configResp.IsChanged {
+		return nil
+	}
+
 	configJSON := configResp.NodeJSON
 	nodeConfig := &nodeconfigs.NodeConfig{}
 	err = json.Unmarshal(configJSON, nodeConfig)
@@ -212,6 +221,9 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 	caches.SharedManager.UpdatePolicies(nodeConfig.AllCachePolicies())
 	sharedWAFManager.UpdatePolicies(nodeConfig.AllHTTPFirewallPolicies())
 	sharedNodeConfig = nodeConfig
+
+	// 发送事件
+	events.Notify(events.EventReload)
 
 	if !isFirstTime {
 		return sharedListenerManager.Start(nodeConfig)

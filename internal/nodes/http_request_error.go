@@ -42,5 +42,5 @@ func (this *HTTPRequest) write502(err error) {
 	}
 	this.processResponseHeaders(statusCode)
 	this.writer.WriteHeader(statusCode)
-	_, _ = this.writer.Write([]byte(http.StatusText(statusCode)))
+	_, _ = this.writer.Write([]byte("502 Bad Gateway"))
 }

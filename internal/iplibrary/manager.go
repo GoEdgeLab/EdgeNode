@@ -17,7 +17,7 @@ var SharedManager = NewManager()
 var SharedLibrary LibraryInterface
 
 func init() {
-	events.On(events.EventStart, func() {
+	events.On(events.EventLoaded, func() {
 		// 初始化
 		library, err := SharedManager.Load()
 		if err != nil {

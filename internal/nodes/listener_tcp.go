@@ -54,7 +54,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	if firstServer.ReverseProxy == nil {
 		return errors.New("no ReverseProxy configured for the server")
 	}
-	originConn, err := this.connectOrigin(firstServer.ReverseProxy)
+	originConn, err := this.connectOrigin(firstServer.ReverseProxy, conn.RemoteAddr().String())
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (this *TCPListener) Close() error {
 	return this.Listener.Close()
 }
 
-func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyConfig) (conn net.Conn, err error) {
+func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr string) (conn net.Conn, err error) {
 	if reverseProxy == nil {
 		return nil, errors.New("no reverse proxy config")
 	}
@@ -117,7 +117,7 @@ func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyC
 		if origin == nil {
 			continue
 		}
-		conn, err = OriginConnect(origin)
+		conn, err = OriginConnect(origin, remoteAddr)
 		if err != nil {
 			logs.Error("TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
 			continue
