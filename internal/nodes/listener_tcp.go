@@ -65,7 +65,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	}
 
 	go func() {
-		originBuffer := make([]byte, 32*1024) // TODO 需要可以设置，并可以使用Pool
+		originBuffer := make([]byte, 4*1024) // TODO 需要可以设置，并可以使用Pool
 		for {
 			n, err := originConn.Read(originBuffer)
 			if n > 0 {
@@ -74,6 +74,9 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 					closer()
 					break
 				}
+
+				// 记录流量
+				SharedTrafficStatManager.Add(firstServer.Id, int64(n))
 			}
 			if err != nil {
 				closer()
@@ -82,7 +85,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 		}
 	}()
 
-	clientBuffer := make([]byte, 32*1024) // TODO 需要可以设置，并可以使用Pool
+	clientBuffer := make([]byte, 4*1024) // TODO 需要可以设置，并可以使用Pool
 	for {
 		n, err := conn.Read(clientBuffer)
 		if n > 0 {

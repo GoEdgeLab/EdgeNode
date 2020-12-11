@@ -93,6 +93,10 @@ func (this *RPCClient) ACMEAuthenticationRPC() pb.ACMEAuthenticationServiceClien
 	return pb.NewACMEAuthenticationServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) ServerDailyStatRPC() pb.ServerDailyStatServiceClient {
+	return pb.NewServerDailyStatServiceClient(this.pickConn())
+}
+
 // 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()

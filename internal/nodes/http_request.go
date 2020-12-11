@@ -199,7 +199,14 @@ func (this *HTTPRequest) doBegin() {
 
 // 结束调用
 func (this *HTTPRequest) doEnd() {
+	// 记录日志
 	this.log()
+
+	// 流量统计
+	// TODO 增加是否开启开关
+	if this.Server != nil {
+		SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes)
+	}
 }
 
 // 原始的请求URI

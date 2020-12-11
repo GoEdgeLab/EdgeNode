@@ -69,7 +69,20 @@ func (this *HTTPRequest) doWebsocket() {
 	}()
 
 	go func() {
-		_, _ = io.Copy(clientConn, originConn)
+		buf := make([]byte, 4*1024) // TODO 使用内存池
+		for {
+			n, err := originConn.Read(buf)
+			if n > 0 {
+				this.writer.sentBodyBytes += int64(n)
+				_, err = clientConn.Write(buf[:n])
+				if err != nil {
+					break
+				}
+			}
+			if err != nil {
+				break
+			}
+		}
 		_ = clientConn.Close()
 		_ = originConn.Close()
 	}()
