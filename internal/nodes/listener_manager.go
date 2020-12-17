@@ -3,7 +3,7 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
 	"net/url"
 	"regexp"
@@ -51,7 +51,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	}
 
 	if len(availableServerGroups) == 0 {
-		logs.Println("LISTENER_MANAGER", "no available servers to startup")
+		remotelogs.Println("LISTENER_MANAGER", "no available servers to startup")
 	}
 
 	for _, group := range availableServerGroups {
@@ -63,7 +63,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	for listenerKey, listener := range this.listenersMap {
 		addr := listener.FullAddr()
 		if !lists.ContainsString(groupAddrs, addr) {
-			logs.Println("LISTENER_MANAGER", "close '"+addr+"'")
+			remotelogs.Println("LISTENER_MANAGER", "close '"+addr+"'")
 			_ = listener.Close()
 
 			delete(this.listenersMap, listenerKey)
@@ -75,15 +75,15 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 		addr := group.FullAddr()
 		listener, ok := this.listenersMap[addr]
 		if ok {
-			logs.Println("LISTENER_MANAGER", "reload '"+this.prettyAddress(addr)+"'")
+			remotelogs.Println("LISTENER_MANAGER", "reload '"+this.prettyAddress(addr)+"'")
 			listener.Reload(group)
 		} else {
-			logs.Println("LISTENER_MANAGER", "listen '"+this.prettyAddress(addr)+"'")
+			remotelogs.Println("LISTENER_MANAGER", "listen '"+this.prettyAddress(addr)+"'")
 			listener = NewListener()
 			listener.Reload(group)
 			err := listener.Listen()
 			if err != nil {
-				logs.Error("LISTENER_MANAGER", err.Error())
+				remotelogs.Error("LISTENER_MANAGER", err.Error())
 				continue
 			}
 			this.listenersMap[addr] = listener

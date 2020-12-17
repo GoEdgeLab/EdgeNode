@@ -3,7 +3,7 @@ package iplibrary
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/Tea"
 	"sync"
@@ -46,7 +46,7 @@ func (this *IPListManager) Start() {
 	// 第一次读取
 	err := this.loop()
 	if err != nil {
-		logs.Println("IP_LIST_MANAGER", err.Error())
+		remotelogs.Println("IP_LIST_MANAGER", err.Error())
 	}
 
 	ticker := time.NewTicker(60 * time.Second) // TODO 未来改成可以手动触发IP变更事件
@@ -63,7 +63,7 @@ func (this *IPListManager) Start() {
 		if err != nil {
 			countErrors++
 
-			logs.Println("IP_LIST_MANAGER", err.Error())
+			remotelogs.Println("IP_LIST_MANAGER", err.Error())
 
 			// 连续错误小于3次的我们立即重试
 			if countErrors <= 3 {

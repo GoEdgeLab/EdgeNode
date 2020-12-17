@@ -2,7 +2,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
@@ -41,7 +41,7 @@ func (this *TrafficStatManager) Start() {
 	for range ticker.C {
 		err := this.Upload()
 		if err != nil {
-			logs.Error("TRAFFIC_STAT_MANAGER", "upload stats failed: "+err.Error())
+			remotelogs.Error("TRAFFIC_STAT_MANAGER", "upload stats failed: "+err.Error())
 		}
 	}
 }

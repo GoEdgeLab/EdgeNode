@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"net"
 	"strconv"
 )
@@ -23,7 +23,7 @@ func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.C
 			port := int(toaConfig.RandLocalPort())
 			err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + remoteAddr)
 			if err != nil {
-				logs.Error("TOA", "add failed: "+err.Error())
+				remotelogs.Error("TOA", "add failed: "+err.Error())
 			} else {
 				dialer := net.Dialer{
 					Timeout: origin.ConnTimeoutDuration(),

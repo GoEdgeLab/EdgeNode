@@ -3,7 +3,7 @@ package nodes
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"strconv"
@@ -15,12 +15,14 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return
 	}
 
+	cachePolicy := sharedNodeConfig.HTTPCachePolicy
+	if cachePolicy == nil || !cachePolicy.IsOn {
+		return
+	}
+
 	// 检查条件
 	for _, cacheRef := range this.web.Cache.CacheRefs {
 		if !cacheRef.IsOn ||
-			cacheRef.CachePolicyId == 0 ||
-			cacheRef.CachePolicy == nil ||
-			!cacheRef.CachePolicy.IsOn ||
 			cacheRef.Conds == nil ||
 			!cacheRef.Conds.HasRequestConds() {
 			continue
@@ -35,9 +37,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	// 相关变量
-	this.varMapping["cache.policy.name"] = this.cacheRef.CachePolicy.Name
-	this.varMapping["cache.policy.id"] = strconv.FormatInt(this.cacheRef.CachePolicy.Id, 10)
-	this.varMapping["cache.policy.type"] = this.cacheRef.CachePolicy.Type
+	this.varMapping["cache.policy.name"] = cachePolicy.Name
+	this.varMapping["cache.policy.id"] = strconv.FormatInt(cachePolicy.Id, 10)
+	this.varMapping["cache.policy.type"] = cachePolicy.Type
 
 	// Cache-Pragma
 	if this.cacheRef.EnableRequestCachePragma {
@@ -58,7 +60,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	this.cacheKey = key
 
 	// 读取缓存
-	storage := caches.SharedManager.FindStorageWithPolicy(this.cacheRef.CachePolicyId)
+	storage := caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
 	if storage == nil {
 		this.cacheRef = nil
 		return
@@ -139,7 +141,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			return
 		}
 
-		logs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+		remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 		return
 	}
 

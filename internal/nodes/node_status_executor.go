@@ -6,7 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/shirou/gopsutil/cpu"
@@ -38,7 +38,7 @@ func (this *NodeStatusExecutor) Listen() {
 	ticker := time.NewTicker(30 * time.Second)
 
 	events.On(events.EventQuit, func() {
-		logs.Println("NODE_STATUS", "quit executor")
+		remotelogs.Println("NODE_STATUS", "quit executor")
 		ticker.Stop()
 	})
 
@@ -73,19 +73,19 @@ func (this *NodeStatusExecutor) update() {
 	//  发送数据
 	jsonData, err := json.Marshal(status)
 	if err != nil {
-		logs.Error("NODE_STATUS", "serial NodeStatus fail: "+err.Error())
+		remotelogs.Error("NODE_STATUS", "serial NodeStatus fail: "+err.Error())
 		return
 	}
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
-		logs.Error("NODE_STATUS", "failed to open rpc: "+err.Error())
+		remotelogs.Error("NODE_STATUS", "failed to open rpc: "+err.Error())
 		return
 	}
 	_, err = rpcClient.NodeRPC().UpdateNodeStatus(rpcClient.Context(), &pb.UpdateNodeStatusRequest{
 		StatusJSON: jsonData,
 	})
 	if err != nil {
-		logs.Error("NODE_STATUS", "rpc UpdateNodeStatus() failed: "+err.Error())
+		remotelogs.Error("NODE_STATUS", "rpc UpdateNodeStatus() failed: "+err.Error())
 		return
 	}
 }
@@ -131,7 +131,7 @@ func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
 func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 	partitions, err := disk.Partitions(false)
 	if err != nil {
-		logs.Error("NODE_STATUS", err.Error())
+		remotelogs.Error("NODE_STATUS", err.Error())
 		return
 	}
 	lists.Sort(partitions, func(i int, j int) bool {

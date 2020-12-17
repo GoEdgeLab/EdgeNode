@@ -2,7 +2,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"net/http"
 	"path/filepath"
@@ -15,13 +15,13 @@ func (this *HTTPRequest) doACME() {
 
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
-		logs.Error("RPC", "[ACME]rpc failed: "+err.Error())
+		remotelogs.Error("RPC", "[ACME]rpc failed: "+err.Error())
 		return
 	}
 
 	keyResp, err := rpcClient.ACMEAuthenticationRPC().FindACMEAuthenticationKeyWithToken(rpcClient.Context(), &pb.FindACMEAuthenticationKeyWithTokenRequest{Token: token})
 	if err != nil {
-		logs.Error("RPC", "[ACME]read key for token failed: "+err.Error())
+		remotelogs.Error("RPC", "[ACME]read key for token failed: "+err.Error())
 		return
 	}
 	if len(keyResp.Key) == 0 {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
 	"net/url"
@@ -35,7 +35,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	origin := this.reverseProxy.NextOrigin(requestCall)
 	if origin == nil {
 		err := errors.New(this.requestPath() + ": no available backends for reverse proxy")
-		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)
 		return
 	}
@@ -55,7 +55,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 处理Scheme
 	if origin.Addr == nil {
 		err := errors.New(this.requestPath() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
-		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)
 		return
 	}
@@ -142,7 +142,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 获取请求客户端
 	client, err := SharedHTTPClientPool.Client(this.RawReq, origin, originAddr)
 	if err != nil {
-		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)
 		return
 	}
@@ -156,7 +156,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			// TODO 如果超过最大失败次数，则下线
 
 			this.write502(err)
-			logs.Println("REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
+			remotelogs.Println("REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
 		} else {
 			// 是否为客户端方面的错误
 			isClientError := false
@@ -179,11 +179,11 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// WAF对出站进行检查
-	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn && this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
+	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 		if this.doWAFResponse(resp) {
 			err = resp.Body.Close()
 			if err != nil {
-				logs.Error("REQUEST_REVERSE_PROXY", err.Error())
+				remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
 			}
 			return
 		}
@@ -195,7 +195,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()
 		if err != nil {
-			logs.Error("REQUEST_REVERSE_PROXY", err.Error())
+			remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		}
 		return
 	}
@@ -250,11 +250,11 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	err1 := resp.Body.Close()
 	if err1 != nil {
-		logs.Error("REQUEST_REVERSE_PROXY", err1.Error())
+		remotelogs.Error("REQUEST_REVERSE_PROXY", err1.Error())
 	}
 
 	if err != nil && err != io.EOF {
-		logs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
 		this.addError(err)
 	}
 }

@@ -3,7 +3,7 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"net"
 	"os"
@@ -18,7 +18,7 @@ func init() {
 	events.On(events.EventReload, func() {
 		err := sharedTOAManager.Run(sharedNodeConfig.TOA)
 		if err != nil {
-			logs.Error("TOA", err.Error())
+			remotelogs.Error("TOA", err.Error())
 		}
 	})
 }
@@ -37,10 +37,10 @@ func (this *TOAManager) Run(config *nodeconfigs.TOAConfig) error {
 	this.config = config
 
 	if this.pid > 0 {
-		logs.Println("TOA", "stopping ...")
+		remotelogs.Println("TOA", "stopping ...")
 		err := this.Quit()
 		if err != nil {
-			logs.Error("TOA", "quit error: "+err.Error())
+			remotelogs.Error("TOA", "quit error: "+err.Error())
 		}
 		_ = this.conn.Close()
 		this.conn = nil
@@ -56,8 +56,8 @@ func (this *TOAManager) Run(config *nodeconfigs.TOAConfig) error {
 	if err != nil {
 		return err
 	}
-	logs.Println("TOA", "starting ...")
-	logs.Println("TOA", "args: "+strings.Join(config.AsArgs(), " "))
+	remotelogs.Println("TOA", "starting ...")
+	remotelogs.Println("TOA", "args: "+strings.Join(config.AsArgs(), " "))
 	cmd := exec.Command(binPath, config.AsArgs()...)
 	err = cmd.Start()
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"io"
 	"net/http"
@@ -39,7 +39,7 @@ func (this *APIStream) Start() {
 		}
 		err := this.loop()
 		if err != nil {
-			logs.Error("API_STREAM", err.Error())
+			remotelogs.Error("API_STREAM", err.Error())
 			time.Sleep(10 * time.Second)
 			continue
 		}
@@ -102,7 +102,7 @@ func (this *APIStream) loop() error {
 			err = this.handleUnknownMessage(message)
 		}
 		if err != nil {
-			logs.Error("API_STREAM", "handle message failed: "+err.Error())
+			remotelogs.Error("API_STREAM", "handle message failed: "+err.Error())
 		}
 	}
 
@@ -130,7 +130,7 @@ func (this *APIStream) handleConnectedAPINode(message *pb.NodeStreamMessage) err
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	logs.Println("API_STREAM", "connected to api node '"+strconv.FormatInt(msg.APINodeId, 10)+"'")
+	remotelogs.Println("API_STREAM", "connected to api node '"+strconv.FormatInt(msg.APINodeId, 10)+"'")
 	return nil
 }
 

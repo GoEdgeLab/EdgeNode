@@ -6,7 +6,7 @@ import (
 	"compress/gzip"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
 	"net"
@@ -115,7 +115,7 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 			if err != nil {
 				_ = this.cacheWriter.Discard()
 				this.cacheWriter = nil
-				logs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+				remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
 			}
 		}
 	} else {
@@ -127,7 +127,7 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 		if this.gzipBodyWriter != nil {
 			_, err := this.gzipBodyWriter.Write(data)
 			if err != nil {
-				logs.Error("REQUEST_WRITER", err.Error())
+				remotelogs.Error("REQUEST_WRITER", err.Error())
 			}
 		} else {
 			this.body = append(this.body, data...)
@@ -281,7 +281,7 @@ func (this *HTTPWriter) prepareGzip(size int64) {
 	var err error = nil
 	this.gzipWriter, err = gzip.NewWriterLevel(this.writer, int(this.gzipConfig.Level))
 	if err != nil {
-		logs.Error("REQUEST_WRITER", err.Error())
+		remotelogs.Error("REQUEST_WRITER", err.Error())
 		return
 	}
 
@@ -290,7 +290,7 @@ func (this *HTTPWriter) prepareGzip(size int64) {
 		this.gzipBodyBuffer = bytes.NewBuffer([]byte{})
 		this.gzipBodyWriter, err = gzip.NewWriterLevel(this.gzipBodyBuffer, int(this.gzipConfig.Level))
 		if err != nil {
-			logs.Error("REQUEST_WRITER", err.Error())
+			remotelogs.Error("REQUEST_WRITER", err.Error())
 		}
 	}
 
@@ -307,12 +307,16 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		return
 	}
 
+	cachePolicy := sharedNodeConfig.HTTPCachePolicy
+	if cachePolicy == nil || !cachePolicy.IsOn {
+		return
+	}
+
 	cacheRef := this.req.cacheRef
 	if cacheRef == nil ||
-		cacheRef.CachePolicy == nil ||
 		!cacheRef.IsOn ||
 		(cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
-		(cacheRef.CachePolicy.MaxSizeBytes() > 0 && size > cacheRef.CachePolicy.MaxSizeBytes()) {
+		(cachePolicy.MaxSizeBytes() > 0 && size > cachePolicy.MaxSizeBytes()) {
 		return
 	}
 
@@ -345,7 +349,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	}
 
 	// 打开缓存写入
-	storage := caches.SharedManager.FindStorageWithPolicy(this.req.cacheRef.CachePolicyId)
+	storage := caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
 	if storage == nil {
 		return
 	}
@@ -357,7 +361,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	expiredAt := utils.UnixTime() + life
 	cacheWriter, err := storage.Open(this.req.cacheKey, expiredAt)
 	if err != nil {
-		logs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+		remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
 		return
 	}
 	this.cacheWriter = cacheWriter
@@ -369,7 +373,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	headerData := this.HeaderData()
 	_, err = cacheWriter.Write(headerData)
 	if err != nil {
-		logs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+		remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
 		_ = this.cacheWriter.Discard()
 		this.cacheWriter = nil
 		return

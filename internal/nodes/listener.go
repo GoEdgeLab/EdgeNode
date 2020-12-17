@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"net"
 	"sync"
 )
@@ -49,7 +49,7 @@ func (this *Listener) Listen() error {
 		return err
 	}
 	events.On(events.EventQuit, func() {
-		logs.Println("LISTENER", "quit "+this.group.FullAddr())
+		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
 		_ = netListener.Close()
 	})
 
@@ -100,7 +100,7 @@ func (this *Listener) Listen() error {
 			}
 
 			// 打印其他错误
-			logs.Error("LISTENER", err.Error())
+			remotelogs.Error("LISTENER", err.Error())
 		}
 	}()
 

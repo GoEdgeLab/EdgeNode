@@ -5,11 +5,13 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/go-yaml/yaml"
@@ -62,14 +64,14 @@ func (this *Node) Start() {
 	// 本地Sock
 	err := this.listenSock()
 	if err != nil {
-		logs.Error("NODE", err.Error())
+		remotelogs.Error("NODE", err.Error())
 		return
 	}
 
 	// 读取API配置
 	err = this.syncConfig(false)
 	if err != nil {
-		logs.Error("NODE", err.Error())
+		remotelogs.Error("NODE", err.Error())
 		return
 	}
 
@@ -82,12 +84,12 @@ func (this *Node) Start() {
 	// 读取配置
 	nodeConfig, err := nodeconfigs.SharedNodeConfig()
 	if err != nil {
-		logs.Error("NODE", "start failed: read node config failed: "+err.Error())
+		remotelogs.Error("NODE", "start failed: read node config failed: "+err.Error())
 		return
 	}
 	err = nodeConfig.Init()
 	if err != nil {
-		logs.Error("NODE", "init node config failed: "+err.Error())
+		remotelogs.Error("NODE", "init node config failed: "+err.Error())
 		return
 	}
 	sharedNodeConfig = nodeConfig
@@ -104,14 +106,14 @@ func (this *Node) Start() {
 	// 启动端口
 	err = sharedListenerManager.Start(nodeConfig)
 	if err != nil {
-		logs.Error("NODE", "start failed: "+err.Error())
+		remotelogs.Error("NODE", "start failed: "+err.Error())
 		return
 	}
 
 	// 写入PID
 	err = apps.WritePid()
 	if err != nil {
-		logs.Error("NODE", "write pid failed: "+err.Error())
+		remotelogs.Error("NODE", "write pid failed: "+err.Error())
 		return
 	}
 
@@ -212,14 +214,22 @@ func (this *Node) syncConfig(isFirstTime bool) error {
 
 	// 刷新配置
 	if isFirstTime {
-		logs.Println("NODE", "reloading config ...")
+		remotelogs.Println("NODE", "reloading config ...")
 	} else {
-		logs.Println("NODE", "loading config ...")
+		remotelogs.Println("NODE", "loading config ...")
 	}
 
 	nodeconfigs.ResetNodeConfig(nodeConfig)
-	caches.SharedManager.UpdatePolicies(nodeConfig.AllCachePolicies())
-	sharedWAFManager.UpdatePolicies(nodeConfig.AllHTTPFirewallPolicies())
+	if nodeConfig.HTTPCachePolicy != nil {
+		caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{nodeConfig.HTTPCachePolicy})
+	} else {
+		caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
+	}
+	if nodeConfig.HTTPFirewallPolicy != nil {
+		sharedWAFManager.UpdatePolicies([]*firewallconfigs.HTTPFirewallPolicy{nodeConfig.HTTPFirewallPolicy})
+	} else {
+		sharedWAFManager.UpdatePolicies([]*firewallconfigs.HTTPFirewallPolicy{})
+	}
 	sharedNodeConfig = nodeConfig
 
 	// 发送事件
@@ -237,7 +247,7 @@ func (this *Node) startSyncTimer() {
 	// TODO 这个时间间隔可以自行设置
 	ticker := time.NewTicker(60 * time.Second)
 	events.On(events.EventQuit, func() {
-		logs.Println("NODE", "quit sync timer")
+		remotelogs.Println("NODE", "quit sync timer")
 		ticker.Stop()
 	})
 	go func() {
@@ -246,13 +256,13 @@ func (this *Node) startSyncTimer() {
 			case <-ticker.C:
 				err := this.syncConfig(false)
 				if err != nil {
-					logs.Error("NODE", "sync config error: "+err.Error())
+					remotelogs.Error("NODE", "sync config error: "+err.Error())
 					continue
 				}
 			case <-changeNotify:
 				err := this.syncConfig(false)
 				if err != nil {
-					logs.Error("NODE", "sync config error: "+err.Error())
+					remotelogs.Error("NODE", "sync config error: "+err.Error())
 					continue
 				}
 			}
@@ -333,7 +343,7 @@ func (this *Node) listenSock() error {
 		return err
 	}
 	events.On(events.EventQuit, func() {
-		logs.Println("NODE", "quit unix sock")
+		remotelogs.Println("NODE", "quit unix sock")
 		_ = listener.Close()
 	})
 

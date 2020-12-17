@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"net"
 	"net/http"
 	"runtime"
@@ -107,7 +107,7 @@ func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.Orig
 					// TODO 思考是否支持X-Real-IP/X-Forwarded-IP
 					err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + req.RemoteAddr)
 					if err != nil {
-						logs.Error("TOA", "add failed: "+err.Error())
+						remotelogs.Error("TOA", "add failed: "+err.Error())
 					} else {
 						dialer := net.Dialer{
 							Timeout:   connectionTimeout,

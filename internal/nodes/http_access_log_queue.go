@@ -2,7 +2,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"time"
 )
@@ -33,7 +33,7 @@ func (this *HTTPAccessLogQueue) Start() {
 	for range ticker.C {
 		err := this.loop()
 		if err != nil {
-			logs.Error("ACCESS_LOG_QUEUE", err.Error())
+			remotelogs.Error("ACCESS_LOG_QUEUE", err.Error())
 		}
 	}
 }

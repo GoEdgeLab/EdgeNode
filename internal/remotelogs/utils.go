@@ -1,4 +1,4 @@
-package logs
+package remotelogs
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"

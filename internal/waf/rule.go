@@ -7,7 +7,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/filterconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
@@ -637,7 +637,7 @@ func (this *Rule) execFilter(value interface{}) interface{} {
 		}
 		value, goNext, err = filterInstance.Do(value, filter.Options)
 		if err != nil {
-			logs.Println("WAF", "filter error: "+err.Error())
+			remotelogs.Println("WAF", "filter error: "+err.Error())
 			break
 		}
 		if !goNext {

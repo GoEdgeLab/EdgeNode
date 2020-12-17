@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"net"
 	"sync/atomic"
 )
@@ -32,7 +32,7 @@ func (this *TCPListener) Serve() error {
 		go func(conn net.Conn) {
 			err = this.handleConn(conn)
 			if err != nil {
-				logs.Error("TCP_LISTENER", err.Error())
+				remotelogs.Error("TCP_LISTENER", err.Error())
 			}
 			atomic.AddInt64(&this.countActiveConnections, -1)
 		}(conn)
@@ -122,7 +122,7 @@ func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyC
 		}
 		conn, err = OriginConnect(origin, remoteAddr)
 		if err != nil {
-			logs.Error("TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
+			remotelogs.Error("TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
 			continue
 		} else {
 			return

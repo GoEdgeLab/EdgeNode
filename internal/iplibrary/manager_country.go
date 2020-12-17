@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
@@ -46,13 +46,13 @@ func (this *CountryManager) Start() {
 	// 从缓存中读取
 	err := this.load()
 	if err != nil {
-		logs.Error("COUNTRY_MANAGER", err.Error())
+		remotelogs.Error("COUNTRY_MANAGER", err.Error())
 	}
 
 	// 第一次更新
 	err = this.loop()
 	if err != nil {
-		logs.Error("COUNTRY_MANAGER", err.Error())
+		remotelogs.Error("COUNTRY_MANAGER", err.Error())
 	}
 
 	// 定时更新
@@ -63,7 +63,7 @@ func (this *CountryManager) Start() {
 	for range ticker.C {
 		err := this.loop()
 		if err != nil {
-			logs.Error("COUNTRY_MANAGER", err.Error())
+			remotelogs.Error("COUNTRY_MANAGER", err.Error())
 		}
 	}
 }

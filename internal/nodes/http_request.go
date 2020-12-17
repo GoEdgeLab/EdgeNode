@@ -107,7 +107,7 @@ func (this *HTTPRequest) Do() {
 	}
 
 	// WAF
-	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn && this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
+	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 		if this.doWAFRequest() {
 			this.doEnd()
 			return
@@ -292,7 +292,6 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// waf
 	if web.FirewallRef != nil && (web.FirewallRef.IsPrior || isTop) {
 		this.web.FirewallRef = web.FirewallRef
-		this.web.FirewallPolicy = web.FirewallPolicy
 	}
 
 	// access log

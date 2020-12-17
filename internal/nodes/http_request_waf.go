@@ -2,7 +2,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
-	"github.com/TeaOSLab/EdgeNode/internal/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
@@ -11,14 +11,16 @@ import (
 
 // 调用WAF
 func (this *HTTPRequest) doWAFRequest() (blocked bool) {
+	firewallPolicy := sharedNodeConfig.HTTPFirewallPolicy
+
 	// 检查配置是否为空
-	if this.web.FirewallPolicy == nil || this.web.FirewallPolicy.Inbound == nil || !this.web.FirewallPolicy.Inbound.IsOn {
+	if firewallPolicy == nil || !firewallPolicy.IsOn || firewallPolicy.Inbound == nil || !firewallPolicy.Inbound.IsOn {
 		return
 	}
 
 	// 检查IP白名单
 	remoteAddr := this.requestRemoteAddr()
-	inbound := this.web.FirewallPolicy.Inbound
+	inbound := firewallPolicy.Inbound
 	if inbound.WhiteListRef != nil && inbound.WhiteListRef.IsOn && inbound.WhiteListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.WhiteListRef.ListId)
 		if list != nil && list.Contains(iplibrary.IP2Long(remoteAddr)) {
@@ -43,12 +45,12 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 	// 检查地区封禁
 	if iplibrary.SharedLibrary != nil {
-		if this.web.FirewallPolicy.Inbound.Region != nil && this.web.FirewallPolicy.Inbound.Region.IsOn {
-			regionConfig := this.web.FirewallPolicy.Inbound.Region
+		if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
+			regionConfig := firewallPolicy.Inbound.Region
 			if regionConfig.IsNotEmpty() {
 				result, err := iplibrary.SharedLibrary.Lookup(remoteAddr)
 				if err != nil {
-					logs.Error("REQUEST", "iplibrary lookup failed: "+err.Error())
+					remotelogs.Error("REQUEST", "iplibrary lookup failed: "+err.Error())
 				} else if result != nil {
 					// 检查国家级别封禁
 					if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
@@ -85,19 +87,19 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	}
 
 	// 规则测试
-	w := sharedWAFManager.FindWAF(this.web.FirewallPolicy.Id)
+	w := sharedWAFManager.FindWAF(firewallPolicy.Id)
 	if w == nil {
 		return
 	}
 	goNext, ruleGroup, ruleSet, err := w.MatchRequest(this.RawReq, this.writer)
 	if err != nil {
-		logs.Error("REQUEST", this.rawURI+": "+err.Error())
+		remotelogs.Error("REQUEST", this.rawURI+": "+err.Error())
 		return
 	}
 
 	if ruleSet != nil {
 		if ruleSet.Action != waf.ActionAllow {
-			this.firewallPolicyId = this.web.FirewallPolicy.Id
+			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
 		}
@@ -110,20 +112,25 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 // call response waf
 func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
-	w := sharedWAFManager.FindWAF(this.web.FirewallPolicy.Id)
+	firewallPolicy := sharedNodeConfig.HTTPFirewallPolicy
+	if firewallPolicy == nil || !firewallPolicy.IsOn || !firewallPolicy.Outbound.IsOn {
+		return
+	}
+
+	w := sharedWAFManager.FindWAF(firewallPolicy.Id)
 	if w == nil {
 		return
 	}
 
 	goNext, ruleGroup, ruleSet, err := w.MatchResponse(this.RawReq, resp, this.writer)
 	if err != nil {
-		logs.Error("REQUEST", this.rawURI+": "+err.Error())
+		remotelogs.Error("REQUEST", this.rawURI+": "+err.Error())
 		return
 	}
 
 	if ruleSet != nil {
 		if ruleSet.Action != waf.ActionAllow {
-			this.firewallPolicyId = this.web.FirewallPolicy.Id
+			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
 		}
