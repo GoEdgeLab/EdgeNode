@@ -25,7 +25,7 @@ type StorageInterface interface {
 	CleanAll() error
 
 	// 批量删除缓存
-	Purge(keys []string) error
+	Purge(keys []string, urlType string) error
 
 	// 停止缓存策略
 	Stop()

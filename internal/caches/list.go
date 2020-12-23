@@ -1,6 +1,9 @@
 package caches
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 // 缓存列表管理
 type List struct {
@@ -41,6 +44,20 @@ func (this *List) Exist(hash string) bool {
 	}
 
 	return !item.IsExpired()
+}
+
+// 根据前缀进行查找
+func (this *List) FindKeysWithPrefix(prefix string) (keys []string) {
+	this.locker.RLock()
+	defer this.locker.RUnlock()
+
+	// TODO 需要优化性能，支持千万级数据低于1s的处理速度
+	for _, item := range this.m {
+		if strings.HasPrefix(item.Key, prefix) {
+			keys = append(keys, item.Key)
+		}
+	}
+	return
 }
 
 func (this *List) Remove(hash string) {

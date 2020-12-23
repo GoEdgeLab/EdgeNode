@@ -306,7 +306,7 @@ func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
 		}()
 	}
 
-	err = storage.Purge(msg.Keys)
+	err = storage.Purge(msg.Keys, msg.Type)
 	if err != nil {
 		this.replyFail(message.RequestId, "purge keys failed: "+err.Error())
 		return err

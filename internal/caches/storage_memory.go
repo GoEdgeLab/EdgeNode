@@ -134,7 +134,16 @@ func (this *MemoryStorage) CleanAll() error {
 }
 
 // 批量删除缓存
-func (this *MemoryStorage) Purge(keys []string) error {
+func (this *MemoryStorage) Purge(keys []string, urlType string) error {
+	// 目录
+	if urlType == "dir" {
+		resultKeys := []string{}
+		for _, key := range keys {
+			resultKeys = append(resultKeys, this.list.FindKeysWithPrefix(key)...)
+		}
+		keys = resultKeys
+	}
+
 	for _, key := range keys {
 		err := this.Delete(key)
 		if err != nil {

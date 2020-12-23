@@ -185,7 +185,7 @@ func TestMemoryStorage_Purge(t *testing.T) {
 			ExpiredAt: expiredAt,
 		})
 	}
-	err := storage.Purge([]string{"abc", "abc1"})
+	err := storage.Purge([]string{"abc", "abc1"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

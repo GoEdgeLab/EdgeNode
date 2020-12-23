@@ -468,10 +468,20 @@ func (this *FileStorage) CleanAll() error {
 }
 
 // 清理过期的缓存
-func (this *FileStorage) Purge(keys []string) error {
+func (this *FileStorage) Purge(keys []string, urlType string) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
+	// 目录
+	if urlType == "dir" {
+		resultKeys := []string{}
+		for _, key := range keys {
+			resultKeys = append(resultKeys, this.list.FindKeysWithPrefix(key)...)
+		}
+		keys = resultKeys
+	}
+
+	// 文件
 	for _, key := range keys {
 		hash, path := this.keyPath(key)
 		if !this.list.Exist(hash) {

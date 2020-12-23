@@ -235,7 +235,7 @@ func TestFileStorage_Purge(t *testing.T) {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
 	}()
 
-	err = storage.Purge([]string{"a", "b1", "c"})
+	err = storage.Purge([]string{"a", "b1", "c"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
