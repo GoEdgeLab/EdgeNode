@@ -74,7 +74,15 @@ type HTTPRequest struct {
 func (this *HTTPRequest) init() {
 	this.writer = NewHTTPWriter(this, this.RawWriter)
 	this.web = &serverconfigs.HTTPWebConfig{IsOn: true}
-	this.uri = this.RawReq.URL.RequestURI()
+	//this.uri = this.RawReq.URL.RequestURI()
+	// 之所以不使用RequestURI()，是不想让URL中的Path被Encode
+	if len(this.RawReq.URL.RawQuery) > 0 {
+		this.uri = this.RawReq.URL.Path + "?" + this.RawReq.URL.RawQuery
+	} else {
+		this.uri = this.RawReq.URL.Path
+	}
+
+	this.uri = this.RawReq.URL.Path
 	this.rawURI = this.uri
 	this.varMapping = map[string]string{
 		// 缓存相关初始化
