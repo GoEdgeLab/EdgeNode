@@ -2,6 +2,7 @@ package iplibrary
 
 import "github.com/TeaOSLab/EdgeNode/internal/utils"
 
+// IP条目
 type IPItem struct {
 	Id        int64
 	IPFrom    uint32
@@ -9,6 +10,7 @@ type IPItem struct {
 	ExpiredAt int64
 }
 
+// 检查是否包含某个IP
 func (this *IPItem) Contains(ip uint32) bool {
 	if this.IPTo == 0 {
 		if this.IPFrom != ip {

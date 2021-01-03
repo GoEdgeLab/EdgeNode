@@ -1,6 +1,6 @@
 // +build windows
 
-package agent
+package nodes
 
 import (
 	"context"

@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
@@ -11,8 +12,26 @@ import (
 
 // 调用WAF
 func (this *HTTPRequest) doWAFRequest() (blocked bool) {
-	firewallPolicy := sharedNodeConfig.HTTPFirewallPolicy
+	// 当前服务的独立设置
+	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
+		blocked = this.checkWAFRequest(this.web.FirewallPolicy)
+		if blocked {
+			return
+		}
+	}
 
+	// 公用的防火墙设置
+	if sharedNodeConfig.HTTPFirewallPolicy != nil {
+		blocked = this.checkWAFRequest(sharedNodeConfig.HTTPFirewallPolicy)
+		if blocked {
+			return
+		}
+	}
+
+	return
+}
+
+func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFirewallPolicy) (blocked bool) {
 	// 检查配置是否为空
 	if firewallPolicy == nil || !firewallPolicy.IsOn || firewallPolicy.Inbound == nil || !firewallPolicy.Inbound.IsOn {
 		return
@@ -21,16 +40,16 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	// 检查IP白名单
 	remoteAddr := this.requestRemoteAddr()
 	inbound := firewallPolicy.Inbound
-	if inbound.WhiteListRef != nil && inbound.WhiteListRef.IsOn && inbound.WhiteListRef.ListId > 0 {
-		list := iplibrary.SharedIPListManager.FindList(inbound.WhiteListRef.ListId)
+	if inbound.AllowListRef != nil && inbound.AllowListRef.IsOn && inbound.AllowListRef.ListId > 0 {
+		list := iplibrary.SharedIPListManager.FindList(inbound.AllowListRef.ListId)
 		if list != nil && list.Contains(iplibrary.IP2Long(remoteAddr)) {
 			return
 		}
 	}
 
 	// 检查IP黑名单
-	if inbound.BlackListRef != nil && inbound.BlackListRef.IsOn && inbound.BlackListRef.ListId > 0 {
-		list := iplibrary.SharedIPListManager.FindList(inbound.BlackListRef.ListId)
+	if inbound.DenyListRef != nil && inbound.DenyListRef.IsOn && inbound.DenyListRef.ListId > 0 {
+		list := iplibrary.SharedIPListManager.FindList(inbound.DenyListRef.ListId)
 		if list != nil && list.Contains(iplibrary.IP2Long(remoteAddr)) {
 			// TODO 可以配置对封禁的处理方式等
 			this.writer.WriteHeader(http.StatusForbidden)
