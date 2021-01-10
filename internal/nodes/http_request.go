@@ -148,6 +148,13 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
+	// 跳转
+	if len(this.web.HostRedirects) > 0 {
+		if this.doHostRedirect() {
+			return
+		}
+	}
+
 	// 特殊URL处理
 	if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
 		// ACME
@@ -307,6 +314,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// access log
 	if web.AccessLogRef != nil && (web.AccessLogRef.IsPrior || isTop) {
 		this.web.AccessLogRef = web.AccessLogRef
+	}
+
+	// host redirects
+	if len(web.HostRedirects) > 0 {
+		this.web.HostRedirects = web.HostRedirects
 	}
 
 	// 重写规则
