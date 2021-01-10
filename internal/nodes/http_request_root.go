@@ -150,6 +150,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	respHeader := this.writer.Header()
 
 	// mime type
+	contentType := ""
 	if this.web.ResponseHeaderPolicy == nil || !this.web.ResponseHeaderPolicy.IsOn || !this.web.ResponseHeaderPolicy.ContainsHeader("CONTENT-TYPE") {
 		ext := filepath.Ext(filePath)
 		if len(ext) > 0 {
@@ -167,11 +168,14 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 						if this.web.Charset.IsUpper {
 							charset = strings.ToUpper(charset)
 						}
+						contentType = mimeTypeKey + "; charset=" + charset
 						respHeader.Set("Content-Type", mimeTypeKey+"; charset="+charset)
 					} else {
+						contentType = mimeType
 						respHeader.Set("Content-Type", mimeType)
 					}
 				} else {
+					contentType = mimeType
 					respHeader.Set("Content-Type", mimeType)
 				}
 			}
@@ -180,7 +184,6 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 
 	// length
 	fileSize := stat.Size()
-	respHeader.Set("Content-Length", strconv.FormatInt(fileSize, 10))
 
 	// 支持 Last-Modified
 	modifiedTime := stat.ModTime().Format("Mon, 02 Jan 2006 15:04:05 GMT")
@@ -189,13 +192,10 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	// 支持 ETag
-	eTag := "\"et" + fmt.Sprintf("%0x", xxhash.Sum64String(filename+strconv.FormatInt(stat.ModTime().UnixNano(), 10)+strconv.FormatInt(stat.Size(), 10))) + "\""
+	eTag := "\"e" + fmt.Sprintf("%0x", xxhash.Sum64String(filename+strconv.FormatInt(stat.ModTime().UnixNano(), 10)+strconv.FormatInt(stat.Size(), 10))) + "\""
 	if len(respHeader.Get("ETag")) == 0 {
 		respHeader.Set("ETag", eTag)
 	}
-
-	// proxy callback
-	// TODO
 
 	// 支持 If-None-Match
 	if this.requestHeader("If-None-Match") == eTag {
@@ -213,8 +213,51 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		return true
 	}
 
-	// 自定义Header
-	this.processResponseHeaders(http.StatusOK)
+	// 支持Range
+	respHeader.Set("Accept-Ranges", "bytes")
+	ifRangeHeaders, ok := this.RawReq.Header["If-Range"]
+	supportRange := true
+	if ok {
+		supportRange = false
+		for _, v := range ifRangeHeaders {
+			if v == eTag || v == modifiedTime {
+				supportRange = true
+			}
+		}
+	}
+
+	// 支持Range
+	rangeSet := [][]int{}
+	if supportRange {
+		contentRange := this.RawReq.Header.Get("Range")
+		if len(contentRange) > 0 {
+			set, ok := httpRequestParseContentRange(contentRange)
+			if !ok {
+				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+				this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+				return true
+			}
+			if len(set) > 0 {
+				rangeSet = set
+				for _, arr := range rangeSet {
+					if arr[0] == -1 {
+						arr[0] = int(fileSize) + arr[1]
+						arr[1] = int(fileSize) - 1
+
+						if arr[0] < 0 {
+							this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+							this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							return true
+						}
+					}
+				}
+			}
+		} else {
+			respHeader.Set("Content-Length", strconv.FormatInt(fileSize, 10))
+		}
+	} else {
+		respHeader.Set("Content-Length", strconv.FormatInt(fileSize, 10))
+	}
 
 	reader, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
 	if err != nil {
@@ -223,19 +266,98 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		return true
 	}
 
+	// 自定义Header
+	this.processResponseHeaders(http.StatusOK)
+
+	// 在Range请求中不能缓存
+	if len(rangeSet) > 0 {
+		this.cacheRef = nil // 不支持缓存
+	}
+
 	this.writer.Prepare(fileSize)
 
 	pool := this.bytePool(fileSize)
 	buf := pool.Get()
-	_, err = io.CopyBuffer(this.writer, reader, buf)
-	pool.Put(buf)
+	defer func() {
+		_ = reader.Close()
+		pool.Put(buf)
+	}()
 
-	// 不使用defer，以便于加快速度
-	_ = reader.Close()
+	if len(rangeSet) == 1 {
+		respHeader.Set("Content-Range", "bytes "+strconv.Itoa(rangeSet[0][0])+"-"+strconv.Itoa(rangeSet[0][1])+"/"+strconv.FormatInt(fileSize, 10))
+		this.writer.WriteHeader(http.StatusPartialContent)
 
-	if err != nil {
-		logs.Error(err)
-		return true
+		ok, err := httpRequestReadRange(reader, buf, rangeSet[0][0], rangeSet[0][1], func(buf []byte, n int) error {
+			_, err := this.writer.Write(buf[:n])
+			return err
+		})
+		if err != nil {
+			logs.Error(err)
+			return true
+		}
+		if !ok {
+			this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+			this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+			return true
+		}
+	} else if len(rangeSet) > 1 {
+		boundary := httpRequestGenBoundary()
+		respHeader.Set("Content-Type", "multipart/byteranges; boundary="+boundary)
+
+		this.writer.WriteHeader(http.StatusPartialContent)
+
+		for index, set := range rangeSet {
+			if index == 0 {
+				_, err = this.writer.WriteString("--" + boundary + "\r\n")
+			} else {
+				_, err = this.writer.WriteString("\r\n--" + boundary + "\r\n")
+			}
+			if err != nil {
+				logs.Error(err)
+				return true
+			}
+
+			_, err = this.writer.WriteString("Content-Range: " + "bytes " + strconv.Itoa(set[0]) + "-" + strconv.Itoa(set[1]) + "/" + strconv.FormatInt(fileSize, 10) + "\r\n")
+			if err != nil {
+				logs.Error(err)
+				return true
+			}
+
+			if len(contentType) > 0 {
+				_, err = this.writer.WriteString("Content-Type: " + contentType + "\r\n\r\n")
+				if err != nil {
+					logs.Error(err)
+					return true
+				}
+			}
+
+			ok, err := httpRequestReadRange(reader, buf, set[0], set[1], func(buf []byte, n int) error {
+				_, err := this.writer.Write(buf[:n])
+				return err
+			})
+			if err != nil {
+				logs.Error(err)
+				return true
+			}
+			if !ok {
+				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+				this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+				return true
+			}
+		}
+
+		_, err = this.writer.WriteString("\r\n--" + boundary + "--\r\n")
+		if err != nil {
+			logs.Error(err)
+			return true
+		}
+	} else {
+		_, err = io.CopyBuffer(this.writer, reader, buf)
+
+		if err != nil {
+			logs.Error(err)
+			return true
+		}
 	}
 
 	return true

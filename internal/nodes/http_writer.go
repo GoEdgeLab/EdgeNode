@@ -307,6 +307,11 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		return
 	}
 
+	// 不支持Range
+	if len(this.Header().Get("Content-Range")) > 0 {
+		return
+	}
+
 	cachePolicy := sharedNodeConfig.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
