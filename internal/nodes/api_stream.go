@@ -372,8 +372,17 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 				_ = resp.Body.Close()
 			}()
 
+			// 检查最大内容长度
+			maxSize := storage.Policy().MaxSizeBytes()
+			if maxSize > 0 && resp.ContentLength > maxSize {
+				locker.Lock()
+				errorMessages = append(errorMessages, "request failed: the content is too larger than policy setting")
+				locker.Unlock()
+				return
+			}
+
 			expiredAt := time.Now().Unix() + 8600
-			writer, err := storage.Open(key, expiredAt) // TODO 可以设置缓存过期事件
+			writer, err := storage.Open(key, expiredAt) // TODO 可以设置缓存过期时间
 			if err != nil {
 				locker.Lock()
 				errorMessages = append(errorMessages, "open cache writer failed: "+key+": "+err.Error())
