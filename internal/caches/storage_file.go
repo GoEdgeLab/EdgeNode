@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -31,7 +32,8 @@ const (
 )
 
 var (
-	ErrNotFound = errors.New("cache not found")
+	ErrNotFound      = errors.New("cache not found")
+	ErrFileIsWriting = errors.New("the file is writing")
 )
 
 type FileStorage struct {
@@ -251,19 +253,17 @@ func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 		}
 	}
 
-	this.locker.Lock()
-
 	// 先删除
 	this.list.Remove(hash)
 
 	path := dir + "/" + hash + ".cache"
-	writer, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_SYNC|os.O_WRONLY, 0777)
+	writer, err := os.OpenFile(path, os.O_CREATE|os.O_SYNC|os.O_WRONLY, 0666)
 	if err != nil {
-		this.locker.Unlock()
 		return nil, err
 	}
 
 	isOk := false
+	removeOnFailure := true
 	defer func() {
 		if err != nil {
 			isOk = false
@@ -272,10 +272,23 @@ func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 		// 如果出错了，就删除文件，避免写一半
 		if !isOk {
 			_ = writer.Close()
-			_ = os.Remove(path)
-			this.locker.Unlock()
+			if removeOnFailure {
+				_ = os.Remove(path)
+			}
 		}
 	}()
+
+	// 尝试锁定，如果锁定失败，则直接返回
+	err = syscall.Flock(int(writer.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if err != nil {
+		removeOnFailure = false
+		return nil, ErrFileIsWriting
+	}
+
+	err = writer.Truncate(0)
+	if err != nil {
+		return nil, err
+	}
 
 	// 写入过期时间
 	_, err = writer.WriteString(fmt.Sprintf("%d", expiredAt))
@@ -299,7 +312,7 @@ func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 
 	isOk = true
 
-	return NewFileWriter(writer, key, expiredAt, &this.locker), nil
+	return NewFileWriter(writer, key, expiredAt), nil
 }
 
 // 写入缓存数据

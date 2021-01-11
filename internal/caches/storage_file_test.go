@@ -8,6 +8,8 @@ import (
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
 	"runtime"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -70,6 +72,111 @@ func TestFileStorage_Open(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
+	storage := NewFileStorage(&serverconfigs.HTTPCachePolicy{
+		Id:   1,
+		IsOn: true,
+		Options: map[string]interface{}{
+			"dir": Tea.Root + "/caches",
+		},
+	})
+	err := storage.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	defer func() {
+		t.Log(time.Since(now).Seconds()*1000, "ms")
+	}()
+
+	wg := sync.WaitGroup{}
+	count := 100
+	wg.Add(count)
+
+	for i := 0; i < count; i++ {
+		go func(i int) {
+			defer wg.Done()
+
+			writer, err := storage.Open("abc"+strconv.Itoa(i), time.Now().Unix()+3600)
+			if err != nil {
+				if err != ErrFileIsWriting {
+					t.Fatal(err)
+				}
+				return
+			}
+			//t.Log(writer)
+
+			_, err = writer.Write([]byte("Hello,World"))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// 故意造成慢速写入
+			time.Sleep(1 * time.Second)
+
+			err = writer.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
+	storage := NewFileStorage(&serverconfigs.HTTPCachePolicy{
+		Id:   1,
+		IsOn: true,
+		Options: map[string]interface{}{
+			"dir": Tea.Root + "/caches",
+		},
+	})
+	err := storage.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	defer func() {
+		t.Log(time.Since(now).Seconds()*1000, "ms")
+	}()
+
+	wg := sync.WaitGroup{}
+	count := 100
+	wg.Add(count)
+
+	for i := 0; i < count; i++ {
+		go func(i int) {
+			defer wg.Done()
+
+			writer, err := storage.Open("abc"+strconv.Itoa(0), time.Now().Unix()+3600)
+			if err != nil {
+				if err != ErrFileIsWriting {
+					t.Fatal(err)
+				}
+				return
+			}
+			//t.Log(writer)
+
+			t.Log("writing")
+			_, err = writer.Write([]byte("Hello,World"))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// 故意造成慢速写入
+			time.Sleep(time.Duration(1) * time.Second)
+
+			err = writer.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
 }
 
 func TestFileStorage_Write(t *testing.T) {

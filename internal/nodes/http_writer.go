@@ -366,7 +366,9 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	expiredAt := utils.UnixTime() + life
 	cacheWriter, err := storage.Open(this.req.cacheKey, expiredAt)
 	if err != nil {
-		remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+		if err != caches.ErrFileIsWriting {
+			remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+		}
 		return
 	}
 	this.cacheWriter = cacheWriter

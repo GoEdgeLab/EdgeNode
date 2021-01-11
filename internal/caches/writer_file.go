@@ -2,7 +2,6 @@ package caches
 
 import (
 	"os"
-	"sync"
 )
 
 type FileWriter struct {
@@ -10,16 +9,14 @@ type FileWriter struct {
 	key        string
 	size       int64
 	expiredAt  int64
-	locker     *sync.RWMutex
 	isReleased bool
 }
 
-func NewFileWriter(rawWriter *os.File, key string, expiredAt int64, locker *sync.RWMutex) *FileWriter {
+func NewFileWriter(rawWriter *os.File, key string, expiredAt int64) *FileWriter {
 	return &FileWriter{
 		key:       key,
 		rawWriter: rawWriter,
 		expiredAt: expiredAt,
-		locker:    locker,
 	}
 }
 
@@ -42,6 +39,7 @@ func (this *FileWriter) Close() error {
 	if err != nil {
 		_ = os.Remove(this.rawWriter.Name())
 	}
+	_ = this.rawWriter.Close()
 
 	this.Release()
 
@@ -73,5 +71,4 @@ func (this *FileWriter) Release() {
 		return
 	}
 	this.isReleased = true
-	this.locker.Unlock()
 }
