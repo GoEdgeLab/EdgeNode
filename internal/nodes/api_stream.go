@@ -7,13 +7,16 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
 	"net/http"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -98,6 +101,8 @@ func (this *APIStream) loop() error {
 			err = this.handleConfigChanged(message)
 		case messageconfigs.MessageCodeIPListChanged: // IPList变化
 			err = this.handleIPListChanged(message)
+		case messageconfigs.MessageCodeCheckSystemdService: // 检查Systemd服务
+			err = this.handleCheckSystemdService(message)
 		default:
 			err = this.handleUnknownMessage(message)
 		}
@@ -373,6 +378,7 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 			}()
 
 			// 检查最大内容长度
+			// TODO 需要解决Chunked Transfer Encoding的长度判断问题
 			maxSize := storage.Policy().MaxSizeBytes()
 			if maxSize > 0 && resp.ContentLength > maxSize {
 				locker.Lock()
@@ -458,6 +464,34 @@ func (this *APIStream) handleIPListChanged(message *pb.NodeStreamMessage) error 
 
 	}
 	this.replyOk(message.RequestId, "ok")
+	return nil
+}
+
+// 检查Systemd服务
+func (this *APIStream) handleCheckSystemdService(message *pb.NodeStreamMessage) error {
+	systemctl, err := exec.LookPath("systemctl")
+	if err != nil {
+		this.replyFail(message.RequestId, "'systemctl' not found")
+		return nil
+	}
+	if len(systemctl) == 0 {
+		this.replyFail(message.RequestId, "'systemctl' not found")
+		return nil
+	}
+
+	cmd := utils.NewCommandExecutor()
+	shortName := teaconst.SystemdServiceName
+	cmd.Add(systemctl, "is-enabled", shortName)
+	output, err := cmd.Run()
+	if err != nil {
+		this.replyFail(message.RequestId, "'systemctl' command error: " + err.Error())
+		return nil
+	}
+	if output == "enabled" {
+		this.replyOk(message.RequestId, "ok")
+	} else {
+		this.replyFail(message.RequestId, "not installed")
+	}
 	return nil
 }
 

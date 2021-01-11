@@ -16,7 +16,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/go-yaml/yaml"
 	"github.com/iwind/TeaGo/Tea"
-	tealogs "github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/logs"
 	"io/ioutil"
 	"net"
 	"os"
@@ -69,10 +69,24 @@ func (this *Node) Start() {
 	}
 
 	// 读取API配置
-	err = this.syncConfig(false)
-	if err != nil {
-		remotelogs.Error("NODE", err.Error())
-		return
+	tryTimes := 0
+	for {
+		err = this.syncConfig(false)
+		if err != nil {
+			tryTimes++
+
+			if tryTimes%10 == 0 {
+				remotelogs.Error("NODE", err.Error())
+			}
+			time.Sleep(1 * time.Second)
+
+			// 不做长时间的无意义的重试
+			if tryTimes > 1000 {
+				return
+			}
+		} else {
+			break
+		}
 	}
 
 	// 启动同步计时器
@@ -292,12 +306,12 @@ func (this *Node) checkClusterConfig() error {
 		return err
 	}
 
-	tealogs.Println("[NODE]registering node ...")
+	logs.Println("[NODE]registering node ...")
 	resp, err := rpcClient.NodeRPC().RegisterClusterNode(rpcClient.ClusterContext(config.ClusterId, config.Secret), &pb.RegisterClusterNodeRequest{Name: HOSTNAME})
 	if err != nil {
 		return err
 	}
-	tealogs.Println("[NODE]registered successfully")
+	logs.Println("[NODE]registered successfully")
 
 	// 写入到配置文件中
 	if len(resp.Endpoints) == 0 {
@@ -312,12 +326,12 @@ func (this *Node) checkClusterConfig() error {
 		NodeId: resp.UniqueId,
 		Secret: resp.Secret,
 	}
-	tealogs.Println("[NODE]writing 'configs/api.yaml' ...")
+	logs.Println("[NODE]writing 'configs/api.yaml' ...")
 	err = apiConfig.WriteFile(Tea.ConfigFile("api.yaml"))
 	if err != nil {
 		return err
 	}
-	tealogs.Println("[NODE]wrote 'configs/api.yaml' successfully")
+	logs.Println("[NODE]wrote 'configs/api.yaml' successfully")
 
 	return nil
 }
