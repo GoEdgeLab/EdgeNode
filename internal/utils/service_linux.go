@@ -123,9 +123,12 @@ func (this *ServiceManager) installSystemdService(systemd, exePath string, args 
 [Unit]
 Description=` + longName + ` Service
 Before=shutdown.target
+After=network-online.target
 
 [Service]
 Type=forking
+Restart=always
+RestartSec=1s
 ExecStart=` + exePath + ` start
 ExecStop=` + exePath + ` stop
 ExecReload=` + exePath + ` reload
