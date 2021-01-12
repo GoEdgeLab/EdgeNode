@@ -53,7 +53,7 @@ func (this *ServiceManager) setup() {
 	})
 }
 
-//记录普通日志
+// 记录普通日志
 func (this *ServiceManager) Log(msg string) {
 	this.setup()
 	if this.logger == nil {

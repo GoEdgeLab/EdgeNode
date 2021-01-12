@@ -10,16 +10,20 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/go-yaml/yaml"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/logs"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"syscall"
@@ -133,6 +137,68 @@ func (this *Node) Start() {
 
 	// hold住进程
 	select {}
+}
+
+// 实现守护进程
+func (this *Node) Daemon() {
+	path := os.TempDir() + "/edge-node.sock"
+	isDebug := lists.ContainsString(os.Args, "debug")
+	isDebug = true
+	for {
+		conn, err := net.DialTimeout("unix", path, 1*time.Second)
+		if err != nil {
+			if isDebug {
+				log.Println("[DAEMON]starting ...")
+			}
+
+			// 尝试启动
+			err = func() error {
+				exe, err := os.Executable()
+				if err != nil {
+					return err
+				}
+				cmd := exec.Command(exe)
+				err = cmd.Start()
+				if err != nil {
+					return err
+				}
+				err = cmd.Wait()
+				if err != nil {
+					return err
+				}
+				return nil
+			}()
+
+			if err != nil {
+				if isDebug {
+					log.Println("[DAEMON]", err)
+				}
+				time.Sleep(1 * time.Second)
+			} else {
+				time.Sleep(5 * time.Second)
+			}
+		} else {
+			_ = conn.Close()
+			time.Sleep(5 * time.Second)
+		}
+	}
+}
+
+// 安装系统服务
+func (this *Node) InstallSystemService() error {
+	shortName := teaconst.SystemdServiceName
+
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	manager := utils.NewServiceManager(shortName, teaconst.ProductName)
+	err = manager.Install(exe, []string{})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // 处理信号
