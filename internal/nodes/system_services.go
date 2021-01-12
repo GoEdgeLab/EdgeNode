@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 )
 
 func init() {
@@ -93,6 +94,12 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 		if err != nil {
 			return err
 		}
+
+		// 启动Service
+		go func() {
+			time.Sleep(5 * time.Second)
+			_ = exec.Command(systemctl, "start", teaconst.SystemdServiceName).Start()
+		}()
 
 		if output == "enabled" {
 			// 检查文件路径是否变化

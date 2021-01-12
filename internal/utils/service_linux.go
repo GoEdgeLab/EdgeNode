@@ -126,10 +126,10 @@ Before=shutdown.target
 After=network-online.target
 
 [Service]
-Type=forking
+Type=simple
 Restart=always
 RestartSec=1s
-ExecStart=` + exePath + ` start
+ExecStart=` + exePath + ` daemon
 ExecStop=` + exePath + ` stop
 ExecReload=` + exePath + ` reload
 
