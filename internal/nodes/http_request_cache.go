@@ -249,7 +249,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				logs.Error(err)
 				return true
 			}
-		} else {
+		} else { // 没有Range
 			this.writer.WriteHeader(reader.Status())
 
 			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {

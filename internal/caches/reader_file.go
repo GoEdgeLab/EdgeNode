@@ -16,6 +16,9 @@ type FileReader struct {
 	headerSize   int
 	bodySize     int64
 	bodyOffset   int64
+
+	bodyBufLen int
+	bodyBuf    []byte
 }
 
 func NewFileReader(fp *os.File) *FileReader {
@@ -129,10 +132,12 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 		return err
 	}
 
+	headerSize := this.headerSize
+
 	for {
 		n, err := this.fp.Read(buf)
 		if n > 0 {
-			if n < this.headerSize {
+			if n < headerSize {
 				goNext, e := callback(n)
 				if e != nil {
 					isOk = true
@@ -141,9 +146,13 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 				if !goNext {
 					break
 				}
-				this.headerSize -= n
+				headerSize -= n
 			} else {
-				_, e := callback(this.headerSize)
+				if n > headerSize {
+					this.bodyBuf = buf[headerSize:]
+					this.bodyBufLen = n - headerSize
+				}
+				_, e := callback(headerSize)
 				if e != nil {
 					isOk = true
 					return e
@@ -173,7 +182,30 @@ func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
 		}
 	}()
 
-	_, err := this.fp.Seek(this.bodyOffset, io.SeekStart)
+	offset := this.bodyOffset
+
+	// 直接返回从Header中剩余的
+	if this.bodyBufLen > 0 && len(buf) >= this.bodyBufLen {
+		offset += int64(this.bodyBufLen)
+
+		copy(buf, this.bodyBuf)
+		isOk = true
+
+		goNext, err := callback(this.bodyBufLen)
+		if err != nil {
+			return err
+		}
+		if !goNext {
+			return nil
+		}
+
+		if this.bodySize <= int64(this.bodyBufLen) {
+			return nil
+		}
+	}
+
+	// 开始读Body部分
+	_, err := this.fp.Seek(offset, io.SeekStart)
 	if err != nil {
 		return err
 	}
