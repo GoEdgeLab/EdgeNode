@@ -224,13 +224,22 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				supportRange = true
 			}
 		}
+		if !supportRange {
+			respHeader.Del("Accept-Ranges")
+		}
 	}
 
 	// 支持Range
-	rangeSet := [][]int{}
+	rangeSet := [][]int64{}
 	if supportRange {
 		contentRange := this.RawReq.Header.Get("Range")
 		if len(contentRange) > 0 {
+			if fileSize == 0 {
+				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+				this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+				return true
+			}
+
 			set, ok := httpRequestParseContentRange(contentRange)
 			if !ok {
 				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
@@ -241,14 +250,25 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				rangeSet = set
 				for _, arr := range rangeSet {
 					if arr[0] == -1 {
-						arr[0] = int(fileSize) + arr[1]
-						arr[1] = int(fileSize) - 1
+						arr[0] = fileSize + arr[1]
+						arr[1] = fileSize - 1
 
 						if arr[0] < 0 {
 							this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
 							this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 							return true
 						}
+					}
+					if arr[1] > 0 {
+						arr[1] = fileSize - 1
+					}
+					if arr[1] < 0 {
+						arr[1] = fileSize - 1
+					}
+					if arr[0] > arr[1] {
+						this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+						this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+						return true
 					}
 				}
 			}
@@ -284,7 +304,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}()
 
 	if len(rangeSet) == 1 {
-		respHeader.Set("Content-Range", "bytes "+strconv.Itoa(rangeSet[0][0])+"-"+strconv.Itoa(rangeSet[0][1])+"/"+strconv.FormatInt(fileSize, 10))
+		respHeader.Set("Content-Range", "bytes "+strconv.FormatInt(rangeSet[0][0], 10)+"-"+strconv.FormatInt(rangeSet[0][1], 10)+"/"+strconv.FormatInt(fileSize, 10))
 		this.writer.WriteHeader(http.StatusPartialContent)
 
 		ok, err := httpRequestReadRange(reader, buf, rangeSet[0][0], rangeSet[0][1], func(buf []byte, n int) error {
@@ -317,7 +337,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				return true
 			}
 
-			_, err = this.writer.WriteString("Content-Range: " + "bytes " + strconv.Itoa(set[0]) + "-" + strconv.Itoa(set[1]) + "/" + strconv.FormatInt(fileSize, 10) + "\r\n")
+			_, err = this.writer.WriteString("Content-Range: " + "bytes " + strconv.FormatInt(set[0], 10) + "-" + strconv.FormatInt(set[1], 10) + "/" + strconv.FormatInt(fileSize, 10) + "\r\n")
 			if err != nil {
 				logs.Error(err)
 				return true

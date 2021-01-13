@@ -9,7 +9,7 @@ import (
 )
 
 // 分解Range
-func httpRequestParseContentRange(rangeValue string) (result [][]int, ok bool) {
+func httpRequestParseContentRange(rangeValue string) (result [][]int64, ok bool) {
 	// 参考RFC：https://tools.ietf.org/html/rfc7233
 	index := strings.Index(rangeValue, "=")
 	if index == -1 {
@@ -33,20 +33,20 @@ func httpRequestParseContentRange(rangeValue string) (result [][]int, ok bool) {
 			return
 		}
 		first := piece[:index]
-		firstInt := -1
+		firstInt := int64(-1)
 
 		var err error
 		last := piece[index+1:]
-		var lastInt = -1
+		var lastInt = int64(-1)
 
 		if len(first) > 0 {
-			firstInt, err = strconv.Atoi(first)
+			firstInt, err = strconv.ParseInt(first, 10, 64)
 			if err != nil {
 				return
 			}
 
 			if len(last) > 0 {
-				lastInt, err = strconv.Atoi(last)
+				lastInt, err = strconv.ParseInt(last, 10, 64)
 				if err != nil {
 					return
 				}
@@ -59,14 +59,14 @@ func httpRequestParseContentRange(rangeValue string) (result [][]int, ok bool) {
 				return
 			}
 
-			lastInt, err = strconv.Atoi(last)
+			lastInt, err = strconv.ParseInt(last, 10, 64)
 			if err != nil {
 				return
 			}
 			lastInt = -lastInt
 		}
 
-		result = append(result, []int{firstInt, lastInt})
+		result = append(result, []int64{firstInt, lastInt})
 	}
 
 	ok = true
@@ -74,7 +74,7 @@ func httpRequestParseContentRange(rangeValue string) (result [][]int, ok bool) {
 }
 
 // 读取内容Range
-func httpRequestReadRange(reader io.Reader, buf []byte, start int, end int, callback func(buf []byte, n int) error) (ok bool, err error) {
+func httpRequestReadRange(reader io.Reader, buf []byte, start int64, end int64, callback func(buf []byte, n int) error) (ok bool, err error) {
 	if start < 0 || end < 0 {
 		return
 	}
@@ -82,7 +82,7 @@ func httpRequestReadRange(reader io.Reader, buf []byte, start int, end int, call
 	if !ok {
 		return
 	}
-	_, err = seeker.Seek(int64(start), io.SeekStart)
+	_, err = seeker.Seek(start, io.SeekStart)
 	if err != nil {
 		return false, nil
 	}
@@ -91,9 +91,9 @@ func httpRequestReadRange(reader io.Reader, buf []byte, start int, end int, call
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
-			offset += n
+			offset += int64(n)
 			if end < offset {
-				err = callback(buf, n-(offset-end-1))
+				err = callback(buf, n-int(offset-end-1))
 				if err != nil {
 					return false, err
 				}

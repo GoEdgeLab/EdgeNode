@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/iwind/TeaGo/logs"
 	"net/http"
 	"strconv"
 )
@@ -115,20 +116,153 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	this.processResponseHeaders(reader.Status())
-	this.writer.WriteHeader(reader.Status())
 
 	// 输出Body
-	if this.RawReq.Method != http.MethodHead {
-		err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
-			_, err = this.writer.Write(buf[:n])
-			if err != nil {
-				return false, err
+	if this.RawReq.Method == http.MethodHead {
+		this.writer.WriteHeader(reader.Status())
+	} else {
+		ifRangeHeaders, ok := this.RawReq.Header["If-Range"]
+		supportRange := true
+		if ok {
+			supportRange = false
+			for _, v := range ifRangeHeaders {
+				if v == this.writer.Header().Get("ETag") || v == this.writer.Header().Get("Last-Modified") {
+					supportRange = true
+				}
 			}
-			return true, nil
-		})
-		if err != nil {
-			remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
-			return
+		}
+
+		// 支持Range
+		rangeSet := [][]int64{}
+		if supportRange {
+			fileSize := reader.BodySize()
+			contentRange := this.RawReq.Header.Get("Range")
+			if len(contentRange) > 0 {
+				if fileSize == 0 {
+					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+					return true
+				}
+
+				set, ok := httpRequestParseContentRange(contentRange)
+				if !ok {
+					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+					return true
+				}
+				if len(set) > 0 {
+					rangeSet = set
+					for _, arr := range rangeSet {
+						if arr[0] == -1 {
+							arr[0] = fileSize + arr[1]
+							arr[1] = fileSize - 1
+
+							if arr[0] < 0 {
+								this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+								this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+								return true
+							}
+						}
+						if arr[1] < 0 {
+							arr[1] = fileSize - 1
+						}
+						if arr[1] >= fileSize {
+							arr[1] = fileSize - 1
+						}
+						if arr[0] > arr[1] {
+							this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+							this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							return true
+						}
+					}
+				}
+			}
+		}
+
+		respHeader := this.writer.Header()
+		if len(rangeSet) == 1 {
+			respHeader.Set("Content-Range", "bytes "+strconv.FormatInt(rangeSet[0][0], 10)+"-"+strconv.FormatInt(rangeSet[0][1], 10)+"/"+strconv.FormatInt(reader.BodySize(), 10))
+			respHeader.Set("Content-Length", strconv.FormatInt(rangeSet[0][1]-rangeSet[0][0]+1, 10))
+			this.writer.WriteHeader(http.StatusPartialContent)
+
+			err = reader.ReadBodyRange(buf, rangeSet[0][0], rangeSet[0][1], func(n int) (goNext bool, err error) {
+				_, err = this.writer.Write(buf[:n])
+				if err != nil {
+					return false, err
+				}
+				return true, nil
+			})
+			if err != nil {
+				if err == caches.ErrInvalidRange {
+					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+					return true
+				}
+				remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+				return
+			}
+		} else if len(rangeSet) > 1 {
+			boundary := httpRequestGenBoundary()
+			respHeader.Set("Content-Type", "multipart/byteranges; boundary="+boundary)
+			respHeader.Del("Content-Length")
+			contentType := respHeader.Get("Content-Type")
+
+			this.writer.WriteHeader(http.StatusPartialContent)
+
+			for index, set := range rangeSet {
+				if index == 0 {
+					_, err = this.writer.WriteString("--" + boundary + "\r\n")
+				} else {
+					_, err = this.writer.WriteString("\r\n--" + boundary + "\r\n")
+				}
+				if err != nil {
+					logs.Error(err)
+					return true
+				}
+
+				_, err = this.writer.WriteString("Content-Range: " + "bytes " + strconv.FormatInt(set[0], 10) + "-" + strconv.FormatInt(set[1], 10) + "/" + strconv.FormatInt(reader.BodySize(), 10) + "\r\n")
+				if err != nil {
+					logs.Error(err)
+					return true
+				}
+
+				if len(contentType) > 0 {
+					_, err = this.writer.WriteString("Content-Type: " + contentType + "\r\n\r\n")
+					if err != nil {
+						logs.Error(err)
+						return true
+					}
+				}
+
+				err := reader.ReadBodyRange(buf, set[0], set[1], func(n int) (goNext bool, err error) {
+					_, err = this.writer.Write(buf[:n])
+					return true, err
+				})
+				if err != nil {
+					remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+					return true
+				}
+			}
+
+			_, err = this.writer.WriteString("\r\n--" + boundary + "--\r\n")
+			if err != nil {
+				logs.Error(err)
+				return true
+			}
+		} else {
+			this.writer.WriteHeader(reader.Status())
+
+			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
+				_, err = this.writer.Write(buf[:n])
+				if err != nil {
+					return false, err
+				}
+				return true, nil
+			})
+			if err != nil {
+				remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+				return
+			}
 		}
 	}
 
