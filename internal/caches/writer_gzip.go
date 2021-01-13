@@ -18,6 +18,20 @@ func NewGzipWriter(gw Writer, key string, expiredAt int64) Writer {
 	}
 }
 
+func (this *gzipWriter) WriteHeader(data []byte) (n int, err error) {
+	return this.writer.Write(data)
+}
+
+// 写入Header长度数据
+func (this *gzipWriter) WriteHeaderLength(headerLength int) error {
+	return nil
+}
+
+// 写入Body长度数据
+func (this *gzipWriter) WriteBodyLength(bodyLength int64) error {
+	return nil
+}
+
 func (this *gzipWriter) Write(data []byte) (n int, err error) {
 	return this.writer.Write(data)
 }
@@ -46,6 +60,10 @@ func (this *gzipWriter) ExpiredAt() int64 {
 	return this.expiredAt
 }
 
-func (this *gzipWriter) Size() int64 {
-	return this.rawWriter.Size()
+func (this *gzipWriter) HeaderSize() int64 {
+	return this.rawWriter.HeaderSize()
+}
+
+func (this *gzipWriter) BodySize() int64 {
+	return this.rawWriter.BodySize()
 }

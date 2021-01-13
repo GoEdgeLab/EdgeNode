@@ -1,14 +1,11 @@
 package utils
 
-import (
-	"time"
-)
+var BytePool1024 = NewBytePool(20480, 1024)
 
 // pool for get byte slice
 type BytePool struct {
 	c      chan []byte
 	length int
-	ticker *Ticker
 
 	lastSize int
 }
@@ -25,36 +22,7 @@ func NewBytePool(maxSize, length int) *BytePool {
 		c:      make(chan []byte, maxSize),
 		length: length,
 	}
-	pool.start()
 	return pool
-}
-
-func (this *BytePool) start() {
-	// 清除Timer
-	this.ticker = NewTicker(1 * time.Minute)
-	go func() {
-		for this.ticker.Next() {
-			currentSize := len(this.c)
-			if currentSize <= 32 || this.lastSize == 0 || this.lastSize != currentSize {
-				this.lastSize = currentSize
-				continue
-			}
-
-			i := 0
-		For:
-			for {
-				select {
-				case _ = <-this.c:
-					i++
-					if i >= currentSize/2 {
-						break For
-					}
-				default:
-					break For
-				}
-			}
-		}
-	}()
 }
 
 // 获取一个新的byte slice
@@ -82,9 +50,4 @@ func (this *BytePool) Put(b []byte) {
 // 当前的数量
 func (this *BytePool) Size() int {
 	return len(this.c)
-}
-
-// 销毁
-func (this *BytePool) Destroy() {
-	this.ticker.Stop()
 }

@@ -118,8 +118,8 @@ func (this *List) Stat(check func(hash string) bool) *Stat {
 			// 检查文件是否存在、内容是否正确等
 			if check != nil && check(hash) {
 				result.Count++
-				result.ValueSize += item.ValueSize
-				result.Size += item.Size
+				result.ValueSize += item.Size()
+				result.Size += item.TotalSize()
 			}
 		}
 	}

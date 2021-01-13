@@ -2,9 +2,9 @@ package nodes
 
 import (
 	"bytes"
+	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"strconv"
 )
@@ -66,74 +66,12 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return
 	}
 
-	isBroken := false
-	headerBuf := []byte{}
-	statusCode := http.StatusOK
-	statusFound := false
-	headerFound := false
-
 	buf := bytePool32k.Get()
-	err := storage.Read(key, buf, func(data []byte, valueSize int64, expiredAt int64, isEOF bool) {
-		if isBroken {
-			return
-		}
+	defer func() {
+		bytePool32k.Put(buf)
+	}()
 
-		// 如果Header已发送完毕
-		if headerFound {
-			_, _ = this.writer.Write(data)
-			return
-		}
-
-		headerBuf = append(headerBuf, data...)
-
-		if !statusFound {
-			lineIndex := bytes.IndexByte(headerBuf, '\n')
-			if lineIndex < 0 {
-				return
-			}
-
-			pieces := bytes.Split(headerBuf[:lineIndex], []byte{' '})
-			if len(pieces) < 2 {
-				isBroken = true
-				return
-			}
-			statusCode = types.Int(string(pieces[1]))
-			statusFound = true
-			headerBuf = headerBuf[lineIndex+1:]
-
-			// cache相关变量
-			this.varMapping["cache.status"] = "HIT"
-		}
-
-		for {
-			lineIndex := bytes.IndexByte(headerBuf, '\n')
-			if lineIndex < 0 {
-				break
-			}
-			if lineIndex == 0 || lineIndex == 1 {
-				headerFound = true
-
-				this.processResponseHeaders(statusCode)
-				this.writer.WriteHeader(statusCode)
-
-				_, _ = this.writer.Write(headerBuf[lineIndex+1:])
-				headerBuf = nil
-				break
-			}
-
-			// 分解Header
-			line := headerBuf[:lineIndex]
-			colonIndex := bytes.IndexByte(line, ':')
-			if colonIndex <= 0 {
-				continue
-			}
-			this.writer.Header().Set(string(line[:colonIndex]), string(bytes.TrimSpace(line[colonIndex+1:])))
-			headerBuf = headerBuf[lineIndex+1:]
-		}
-	})
-
-	bytePool32k.Put(buf)
-
+	reader, err := storage.OpenReader(key)
 	if err != nil {
 		if err == caches.ErrNotFound {
 			// cache相关变量
@@ -144,9 +82,54 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 		return
 	}
+	defer func() {
+		_ = reader.Close()
+	}()
 
-	if isBroken {
+	this.varMapping["cache.status"] = "HIT"
+
+	// 读取Header
+	headerBuf := []byte{}
+	err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
+		headerBuf = append(headerBuf, buf[:n]...)
+		for {
+			nIndex := bytes.Index(headerBuf, []byte{'\n'})
+			if nIndex >= 0 {
+				row := headerBuf[:nIndex]
+				spaceIndex := bytes.Index(row, []byte{':'})
+				if spaceIndex <= 0 {
+					return false, errors.New("invalid header '" + string(row) + "'")
+				}
+
+				this.writer.Header().Set(string(row[:spaceIndex]), string(row[spaceIndex+1:]))
+				headerBuf = headerBuf[nIndex+1:]
+			} else {
+				break
+			}
+		}
+		return true, nil
+	})
+	if err != nil {
+		remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 		return
+	}
+
+	this.processResponseHeaders(reader.Status())
+	this.writer.WriteHeader(reader.Status())
+
+	// 输出Body
+	if this.RawReq.Method != http.MethodHead {
+		err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
+			_, err = this.writer.Write(buf[:n])
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		})
+		if err != nil {
+			remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+			return
+		}
 	}
 
 	this.cacheRef = nil // 终止读取不再往下传递

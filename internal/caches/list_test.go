@@ -12,14 +12,14 @@ import (
 func TestList_Add(t *testing.T) {
 	list := NewList()
 	list.Add("a", &Item{
-		Key:       "a1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "a1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	list.Add("b", &Item{
-		Key:       "b1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "b1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	t.Log(list.m)
 }
@@ -27,14 +27,14 @@ func TestList_Add(t *testing.T) {
 func TestList_Remove(t *testing.T) {
 	list := NewList()
 	list.Add("a", &Item{
-		Key:       "a1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "a1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	list.Add("b", &Item{
-		Key:       "b1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "b1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	list.Remove("b")
 	t.Log(list.m)
@@ -43,24 +43,24 @@ func TestList_Remove(t *testing.T) {
 func TestList_Purge(t *testing.T) {
 	list := NewList()
 	list.Add("a", &Item{
-		Key:       "a1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "a1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	list.Add("b", &Item{
-		Key:       "b1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "b1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	list.Add("c", &Item{
-		Key:       "c1",
-		ExpiredAt: time.Now().Unix() - 3600,
-		Size:      1024,
+		Key:        "c1",
+		ExpiredAt:  time.Now().Unix() - 3600,
+		HeaderSize: 1024,
 	})
 	list.Add("d", &Item{
-		Key:       "d1",
-		ExpiredAt: time.Now().Unix() - 2,
-		Size:      1024,
+		Key:        "d1",
+		ExpiredAt:  time.Now().Unix() - 2,
+		HeaderSize: 1024,
 	})
 	list.Purge(100, func(hash string) {
 		t.Log("delete:", hash)
@@ -71,24 +71,24 @@ func TestList_Purge(t *testing.T) {
 func TestList_Stat(t *testing.T) {
 	list := NewList()
 	list.Add("a", &Item{
-		Key:       "a1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "a1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	list.Add("b", &Item{
-		Key:       "b1",
-		ExpiredAt: time.Now().Unix() + 3600,
-		Size:      1024,
+		Key:        "b1",
+		ExpiredAt:  time.Now().Unix() + 3600,
+		HeaderSize: 1024,
 	})
 	list.Add("c", &Item{
-		Key:       "c1",
-		ExpiredAt: time.Now().Unix(),
-		Size:      1024,
+		Key:        "c1",
+		ExpiredAt:  time.Now().Unix(),
+		HeaderSize: 1024,
 	})
 	list.Add("d", &Item{
-		Key:       "d1",
-		ExpiredAt: time.Now().Unix() - 2,
-		Size:      1024,
+		Key:        "d1",
+		ExpiredAt:  time.Now().Unix() - 2,
+		HeaderSize: 1024,
 	})
 	result := list.Stat(func(hash string) bool {
 		// 随机测试
@@ -104,10 +104,10 @@ func TestList_FindKeysWithPrefix(t *testing.T) {
 	for i := 0; i < 1_000_000; i++ {
 		key := "http://www.teaos.cn/hello" + strconv.Itoa(i/100000) + "/" + strconv.Itoa(i) + ".html"
 		list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &Item{
-			Key:       key,
-			ExpiredAt: 0,
-			ValueSize: 0,
-			Size:      0,
+			Key:        key,
+			ExpiredAt:  0,
+			BodySize:   0,
+			HeaderSize: 0,
 		})
 	}
 	t.Log(time.Since(before).Seconds()*1000, "ms")

@@ -113,7 +113,6 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 		if this.cacheWriter != nil {
 			_, err = this.cacheWriter.Write(data)
 			if err != nil {
-				_ = this.cacheWriter.Discard()
 				this.cacheWriter = nil
 				remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
 			}
@@ -216,9 +215,10 @@ func (this *HTTPWriter) Close() {
 		err := this.cacheWriter.Close()
 		if err == nil {
 			this.cacheStorage.AddToList(&caches.Item{
-				Key:       this.cacheWriter.Key(),
-				ExpiredAt: this.cacheWriter.ExpiredAt(),
-				ValueSize: this.cacheWriter.Size(),
+				Key:        this.cacheWriter.Key(),
+				ExpiredAt:  this.cacheWriter.ExpiredAt(),
+				HeaderSize: this.cacheWriter.HeaderSize(),
+				BodySize:   this.cacheWriter.BodySize(),
 			})
 		}
 	}
@@ -364,7 +364,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		life = 60
 	}
 	expiredAt := utils.UnixTime() + life
-	cacheWriter, err := storage.Open(this.req.cacheKey, expiredAt)
+	cacheWriter, err := storage.OpenWriter(this.req.cacheKey, expiredAt, this.StatusCode())
 	if err != nil {
 		if err != caches.ErrFileIsWriting {
 			remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
@@ -377,12 +377,14 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	}
 
 	// 写入Header
-	headerData := this.HeaderData()
-	_, err = cacheWriter.Write(headerData)
-	if err != nil {
-		remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
-		_ = this.cacheWriter.Discard()
-		this.cacheWriter = nil
-		return
+	for k, v := range this.Header() {
+		for _, v1 := range v {
+			_, err = cacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
+			if err != nil {
+				remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+				this.cacheWriter = nil
+				return
+			}
+		}
 	}
 }

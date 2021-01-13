@@ -10,7 +10,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"io"
 	"os"
@@ -25,17 +24,24 @@ import (
 )
 
 const (
-	SizeExpiredAt = 10
-	SizeKeyLength = 4
-	SizeNL        = 1
-	SizeEnd       = 4
+	SizeExpiresAt    = 4
+	SizeStatus       = 3
+	SizeURLLength    = 4
+	SizeHeaderLength = 4
+	SizeBodyLength   = 8
+
+	SizeMeta = SizeExpiresAt + SizeStatus + SizeURLLength + SizeHeaderLength + SizeBodyLength
 )
 
 var (
 	ErrNotFound      = errors.New("cache not found")
 	ErrFileIsWriting = errors.New("the file is writing")
+	ErrInvalidRange  = errors.New("invalid range")
 )
 
+// 文件缓存
+//   文件结构：
+//    [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
 type FileStorage struct {
 	policy      *serverconfigs.HTTPCachePolicy
 	cacheConfig *serverconfigs.HTTPFileCacheStorage
@@ -61,10 +67,10 @@ func (this *FileStorage) Policy() *serverconfigs.HTTPCachePolicy {
 // 初始化
 func (this *FileStorage) Init() error {
 	this.list.OnAdd(func(item *Item) {
-		atomic.AddInt64(&this.totalSize, item.Size)
+		atomic.AddInt64(&this.totalSize, item.TotalSize())
 	})
 	this.list.OnRemove(func(item *Item) {
-		atomic.AddInt64(&this.totalSize, -item.Size)
+		atomic.AddInt64(&this.totalSize, -item.TotalSize())
 	})
 
 	this.locker.Lock()
@@ -84,7 +90,15 @@ func (this *FileStorage) Init() error {
 		}
 
 		cost := time.Since(before).Seconds() * 1000
-		remotelogs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+", cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+strconv.Itoa(count)+", size: "+fmt.Sprintf("%.3f", float64(size)/1024/1024)+" M")
+		sizeMB := strconv.FormatInt(size, 10) + " Bytes"
+		if size > 1024*1024*1024 {
+			sizeMB = fmt.Sprintf("%.3f G", float64(size)/1024/1024/1024)
+		} else if size > 1024*1024 {
+			sizeMB = fmt.Sprintf("%.3f M", float64(size)/1024/1024)
+		} else if size > 1024 {
+			sizeMB = fmt.Sprintf("%.3f K", float64(size)/1024)
+		}
+		remotelogs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+", cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+strconv.Itoa(count)+", size: "+sizeMB)
 	}()
 
 	// 配置
@@ -131,107 +145,34 @@ func (this *FileStorage) Init() error {
 	return nil
 }
 
-func (this *FileStorage) Read(key string, readerBuf []byte, callback func(data []byte, size int64, expiredAt int64, isEOF bool)) error {
+func (this *FileStorage) OpenReader(key string) (Reader, error) {
 	hash, path := this.keyPath(key)
 	if !this.list.Exist(hash) {
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
-
-	this.locker.RLock()
-	defer this.locker.RUnlock()
 
 	// TODO 尝试使用mmap加快读取速度
 	fp, err := os.OpenFile(path, os.O_RDONLY, 0444)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return err
+			return nil, err
 		}
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
-	defer func() {
-		_ = fp.Close()
-	}()
 
-	// 是否过期
-	buf := make([]byte, SizeExpiredAt)
-	n, err := fp.Read(buf)
+	reader := NewFileReader(fp)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if n != len(buf) {
-		return ErrNotFound
-	}
-
-	expiredAt := types.Int64(string(buf))
-	if expiredAt < time.Now().Unix() {
-		// 已过期
-		_ = fp.Close()
-		_ = os.Remove(path)
-
-		return ErrNotFound
-	}
-
-	buf = make([]byte, SizeKeyLength)
-	n, err = fp.Read(buf)
+	err = reader.Init()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if n != len(buf) {
-		return ErrNotFound
-	}
-	keyLength := int(binary.BigEndian.Uint32(buf))
-
-	offset, err := fp.Seek(-SizeEnd, io.SeekEnd)
-	if err != nil {
-		return err
-	}
-	buf = make([]byte, SizeEnd)
-	n, err = fp.Read(buf)
-	if n != len(buf) {
-		return ErrNotFound
-	}
-	if string(buf) != "\n$$$" {
-		_ = fp.Close()
-		_ = os.Remove(path)
-		return ErrNotFound
-	}
-	startOffset := SizeExpiredAt + SizeKeyLength + keyLength + SizeNL
-	size := int(offset) + SizeEnd - startOffset
-	valueSize := offset - int64(startOffset)
-
-	_, err = fp.Seek(int64(startOffset), io.SeekStart)
-	if err != nil {
-		return err
-	}
-
-	for {
-		n, err := fp.Read(readerBuf)
-		if n > 0 {
-			size -= n
-			if size < SizeEnd { // 已经到了末尾区域
-				if n <= SizeEnd-size { // 已经到了末尾
-					break
-				} else {
-					callback(readerBuf[:n-(SizeEnd-size)], valueSize, expiredAt, true)
-				}
-			} else {
-				callback(readerBuf[:n], valueSize, expiredAt, false)
-			}
-		}
-		if err != nil {
-			if err != io.EOF {
-				return err
-			}
-
-			break
-		}
-	}
-
-	return nil
+	return reader, nil
 }
 
 // 打开缓存文件等待写入
-func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
+func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
 	// 检查是否超出最大值
 	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
 		return nil, errors.New("write file cache failed: too many keys in cache storage")
@@ -256,7 +197,7 @@ func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 	// 先删除
 	this.list.Remove(hash)
 
-	path := dir + "/" + hash + ".cache"
+	path := dir + "/" + hash + ".cache.tmp"
 	writer, err := os.OpenFile(path, os.O_CREATE|os.O_SYNC|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, err
@@ -291,21 +232,54 @@ func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 	}
 
 	// 写入过期时间
-	_, err = writer.WriteString(fmt.Sprintf("%d", expiredAt))
+	bytes4 := make([]byte, 4)
+	{
+		binary.BigEndian.PutUint32(bytes4, uint32(expiredAt))
+		_, err = writer.Write(bytes4)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 写入状态码
+	if status > 999 || status < 100 {
+		status = 200
+	}
+	_, err = writer.WriteString(strconv.Itoa(status))
 	if err != nil {
 		return nil, err
 	}
 
-	// 写入key length
-	b := make([]byte, SizeKeyLength)
-	binary.BigEndian.PutUint32(b, uint32(len(key)))
-	_, err = writer.Write(b)
-	if err != nil {
-		return nil, err
+	// 写入URL长度
+	{
+		binary.BigEndian.PutUint32(bytes4, uint32(len(key)))
+		_, err = writer.Write(bytes4)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// 写入key
-	_, err = writer.WriteString(key + "\n")
+	// 写入Header Length
+	{
+		binary.BigEndian.PutUint32(bytes4, uint32(0))
+		_, err = writer.Write(bytes4)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 写入Body Length
+	{
+		b := make([]byte, SizeBodyLength)
+		binary.BigEndian.PutUint64(b, uint64(0))
+		_, err = writer.Write(b)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 写入URL
+	_, err = writer.WriteString(key)
 	if err != nil {
 		return nil, err
 	}
@@ -315,90 +289,9 @@ func (this *FileStorage) Open(key string, expiredAt int64) (Writer, error) {
 	return NewFileWriter(writer, key, expiredAt), nil
 }
 
-// 写入缓存数据
-// 目录结构：$root/p$policyId/$hash[:2]/$hash[2:4]/$hash.cache
-// 数据结构： [expiredAt] [key length] [key] \n value \n $$$
-func (this *FileStorage) Write(key string, expiredAt int64, valueReader io.Reader) error {
-	this.locker.Lock()
-	defer this.locker.Unlock()
-
-	hash := stringutil.Md5(key)
-	dir := this.cacheConfig.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/" + hash[:2] + "/" + hash[2:4]
-
-	_, err := os.Stat(dir)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		err = os.MkdirAll(dir, 0777)
-		if err != nil {
-			return err
-		}
-	}
-	path := dir + "/" + hash + ".cache"
-	writer, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_SYNC|os.O_WRONLY, 0777)
-	if err != nil {
-		return err
-	}
-
-	isOk := false
-	defer func() {
-		err = writer.Close()
-		if err != nil {
-			isOk = false
-		}
-
-		// 如果出错了，就删除文件，避免写一半
-		if !isOk {
-			_ = os.Remove(path)
-		}
-	}()
-
-	// 写入过期时间
-	_, err = writer.WriteString(fmt.Sprintf("%d", expiredAt))
-	if err != nil {
-		return err
-	}
-
-	// 写入key length
-	b := make([]byte, SizeKeyLength)
-	binary.BigEndian.PutUint32(b, uint32(len(key)))
-	_, err = writer.Write(b)
-	if err != nil {
-		return err
-	}
-
-	// 写入key
-	_, err = writer.WriteString(key + "\n")
-	if err != nil {
-		return err
-	}
-
-	// 写入数据
-	valueSize, err := io.Copy(writer, valueReader)
-	if err != nil {
-		return err
-	}
-
-	// 写入结束符
-	_, err = writer.WriteString("\n$$$")
-
-	isOk = true
-
-	// 写入List
-	this.list.Add(hash, &Item{
-		Key:       key,
-		ExpiredAt: expiredAt,
-		ValueSize: valueSize,
-		Size:      valueSize + SizeExpiredAt + SizeKeyLength + int64(len(key)) + SizeNL + SizeEnd,
-	})
-
-	return nil
-}
-
 // 添加到List
 func (this *FileStorage) AddToList(item *Item) {
-	item.Size = item.ValueSize + SizeExpiredAt + SizeKeyLength + int64(len(item.Key)) + SizeNL + SizeEnd
+	item.MetaSize = SizeMeta
 	hash := stringutil.Md5(item.Key)
 	this.list.Add(hash, item)
 }
@@ -553,7 +446,18 @@ func (this *FileStorage) initList() error {
 	this.list.Reset()
 
 	dir := this.dir()
-	files, err := filepath.Glob(dir + "/*/*/*.cache")
+
+	// 清除tmp
+	files, err := filepath.Glob(dir + "/*/*/*.cache.tmp")
+	if err != nil {
+		return err
+	}
+	for _, path := range files {
+		_ = os.Remove(path)
+	}
+
+	// 加载缓存
+	files, err = filepath.Glob(dir + "/*/*/*.cache")
 	if err != nil {
 		return err
 	}
@@ -603,59 +507,88 @@ func (this *FileStorage) decodeFile(path string) (*Item, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	isAllOk := false
 	defer func() {
 		_ = fp.Close()
+
+		if !isAllOk {
+			_ = os.Remove(path)
+		}
 	}()
 
-	buf := make([]byte, SizeExpiredAt)
-	n, err := fp.Read(buf)
+	item := &Item{
+		MetaSize: SizeMeta,
+	}
+
+	bytes4 := make([]byte, 4)
+
+	// 过期时间
+	ok, err := this.readToBuff(fp, bytes4)
 	if err != nil {
 		return nil, err
 	}
-	if n != len(buf) {
-		// 数据格式错误
-		_ = fp.Close()
-		_ = os.Remove(path)
-
+	if !ok {
 		return nil, ErrNotFound
 	}
-	expiredAt := types.Int64(string(buf))
-	if expiredAt < time.Now().Unix() {
-		// 已过期
-		_ = fp.Close()
-		_ = os.Remove(path)
-		return nil, ErrNotFound
-	}
+	item.ExpiredAt = int64(binary.BigEndian.Uint32(bytes4))
 
-	buf = make([]byte, SizeKeyLength)
-	n, err = fp.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	keyLength := binary.BigEndian.Uint32(buf)
-
-	buf = make([]byte, keyLength)
-	n, err = fp.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	if n != int(keyLength) {
-		// 数据格式错误
-		_ = fp.Close()
-		_ = os.Remove(path)
+	// 是否已过期
+	if item.ExpiredAt < time.Now().Unix() {
 		return nil, ErrNotFound
 	}
 
-	stat, err := fp.Stat()
+	// URL Size
+	_, err = fp.Seek(int64(SizeExpiresAt+SizeStatus), io.SeekStart)
 	if err != nil {
 		return nil, err
 	}
+	ok, err = this.readToBuff(fp, bytes4)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotFound
+	}
+	urlSize := binary.BigEndian.Uint32(bytes4)
 
-	item := &Item{}
-	item.ExpiredAt = expiredAt
-	item.Key = string(buf)
-	item.Size = stat.Size()
-	item.ValueSize = item.Size - SizeExpiredAt - SizeKeyLength - int64(keyLength) - SizeNL - SizeEnd
+	// Header Size
+	ok, err = this.readToBuff(fp, bytes4)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotFound
+	}
+	item.HeaderSize = int64(binary.BigEndian.Uint32(bytes4))
+
+	// Body Size
+	bytes8 := make([]byte, 8)
+	ok, err = this.readToBuff(fp, bytes8)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotFound
+	}
+	item.BodySize = int64(binary.BigEndian.Uint64(bytes8))
+
+	// URL
+	if urlSize > 0 {
+		data := utils.BytePool1024.Get()
+		result, ok, err := this.readN(fp, data, int(urlSize))
+		utils.BytePool1024.Put(data)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, ErrNotFound
+		}
+		item.Key = string(result)
+	}
+
+	isAllOk = true
+
 	return item, nil
 }
 
@@ -668,4 +601,32 @@ func (this *FileStorage) purgeLoop() {
 			remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
 		}
 	})
+}
+
+func (this *FileStorage) readToBuff(fp *os.File, buf []byte) (ok bool, err error) {
+	n, err := fp.Read(buf)
+	if err != nil {
+		return false, err
+	}
+	ok = n == len(buf)
+	return
+}
+
+func (this *FileStorage) readN(fp *os.File, buf []byte, total int) (result []byte, ok bool, err error) {
+	for {
+		n, err := fp.Read(buf)
+		if err != nil {
+			return nil, false, err
+		}
+		if n > 0 {
+			if n >= total {
+				result = append(result, buf[:total]...)
+				ok = true
+				return result, ok, nil
+			} else {
+				total -= n
+				result = append(result, buf[:n]...)
+			}
+		}
+	}
 }

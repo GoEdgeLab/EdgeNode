@@ -10,10 +10,10 @@ type StorageInterface interface {
 	Init() error
 
 	// 读取缓存
-	Read(key string, readerBuf []byte, callback func(data []byte, size int64, expiredAt int64, isEOF bool)) error
+	OpenReader(key string) (Reader, error)
 
 	// 打开缓存写入器等待写入
-	Open(key string, expiredAt int64) (Writer, error)
+	OpenWriter(key string, expiredAt int64, status int) (Writer, error)
 
 	// 删除某个键值对应的缓存
 	Delete(key string) error

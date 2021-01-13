@@ -13,8 +13,10 @@ import (
 )
 
 type MemoryItem struct {
-	ExpiredAt int64
-	Value     []byte
+	ExpiredAt   int64
+	HeaderValue []byte
+	BodyValue   []byte
+	Status      int
 }
 
 type MemoryStorage struct {
@@ -39,10 +41,10 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
 // 初始化
 func (this *MemoryStorage) Init() error {
 	this.list.OnAdd(func(item *Item) {
-		atomic.AddInt64(&this.totalSize, item.Size)
+		atomic.AddInt64(&this.totalSize, item.Size())
 	})
 	this.list.OnRemove(func(item *Item) {
-		atomic.AddInt64(&this.totalSize, -item.Size)
+		atomic.AddInt64(&this.totalSize, -item.Size())
 	})
 
 	if this.purgeDuration <= 0 {
@@ -61,31 +63,35 @@ func (this *MemoryStorage) Init() error {
 }
 
 // 读取缓存
-func (this *MemoryStorage) Read(key string, readerBuf []byte, callback func(data []byte, size int64, expiredAt int64, isEOF bool)) error {
+func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 	hash := this.hash(key)
 
 	this.locker.RLock()
 	item := this.valuesMap[hash]
 	if item == nil {
 		this.locker.RUnlock()
-		return ErrNotFound
+		return nil, ErrNotFound
 	}
 
 	if item.ExpiredAt > utils.UnixTime() {
-		// 这时如果callback处理比较慢的话，可能会影响性能，但目前没有更好的解决方案
-		callback(item.Value, int64(len(item.Value)), item.ExpiredAt, true)
 		this.locker.RUnlock()
-		return nil
+
+		reader := NewMemoryReader(item)
+		err := reader.Init()
+		if err != nil {
+			return nil, err
+		}
+		return reader, nil
 	}
 	this.locker.RUnlock()
 
 	_ = this.Delete(key)
 
-	return ErrNotFound
+	return nil, ErrNotFound
 }
 
 // 打开缓存写入器等待写入
-func (this *MemoryStorage) Open(key string, expiredAt int64) (Writer, error) {
+func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
 	// 检查是否超出最大值
 	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
 		return nil, errors.New("write memory cache failed: too many keys in cache storage")
@@ -100,7 +106,7 @@ func (this *MemoryStorage) Open(key string, expiredAt int64) (Writer, error) {
 		return nil, err
 	}
 
-	return NewMemoryWriter(this.valuesMap, key, expiredAt, this.locker), nil
+	return NewMemoryWriter(this.valuesMap, key, expiredAt, status, this.locker), nil
 }
 
 // 删除某个键值对应的缓存
@@ -172,7 +178,7 @@ func (this *MemoryStorage) Policy() *serverconfigs.HTTPCachePolicy {
 
 // 将缓存添加到列表
 func (this *MemoryStorage) AddToList(item *Item) {
-	item.Size = item.ValueSize + int64(len(item.Key)) + 32 /** 32是我们评估的数据结构的长度 **/
+	item.MetaSize = int64(len(item.Key)) + 32 /** 32是我们评估的数据结构的长度 **/
 	hash := fmt.Sprintf("%d", this.hash(item.Key))
 	this.list.Add(hash, item)
 }
