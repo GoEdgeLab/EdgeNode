@@ -65,7 +65,10 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	}
 
 	go func() {
-		originBuffer := make([]byte, 4*1024) // TODO 需要可以设置，并可以使用Pool
+		originBuffer := bytePool32k.Get()
+		defer func() {
+			bytePool32k.Put(originBuffer)
+		}()
 		for {
 			n, err := originConn.Read(originBuffer)
 			if n > 0 {
@@ -85,7 +88,10 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 		}
 	}()
 
-	clientBuffer := make([]byte, 4*1024) // TODO 需要可以设置，并可以使用Pool
+	clientBuffer := bytePool32k.Get()
+	defer func() {
+		bytePool32k.Put(clientBuffer)
+	}()
 	for {
 		n, err := conn.Read(clientBuffer)
 		if n > 0 {
