@@ -10,7 +10,6 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -97,10 +96,8 @@ func (this *APIStream) loop() error {
 			err = this.handlePurgeCache(message)
 		case messageconfigs.MessageCodePreheatCache: // 预热缓存
 			err = this.handlePreheatCache(message)
-		case messageconfigs.MessageCodeConfigChanged: // 配置变化
-			err = this.handleConfigChanged(message)
-		case messageconfigs.MessageCodeIPListChanged: // IPList变化
-			err = this.handleIPListChanged(message)
+		case messageconfigs.MessageCodeNewNodeTask: // 有新的任务
+			err = this.handleNewNodeTask(message)
 		case messageconfigs.MessageCodeCheckSystemdService: // 检查Systemd服务
 			err = this.handleCheckSystemdService(message)
 		default:
@@ -480,20 +477,9 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 }
 
 // 处理配置变化
-func (this *APIStream) handleConfigChanged(message *pb.NodeStreamMessage) error {
+func (this *APIStream) handleNewNodeTask(message *pb.NodeStreamMessage) error {
 	select {
-	case changeNotify <- true:
-	default:
-
-	}
-	this.replyOk(message.RequestId, "ok")
-	return nil
-}
-
-// 处理IPList变化
-func (this *APIStream) handleIPListChanged(message *pb.NodeStreamMessage) error {
-	select {
-	case iplibrary.IPListUpdateNotify <- true:
+	case nodeTaskNotify <- true:
 	default:
 
 	}

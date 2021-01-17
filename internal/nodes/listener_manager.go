@@ -32,9 +32,9 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	defer this.locker.Unlock()
 
 	// 检查是否有变化
-	if this.lastConfig != nil && this.lastConfig.Version == node.Version {
+	/**if this.lastConfig != nil && this.lastConfig.Version == node.Version {
 		return nil
-	}
+	}**/
 	this.lastConfig = node
 
 	// 初始化

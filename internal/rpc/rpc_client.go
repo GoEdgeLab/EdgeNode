@@ -53,6 +53,10 @@ func (this *RPCClient) NodeLogRPC() pb.NodeLogServiceClient {
 	return pb.NewNodeLogServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) NodeTaskRPC() pb.NodeTaskServiceClient {
+	return pb.NewNodeTaskServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) HTTPAccessLogRPC() pb.HTTPAccessLogServiceClient {
 	return pb.NewHTTPAccessLogServiceClient(this.pickConn())
 }
