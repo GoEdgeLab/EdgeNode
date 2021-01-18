@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
@@ -55,6 +56,7 @@ func (this *NodeStatusExecutor) update() {
 
 	status := &nodeconfigs.NodeStatus{}
 	status.BuildVersion = teaconst.Version
+	status.BuildVersionCode = utils.VersionToLong(teaconst.Version)
 	status.OS = runtime.GOOS
 	status.Arch = runtime.GOARCH
 	status.ConfigVersion = sharedNodeConfig.Version
