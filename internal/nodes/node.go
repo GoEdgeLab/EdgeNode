@@ -248,7 +248,6 @@ func (this *Node) loop() error {
 		return errors.New("read node tasks failed: " + err.Error())
 	}
 	for _, task := range tasksResp.NodeTasks {
-		logs.Println("update task:", task.Type) // TODO
 		switch task.Type {
 		case "ipItemChanged":
 			iplibrary.IPListUpdateNotify <- true
