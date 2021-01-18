@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
@@ -361,11 +360,8 @@ func (this *Node) syncConfig() error {
 	} else {
 		caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
 	}
-	if nodeConfig.HTTPFirewallPolicy != nil {
-		sharedWAFManager.UpdatePolicies([]*firewallconfigs.HTTPFirewallPolicy{nodeConfig.HTTPFirewallPolicy})
-	} else {
-		sharedWAFManager.UpdatePolicies([]*firewallconfigs.HTTPFirewallPolicy{})
-	}
+
+	sharedWAFManager.UpdatePolicies(nodeConfig.FindAllFirewallPolicies())
 	sharedNodeConfig = nodeConfig
 
 	// 发送事件
