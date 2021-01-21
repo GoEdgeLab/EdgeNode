@@ -14,24 +14,30 @@ import (
 func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	// 当前服务的独立设置
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
-		blocked = this.checkWAFRequest(this.web.FirewallPolicy)
+		blocked, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy)
 		if blocked {
-			return
+			return true
+		}
+		if breakChecking {
+			return false
 		}
 	}
 
 	// 公用的防火墙设置
 	if sharedNodeConfig.HTTPFirewallPolicy != nil {
-		blocked = this.checkWAFRequest(sharedNodeConfig.HTTPFirewallPolicy)
+		blocked, breakChecking := this.checkWAFRequest(sharedNodeConfig.HTTPFirewallPolicy)
 		if blocked {
-			return
+			return true
+		}
+		if breakChecking {
+			return false
 		}
 	}
 
 	return
 }
 
-func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFirewallPolicy) (blocked bool) {
+func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFirewallPolicy) (blocked bool, breakChecking bool) {
 	// 检查配置是否为空
 	if firewallPolicy == nil || !firewallPolicy.IsOn || firewallPolicy.Inbound == nil || !firewallPolicy.Inbound.IsOn {
 		return
@@ -43,6 +49,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	if inbound.AllowListRef != nil && inbound.AllowListRef.IsOn && inbound.AllowListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.AllowListRef.ListId)
 		if list != nil && list.Contains(iplibrary.IP2Long(remoteAddr)) {
+			breakChecking = true
 			return
 		}
 	}
@@ -52,13 +59,14 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		list := iplibrary.SharedIPListManager.FindList(inbound.DenyListRef.ListId)
 		if list != nil && list.Contains(iplibrary.IP2Long(remoteAddr)) {
 			// TODO 可以配置对封禁的处理方式等
+			// TODO 需要记录日志信息
 			this.writer.WriteHeader(http.StatusForbidden)
 			this.writer.Close()
 
 			// 停止日志
 			this.disableLog = true
 
-			return true
+			return true, false
 		}
 	}
 
@@ -82,7 +90,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 							// 停止日志
 							this.disableLog = true
 
-							return true
+							return true, false
 						}
 					}
 
@@ -97,7 +105,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 							// 停止日志
 							this.disableLog = true
 
-							return true
+							return true, false
 						}
 					}
 				}
@@ -126,7 +134,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		this.logAttrs["waf.action"] = ruleSet.Action
 	}
 
-	return !goNext
+	return !goNext, false
 }
 
 // call response waf
