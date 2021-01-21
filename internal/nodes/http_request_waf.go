@@ -84,6 +84,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 						countryId := iplibrary.SharedCountryManager.Lookup(result.Country)
 						if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
 							// TODO 可以配置对封禁的处理方式等
+							// TODO 需要记录日志信息
 							this.writer.WriteHeader(http.StatusForbidden)
 							this.writer.Close()
 
@@ -99,6 +100,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 						provinceId := iplibrary.SharedProvinceManager.Lookup(result.Province)
 						if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
 							// TODO 可以配置对封禁的处理方式等
+							// TODO 需要记录日志信息
 							this.writer.WriteHeader(http.StatusForbidden)
 							this.writer.Close()
 

@@ -853,6 +853,7 @@ func (this *HTTPRequest) requestServerPort() int {
 
 // 设置代理相关头部信息
 // 参考：https://tools.ietf.org/html/rfc7239
+// TODO X-Forwarded-* 系列做成可选项，避免有些源站屏蔽此项
 func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 	if this.RawReq.Header.Get("Connection") == "close" {
 		this.RawReq.Header.Set("Connection", "keep-alive")

@@ -49,7 +49,7 @@ func (this *IPListManager) Start() {
 		remotelogs.Println("IP_LIST_MANAGER", err.Error())
 	}
 
-	ticker := time.NewTicker(60 * time.Second) // TODO 未来改成可以手动触发IP变更事件
+	ticker := time.NewTicker(60 * time.Second)
 	events.On(events.EventQuit, func() {
 		ticker.Stop()
 	})
