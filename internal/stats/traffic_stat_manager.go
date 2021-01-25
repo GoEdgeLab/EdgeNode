@@ -1,11 +1,14 @@
-package nodes
+package stats
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/logs"
 	"strconv"
 	"sync"
 	"time"
@@ -15,8 +18,9 @@ var SharedTrafficStatManager = NewTrafficStatManager()
 
 // 流量统计
 type TrafficStatManager struct {
-	m      map[string]int64 // [timestamp serverId] => bytes
-	locker sync.Mutex
+	m          map[string]int64 // [timestamp serverId] => bytes
+	locker     sync.Mutex
+	configFunc func() *nodeconfigs.NodeConfig
 }
 
 // 获取新对象
@@ -25,19 +29,24 @@ func NewTrafficStatManager() *TrafficStatManager {
 		m: map[string]int64{},
 	}
 
-	go manager.Start()
-
 	return manager
 }
 
 // 启动自动任务
-func (this *TrafficStatManager) Start() {
+func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig) {
+	this.configFunc = configFunc
+
 	duration := 5 * time.Minute
 	if Tea.IsTesting() {
 		// 测试环境缩短上传时间，方便我们调试
 		duration = 30 * time.Second
 	}
 	ticker := time.NewTicker(duration)
+	events.On(events.EventQuit, func() {
+		remotelogs.Println("TRAFFIC_STAT_MANAGER", "quit")
+		ticker.Stop()
+	})
+	logs.Println("start traffic manager")
 	for range ticker.C {
 		err := this.Upload()
 		if err != nil {
@@ -62,7 +71,8 @@ func (this *TrafficStatManager) Add(serverId int64, bytes int64) {
 
 // 上传流量
 func (this *TrafficStatManager) Upload() error {
-	if sharedNodeConfig == nil {
+	config := this.configFunc()
+	if config == nil {
 		return nil
 	}
 
@@ -89,7 +99,7 @@ func (this *TrafficStatManager) Upload() error {
 
 		pbStats = append(pbStats, &pb.ServerDailyStat{
 			ServerId:  serverId,
-			RegionId:  sharedNodeConfig.RegionId,
+			RegionId:  config.RegionId,
 			Bytes:     bytes,
 			CreatedAt: timestamp,
 		})

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"net"
 	"sync/atomic"
 )
@@ -79,7 +80,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 				}
 
 				// 记录流量
-				SharedTrafficStatManager.Add(firstServer.Id, int64(n))
+				stats.SharedTrafficStatManager.Add(firstServer.Id, int64(n))
 			}
 			if err != nil {
 				closer()

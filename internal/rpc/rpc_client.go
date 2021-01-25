@@ -97,6 +97,10 @@ func (this *RPCClient) ACMEAuthenticationRPC() pb.ACMEAuthenticationServiceClien
 	return pb.NewACMEAuthenticationServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) ServerRPC() pb.ServerServiceClient {
+	return pb.NewServerServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) ServerDailyStatRPC() pb.ServerDailyStatServiceClient {
 	return pb.NewServerDailyStatServiceClient(this.pickConn())
 }

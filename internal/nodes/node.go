@@ -14,6 +14,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/go-yaml/yaml"
 	"github.com/iwind/TeaGo/Tea"
@@ -120,6 +121,12 @@ func (this *Node) Start() {
 
 	// 连接API
 	go NewAPIStream().Start()
+
+	// 统计
+	go stats.SharedTrafficStatManager.Start(func() *nodeconfigs.NodeConfig {
+		return sharedNodeConfig
+	})
+	go stats.SharedHTTPRequestStatManager.Start()
 
 	// 启动端口
 	err = sharedListenerManager.Start(nodeConfig)

@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/types"
 	"net"
@@ -148,6 +149,11 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
+	// 统计
+	if this.web.StatRef != nil && this.web.StatRef.IsOn {
+		this.doStat()
+	}
+
 	// 跳转
 	if len(this.web.HostRedirects) > 0 {
 		if this.doHostRedirect() {
@@ -219,7 +225,7 @@ func (this *HTTPRequest) doEnd() {
 	// 流量统计
 	// TODO 增加是否开启开关
 	if this.Server != nil {
-		SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes)
+		stats.SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes)
 	}
 }
 
@@ -319,6 +325,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// host redirects
 	if len(web.HostRedirects) > 0 {
 		this.web.HostRedirects = web.HostRedirects
+	}
+
+	// stat
+	if web.StatRef != nil && (web.StatRef.IsPrior || isTop) {
+		this.web.StatRef = web.StatRef
 	}
 
 	// 重写规则
