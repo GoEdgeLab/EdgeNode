@@ -19,7 +19,7 @@ func TestNodeStatusExecutor_CPU(t *testing.T) {
 	}
 	t.Log("physical count:", countPhysicalCPU)
 
-	percents, err := cpu.Percent(100 * time.Millisecond, false)
+	percents, err := cpu.Percent(100*time.Millisecond, false)
 	if err != nil {
 		t.Fatal(err)
 	}

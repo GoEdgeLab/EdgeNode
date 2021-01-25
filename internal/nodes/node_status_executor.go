@@ -108,7 +108,7 @@ func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
 	}
 	status.CPUUsage = percents[0] / 100
 
-	if time.Since(this.cpuUpdatedTime) > 300*time.Second { // 每隔5分钟才会更新一次
+	if this.cpuLogicalCount == 0 && this.cpuPhysicalCount == 0 {
 		this.cpuUpdatedTime = time.Now()
 
 		status.CPULogicalCount, err = cpu.Counts(true)
