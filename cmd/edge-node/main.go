@@ -32,6 +32,7 @@ func main() {
 		err := nodes.NewNode().InstallSystemService()
 		if err != nil {
 			fmt.Println("[ERROR]install failed: " + err.Error())
+			return
 		}
 		fmt.Println("done")
 	})
