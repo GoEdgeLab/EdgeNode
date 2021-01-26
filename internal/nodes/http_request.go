@@ -864,8 +864,8 @@ func (this *HTTPRequest) requestServerPort() int {
 
 // 设置代理相关头部信息
 // 参考：https://tools.ietf.org/html/rfc7239
-// TODO X-Forwarded-* 系列做成可选项，避免有些源站屏蔽此项
 func (this *HTTPRequest) setForwardHeaders(header http.Header) {
+	// TODO 做成可选项
 	if this.RawReq.Header.Get("Connection") == "close" {
 		this.RawReq.Header.Set("Connection", "keep-alive")
 	}
@@ -877,7 +877,7 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 	}
 
 	// x-real-ip
-	{
+	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXRealIPHeader() {
 		_, ok1 := header["X-Real-IP"]
 		_, ok2 := header["X-Real-Ip"]
 		if !ok1 && !ok2 {
@@ -886,7 +886,7 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 	}
 
 	// X-Forwarded-For
-	{
+	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXForwardedForHeader() {
 		forwardedFor, ok := header["X-Forwarded-For"]
 		if ok {
 			_, hasForwardHeader := this.RawReq.Header["X-Forwarded-For"]
@@ -909,14 +909,20 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 	}**/
 
 	// others
-	this.RawReq.Header.Set("X-Forwarded-By", this.ServerAddr)
-
-	if _, ok := header["X-Forwarded-Host"]; !ok {
-		this.RawReq.Header.Set("X-Forwarded-Host", this.Host)
+	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXForwardedByHeader() {
+		this.RawReq.Header.Set("X-Forwarded-By", this.ServerAddr)
 	}
 
-	if _, ok := header["X-Forwarded-Proto"]; !ok {
-		this.RawReq.Header.Set("X-Forwarded-Proto", this.requestScheme())
+	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXForwardedHostHeader() {
+		if _, ok := header["X-Forwarded-Host"]; !ok {
+			this.RawReq.Header.Set("X-Forwarded-Host", this.Host)
+		}
+	}
+
+	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXForwardedProtoHeader() {
+		if _, ok := header["X-Forwarded-Proto"]; !ok {
+			this.RawReq.Header.Set("X-Forwarded-Proto", this.requestScheme())
+		}
 	}
 }
 
