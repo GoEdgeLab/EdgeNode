@@ -8,10 +8,10 @@ import (
 type ActionString = string
 
 const (
-	ActionLog     = "log"     // allow and log
-	ActionBlock   = "block"   // block
-	ActionCaptcha = "captcha" // block and show captcha
-	ActionAllow   = "allow"   // allow
+	ActionLog     = "log"      // allow and log
+	ActionBlock   = "block"    // block
+	ActionCaptcha = "captcha"  // block and show captcha
+	ActionAllow   = "allow"    // allow
 	ActionGoGroup = "go_group" // go to next rule group
 	ActionGoSet   = "go_set"   // go to next rule set
 )

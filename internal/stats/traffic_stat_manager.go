@@ -8,7 +8,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/logs"
 	"strconv"
 	"sync"
 	"time"
@@ -16,7 +15,7 @@ import (
 
 var SharedTrafficStatManager = NewTrafficStatManager()
 
-// 流量统计
+// 区域流量统计
 type TrafficStatManager struct {
 	m          map[string]int64 // [timestamp serverId] => bytes
 	locker     sync.Mutex
@@ -46,7 +45,7 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 		remotelogs.Println("TRAFFIC_STAT_MANAGER", "quit")
 		ticker.Stop()
 	})
-	logs.Println("start traffic manager")
+	remotelogs.Println("TRAFFIC_STA_MANAGER", "start ...")
 	for range ticker.C {
 		err := this.Upload()
 		if err != nil {

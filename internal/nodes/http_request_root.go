@@ -6,6 +6,7 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 	"net/url"
@@ -100,7 +101,8 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 
 	stat, err := os.Stat(filePath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		_, isPathError := err.(*fs.PathError)
+		if os.IsNotExist(err) || isPathError {
 			if this.web.Root.IsBreak {
 				this.write404()
 				return true

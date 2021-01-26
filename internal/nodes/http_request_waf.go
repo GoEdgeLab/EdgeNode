@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
@@ -131,6 +132,9 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
+
+			// 添加统计
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Action)
 		}
 
 		this.logAttrs["waf.action"] = ruleSet.Action
@@ -162,6 +166,9 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
+
+			// 添加统计
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Action)
 		}
 
 		this.logAttrs["waf.action"] = ruleSet.Action

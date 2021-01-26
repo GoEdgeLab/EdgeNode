@@ -2,6 +2,7 @@ package stats
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
@@ -19,24 +20,29 @@ var SharedHTTPRequestStatManager = NewHTTPRequestStatManager()
 // HTTP请求相关的统计
 // 这里的统计是一个辅助统计，注意不要因为统计而影响服务工作性能
 type HTTPRequestStatManager struct {
-	ipChan        chan string
-	userAgentChan chan string
+	ipChan                chan string
+	userAgentChan         chan string
+	firewallRuleGroupChan chan string
 
 	cityMap     map[string]int64 // serverId@country@province@city => count ，不需要加锁，因为我们是使用channel依次执行的
 	providerMap map[string]int64 // serverId@provider => count
 	systemMap   map[string]int64 // serverId@system@version => count
 	browserMap  map[string]int64 // serverId@browser@version => count
+
+	dailyFirewallRuleGroupMap map[string]int64 // serverId@firewallRuleGroupId@action => count
 }
 
 // 获取新对象
 func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 	return &HTTPRequestStatManager{
-		ipChan:        make(chan string, 10_000), // TODO 将来可以配置容量
-		userAgentChan: make(chan string, 10_000), // TODO 将来可以配置容量
-		cityMap:       map[string]int64{},
-		providerMap:   map[string]int64{},
-		systemMap:     map[string]int64{},
-		browserMap:    map[string]int64{},
+		ipChan:                    make(chan string, 10_000), // TODO 将来可以配置容量
+		userAgentChan:             make(chan string, 10_000), // TODO 将来可以配置容量
+		firewallRuleGroupChan:     make(chan string, 10_000), // TODO 将来可以配置容量
+		cityMap:            map[string]int64{},
+		providerMap:        map[string]int64{},
+		systemMap:          map[string]int64{},
+		browserMap:         map[string]int64{},
+		dailyFirewallRuleGroupMap: map[string]int64{},
 	}
 }
 
@@ -45,8 +51,14 @@ func (this *HTTPRequestStatManager) Start() {
 	loopTicker := time.NewTicker(1 * time.Second)
 	uploadTicker := time.NewTicker(30 * time.Minute)
 	if Tea.IsTesting() {
-		uploadTicker = time.NewTicker(30 * time.Second) // 方便我们调试
+		uploadTicker = time.NewTicker(10 * time.Second) // 在测试环境下缩短Ticker时间，以方便我们调试
 	}
+	remotelogs.Println("HTTP_REQUEST_STAT_MANAGER", "start ...")
+	events.On(events.EventQuit, func() {
+		remotelogs.Println("HTTP_REQUEST_STAT_MANAGER", "quit")
+		loopTicker.Stop()
+		uploadTicker.Stop()
+	})
 	for range loopTicker.C {
 		err := this.Loop()
 		if err != nil {
@@ -96,6 +108,18 @@ func (this *HTTPRequestStatManager) AddUserAgent(serverId int64, userAgent strin
 
 	select {
 	case this.userAgentChan <- strconv.FormatInt(serverId, 10) + "@" + userAgent:
+	default:
+		// 超出容量我们就丢弃
+	}
+}
+
+// 添加防火墙拦截动作
+func (this *HTTPRequestStatManager) AddFirewallRuleGroupId(serverId int64, firewallRuleGroupId int64, action string) {
+	if firewallRuleGroupId <= 0 {
+		return
+	}
+	select {
+	case this.firewallRuleGroupChan <- strconv.FormatInt(serverId, 10) + "@" + strconv.FormatInt(firewallRuleGroupId, 10) + "@" + action:
 	default:
 		// 超出容量我们就丢弃
 	}
@@ -151,6 +175,8 @@ Loop:
 				}
 				this.browserMap[serverId+"@"+browser+"@"+browserVersion] ++
 			}
+		case firewallRuleGroupString := <-this.firewallRuleGroupChan:
+			this.dailyFirewallRuleGroupMap[firewallRuleGroupString]++
 		case <-timeout.C:
 			break Loop
 		default:
@@ -170,6 +196,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 		return err
 	}
 
+	// 月份相关
 	pbCities := []*pb.UploadServerHTTPRequestStatRequest_RegionCity{}
 	pbProviders := []*pb.UploadServerHTTPRequestStatRequest_RegionProvider{}
 	pbSystems := []*pb.UploadServerHTTPRequestStatRequest_System{}
@@ -211,12 +238,26 @@ func (this *HTTPRequestStatManager) Upload() error {
 		})
 	}
 
+	// 防火墙相关
+	pbFirewallRuleGroups := []*pb.UploadServerHTTPRequestStatRequest_HTTPFirewallRuleGroup{}
+	for k, count := range this.dailyFirewallRuleGroupMap {
+		pieces := strings.SplitN(k, "@", 3)
+		pbFirewallRuleGroups = append(pbFirewallRuleGroups, &pb.UploadServerHTTPRequestStatRequest_HTTPFirewallRuleGroup{
+			ServerId:                types.Int64(pieces[0]),
+			HttpFirewallRuleGroupId: types.Int64(pieces[1]),
+			Action:                  pieces[2],
+			Count:                   count,
+		})
+	}
+
 	_, err = rpcClient.ServerRPC().UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
-		Month:           timeutil.Format("Ym"),
-		RegionCities:    pbCities,
-		RegionProviders: pbProviders,
-		Systems:         pbSystems,
-		Browsers:        pbBrowsers,
+		Month:                  timeutil.Format("Ym"),
+		Day:                    timeutil.Format("Ymd"),
+		RegionCities:           pbCities,
+		RegionProviders:        pbProviders,
+		Systems:                pbSystems,
+		Browsers:               pbBrowsers,
+		HttpFirewallRuleGroups: pbFirewallRuleGroups,
 	})
 	if err != nil {
 		return err
@@ -227,5 +268,6 @@ func (this *HTTPRequestStatManager) Upload() error {
 	this.providerMap = map[string]int64{}
 	this.systemMap = map[string]int64{}
 	this.browserMap = map[string]int64{}
+	this.dailyFirewallRuleGroupMap = map[string]int64{}
 	return nil
 }
