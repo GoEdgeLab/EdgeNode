@@ -32,6 +32,10 @@ func (this *HTTPRequest) log() {
 		return
 	}
 
+	if ref.FirewallOnly && this.firewallPolicyId == 0 {
+		return
+	}
+
 	addr := this.RawReq.RemoteAddr
 	index := strings.LastIndex(addr, ":")
 	if index > 0 {
