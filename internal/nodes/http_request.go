@@ -987,6 +987,9 @@ func (this *HTTPRequest) fixRequestHeader(header http.Header) {
 			header.Del(k)
 			k = strings.ReplaceAll(k, "-Websocket-", "-WebSocket-")
 			header[k] = v
+		} else if k == "Www-Authenticate" {
+			header.Del(k)
+			header["WWW-Authenticate"] = v
 		}
 	}
 }
