@@ -1,6 +1,7 @@
 package iplibrary
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"sync"
 )
@@ -106,6 +107,30 @@ func (this *IPList) Contains(ip uint64) bool {
 	this.locker.RUnlock()
 
 	return ok
+}
+
+// 是否包含一组IP
+func (this *IPList) ContainsIPStrings(ipStrings []string) bool {
+	if len(ipStrings) == 0 {
+		return false
+	}
+	this.locker.RLock()
+	if this.isAll {
+		this.locker.RUnlock()
+		return true
+	}
+	for _, ipString := range ipStrings {
+		if len(ipString) == 0 {
+			continue
+		}
+		_, ok := this.ipMap[utils.IP2Long(ipString)]
+		if ok {
+			this.locker.RUnlock()
+			return true
+		}
+	}
+	this.locker.RUnlock()
+	return false
 }
 
 // 在不加锁的情况下删除某个Item

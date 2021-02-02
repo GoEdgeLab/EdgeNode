@@ -737,6 +737,44 @@ func (this *HTTPRequest) requestRemoteAddr() string {
 	}
 }
 
+// 获取请求的客户端地址列表
+func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
+	// X-Forwarded-For
+	forwardedFor := this.RawReq.Header.Get("X-Forwarded-For")
+	if len(forwardedFor) > 0 {
+		commaIndex := strings.Index(forwardedFor, ",")
+		if commaIndex > 0 {
+			result = append(result, forwardedFor[:commaIndex])
+		}
+	}
+
+	// Real-IP
+	{
+		realIP, ok := this.RawReq.Header["X-Real-IP"]
+		if ok && len(realIP) > 0 {
+			result = append(result, realIP[0])
+		}
+	}
+
+	// Real-Ip
+	{
+		realIP, ok := this.RawReq.Header["X-Real-Ip"]
+		if ok && len(realIP) > 0 {
+			result = append(result, realIP[0])
+		}
+	}
+
+	// Remote-Addr
+	remoteAddr := this.RawReq.RemoteAddr
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil {
+		result = append(result, host)
+	} else {
+		result = append(result, remoteAddr)
+	}
+	return
+}
+
 // 请求内容长度
 func (this *HTTPRequest) requestLength() int64 {
 	return this.RawReq.ContentLength

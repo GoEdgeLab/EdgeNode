@@ -5,7 +5,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
@@ -46,11 +45,11 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 
 	// 检查IP白名单
-	remoteAddr := this.requestRemoteAddr()
+	remoteAddrs := this.requestRemoteAddrs()
 	inbound := firewallPolicy.Inbound
 	if inbound.AllowListRef != nil && inbound.AllowListRef.IsOn && inbound.AllowListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.AllowListRef.ListId)
-		if list != nil && list.Contains(utils.IP2Long(remoteAddr)) {
+		if list != nil && list.ContainsIPStrings(remoteAddrs) {
 			breakChecking = true
 			return
 		}
@@ -59,7 +58,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	// 检查IP黑名单
 	if inbound.DenyListRef != nil && inbound.DenyListRef.IsOn && inbound.DenyListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.DenyListRef.ListId)
-		if list != nil && list.Contains(utils.IP2Long(remoteAddr)) {
+		if list != nil && list.ContainsIPStrings(remoteAddrs) {
 			// TODO 可以配置对封禁的处理方式等
 			// TODO 需要记录日志信息
 			this.writer.WriteHeader(http.StatusForbidden)
@@ -77,39 +76,41 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
 			regionConfig := firewallPolicy.Inbound.Region
 			if regionConfig.IsNotEmpty() {
-				result, err := iplibrary.SharedLibrary.Lookup(remoteAddr)
-				if err != nil {
-					remotelogs.Error("REQUEST", "iplibrary lookup failed: "+err.Error())
-				} else if result != nil {
-					// 检查国家级别封禁
-					if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
-						countryId := iplibrary.SharedCountryManager.Lookup(result.Country)
-						if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
-							// TODO 可以配置对封禁的处理方式等
-							// TODO 需要记录日志信息
-							this.writer.WriteHeader(http.StatusForbidden)
-							this.writer.Close()
+				for _, remoteAddr := range remoteAddrs {
+					result, err := iplibrary.SharedLibrary.Lookup(remoteAddr)
+					if err != nil {
+						remotelogs.Error("REQUEST", "iplibrary lookup failed: "+err.Error())
+					} else if result != nil {
+						// 检查国家级别封禁
+						if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
+							countryId := iplibrary.SharedCountryManager.Lookup(result.Country)
+							if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
+								// TODO 可以配置对封禁的处理方式等
+								// TODO 需要记录日志信息
+								this.writer.WriteHeader(http.StatusForbidden)
+								this.writer.Close()
 
-							// 停止日志
-							this.disableLog = true
+								// 停止日志
+								this.disableLog = true
 
-							return true, false
+								return true, false
+							}
 						}
-					}
 
-					// 检查省份封禁
-					if len(regionConfig.DenyProvinceIds) > 0 && len(result.Province) > 0 {
-						provinceId := iplibrary.SharedProvinceManager.Lookup(result.Province)
-						if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
-							// TODO 可以配置对封禁的处理方式等
-							// TODO 需要记录日志信息
-							this.writer.WriteHeader(http.StatusForbidden)
-							this.writer.Close()
+						// 检查省份封禁
+						if len(regionConfig.DenyProvinceIds) > 0 && len(result.Province) > 0 {
+							provinceId := iplibrary.SharedProvinceManager.Lookup(result.Province)
+							if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
+								// TODO 可以配置对封禁的处理方式等
+								// TODO 需要记录日志信息
+								this.writer.WriteHeader(http.StatusForbidden)
+								this.writer.Close()
 
-							// 停止日志
-							this.disableLog = true
+								// 停止日志
+								this.disableLog = true
 
-							return true, false
+								return true, false
+							}
 						}
 					}
 				}
