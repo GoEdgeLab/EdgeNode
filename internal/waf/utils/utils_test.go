@@ -3,9 +3,11 @@ package utils
 import (
 	"net/http"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestMatchStringCache(t *testing.T) {
@@ -38,7 +40,17 @@ func TestMatchRemoteCache(t *testing.T) {
 	}
 }
 
+func TestMatchBytesCache_WithoutCache(t *testing.T) {
+	data := []byte(strings.Repeat("HELLO", 512))
+	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+	before := time.Now()
+	t.Log(regex.Match(data))
+	t.Log(time.Since(before).Seconds()*1000, "ms")
+}
+
 func BenchmarkMatchStringCache(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
 	data := strings.Repeat("HELLO", 512)
 	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
 	_ = MatchStringCache(regex, data)
@@ -49,10 +61,23 @@ func BenchmarkMatchStringCache(b *testing.B) {
 }
 
 func BenchmarkMatchStringCache_WithoutCache(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
 	data := strings.Repeat("HELLO", 512)
 	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
 
 	for i := 0; i < b.N; i++ {
 		_ = regex.MatchString(data)
+	}
+}
+
+func BenchmarkMatchBytesCache_WithoutCache(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	data := []byte(strings.Repeat("HELLO", 512))
+	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+
+	for i := 0; i < b.N; i++ {
+		_ = regex.Match(data)
 	}
 }
