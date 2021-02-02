@@ -5,64 +5,6 @@ func Template() *WAF {
 	waf.Id = "template"
 	waf.IsOn = true
 
-	// black list
-	{
-		group := NewRuleGroup()
-		group.IsOn = false
-		group.IsInbound = true
-		group.Name = "白名单"
-		group.Code = "whiteList"
-		group.Description = "在此名单中的IP地址可以直接跳过防火墙设置"
-
-		{
-
-			set := NewRuleSet()
-			set.IsOn = true
-			set.Name = "IP白名单"
-			set.Code = "9001"
-			set.Connector = RuleConnectorOr
-			set.Action = ActionAllow
-			set.AddRule(&Rule{
-				Param:             "${remoteAddr}",
-				Operator:          RuleOperatorMatch,
-				Value:             `127\.0\.0\.1|0\.0\.0\.0`,
-				IsCaseInsensitive: false,
-			})
-			group.AddRuleSet(set)
-		}
-
-		waf.AddRuleGroup(group)
-	}
-
-	// black list
-	{
-		group := NewRuleGroup()
-		group.IsOn = false
-		group.IsInbound = true
-		group.Name = "黑名单"
-		group.Code = "blackList"
-		group.Description = "在此名单中的IP地址直接阻止"
-
-		{
-
-			set := NewRuleSet()
-			set.IsOn = true
-			set.Name = "IP黑名单"
-			set.Code = "10001"
-			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
-			set.AddRule(&Rule{
-				Param:             "${remoteAddr}",
-				Operator:          RuleOperatorMatch,
-				Value:             `1\.1\.1\.1|2\.2\.2\.2`,
-				IsCaseInsensitive: false,
-			})
-			group.AddRuleSet(set)
-		}
-
-		waf.AddRuleGroup(group)
-	}
-
 	// xss
 	{
 		group := NewRuleGroup()
