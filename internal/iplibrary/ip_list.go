@@ -8,8 +8,10 @@ import (
 // IP名单
 type IPList struct {
 	itemsMap   map[int64]*IPItem  // id => item
-	ipMap      map[uint32][]int64 // ip => itemIds
+	ipMap      map[uint64][]int64 // ip => itemIds
 	expireList *expires.List
+
+	isAll bool
 
 	locker sync.RWMutex
 }
@@ -17,7 +19,7 @@ type IPList struct {
 func NewIPList() *IPList {
 	list := &IPList{
 		itemsMap: map[int64]*IPItem{},
-		ipMap:    map[uint32][]int64{},
+		ipMap:    map[uint64][]int64{},
 	}
 
 	expireList := expires.NewList()
@@ -31,8 +33,14 @@ func NewIPList() *IPList {
 }
 
 func (this *IPList) Add(item *IPItem) {
-	if item == nil || (item.IPFrom == 0 && item.IPTo == 0) {
+	if item == nil {
 		return
+	}
+
+	if item.IPFrom == 0 && item.IPTo == 0 {
+		if item.Type != "all" {
+			return
+		}
 	}
 
 	this.locker.Lock()
@@ -64,6 +72,11 @@ func (this *IPList) Add(item *IPItem) {
 		}
 	} else if item.IPTo > 0 {
 		this.addIP(item.IPTo, item.Id)
+	} else {
+		this.addIP(0, item.Id)
+
+		// 更新isAll
+		this.isAll = true
 	}
 
 	if item.ExpiredAt > 0 {
@@ -77,11 +90,18 @@ func (this *IPList) Delete(itemId int64) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 	this.deleteItem(itemId)
+
+	// 更新isAll
+	this.isAll = len(this.ipMap[0]) > 0
 }
 
 // 判断是否包含某个IP
-func (this *IPList) Contains(ip uint32) bool {
+func (this *IPList) Contains(ip uint64) bool {
 	this.locker.RLock()
+	if this.isAll {
+		this.locker.RUnlock()
+		return true
+	}
 	_, ok := this.ipMap[ip]
 	this.locker.RUnlock()
 
@@ -117,11 +137,13 @@ func (this *IPList) deleteItem(itemId int64) {
 		}
 	} else if item.IPTo > 0 {
 		this.deleteIP(item.IPTo, item.Id)
+	} else {
+		this.deleteIP(0, item.Id)
 	}
 }
 
 // 添加单个IP
-func (this *IPList) addIP(ip uint32, itemId int64) {
+func (this *IPList) addIP(ip uint64, itemId int64) {
 	itemIds, ok := this.ipMap[ip]
 	if ok {
 		itemIds = append(itemIds, itemId)
@@ -132,7 +154,7 @@ func (this *IPList) addIP(ip uint32, itemId int64) {
 }
 
 // 删除单个IP
-func (this *IPList) deleteIP(ip uint32, itemId int64) {
+func (this *IPList) deleteIP(ip uint64, itemId int64) {
 	itemIds, ok := this.ipMap[ip]
 	if !ok {
 		return

@@ -14,5 +14,5 @@ func VersionToLong(version string) uint32 {
 	} else if countDots == 0 {
 		version += ".0.0.0"
 	}
-	return IP2Long(version)
+	return uint32(IP2Long(version))
 }

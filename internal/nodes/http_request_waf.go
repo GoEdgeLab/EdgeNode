@@ -5,6 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
@@ -49,7 +50,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	inbound := firewallPolicy.Inbound
 	if inbound.AllowListRef != nil && inbound.AllowListRef.IsOn && inbound.AllowListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.AllowListRef.ListId)
-		if list != nil && list.Contains(iplibrary.IP2Long(remoteAddr)) {
+		if list != nil && list.Contains(utils.IP2Long(remoteAddr)) {
 			breakChecking = true
 			return
 		}
@@ -58,7 +59,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	// 检查IP黑名单
 	if inbound.DenyListRef != nil && inbound.DenyListRef.IsOn && inbound.DenyListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.DenyListRef.ListId)
-		if list != nil && list.Contains(iplibrary.IP2Long(remoteAddr)) {
+		if list != nil && list.Contains(utils.IP2Long(remoteAddr)) {
 			// TODO 可以配置对封禁的处理方式等
 			// TODO 需要记录日志信息
 			this.writer.WriteHeader(http.StatusForbidden)

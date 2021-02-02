@@ -5,6 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	"sync"
 	"time"
@@ -123,8 +124,9 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		}
 		list.Add(&IPItem{
 			Id:        item.Id,
-			IPFrom:    IP2Long(item.IpFrom),
-			IPTo:      IP2Long(item.IpTo),
+			Type:      item.Type,
+			IPFrom:    utils.IP2Long(item.IpFrom),
+			IPTo:      utils.IP2Long(item.IpTo),
 			ExpiredAt: item.ExpiredAt,
 		})
 	}

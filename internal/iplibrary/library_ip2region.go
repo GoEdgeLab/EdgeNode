@@ -3,8 +3,9 @@ package iplibrary
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
-	"github.com/iwind/TeaGo/logs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/lionsoul2014/ip2region/binding/golang/ip2region"
+	"strings"
 )
 
 type IP2RegionLibrary struct {
@@ -22,6 +23,11 @@ func (this *IP2RegionLibrary) Load(dbPath string) error {
 }
 
 func (this *IP2RegionLibrary) Lookup(ip string) (*Result, error) {
+	// 暂不支持IPv6
+	if strings.Contains(ip, ":") {
+		return nil, nil
+	}
+
 	if this.db == nil {
 		return nil, errors.New("library has not been loaded")
 	}
@@ -30,7 +36,7 @@ func (this *IP2RegionLibrary) Lookup(ip string) (*Result, error) {
 		// 防止panic发生
 		err := recover()
 		if err != nil {
-			logs.Println("[IP2RegionLibrary]panic: " + fmt.Sprintf("%#v", err))
+			remotelogs.Error("IP2RegionLibrary", "panic: "+fmt.Sprintf("%#v", err))
 		}
 	}()
 
