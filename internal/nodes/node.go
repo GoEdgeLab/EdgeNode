@@ -369,6 +369,7 @@ func (this *Node) syncConfig() error {
 	}
 
 	sharedWAFManager.UpdatePolicies(nodeConfig.FindAllFirewallPolicies())
+	iplibrary.SharedActionManager.UpdateActions(nodeConfig.FirewallActions)
 	sharedNodeConfig = nodeConfig
 
 	// 发送事件

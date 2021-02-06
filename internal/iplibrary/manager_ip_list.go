@@ -120,15 +120,25 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		}
 		if item.IsDeleted {
 			list.Delete(item.Id)
+
+			// 操作事件
+			SharedActionManager.DeleteItem(item.ListType, item)
+
 			continue
 		}
+
 		list.Add(&IPItem{
-			Id:        item.Id,
-			Type:      item.Type,
-			IPFrom:    utils.IP2Long(item.IpFrom),
-			IPTo:      utils.IP2Long(item.IpTo),
-			ExpiredAt: item.ExpiredAt,
+			Id:         item.Id,
+			Type:       item.Type,
+			IPFrom:     utils.IP2Long(item.IpFrom),
+			IPTo:       utils.IP2Long(item.IpTo),
+			ExpiredAt:  item.ExpiredAt,
+			EventLevel: item.EventLevel,
 		})
+
+		// 事件操作
+		SharedActionManager.DeleteItem(item.ListType, item)
+		SharedActionManager.AddItem(item.ListType, item)
 	}
 	this.locker.Unlock()
 	this.version = items[len(items)-1].Version

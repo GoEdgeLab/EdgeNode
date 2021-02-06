@@ -12,11 +12,12 @@ const (
 
 // IP条目
 type IPItem struct {
-	Type      string
-	Id        int64
-	IPFrom    uint64
-	IPTo      uint64
-	ExpiredAt int64
+	Type       string `json:"type"`
+	Id         int64  `json:"id"`
+	IPFrom     uint64 `json:"ipFrom"`
+	IPTo       uint64 `json:"ipTo"`
+	ExpiredAt  int64  `json:"expiredAt"`
+	EventLevel string `json:"eventLevel"`
 }
 
 // 检查是否包含某个IP

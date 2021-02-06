@@ -20,7 +20,7 @@ func Notify(event string) {
 	locker.Lock()
 	callbacks, _ := eventsMap[event]
 	locker.Unlock()
-	
+
 	for _, callback := range callbacks {
 		callback()
 	}
