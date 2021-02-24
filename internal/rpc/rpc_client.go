@@ -158,6 +158,12 @@ func (this *RPCClient) Close() {
 	}
 }
 
+// 修改配置
+func (this *RPCClient) UpdateConfig(config *configs.APIConfig) error {
+	this.apiConfig = config
+	return this.init()
+}
+
 // 初始化
 func (this *RPCClient) init() error {
 	// 重新连接
@@ -185,6 +191,8 @@ func (this *RPCClient) init() error {
 	if len(conns) == 0 {
 		return errors.New("[RPC]no available endpoints")
 	}
+
+	// 这里不需要加锁，防止和pickConn()冲突
 	this.conns = conns
 	return nil
 }
