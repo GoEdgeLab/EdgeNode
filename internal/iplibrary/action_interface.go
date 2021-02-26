@@ -3,6 +3,7 @@ package iplibrary
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"net/http"
 )
 
 type ActionInterface interface {
@@ -17,4 +18,7 @@ type ActionInterface interface {
 
 	// 关闭
 	Close() error
+
+	// 处理HTTP请求
+	DoHTTP(req *http.Request, resp http.ResponseWriter) (goNext bool, err error)
 }

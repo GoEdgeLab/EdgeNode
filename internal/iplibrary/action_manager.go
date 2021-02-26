@@ -60,12 +60,12 @@ func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActi
 			// 检查配置是否一致
 			oldConfigJSON, err := json.Marshal(this.configMap[newAction.Id])
 			if err != nil {
-				remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "action "+strconv.FormatInt(newAction.Id, 10) + ", type:" + newAction.Type+": "+err.Error())
+				remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "action "+strconv.FormatInt(newAction.Id, 10)+", type:"+newAction.Type+": "+err.Error())
 				continue
 			}
 			newConfigJSON, err := json.Marshal(newAction)
 			if err != nil {
-				remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "action "+strconv.FormatInt(newAction.Id, 10) + ", type:" + newAction.Type+": "+err.Error())
+				remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "action "+strconv.FormatInt(newAction.Id, 10)+", type:"+newAction.Type+": "+err.Error())
 				continue
 			}
 			if bytes.Compare(newConfigJSON, oldConfigJSON) != 0 {
@@ -75,7 +75,7 @@ func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActi
 				// 之所以要重新创建，是因为前后的动作类型可能有变化，完全重建可以避免不必要的麻烦
 				newInstance, err := this.createInstance(newAction)
 				if err != nil {
-					remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "reload action "+strconv.FormatInt(newAction.Id, 10) + ", type:" + newAction.Type+": "+err.Error())
+					remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "reload action "+strconv.FormatInt(newAction.Id, 10)+", type:"+newAction.Type+": "+err.Error())
 					continue
 				}
 				remotelogs.Println("IPLIBRARY/ACTION_MANAGER", "reloaded "+strconv.FormatInt(newAction.Id, 10)+", type:"+newAction.Type)
@@ -85,7 +85,7 @@ func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActi
 			// 创建
 			instance, err := this.createInstance(newAction)
 			if err != nil {
-				remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "load new action "+strconv.FormatInt(newAction.Id, 10) + ", type:" + newAction.Type+": "+err.Error())
+				remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "load new action "+strconv.FormatInt(newAction.Id, 10)+", type:"+newAction.Type+": "+err.Error())
 				continue
 			}
 			remotelogs.Println("IPLIBRARY/ACTION_MANAGER", "loaded action "+strconv.FormatInt(newAction.Id, 10)+", type:"+newAction.Type)
@@ -106,6 +106,13 @@ func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActi
 		instances = append(instances, instance)
 		this.eventMap[action.EventLevel] = instances
 	}
+}
+
+// 查找事件对应的动作
+func (this *ActionManager) FindEventActions(eventLevel string) []ActionInterface {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+	return this.eventMap[eventLevel]
 }
 
 // 执行添加IP动作
@@ -147,6 +154,8 @@ func (this *ActionManager) createInstance(config *firewallconfigs.FirewallAction
 		instance = NewScriptAction()
 	case firewallconfigs.FirewallActionTypeHTTPAPI:
 		instance = NewHTTPAPIAction()
+	case firewallconfigs.FirewallActionTypeHTML:
+		instance = NewHTMLAction()
 	}
 	if instance == nil {
 		return nil, errors.New("can not create instance for type '" + config.Type + "'")

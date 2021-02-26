@@ -110,27 +110,40 @@ func (this *IPList) Contains(ip uint64) bool {
 }
 
 // 是否包含一组IP
-func (this *IPList) ContainsIPStrings(ipStrings []string) bool {
+func (this *IPList) ContainsIPStrings(ipStrings []string) (found bool, item *IPItem) {
 	if len(ipStrings) == 0 {
-		return false
+		return
 	}
 	this.locker.RLock()
 	if this.isAll {
+		itemIds := this.ipMap[0]
+		if len(itemIds) > 0 {
+			itemId := itemIds[0]
+			item = this.itemsMap[itemId]
+		}
+
 		this.locker.RUnlock()
-		return true
+		found = true
+		return
 	}
 	for _, ipString := range ipStrings {
 		if len(ipString) == 0 {
 			continue
 		}
-		_, ok := this.ipMap[utils.IP2Long(ipString)]
+		itemIds, ok := this.ipMap[utils.IP2Long(ipString)]
 		if ok {
+			if len(itemIds) > 0 {
+				itemId := itemIds[0]
+				item = this.itemsMap[itemId]
+			}
+
 			this.locker.RUnlock()
-			return true
+			found = true
+			return
 		}
 	}
 	this.locker.RUnlock()
-	return false
+	return
 }
 
 // 在不加锁的情况下删除某个Item

@@ -49,25 +49,47 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	inbound := firewallPolicy.Inbound
 	if inbound.AllowListRef != nil && inbound.AllowListRef.IsOn && inbound.AllowListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.AllowListRef.ListId)
-		if list != nil && list.ContainsIPStrings(remoteAddrs) {
-			breakChecking = true
-			return
+		if list != nil {
+			found, _ := list.ContainsIPStrings(remoteAddrs)
+			if found {
+				breakChecking = true
+				return
+			}
 		}
 	}
 
 	// 检查IP黑名单
 	if inbound.DenyListRef != nil && inbound.DenyListRef.IsOn && inbound.DenyListRef.ListId > 0 {
 		list := iplibrary.SharedIPListManager.FindList(inbound.DenyListRef.ListId)
-		if list != nil && list.ContainsIPStrings(remoteAddrs) {
-			// TODO 可以配置对封禁的处理方式等
-			// TODO 需要记录日志信息
-			this.writer.WriteHeader(http.StatusForbidden)
-			this.writer.Close()
+		if list != nil {
+			found, item := list.ContainsIPStrings(remoteAddrs)
+			if found {
+				// 触发事件
+				if item != nil && len(item.EventLevel) > 0 {
+					actions := iplibrary.SharedActionManager.FindEventActions(item.EventLevel)
+					for _, action := range actions {
+						goNext, err := action.DoHTTP(this.RawReq, this.RawWriter)
+						if err != nil {
+							remotelogs.Error("REQUEST", "do action '"+err.Error()+"' failed: "+err.Error())
+							return true, false
+						}
+						if !goNext {
+							this.disableLog = true
+							return true, false
+						}
+					}
+				}
 
-			// 停止日志
-			this.disableLog = true
+				// TODO 需要记录日志信息
 
-			return true, false
+				this.writer.WriteHeader(http.StatusForbidden)
+				this.writer.Close()
+
+				// 停止日志
+				this.disableLog = true
+
+				return true, false
+			}
 		}
 	}
 
