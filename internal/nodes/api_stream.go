@@ -182,6 +182,7 @@ func (this *APIStream) handleWriteCache(message *pb.NodeStreamMessage) error {
 		return err
 	}
 	storage.AddToList(&caches.Item{
+		Type:       writer.ItemType(),
 		Key:        msg.Key,
 		ExpiredAt:  expiredAt,
 		HeaderSize: writer.HeaderSize(),
@@ -445,6 +446,7 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 						err = writer.Close()
 						if err == nil {
 							storage.AddToList(&caches.Item{
+								Type:      writer.ItemType(),
 								Key:       key,
 								ExpiredAt: expiredAt,
 							})

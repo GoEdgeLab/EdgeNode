@@ -215,6 +215,7 @@ func (this *HTTPWriter) Close() {
 		err := this.cacheWriter.Close()
 		if err == nil {
 			this.cacheStorage.AddToList(&caches.Item{
+				Type:       this.cacheWriter.ItemType(),
 				Key:        this.cacheWriter.Key(),
 				ExpiredAt:  this.cacheWriter.ExpiredAt(),
 				HeaderSize: this.cacheWriter.HeaderSize(),

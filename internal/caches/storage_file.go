@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -43,9 +44,10 @@ var (
 //   文件结构：
 //    [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
 type FileStorage struct {
-	policy      *serverconfigs.HTTPCachePolicy
-	cacheConfig *serverconfigs.HTTPFileCacheStorage
-	totalSize   int64
+	policy        *serverconfigs.HTTPCachePolicy
+	cacheConfig   *serverconfigs.HTTPFileCacheStorage // 二级缓存
+	memoryStorage *MemoryStorage                      // 一级缓存
+	totalSize     int64
 
 	list   *List
 	locker sync.RWMutex
@@ -77,6 +79,7 @@ func (this *FileStorage) Init() error {
 	defer this.locker.Unlock()
 
 	before := time.Now()
+	cacheDir := ""
 	defer func() {
 		// 统计
 		count := 0
@@ -98,7 +101,7 @@ func (this *FileStorage) Init() error {
 		} else if size > 1024 {
 			sizeMB = fmt.Sprintf("%.3f K", float64(size)/1024)
 		}
-		remotelogs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+", cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+strconv.Itoa(count)+", size: "+sizeMB)
+		remotelogs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+" from '"+cacheDir+"', cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+strconv.Itoa(count)+", size: "+sizeMB)
 	}()
 
 	// 配置
@@ -112,6 +115,7 @@ func (this *FileStorage) Init() error {
 		return err
 	}
 	this.cacheConfig = cacheConfig
+	cacheDir = cacheConfig.Dir
 
 	if !filepath.IsAbs(this.cacheConfig.Dir) {
 		this.cacheConfig.Dir = Tea.Root + Tea.DS + this.cacheConfig.Dir
@@ -142,10 +146,49 @@ func (this *FileStorage) Init() error {
 		return err
 	}
 
+	// 加载内存缓存
+	if this.cacheConfig.MemoryPolicy != nil {
+		memoryCapacity := this.cacheConfig.MemoryPolicy.Capacity
+		if memoryCapacity != nil && memoryCapacity.Count > 0 {
+			memoryPolicy := &serverconfigs.HTTPCachePolicy{
+				Id:          this.policy.Id,
+				IsOn:        this.policy.IsOn,
+				Name:        this.policy.Name,
+				Description: this.policy.Description,
+				Capacity:    memoryCapacity,
+				MaxKeys:     this.policy.MaxKeys,
+				MaxSize:     &shared.SizeCapacity{Count: 128, Unit: shared.SizeCapacityUnitMB}, // TODO 将来可以修改
+				Type:        serverconfigs.CachePolicyStorageMemory,
+				Options:     this.policy.Options,
+				Life:        this.policy.Life,
+				MinLife:     this.policy.MinLife,
+				MaxLife:     this.policy.MaxLife,
+			}
+			err = memoryPolicy.Init()
+			if err != nil {
+				return err
+			}
+			memoryStorage := NewMemoryStorage(memoryPolicy)
+			err = memoryStorage.Init()
+			if err != nil {
+				return err
+			}
+			this.memoryStorage = memoryStorage
+		}
+	}
+
 	return nil
 }
 
 func (this *FileStorage) OpenReader(key string) (Reader, error) {
+	// 先尝试内存缓存
+	if this.memoryStorage != nil {
+		reader, err := this.memoryStorage.OpenReader(key)
+		if err == nil {
+			return reader, err
+		}
+	}
+
 	hash, path := this.keyPath(key)
 	if !this.list.Exist(hash) {
 		return nil, ErrNotFound
@@ -173,6 +216,14 @@ func (this *FileStorage) OpenReader(key string) (Reader, error) {
 
 // 打开缓存文件等待写入
 func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
+	// 先尝试内存缓存
+	if this.memoryStorage != nil {
+		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status)
+		if err == nil {
+			return writer, nil
+		}
+	}
+
 	// 检查是否超出最大值
 	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
 		return nil, errors.New("write file cache failed: too many keys in cache storage")
@@ -291,6 +342,13 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 
 // 添加到List
 func (this *FileStorage) AddToList(item *Item) {
+	if this.memoryStorage != nil {
+		if item.Type == ItemTypeMemory {
+			this.memoryStorage.AddToList(item)
+			return
+		}
+	}
+
 	item.MetaSize = SizeMeta
 	hash := stringutil.Md5(item.Key)
 	this.list.Add(hash, item)
@@ -300,6 +358,11 @@ func (this *FileStorage) AddToList(item *Item) {
 func (this *FileStorage) Delete(key string) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
+
+	// 先尝试内存缓存
+	if this.memoryStorage != nil {
+		_ = this.memoryStorage.Delete(key)
+	}
 
 	hash, path := this.keyPath(key)
 	this.list.Remove(hash)
@@ -324,6 +387,11 @@ func (this *FileStorage) Stat() (*Stat, error) {
 func (this *FileStorage) CleanAll() error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
+
+	// 先尝试内存缓存
+	if this.memoryStorage != nil {
+		_ = this.memoryStorage.CleanAll()
+	}
 
 	this.list.Reset()
 
@@ -378,6 +446,11 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
+	// 先尝试内存缓存
+	if this.memoryStorage != nil {
+		_ = this.memoryStorage.Purge(keys, urlType)
+	}
+
 	// 目录
 	if urlType == "dir" {
 		resultKeys := []string{}
@@ -411,6 +484,11 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 func (this *FileStorage) Stop() {
 	this.locker.Lock()
 	defer this.locker.Unlock()
+
+	// 先尝试内存缓存
+	if this.memoryStorage != nil {
+		this.memoryStorage.Stop()
+	}
 
 	this.list.Reset()
 	if this.ticker != nil {
@@ -518,6 +596,7 @@ func (this *FileStorage) decodeFile(path string) (*Item, error) {
 	}()
 
 	item := &Item{
+		Type:     ItemTypeFile,
 		MetaSize: SizeMeta,
 	}
 

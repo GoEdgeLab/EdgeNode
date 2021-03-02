@@ -67,3 +67,8 @@ func (this *gzipWriter) HeaderSize() int64 {
 func (this *gzipWriter) BodySize() int64 {
 	return this.rawWriter.BodySize()
 }
+
+// 内容类型
+func (this *gzipWriter) ItemType() ItemType {
+	return this.rawWriter.ItemType()
+}

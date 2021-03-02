@@ -126,3 +126,8 @@ func (this *FileWriter) ExpiredAt() int64 {
 func (this *FileWriter) Key() string {
 	return this.key
 }
+
+// 内容类型
+func (this *FileWriter) ItemType() ItemType {
+	return ItemTypeFile
+}

@@ -25,4 +25,7 @@ type Writer interface {
 
 	// 过期时间
 	ExpiredAt() int64
+
+	// 内容类型
+	ItemType() ItemType
 }

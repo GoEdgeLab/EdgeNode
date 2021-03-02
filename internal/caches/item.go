@@ -2,7 +2,15 @@ package caches
 
 import "time"
 
+type ItemType = int
+
+const (
+	ItemTypeFile   ItemType = 1
+	ItemTypeMemory ItemType = 2
+)
+
 type Item struct {
+	Type       ItemType
 	Key        string
 	ExpiredAt  int64
 	HeaderSize int64

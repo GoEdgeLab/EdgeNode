@@ -17,6 +17,7 @@ type MemoryItem struct {
 	HeaderValue []byte
 	BodyValue   []byte
 	Status      int
+	IsDone      bool
 }
 
 type MemoryStorage struct {
@@ -67,15 +68,14 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 	hash := this.hash(key)
 
 	this.locker.RLock()
+	defer this.locker.RUnlock()
+
 	item := this.valuesMap[hash]
-	if item == nil {
-		this.locker.RUnlock()
+	if item == nil || !item.IsDone {
 		return nil, ErrNotFound
 	}
 
 	if item.ExpiredAt > utils.UnixTime() {
-		this.locker.RUnlock()
-
 		reader := NewMemoryReader(item)
 		err := reader.Init()
 		if err != nil {
@@ -83,7 +83,6 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 		}
 		return reader, nil
 	}
-	this.locker.RUnlock()
 
 	_ = this.Delete(key)
 
@@ -190,7 +189,7 @@ func (this *MemoryStorage) hash(key string) uint64 {
 
 // 清理任务
 func (this *MemoryStorage) purgeLoop() {
-	this.list.Purge(1000, func(hash string) {
+	this.list.Purge(2048, func(hash string) {
 		uintHash, err := strconv.ParseUint(hash, 10, 64)
 		if err == nil {
 			this.locker.Lock()
