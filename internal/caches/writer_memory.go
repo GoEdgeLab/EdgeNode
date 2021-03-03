@@ -6,14 +6,13 @@ import (
 )
 
 type MemoryWriter struct {
-	key            string
-	expiredAt      int64
-	m              map[uint64]*MemoryItem
-	locker         *sync.RWMutex
-	isFirstWriting bool
-	headerSize     int64
-	bodySize       int64
-	status         int
+	key        string
+	expiredAt  int64
+	m          map[uint64]*MemoryItem
+	locker     *sync.RWMutex
+	headerSize int64
+	bodySize   int64
+	status     int
 
 	hash uint64
 	item *MemoryItem
@@ -21,12 +20,15 @@ type MemoryWriter struct {
 
 func NewMemoryWriter(m map[uint64]*MemoryItem, key string, expiredAt int64, status int, locker *sync.RWMutex) *MemoryWriter {
 	w := &MemoryWriter{
-		m:              m,
-		key:            key,
-		expiredAt:      expiredAt,
-		locker:         locker,
-		isFirstWriting: true,
-		status:         status,
+		m:         m,
+		key:       key,
+		expiredAt: expiredAt,
+		locker:    locker,
+		item: &MemoryItem{
+			ExpiredAt: expiredAt,
+			Status:    status,
+		},
+		status: status,
 	}
 	w.hash = w.calculateHash(key)
 
@@ -38,25 +40,7 @@ func (this *MemoryWriter) WriteHeader(data []byte) (n int, err error) {
 	this.headerSize += int64(len(data))
 
 	this.locker.Lock()
-	item, ok := this.m[this.hash]
-	if ok {
-		item.IsDone = false
-
-		// 第一次写先清空
-		if this.isFirstWriting {
-			item.HeaderValue = nil
-			item.BodyValue = nil
-			this.isFirstWriting = false
-		}
-		item.HeaderValue = append(item.HeaderValue, data...)
-	} else {
-		item = &MemoryItem{}
-		item.HeaderValue = append([]byte{}, data...)
-		item.ExpiredAt = this.expiredAt
-		item.Status = this.status
-		this.isFirstWriting = false
-	}
-	this.item = item
+	this.item.HeaderValue = append(this.item.HeaderValue, data...)
 	this.locker.Unlock()
 	return len(data), nil
 }
@@ -66,25 +50,7 @@ func (this *MemoryWriter) Write(data []byte) (n int, err error) {
 	this.bodySize += int64(len(data))
 
 	this.locker.Lock()
-	item, ok := this.m[this.hash]
-	if ok {
-		item.IsDone = false
-
-		// 第一次写先清空
-		if this.isFirstWriting {
-			item.HeaderValue = nil
-			item.BodyValue = nil
-			this.isFirstWriting = false
-		}
-		item.BodyValue = append(item.BodyValue, data...)
-	} else {
-		item = &MemoryItem{}
-		item.BodyValue = append([]byte{}, data...)
-		item.ExpiredAt = this.expiredAt
-		item.Status = this.status
-		this.isFirstWriting = false
-	}
-	this.item = item
+	this.item.BodyValue = append(this.item.BodyValue, data...)
 	this.locker.Unlock()
 	return len(data), nil
 }
