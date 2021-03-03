@@ -38,20 +38,14 @@ func NewMemoryWriter(m map[uint64]*MemoryItem, key string, expiredAt int64, stat
 // 写入数据
 func (this *MemoryWriter) WriteHeader(data []byte) (n int, err error) {
 	this.headerSize += int64(len(data))
-
-	this.locker.Lock()
 	this.item.HeaderValue = append(this.item.HeaderValue, data...)
-	this.locker.Unlock()
 	return len(data), nil
 }
 
 // 写入数据
 func (this *MemoryWriter) Write(data []byte) (n int, err error) {
 	this.bodySize += int64(len(data))
-
-	this.locker.Lock()
 	this.item.BodyValue = append(this.item.BodyValue, data...)
-	this.locker.Unlock()
 	return len(data), nil
 }
 
