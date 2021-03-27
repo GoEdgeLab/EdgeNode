@@ -73,11 +73,11 @@ func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.Orig
 		numberCPU = 8
 	}
 	if maxConnections <= 0 {
-		maxConnections = numberCPU * 2
+		maxConnections = numberCPU * 8
 	}
 
 	if idleConns <= 0 {
-		idleConns = numberCPU
+		idleConns = numberCPU * 4
 	}
 	//logs.Println("[ORIGIN]max connections:", maxConnections)
 
