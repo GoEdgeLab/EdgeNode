@@ -67,7 +67,7 @@ func (this *CaptchaValidator) validate(request *requests.Request, writer http.Re
 			http.SetCookie(writer, &http.Cookie{
 				Name:   "TEAWEB_WAF_CAPTCHA",
 				Value:  m + timestamp,
-				MaxAge: CaptchaSeconds,
+				MaxAge: CaptchaSeconds, // TODO 这个时间可以设置
 				Path:   "/", // all of dirs
 			})
 
