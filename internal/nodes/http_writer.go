@@ -304,7 +304,7 @@ func (this *HTTPWriter) prepareGzip(size int64) {
 
 // 准备缓存
 func (this *HTTPWriter) prepareCache(size int64) {
-	if this.writer == nil || size <= 0 {
+	if this.writer == nil {
 		return
 	}
 
@@ -319,10 +319,16 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	}
 
 	cacheRef := this.req.cacheRef
-	if cacheRef == nil ||
-		!cacheRef.IsOn ||
-		(cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
-		(cachePolicy.MaxSizeBytes() > 0 && size > cachePolicy.MaxSizeBytes()) {
+	if cacheRef == nil || !cacheRef.IsOn {
+		return
+	}
+
+	// 如果允许 ChunkedEncoding，就无需尺寸的判断，因为此时的 size 为 -1
+	if !cacheRef.AllowChunkedEncoding && size < 0 {
+		return
+	}
+	if size >= 0 && ((cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
+		(cachePolicy.MaxSizeBytes() > 0 && size > cachePolicy.MaxSizeBytes())) {
 		return
 	}
 
