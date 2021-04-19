@@ -23,13 +23,17 @@ func (this *Request) Raw() *http.Request {
 }
 
 func (this *Request) ReadBody(max int64) (data []byte, err error) {
-	data, err = ioutil.ReadAll(io.LimitReader(this.Request.Body, max))
+	if this.Request.ContentLength > 0 {
+		data, err = ioutil.ReadAll(io.LimitReader(this.Request.Body, max))
+	}
 	return
 }
 
 func (this *Request) RestoreBody(data []byte) {
-	rawReader := bytes.NewBuffer(data)
-	buf := make([]byte, 1024)
-	io.CopyBuffer(rawReader, this.Request.Body, buf)
-	this.Request.Body = ioutil.NopCloser(rawReader)
+	if len(data) > 0 {
+		rawReader := bytes.NewBuffer(data)
+		buf := make([]byte, 1024)
+		_, _ = io.CopyBuffer(rawReader, this.Request.Body, buf)
+		this.Request.Body = ioutil.NopCloser(rawReader)
+	}
 }
