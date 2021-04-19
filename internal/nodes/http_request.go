@@ -28,7 +28,7 @@ var bytePool1k = utils.NewBytePool(20480, 1024)
 var bytePool32k = utils.NewBytePool(20480, 32*1024)
 var bytePool128k = utils.NewBytePool(20480, 128*1024)
 
-// HTTP请求
+// HTTPRequest HTTP请求
 type HTTPRequest struct {
 	// 外部参数
 	RawReq     *http.Request
@@ -95,7 +95,7 @@ func (this *HTTPRequest) init() {
 	this.requestFromTime = time.Now()
 }
 
-// 执行请求
+// Do 执行请求
 func (this *HTTPRequest) Do() {
 	// 初始化
 	this.init()
@@ -433,7 +433,7 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	return nil
 }
 
-// 利用请求参数格式化字符串
+// Format 利用请求参数格式化字符串
 func (this *HTTPRequest) Format(source string) string {
 	if len(source) == 0 {
 		return ""

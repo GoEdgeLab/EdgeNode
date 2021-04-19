@@ -14,17 +14,17 @@ import (
 	"time"
 )
 
-// HTTP客户端池单例
+// SharedHTTPClientPool HTTP客户端池单例
 var SharedHTTPClientPool = NewHTTPClientPool()
 
-// 客户端池
+// HTTPClientPool 客户端池
 type HTTPClientPool struct {
 	clientExpiredDuration time.Duration
 	clientsMap            map[string]*HTTPClient // backend key => client
 	locker                sync.Mutex
 }
 
-// 获取新对象
+// NewHTTPClientPool 获取新对象
 func NewHTTPClientPool() *HTTPClientPool {
 	pool := &HTTPClientPool{
 		clientExpiredDuration: 3600 * time.Second,
@@ -36,7 +36,7 @@ func NewHTTPClientPool() *HTTPClientPool {
 	return pool
 }
 
-// 根据地址获取客户端
+// Client 根据地址获取客户端
 func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.OriginConfig, originAddr string) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")

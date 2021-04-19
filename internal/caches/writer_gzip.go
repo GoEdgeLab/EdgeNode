@@ -1,6 +1,8 @@
 package caches
 
-import "compress/gzip"
+import (
+	"compress/gzip"
+)
 
 type gzipWriter struct {
 	rawWriter Writer
