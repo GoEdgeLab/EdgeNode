@@ -6,10 +6,12 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/maps"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"os"
@@ -63,6 +65,11 @@ func (this *NodeStatusExecutor) update() {
 	status.IsActive = true
 	status.ConnectionCount = sharedListenerManager.TotalActiveConnections()
 
+	// 记录监控数据
+	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemConnections, maps.Map{
+		"total": status.ConnectionCount,
+	})
+
 	hostname, _ := os.Hostname()
 	status.Hostname = hostname
 
@@ -107,6 +114,11 @@ func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
 		return
 	}
 	status.CPUUsage = percents[0] / 100
+
+	// 记录监控数据
+	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemCPU, maps.Map{
+		"usage": status.CPUUsage,
+	})
 
 	if this.cpuLogicalCount == 0 && this.cpuPhysicalCount == 0 {
 		this.cpuUpdatedTime = time.Now()
@@ -188,4 +200,11 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 	status.DiskTotal = total
 	status.DiskUsage = float64(totalUsage) / float64(total)
 	status.DiskMaxUsage = maxUsage / 100
+
+	// 记录监控数据
+	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemDisk, maps.Map{
+		"total":    status.DiskTotal,
+		"usage":    status.DiskUsage,
+		"maxUsage": status.DiskMaxUsage,
+	})
 }

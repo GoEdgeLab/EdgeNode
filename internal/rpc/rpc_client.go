@@ -57,6 +57,10 @@ func (this *RPCClient) NodeTaskRPC() pb.NodeTaskServiceClient {
 	return pb.NewNodeTaskServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) NodeValueRPC() pb.NodeValueServiceClient {
+	return pb.NewNodeValueServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) HTTPAccessLogRPC() pb.HTTPAccessLogServiceClient {
 	return pb.NewHTTPAccessLogServiceClient(this.pickConn())
 }
@@ -105,7 +109,7 @@ func (this *RPCClient) ServerDailyStatRPC() pb.ServerDailyStatServiceClient {
 	return pb.NewServerDailyStatServiceClient(this.pickConn())
 }
 
-// 节点上下文信息
+// Context 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()
 	m := maps.Map{
@@ -128,7 +132,7 @@ func (this *RPCClient) Context() context.Context {
 	return ctx
 }
 
-// 集群上下文
+// ClusterContext 集群上下文
 func (this *RPCClient) ClusterContext(clusterId string, clusterSecret string) context.Context {
 	ctx := context.Background()
 	m := maps.Map{
@@ -151,14 +155,14 @@ func (this *RPCClient) ClusterContext(clusterId string, clusterSecret string) co
 	return ctx
 }
 
-// 关闭连接
+// Close 关闭连接
 func (this *RPCClient) Close() {
 	for _, conn := range this.conns {
 		_ = conn.Close()
 	}
 }
 
-// 修改配置
+// UpdateConfig 修改配置
 func (this *RPCClient) UpdateConfig(config *configs.APIConfig) error {
 	this.apiConfig = config
 	return this.init()

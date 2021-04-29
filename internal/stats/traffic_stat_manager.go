@@ -15,14 +15,14 @@ import (
 
 var SharedTrafficStatManager = NewTrafficStatManager()
 
-// 区域流量统计
+// TrafficStatManager 区域流量统计
 type TrafficStatManager struct {
 	m          map[string]int64 // [timestamp serverId] => bytes
 	locker     sync.Mutex
 	configFunc func() *nodeconfigs.NodeConfig
 }
 
-// 获取新对象
+// NewTrafficStatManager 获取新对象
 func NewTrafficStatManager() *TrafficStatManager {
 	manager := &TrafficStatManager{
 		m: map[string]int64{},
@@ -31,7 +31,7 @@ func NewTrafficStatManager() *TrafficStatManager {
 	return manager
 }
 
-// 启动自动任务
+// Start 启动自动任务
 func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig) {
 	this.configFunc = configFunc
 
@@ -54,7 +54,7 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 	}
 }
 
-// 添加流量
+// Add 添加流量
 func (this *TrafficStatManager) Add(serverId int64, bytes int64) {
 	if bytes == 0 {
 		return
@@ -68,7 +68,7 @@ func (this *TrafficStatManager) Add(serverId int64, bytes int64) {
 	this.locker.Unlock()
 }
 
-// 上传流量
+// Upload 上传流量
 func (this *TrafficStatManager) Upload() error {
 	config := this.configFunc()
 	if config == nil {
