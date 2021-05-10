@@ -191,6 +191,13 @@ func (this *HTTPRequest) doBegin() {
 		}
 	}
 
+	// Fastcgi
+	if this.web.FastcgiRef != nil && this.web.FastcgiRef.IsOn && len(this.web.FastcgiList) > 0 {
+		if this.doFastcgi() {
+			return
+		}
+	}
+
 	// root
 	if this.web.Root != nil && this.web.Root.IsOn {
 		// 如果处理成功，则终止请求的处理
@@ -210,9 +217,6 @@ func (this *HTTPRequest) doBegin() {
 		return
 	}
 
-	// Fastcgi
-	// TODO
-
 	// 返回404页面
 	this.write404()
 }
@@ -229,7 +233,7 @@ func (this *HTTPRequest) doEnd() {
 	}
 }
 
-// 原始的请求URI
+// RawURI 原始的请求URI
 func (this *HTTPRequest) RawURI() string {
 	return this.rawURI
 }
@@ -330,6 +334,12 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// stat
 	if web.StatRef != nil && (web.StatRef.IsPrior || isTop) {
 		this.web.StatRef = web.StatRef
+	}
+
+	// fastcgi
+	if web.FastcgiRef != nil && (web.FastcgiRef.IsPrior || isTop) {
+		this.web.FastcgiRef = web.FastcgiRef
+		this.web.FastcgiList = web.FastcgiList
 	}
 
 	// 重写规则
