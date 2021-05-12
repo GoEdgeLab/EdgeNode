@@ -15,6 +15,15 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	if this.web.Cache == nil || !this.web.Cache.IsOn || len(this.web.Cache.CacheRefs) == 0 {
 		return
 	}
+	var addStatusHeader = this.web.Cache.AddStatusHeader
+	if addStatusHeader {
+		defer func() {
+			cacheStatus := this.varMapping["cache.status"]
+			if cacheStatus != "HIT" {
+				this.writer.Header().Set("X-Cache", cacheStatus)
+			}
+		}()
+	}
 
 	cachePolicy := sharedNodeConfig.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
@@ -115,6 +124,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return
 	}
 
+	if addStatusHeader {
+		this.writer.Header().Set("X-Cache", "HIT")
+	}
 	this.processResponseHeaders(reader.Status())
 
 	// 输出Body
