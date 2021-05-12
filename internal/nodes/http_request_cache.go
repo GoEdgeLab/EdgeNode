@@ -97,6 +97,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}()
 
 	this.varMapping["cache.status"] = "HIT"
+	this.logAttrs["cache.status"] = "HIT"
 
 	// 读取Header
 	headerBuf := []byte{}
