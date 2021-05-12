@@ -2,6 +2,7 @@ package caches
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
 	"strconv"
@@ -10,12 +11,18 @@ import (
 
 var SharedManager = NewManager()
 
+// Manager 缓存策略管理器
 type Manager struct {
+	// 全局配置
+	MaxDiskCapacity   *shared.SizeCapacity
+	MaxMemoryCapacity *shared.SizeCapacity
+
 	policyMap  map[int64]*serverconfigs.HTTPCachePolicy // policyId => []*Policy
 	storageMap map[int64]StorageInterface               // policyId => *Storage
 	locker     sync.RWMutex
 }
 
+// NewManager 获取管理器对象
 func NewManager() *Manager {
 	return &Manager{
 		policyMap:  map[int64]*serverconfigs.HTTPCachePolicy{},
@@ -23,7 +30,7 @@ func NewManager() *Manager {
 	}
 }
 
-// 重新设置策略
+// UpdatePolicies 重新设置策略
 func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -103,7 +110,7 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 	}
 }
 
-// 获取Policy信息
+// FindPolicy 获取Policy信息
 func (this *Manager) FindPolicy(policyId int64) *serverconfigs.HTTPCachePolicy {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
@@ -112,7 +119,7 @@ func (this *Manager) FindPolicy(policyId int64) *serverconfigs.HTTPCachePolicy {
 	return p
 }
 
-// 根据策略ID查找存储
+// FindStorageWithPolicy 根据策略ID查找存储
 func (this *Manager) FindStorageWithPolicy(policyId int64) StorageInterface {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
@@ -121,7 +128,7 @@ func (this *Manager) FindStorageWithPolicy(policyId int64) StorageInterface {
 	return storage
 }
 
-// 根据策略获取存储对象
+// NewStorageWithPolicy 根据策略获取存储对象
 func (this *Manager) NewStorageWithPolicy(policy *serverconfigs.HTTPCachePolicy) StorageInterface {
 	switch policy.Type {
 	case serverconfigs.CachePolicyStorageFile:

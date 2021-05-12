@@ -362,6 +362,8 @@ func (this *Node) syncConfig() error {
 	}
 
 	nodeconfigs.ResetNodeConfig(nodeConfig)
+	caches.SharedManager.MaxDiskCapacity = nodeConfig.MaxCacheDiskCapacity
+	caches.SharedManager.MaxMemoryCapacity = nodeConfig.MaxCacheMemoryCapacity
 	if nodeConfig.HTTPCachePolicy != nil {
 		caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{nodeConfig.HTTPCachePolicy})
 	} else {

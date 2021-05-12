@@ -39,7 +39,7 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
 	}
 }
 
-// 初始化
+// Init 初始化
 func (this *MemoryStorage) Init() error {
 	this.list.OnAdd(func(item *Item) {
 		atomic.AddInt64(&this.totalSize, item.Size())
@@ -63,7 +63,7 @@ func (this *MemoryStorage) Init() error {
 	return nil
 }
 
-// 读取缓存
+// OpenReader 读取缓存
 func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 	hash := this.hash(key)
 
@@ -89,13 +89,14 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 	return nil, ErrNotFound
 }
 
-// 打开缓存写入器等待写入
+// OpenWriter 打开缓存写入器等待写入
 func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
 	// 检查是否超出最大值
 	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
 		return nil, errors.New("write memory cache failed: too many keys in cache storage")
 	}
-	if this.policy.CapacityBytes() > 0 && this.policy.CapacityBytes() <= this.totalSize {
+	capacityBytes := this.memoryCapacityBytes()
+	if capacityBytes > 0 && capacityBytes <= this.totalSize {
 		return nil, errors.New("write memory cache failed: over memory size, real size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
 	}
 
@@ -108,7 +109,7 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (
 	return NewMemoryWriter(this.valuesMap, key, expiredAt, status, this.locker), nil
 }
 
-// 删除某个键值对应的缓存
+// Delete 删除某个键值对应的缓存
 func (this *MemoryStorage) Delete(key string) error {
 	hash := this.hash(key)
 	this.locker.Lock()
@@ -118,7 +119,7 @@ func (this *MemoryStorage) Delete(key string) error {
 	return nil
 }
 
-// 统计缓存
+// Stat 统计缓存
 func (this *MemoryStorage) Stat() (*Stat, error) {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
@@ -128,7 +129,7 @@ func (this *MemoryStorage) Stat() (*Stat, error) {
 	}), nil
 }
 
-// 清除所有缓存
+// CleanAll 清除所有缓存
 func (this *MemoryStorage) CleanAll() error {
 	this.locker.Lock()
 	this.valuesMap = map[uint64]*MemoryItem{}
@@ -138,7 +139,7 @@ func (this *MemoryStorage) CleanAll() error {
 	return nil
 }
 
-// 批量删除缓存
+// Purge 批量删除缓存
 func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 	// 目录
 	if urlType == "dir" {
@@ -158,7 +159,7 @@ func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 	return nil
 }
 
-// 停止缓存策略
+// Stop 停止缓存策略
 func (this *MemoryStorage) Stop() {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -170,12 +171,12 @@ func (this *MemoryStorage) Stop() {
 	}
 }
 
-// 获取当前存储的Policy
+// Policy 获取当前存储的Policy
 func (this *MemoryStorage) Policy() *serverconfigs.HTTPCachePolicy {
 	return this.policy
 }
 
-// 将缓存添加到列表
+// AddToList 将缓存添加到列表
 func (this *MemoryStorage) AddToList(item *Item) {
 	item.MetaSize = int64(len(item.Key)) + 32 /** 32是我们评估的数据结构的长度 **/
 	hash := fmt.Sprintf("%d", this.hash(item.Key))
@@ -197,4 +198,21 @@ func (this *MemoryStorage) purgeLoop() {
 			this.locker.Unlock()
 		}
 	})
+}
+
+func (this *MemoryStorage) memoryCapacityBytes() int64 {
+	if this.policy == nil {
+		return 0
+	}
+	c1 := int64(0)
+	if this.policy.Capacity != nil {
+		c1 = this.policy.Capacity.Bytes()
+	}
+	if SharedManager.MaxMemoryCapacity != nil {
+		c2 := SharedManager.MaxMemoryCapacity.Bytes()
+		if c2 > 0 {
+			return c2
+		}
+	}
+	return c1
 }

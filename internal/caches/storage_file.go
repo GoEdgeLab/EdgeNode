@@ -40,7 +40,7 @@ var (
 	ErrInvalidRange  = errors.New("invalid range")
 )
 
-// 文件缓存
+// FileStorage 文件缓存
 //   文件结构：
 //    [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
 type FileStorage struct {
@@ -61,12 +61,12 @@ func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
 	}
 }
 
-// 获取当前的Policy
+// Policy 获取当前的Policy
 func (this *FileStorage) Policy() *serverconfigs.HTTPCachePolicy {
 	return this.policy
 }
 
-// 初始化
+// Init 初始化
 func (this *FileStorage) Init() error {
 	this.list.OnAdd(func(item *Item) {
 		atomic.AddInt64(&this.totalSize, item.TotalSize())
@@ -148,14 +148,13 @@ func (this *FileStorage) Init() error {
 
 	// 加载内存缓存
 	if this.cacheConfig.MemoryPolicy != nil {
-		memoryCapacity := this.cacheConfig.MemoryPolicy.Capacity
-		if memoryCapacity != nil && memoryCapacity.Count > 0 {
+		if this.cacheConfig.MemoryPolicy.Capacity != nil && this.cacheConfig.MemoryPolicy.Capacity.Count > 0 {
 			memoryPolicy := &serverconfigs.HTTPCachePolicy{
 				Id:          this.policy.Id,
 				IsOn:        this.policy.IsOn,
 				Name:        this.policy.Name,
 				Description: this.policy.Description,
-				Capacity:    memoryCapacity,
+				Capacity:    this.cacheConfig.MemoryPolicy.Capacity,
 				MaxKeys:     this.policy.MaxKeys,
 				MaxSize:     &shared.SizeCapacity{Count: 128, Unit: shared.SizeCapacityUnitMB}, // TODO 将来可以修改
 				Type:        serverconfigs.CachePolicyStorageMemory,
@@ -214,7 +213,7 @@ func (this *FileStorage) OpenReader(key string) (Reader, error) {
 	return reader, nil
 }
 
-// 打开缓存文件等待写入
+// OpenWriter 打开缓存文件等待写入
 func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
 	// 先尝试内存缓存
 	if this.memoryStorage != nil {
@@ -228,7 +227,8 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
 		return nil, errors.New("write file cache failed: too many keys in cache storage")
 	}
-	if this.policy.CapacityBytes() > 0 && this.policy.CapacityBytes() <= this.totalSize {
+	capacityBytes := this.diskCapacityBytes()
+	if capacityBytes > 0 && capacityBytes <= this.totalSize {
 		return nil, errors.New("write file cache failed: over disk size, real size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
 	}
 
@@ -340,7 +340,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 	return NewFileWriter(writer, key, expiredAt), nil
 }
 
-// 添加到List
+// AddToList 添加到List
 func (this *FileStorage) AddToList(item *Item) {
 	if this.memoryStorage != nil {
 		if item.Type == ItemTypeMemory {
@@ -354,7 +354,7 @@ func (this *FileStorage) AddToList(item *Item) {
 	this.list.Add(hash, item)
 }
 
-// 删除某个键值对应的缓存
+// Delete 删除某个键值对应的缓存
 func (this *FileStorage) Delete(key string) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -373,7 +373,7 @@ func (this *FileStorage) Delete(key string) error {
 	return err
 }
 
-// 统计
+// Stat 统计
 func (this *FileStorage) Stat() (*Stat, error) {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
@@ -383,7 +383,7 @@ func (this *FileStorage) Stat() (*Stat, error) {
 	}), nil
 }
 
-// 清除所有的缓存
+// CleanAll 清除所有的缓存
 func (this *FileStorage) CleanAll() error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -441,7 +441,7 @@ func (this *FileStorage) CleanAll() error {
 	return nil
 }
 
-// 清理过期的缓存
+// Purge 清理过期的缓存
 func (this *FileStorage) Purge(keys []string, urlType string) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -480,7 +480,7 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 	return nil
 }
 
-// 停止
+// Stop 停止
 func (this *FileStorage) Stop() {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -708,4 +708,15 @@ func (this *FileStorage) readN(fp *os.File, buf []byte, total int) (result []byt
 			}
 		}
 	}
+}
+
+func (this *FileStorage) diskCapacityBytes() int64 {
+	c1 := this.policy.CapacityBytes()
+	if SharedManager.MaxDiskCapacity != nil {
+		c2 := SharedManager.MaxDiskCapacity.Bytes()
+		if c2 > 0 {
+			return c2
+		}
+	}
+	return c1
 }
