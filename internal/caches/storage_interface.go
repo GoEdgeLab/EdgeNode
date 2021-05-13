@@ -4,35 +4,41 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 )
 
-// 缓存存储接口
+// StorageInterface 缓存存储接口
 type StorageInterface interface {
-	// 初始化
+	// Init 初始化
 	Init() error
 
-	// 读取缓存
+	// OpenReader 读取缓存
 	OpenReader(key string) (Reader, error)
 
-	// 打开缓存写入器等待写入
+	// OpenWriter 打开缓存写入器等待写入
 	OpenWriter(key string, expiredAt int64, status int) (Writer, error)
 
-	// 删除某个键值对应的缓存
+	// Delete 删除某个键值对应的缓存
 	Delete(key string) error
 
-	// 统计缓存
+	// Stat 统计缓存
 	Stat() (*Stat, error)
 
-	// 清除所有缓存
+	// TotalDiskSize 消耗的磁盘尺寸
+	TotalDiskSize() int64
+
+	// TotalMemorySize 内存尺寸
+	TotalMemorySize() int64
+
+	// CleanAll 清除所有缓存
 	CleanAll() error
 
-	// 批量删除缓存
+	// Purge 批量删除缓存
 	Purge(keys []string, urlType string) error
 
-	// 停止缓存策略
+	// Stop 停止缓存策略
 	Stop()
 
-	// 获取当前存储的Policy
+	// Policy 获取当前存储的Policy
 	Policy() *serverconfigs.HTTPCachePolicy
 
-	// 将缓存添加到列表
+	// AddToList 将缓存添加到列表
 	AddToList(item *Item)
 }

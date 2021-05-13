@@ -138,3 +138,27 @@ func (this *Manager) NewStorageWithPolicy(policy *serverconfigs.HTTPCachePolicy)
 	}
 	return nil
 }
+
+// TotalDiskSize 消耗的磁盘尺寸
+func (this *Manager) TotalDiskSize() int64 {
+	this.locker.RLock()
+	defer this.locker.RUnlock()
+
+	total := int64(0)
+	for _, storage := range this.storageMap {
+		total += storage.TotalDiskSize()
+	}
+	return total
+}
+
+// TotalMemorySize 消耗的内存尺寸
+func (this *Manager) TotalMemorySize() int64 {
+	this.locker.RLock()
+	defer this.locker.RUnlock()
+
+	total := int64(0)
+	for _, storage := range this.storageMap {
+		total += storage.TotalMemorySize()
+	}
+	return total
+}

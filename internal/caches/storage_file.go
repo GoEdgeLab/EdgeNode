@@ -496,6 +496,19 @@ func (this *FileStorage) Stop() {
 	}
 }
 
+// TotalDiskSize 消耗的磁盘尺寸
+func (this *FileStorage) TotalDiskSize() int64 {
+	return atomic.LoadInt64(&this.totalSize)
+}
+
+// TotalMemorySize 内存尺寸
+func (this *FileStorage) TotalMemorySize() int64 {
+	if this.memoryStorage == nil {
+		return 0
+	}
+	return this.memoryStorage.TotalMemorySize()
+}
+
 // 绝对路径
 func (this *FileStorage) dir() string {
 	return this.cacheConfig.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/"

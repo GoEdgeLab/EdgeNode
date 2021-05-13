@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
@@ -64,6 +65,8 @@ func (this *NodeStatusExecutor) update() {
 	status.ConfigVersion = sharedNodeConfig.Version
 	status.IsActive = true
 	status.ConnectionCount = sharedListenerManager.TotalActiveConnections()
+	status.CacheTotalDiskSize = caches.SharedManager.TotalDiskSize()
+	status.CacheTotalMemorySize = caches.SharedManager.TotalMemorySize()
 
 	// 记录监控数据
 	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemConnections, maps.Map{

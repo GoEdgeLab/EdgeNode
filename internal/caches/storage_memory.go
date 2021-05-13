@@ -183,6 +183,16 @@ func (this *MemoryStorage) AddToList(item *Item) {
 	this.list.Add(hash, item)
 }
 
+// TotalDiskSize 消耗的磁盘尺寸
+func (this *MemoryStorage) TotalDiskSize() int64 {
+	return 0
+}
+
+// TotalMemorySize 内存尺寸
+func (this *MemoryStorage) TotalMemorySize() int64 {
+	return atomic.LoadInt64(&this.totalSize)
+}
+
 // 计算Key Hash
 func (this *MemoryStorage) hash(key string) uint64 {
 	return xxhash.Sum64String(key)
