@@ -230,7 +230,7 @@ func (this *FileList) CleanAll() error {
 
 func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
 	// 这里不设置过期时间、不使用 check 函数，目的是让查询更快速一些
-	row := this.db.QueryRow("SELECT COUNT(*), SUM(headerSize+bodySize+metaSize), SUM(headerSize+bodySize) FROM cacheItems")
+	row := this.db.QueryRow("SELECT COUNT(*), IFNULL(SUM(headerSize+bodySize+metaSize), 0), IFNULL(SUM(headerSize+bodySize), 0) FROM cacheItems")
 	if row.Err() != nil {
 		return nil, row.Err()
 	}
