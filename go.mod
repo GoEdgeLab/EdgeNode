@@ -15,6 +15,7 @@ require (
 	github.com/iwind/TeaGo v0.0.0-20201020081413-7cf62d6f420f
 	github.com/iwind/gofcgi v0.0.0-20210506081859-17498ab3e9d7
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
+	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/mssola/user_agent v0.5.2
 	github.com/shirou/gopsutil v2.20.9+incompatible
 	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7

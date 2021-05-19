@@ -10,12 +10,12 @@ const (
 )
 
 type Item struct {
-	Type       ItemType
-	Key        string
-	ExpiredAt  int64
-	HeaderSize int64
-	BodySize   int64
-	MetaSize   int64
+	Type       ItemType `json:"type"`
+	Key        string   `json:"key"`
+	ExpiredAt  int64    `json:"expiredAt"`
+	HeaderSize int64    `json:"headerSize"`
+	BodySize   int64    `json:"bodySize"`
+	MetaSize   int64    `json:"metaSize"`
 }
 
 func (this *Item) IsExpired() bool {

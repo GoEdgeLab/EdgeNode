@@ -174,7 +174,8 @@ func TestMemoryStorage_CleanAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(storage.list.Count(), len(storage.valuesMap))
+	total, _ := storage.list.Count()
+	t.Log(total, len(storage.valuesMap))
 }
 
 func TestMemoryStorage_Purge(t *testing.T) {
@@ -208,7 +209,8 @@ func TestMemoryStorage_Purge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(storage.list.Count(), len(storage.valuesMap))
+	total, _ := storage.list.Count()
+	t.Log(total, len(storage.valuesMap))
 }
 
 func TestMemoryStorage_Expire(t *testing.T) {

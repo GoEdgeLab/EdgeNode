@@ -22,7 +22,7 @@ type MemoryItem struct {
 
 type MemoryStorage struct {
 	policy        *serverconfigs.HTTPCachePolicy
-	list          *List
+	list          ListInterface
 	locker        *sync.RWMutex
 	valuesMap     map[uint64]*MemoryItem
 	ticker        *utils.Ticker
@@ -33,7 +33,7 @@ type MemoryStorage struct {
 func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
 	return &MemoryStorage{
 		policy:    policy,
-		list:      NewList(),
+		list:      NewMemoryList(),
 		locker:    &sync.RWMutex{},
 		valuesMap: map[uint64]*MemoryItem{},
 	}
@@ -92,7 +92,11 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 // OpenWriter 打开缓存写入器等待写入
 func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
 	// 检查是否超出最大值
-	if this.policy.MaxKeys > 0 && this.list.Count() > this.policy.MaxKeys {
+	totalKeys, err := this.list.Count()
+	if err != nil {
+		return nil, err
+	}
+	if this.policy.MaxKeys > 0 && totalKeys > this.policy.MaxKeys {
 		return nil, errors.New("write memory cache failed: too many keys in cache storage")
 	}
 	capacityBytes := this.memoryCapacityBytes()
@@ -101,7 +105,7 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (
 	}
 
 	// 先删除
-	err := this.Delete(key)
+	err = this.Delete(key)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +130,7 @@ func (this *MemoryStorage) Stat() (*Stat, error) {
 
 	return this.list.Stat(func(hash string) bool {
 		return true
-	}), nil
+	})
 }
 
 // CleanAll 清除所有缓存
@@ -145,7 +149,11 @@ func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 	if urlType == "dir" {
 		resultKeys := []string{}
 		for _, key := range keys {
-			resultKeys = append(resultKeys, this.list.FindKeysWithPrefix(key)...)
+			subKeys, err := this.list.FindKeysWithPrefix(key)
+			if err != nil {
+				return err
+			}
+			resultKeys = append(resultKeys, subKeys...)
 		}
 		keys = resultKeys
 	}
@@ -200,13 +208,14 @@ func (this *MemoryStorage) hash(key string) uint64 {
 
 // 清理任务
 func (this *MemoryStorage) purgeLoop() {
-	this.list.Purge(2048, func(hash string) {
+	_ = this.list.Purge(2048, func(hash string) error {
 		uintHash, err := strconv.ParseUint(hash, 10, 64)
 		if err == nil {
 			this.locker.Lock()
 			delete(this.valuesMap, uintHash)
 			this.locker.Unlock()
 		}
+		return nil
 	})
 }
 
