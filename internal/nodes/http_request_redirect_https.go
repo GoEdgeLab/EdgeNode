@@ -19,11 +19,10 @@ func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.
 	} else if redirectToHTTPSConfig.Port > 0 {
 		lastIndex := strings.LastIndex(host, ":")
 		if lastIndex > 0 {
-			if redirectToHTTPSConfig.Port != 443 {
-				host = host[:lastIndex] + ":" + strconv.Itoa(redirectToHTTPSConfig.Port)
-			} else {
-				host = host[:lastIndex]
-			}
+			host = host[:lastIndex]
+		}
+		if redirectToHTTPSConfig.Port != 443 {
+			host = host + ":" + strconv.Itoa(redirectToHTTPSConfig.Port)
 		}
 	} else {
 		lastIndex := strings.LastIndex(host, ":")
