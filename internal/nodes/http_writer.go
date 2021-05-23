@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/logs"
 	"net"
 	"net/http"
 	"strings"
@@ -64,7 +65,9 @@ func (this *HTTPWriter) Gzip(config *serverconfigs.HTTPGzipConfig) {
 }
 
 // 准备输出
-func (this *HTTPWriter) Prepare(size int64) {
+func (this *HTTPWriter) Prepare(size int64, status int) {
+	this.statusCode = status
+
 	this.prepareGzip(size)
 	this.prepareCache(size)
 }
@@ -333,6 +336,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	}
 
 	// 检查状态
+	logs.Println("status:", cacheRef.Status, this.StatusCode()) // TODO
 	if len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
 		return
 	}

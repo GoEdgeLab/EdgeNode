@@ -50,7 +50,11 @@ func (this *HTTPRequest) doURL(method string, url string, host string, statusCod
 	}
 
 	this.writer.AddHeaders(resp.Header)
-	this.writer.Prepare(resp.ContentLength)
+	if statusCode <= 0 {
+		this.writer.Prepare(resp.ContentLength, resp.StatusCode)
+	} else {
+		this.writer.Prepare(resp.ContentLength, statusCode)
+	}
 
 	// 设置响应代码
 	if statusCode <= 0 {
