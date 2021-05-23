@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
@@ -9,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/types"
+	"golang.org/x/net/http2"
 	"net"
 	"net/http"
 	"net/url"
@@ -1132,4 +1134,25 @@ func (this *HTTPRequest) bytePool(contentLength int64) *utils.BytePool {
 		return bytePool32k
 	}
 	return bytePool128k
+}
+
+// 检查是否可以忽略错误
+func (this *HTTPRequest) canIgnore(err error) bool {
+	if err == nil {
+		return true
+	}
+
+	// 客户端主动取消
+	if err == context.Canceled {
+		return true
+	}
+
+	// HTTP/2流错误
+	{
+		_, ok := err.(http2.StreamError)
+		if ok {
+			return true
+		}
+	}
+	return false
 }

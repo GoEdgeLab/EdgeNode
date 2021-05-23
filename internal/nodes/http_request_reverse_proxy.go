@@ -7,7 +7,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"golang.org/x/net/http2"
 	"io"
 	"net/url"
 	"strconv"
@@ -257,13 +256,13 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	err1 := resp.Body.Close()
 	if err1 != nil {
-		if _, ok := err1.(http2.StreamError); !ok {
+		if !this.canIgnore(err) {
 			remotelogs.Error("REQUEST_REVERSE_PROXY", err1.Error())
 		}
 	}
 
 	if err != nil && err != io.EOF {
-		if _, ok := err.(http2.StreamError); !ok {
+		if !this.canIgnore(err) {
 			remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
 			this.addError(err)
 		}

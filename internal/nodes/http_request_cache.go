@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/logs"
-	"golang.org/x/net/http2"
 	"net/http"
 	"strconv"
 )
@@ -90,7 +89,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			return
 		}
 
-		if _, ok := err.(http2.StreamError); !ok {
+		if !this.canIgnore(err) {
 			remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 		}
 		return
@@ -124,7 +123,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return true, nil
 	})
 	if err != nil {
-		if _, ok := err.(http2.StreamError); !ok {
+		if !this.canIgnore(err) {
 			remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 		}
 		return
@@ -216,7 +215,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 					return true
 				}
-				if _, ok := err.(http2.StreamError); !ok {
+				if !this.canIgnore(err) {
 					remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 				}
 				return
@@ -259,7 +258,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 					return true, err
 				})
 				if err != nil {
-					if _, ok := err.(http2.StreamError); !ok {
+					if !this.canIgnore(err) {
 						remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 					}
 					return true
@@ -282,7 +281,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				return true, nil
 			})
 			if err != nil {
-				if _, ok := err.(http2.StreamError); !ok {
+				if !this.canIgnore(err) {
 					remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
 				}
 				return
