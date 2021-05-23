@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/logs"
+	"golang.org/x/net/http2"
 	"net/http"
 	"strconv"
 )
@@ -89,7 +90,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			return
 		}
 
-		remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+		if _, ok := err.(http2.StreamError); !ok {
+			remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+		}
 		return
 	}
 	defer func() {
@@ -121,7 +124,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return true, nil
 	})
 	if err != nil {
-		remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+		if _, ok := err.(http2.StreamError); !ok {
+			remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+		}
 		return
 	}
 
@@ -211,7 +216,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 					return true
 				}
-				remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+				if _, ok := err.(http2.StreamError); !ok {
+					remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+				}
 				return
 			}
 		} else if len(rangeSet) > 1 {
@@ -252,7 +259,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 					return true, err
 				})
 				if err != nil {
-					remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+					if _, ok := err.(http2.StreamError); !ok {
+						remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+					}
 					return true
 				}
 			}
@@ -273,7 +282,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				return true, nil
 			})
 			if err != nil {
-				remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+				if _, ok := err.(http2.StreamError); !ok {
+					remotelogs.Error("REQUEST_CACHE", "read from cache failed: "+err.Error())
+				}
 				return
 			}
 		}
