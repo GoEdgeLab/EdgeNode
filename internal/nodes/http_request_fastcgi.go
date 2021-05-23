@@ -202,11 +202,11 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 
 	err1 := resp.Body.Close()
 	if err1 != nil {
-		remotelogs.Error("REQUEST_REVERSE_PROXY", err1.Error())
+		remotelogs.Warn("REQUEST_FASTCGI", err1.Error())
 	}
 
 	if err != nil && err != io.EOF {
-		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Warn("REQUEST_FASTCGI", err.Error())
 		this.addError(err)
 	}
 	return

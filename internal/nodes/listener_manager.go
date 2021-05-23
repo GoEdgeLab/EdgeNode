@@ -12,21 +12,21 @@ import (
 
 var sharedListenerManager = NewListenerManager()
 
-// 端口监听管理器
+// ListenerManager 端口监听管理器
 type ListenerManager struct {
 	listenersMap map[string]*Listener // addr => *Listener
 	locker       sync.Mutex
 	lastConfig   *nodeconfigs.NodeConfig
 }
 
-// 获取新对象
+// NewListenerManager 获取新对象
 func NewListenerManager() *ListenerManager {
 	return &ListenerManager{
 		listenersMap: map[string]*Listener{},
 	}
 }
 
-// 启动监听
+// Start 启动监听
 func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -83,7 +83,13 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 			listener.Reload(group)
 			err := listener.Listen()
 			if err != nil {
-				remotelogs.Error("LISTENER_MANAGER", err.Error())
+				firstServer := group.FirstServer()
+				if firstServer == nil {
+					remotelogs.Error("LISTENER_MANAGER", err.Error())
+				} else {
+					remotelogs.ServerError(firstServer.Id, "LISTENER_MANAGER", err.Error())
+				}
+
 				continue
 			}
 			this.listenersMap[addr] = listener
@@ -93,7 +99,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	return nil
 }
 
-// 获取总的活跃连接数
+// TotalActiveConnections 获取总的活跃连接数
 func (this *ListenerManager) TotalActiveConnections() int {
 	this.locker.Lock()
 	defer this.locker.Unlock()

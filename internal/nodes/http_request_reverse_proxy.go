@@ -189,7 +189,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if this.doWAFResponse(resp) {
 			err = resp.Body.Close()
 			if err != nil {
-				remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
+				remotelogs.Warn("REQUEST_REVERSE_PROXY", err.Error())
 			}
 			return
 		}
@@ -201,7 +201,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()
 		if err != nil {
-			remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
+			remotelogs.Warn("REQUEST_REVERSE_PROXY", err.Error())
 		}
 		return
 	}
@@ -257,13 +257,13 @@ func (this *HTTPRequest) doReverseProxy() {
 	err1 := resp.Body.Close()
 	if err1 != nil {
 		if !this.canIgnore(err) {
-			remotelogs.Error("REQUEST_REVERSE_PROXY", err1.Error())
+			remotelogs.Warn("REQUEST_REVERSE_PROXY", err1.Error())
 		}
 	}
 
 	if err != nil && err != io.EOF {
 		if !this.canIgnore(err) {
-			remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
+			remotelogs.Warn("REQUEST_REVERSE_PROXY", err.Error())
 			this.addError(err)
 		}
 	}

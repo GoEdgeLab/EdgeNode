@@ -24,7 +24,7 @@ func init() {
 	}()
 }
 
-// 打印普通信息
+// Println 打印普通信息
 func Println(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
@@ -47,7 +47,7 @@ func Println(tag string, description string) {
 	}
 }
 
-// 打印警告信息
+// Warn 打印警告信息
 func Warn(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
@@ -70,7 +70,7 @@ func Warn(tag string, description string) {
 	}
 }
 
-// 打印错误信息
+// Error 打印错误信息
 func Error(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
@@ -86,6 +86,30 @@ func Error(tag string, description string) {
 		Description: description,
 		Level:       "error",
 		NodeId:      nodeConfig.Id,
+		CreatedAt:   time.Now().Unix(),
+	}:
+	default:
+
+	}
+}
+
+// ServerError 打印错误信息
+func ServerError(serverId int64, tag string, description string) {
+	logs.Println("[" + tag + "]" + description)
+
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig == nil {
+		return
+	}
+
+	select {
+	case logChan <- &pb.NodeLog{
+		Role:        teaconst.Role,
+		Tag:         tag,
+		Description: description,
+		Level:       "error",
+		NodeId:      nodeConfig.Id,
+		ServerId:    serverId,
 		CreatedAt:   time.Now().Unix(),
 	}:
 	default:
