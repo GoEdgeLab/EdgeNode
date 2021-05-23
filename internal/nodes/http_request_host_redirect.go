@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -12,7 +13,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 		if !u.IsOn {
 			continue
 		}
-		if u.MatchPrefix {
+		if u.MatchPrefix { // 匹配前缀
 			if strings.HasPrefix(fullURL, u.BeforeURL) {
 				afterURL := u.AfterURL
 				if u.KeepRequestURI {
@@ -25,7 +26,39 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				}
 				return true
 			}
-		} else {
+		} else if u.MatchRegexp { // 正则匹配
+			reg := u.BeforeURLRegexp()
+			if reg == nil {
+				continue
+			}
+			matches := reg.FindStringSubmatch(fullURL)
+			if len(matches) == 0 {
+				continue
+			}
+			afterURL := u.AfterURL
+			for i, match := range matches {
+				afterURL = strings.ReplaceAll(afterURL, "${"+strconv.Itoa(i)+"}", match)
+			}
+
+			subNames := reg.SubexpNames()
+			if len(subNames) > 0 {
+				for _, subName := range subNames {
+					if len(subName) > 0 {
+						index := reg.SubexpIndex(subName)
+						if index > -1 {
+							afterURL = strings.ReplaceAll(afterURL, "${"+subName+"}", matches[index])
+						}
+					}
+				}
+			}
+
+			if u.Status <= 0 {
+				http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
+			} else {
+				http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
+			}
+			return true
+		} else { // 精准匹配
 			if fullURL == u.RealBeforeURL() {
 				if u.Status <= 0 {
 					http.Redirect(this.RawWriter, this.RawReq, u.AfterURL, http.StatusTemporaryRedirect)
