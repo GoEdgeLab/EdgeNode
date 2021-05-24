@@ -42,10 +42,10 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
 // Init 初始化
 func (this *MemoryStorage) Init() error {
 	this.list.OnAdd(func(item *Item) {
-		atomic.AddInt64(&this.totalSize, item.Size())
+		atomic.AddInt64(&this.totalSize, item.TotalSize())
 	})
 	this.list.OnRemove(func(item *Item) {
-		atomic.AddInt64(&this.totalSize, -item.Size())
+		atomic.AddInt64(&this.totalSize, -item.TotalSize())
 	})
 
 	if this.purgeDuration <= 0 {
@@ -118,7 +118,7 @@ func (this *MemoryStorage) Delete(key string) error {
 	hash := this.hash(key)
 	this.locker.Lock()
 	delete(this.valuesMap, hash)
-	this.list.Remove(fmt.Sprintf("%d", hash))
+	_ = this.list.Remove(fmt.Sprintf("%d", hash))
 	this.locker.Unlock()
 	return nil
 }
@@ -137,7 +137,7 @@ func (this *MemoryStorage) Stat() (*Stat, error) {
 func (this *MemoryStorage) CleanAll() error {
 	this.locker.Lock()
 	this.valuesMap = map[uint64]*MemoryItem{}
-	this.list.Reset()
+	_ = this.list.Reset()
 	atomic.StoreInt64(&this.totalSize, 0)
 	this.locker.Unlock()
 	return nil
@@ -173,7 +173,7 @@ func (this *MemoryStorage) Stop() {
 	defer this.locker.Unlock()
 
 	this.valuesMap = map[uint64]*MemoryItem{}
-	this.list.Reset()
+	_ = this.list.Reset()
 	if this.ticker != nil {
 		this.ticker.Stop()
 	}
@@ -188,7 +188,7 @@ func (this *MemoryStorage) Policy() *serverconfigs.HTTPCachePolicy {
 func (this *MemoryStorage) AddToList(item *Item) {
 	item.MetaSize = int64(len(item.Key)) + 32 /** 32是我们评估的数据结构的长度 **/
 	hash := fmt.Sprintf("%d", this.hash(item.Key))
-	this.list.Add(hash, item)
+	_ = this.list.Add(hash, item)
 }
 
 // TotalDiskSize 消耗的磁盘尺寸
