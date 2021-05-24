@@ -6,6 +6,9 @@ type Reader interface {
 	// Init 初始化
 	Init() error
 
+	// TypeName 类型名称
+	TypeName() string
+
 	// Status 状态码
 	Status() int
 

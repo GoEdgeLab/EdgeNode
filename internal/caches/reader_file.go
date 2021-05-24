@@ -106,6 +106,10 @@ func (this *FileReader) Init() error {
 	return nil
 }
 
+func (this *FileReader) TypeName() string {
+	return "disk"
+}
+
 func (this *FileReader) Status() int {
 	return this.status
 }

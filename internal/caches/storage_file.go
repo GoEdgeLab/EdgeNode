@@ -12,6 +12,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	stringutil "github.com/iwind/TeaGo/utils/string"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"io"
 	"os"
 	"path/filepath"
@@ -130,19 +132,8 @@ func (this *FileStorage) Init() error {
 
 	defer func() {
 		// 统计
-		count := 0
-		size := int64(0)
-		if this.list != nil {
-			stat, err := this.list.Stat(func(hash string) bool {
-				return true
-			})
-			if err != nil {
-				remotelogs.Error("CACHE", "stat cache "+strconv.FormatInt(this.policy.Id, 10)+" failed: "+err.Error())
-			} else {
-				count = stat.Count
-				size = stat.Size
-			}
-		}
+		count := stat.Count
+		size := stat.Size
 
 		cost := time.Since(before).Seconds() * 1000
 		sizeMB := strconv.FormatInt(size, 10) + " Bytes"
@@ -153,7 +144,7 @@ func (this *FileStorage) Init() error {
 		} else if size > 1024 {
 			sizeMB = fmt.Sprintf("%.3f K", float64(size)/1024)
 		}
-		remotelogs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+" from '"+cacheDir+"', cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+strconv.Itoa(count)+", size: "+sizeMB)
+		remotelogs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+" from '"+cacheDir+"', cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+message.NewPrinter(language.English).Sprintf("%d", count)+", size: "+sizeMB)
 	}()
 
 	// 初始化list
@@ -530,7 +521,7 @@ func (this *FileStorage) Stop() {
 		this.memoryStorage.Stop()
 	}
 
-	this.list.Reset()
+	_ = this.list.Reset()
 	if this.ticker != nil {
 		this.ticker.Stop()
 	}

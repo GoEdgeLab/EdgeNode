@@ -20,6 +20,7 @@ require (
 	github.com/shirou/gopsutil v2.20.9+incompatible
 	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
 	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
+	golang.org/x/text v0.3.2
 	google.golang.org/grpc v1.32.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 )

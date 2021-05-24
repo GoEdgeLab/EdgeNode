@@ -12,7 +12,12 @@ import (
 
 // 读取缓存
 func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
-	if this.web.Cache == nil || !this.web.Cache.IsOn || len(this.web.Cache.CacheRefs) == 0 {
+	cachePolicy := sharedNodeConfig.HTTPCachePolicy
+	if cachePolicy == nil || !cachePolicy.IsOn {
+		return
+	}
+
+	if this.web.Cache == nil || !this.web.Cache.IsOn || (len(cachePolicy.CacheRefs) == 0 && len(this.web.Cache.CacheRefs) == 0) {
 		return
 	}
 	var addStatusHeader = this.web.Cache.AddStatusHeader
@@ -25,12 +30,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		}()
 	}
 
-	cachePolicy := sharedNodeConfig.HTTPCachePolicy
-	if cachePolicy == nil || !cachePolicy.IsOn {
-		return
-	}
-
-	// 检查条件
+	// 检查服务独立的缓存条件
+	refType := ""
 	for _, cacheRef := range this.web.Cache.CacheRefs {
 		if !cacheRef.IsOn ||
 			cacheRef.Conds == nil ||
@@ -39,11 +40,28 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		}
 		if cacheRef.Conds.MatchRequest(this.Format) {
 			this.cacheRef = cacheRef
+			refType = "server"
 			break
 		}
 	}
 	if this.cacheRef == nil {
-		return
+		// 检查策略默认的缓存条件
+		for _, cacheRef := range cachePolicy.CacheRefs {
+			if !cacheRef.IsOn ||
+				cacheRef.Conds == nil ||
+				!cacheRef.Conds.HasRequestConds() {
+				continue
+			}
+			if cacheRef.Conds.MatchRequest(this.Format) {
+				this.cacheRef = cacheRef
+				refType = "policy"
+				break
+			}
+		}
+
+		if this.cacheRef == nil {
+			return
+		}
 	}
 
 	// 相关变量
@@ -130,7 +148,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	if addStatusHeader {
-		this.writer.Header().Set("X-Cache", "HIT")
+		this.writer.Header().Set("X-Cache", "HIT, "+refType+", "+reader.TypeName())
 	}
 	this.processResponseHeaders(reader.Status())
 

@@ -16,6 +16,10 @@ func (this *MemoryReader) Init() error {
 	return nil
 }
 
+func (this *MemoryReader) TypeName() string {
+	return "memory"
+}
+
 func (this *MemoryReader) Status() int {
 	return this.item.Status
 }
