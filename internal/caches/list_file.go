@@ -4,7 +4,9 @@ package caches
 
 import (
 	"database/sql"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -24,6 +26,16 @@ func NewFileList(dir string) ListInterface {
 }
 
 func (this *FileList) Init() error {
+	// 检查目录是否存在
+	_, err := os.Stat(this.dir)
+	if err != nil {
+		err = os.MkdirAll(this.dir, 0777)
+		if err != nil {
+			return err
+		}
+		remotelogs.Println("CACHE", "create cache dir '"+this.dir+"'")
+	}
+
 	db, err := sql.Open("sqlite3", "file:"+this.dir+"/index.db?cache=shared&mode=rwc")
 	if err != nil {
 		return err
