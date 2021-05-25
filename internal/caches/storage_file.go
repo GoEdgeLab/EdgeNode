@@ -435,6 +435,7 @@ func (this *FileStorage) CleanAll() error {
 		return nil
 	}
 
+	// 改成待删除
 	subDirs, err := fp.Readdir(-1)
 	if err != nil {
 		return err
@@ -451,7 +452,33 @@ func (this *FileStorage) CleanAll() error {
 			continue
 		}
 
-		// 删除目录
+		// 修改目录名
+		tmpDir := dir + "/" + subDir + "-deleted"
+		err = os.Rename(dir+"/"+subDir, tmpDir)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 重新遍历待删除
+	fp2, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = fp2.Close()
+	}()
+	subDirs, err = fp2.Readdir(-1)
+	if err != nil {
+		return err
+	}
+	for _, info := range subDirs {
+		subDir := info.Name()
+		if !strings.HasSuffix(subDir, "-deleted") {
+			continue
+		}
+
+		// 删除
 		err = os.RemoveAll(dir + "/" + subDir)
 		if err != nil {
 			return err
