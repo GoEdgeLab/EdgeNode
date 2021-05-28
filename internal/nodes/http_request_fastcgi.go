@@ -12,7 +12,7 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
-	"github.com/iwind/gofcgi/pkg"
+	"github.com/iwind/gofcgi/pkg/fcgi"
 	"io"
 	"net"
 	"net/url"
@@ -78,7 +78,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 		poolSize = 32
 	}
 
-	client, err := pkg.SharedPool(fastcgi.Network(), fastcgi.RealAddress(), uint(poolSize)).Client()
+	client, err := fcgi.SharedPool(fastcgi.Network(), fastcgi.RealAddress(), uint(poolSize)).Client()
 	if err != nil {
 		this.write500(err)
 		return
@@ -151,7 +151,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 		params["HTTP_HOST"] = this.Host
 	}
 
-	fcgiReq := pkg.NewRequest()
+	fcgiReq := fcgi.NewRequest()
 	fcgiReq.SetTimeout(fastcgi.ReadTimeoutDuration())
 	fcgiReq.SetParams(params)
 	fcgiReq.SetBody(this.RawReq.Body, uint32(this.requestLength()))
