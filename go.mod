@@ -12,7 +12,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/golang/protobuf v1.4.2
-	github.com/iwind/TeaGo v0.0.0-20201020081413-7cf62d6f420f
+	github.com/iwind/TeaGo v0.0.0-20210411134150-ddf57e240c2f
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v1.14.7
