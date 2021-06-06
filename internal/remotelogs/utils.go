@@ -93,7 +93,7 @@ func Error(tag string, description string) {
 	}
 }
 
-// ServerError 打印错误信息
+// ServerError 打印服务相关错误信息
 func ServerError(serverId int64, tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
@@ -108,6 +108,30 @@ func ServerError(serverId int64, tag string, description string) {
 		Tag:         tag,
 		Description: description,
 		Level:       "error",
+		NodeId:      nodeConfig.Id,
+		ServerId:    serverId,
+		CreatedAt:   time.Now().Unix(),
+	}:
+	default:
+
+	}
+}
+
+// ServerSuccess 打印服务相关成功信息
+func ServerSuccess(serverId int64, tag string, description string) {
+	logs.Println("[" + tag + "]" + description)
+
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig == nil {
+		return
+	}
+
+	select {
+	case logChan <- &pb.NodeLog{
+		Role:        teaconst.Role,
+		Tag:         tag,
+		Description: description,
+		Level:       "success",
 		NodeId:      nodeConfig.Id,
 		ServerId:    serverId,
 		CreatedAt:   time.Now().Unix(),

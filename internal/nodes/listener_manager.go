@@ -4,10 +4,12 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
 	"net/url"
 	"regexp"
 	"sync"
+	"time"
 )
 
 var sharedListenerManager = NewListenerManager()
@@ -17,19 +19,40 @@ type ListenerManager struct {
 	listenersMap map[string]*Listener // addr => *Listener
 	locker       sync.Mutex
 	lastConfig   *nodeconfigs.NodeConfig
+
+	retryListenerMap map[string]*Listener // 需要重试的监听器 addr => Listener
+	ticker           *time.Ticker
 }
 
 // NewListenerManager 获取新对象
 func NewListenerManager() *ListenerManager {
-	return &ListenerManager{
-		listenersMap: map[string]*Listener{},
+	manager := &ListenerManager{
+		listenersMap:     map[string]*Listener{},
+		retryListenerMap: map[string]*Listener{},
+		ticker:           time.NewTicker(1 * time.Minute),
 	}
+
+	// 提升测试效率
+	if Tea.IsTesting() {
+		manager.ticker = time.NewTicker(5 * time.Second)
+	}
+
+	go func() {
+		for range manager.ticker.C {
+			manager.retryListeners()
+		}
+	}()
+
+	return manager
 }
 
 // Start 启动监听
 func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
+
+	// 重置数据
+	this.retryListenerMap = map[string]*Listener{}
 
 	// 检查是否有变化
 	/**if this.lastConfig != nil && this.lastConfig.Version == node.Version {
@@ -83,6 +106,9 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 			listener.Reload(group)
 			err := listener.Listen()
 			if err != nil {
+				// 放入到重试队列中
+				this.retryListenerMap[addr] = listener
+
 				firstServer := group.FirstServer()
 				if firstServer == nil {
 					remotelogs.Error("LISTENER_MANAGER", err.Error())
@@ -121,4 +147,19 @@ func (this *ListenerManager) prettyAddress(addr string) string {
 		u.Host = "*" + u.Host
 	}
 	return u.String()
+}
+
+// 重试失败的Listener
+func (this *ListenerManager) retryListeners() {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	for addr, listener := range this.retryListenerMap {
+		err := listener.Listen()
+		if err == nil {
+			delete(this.retryListenerMap, addr)
+			this.listenersMap[addr] = listener
+			remotelogs.ServerSuccess(listener.group.FirstServer().Id, "LISTENER_MANAGER", "retry to listen '"+addr+"' successfully")
+		}
+	}
 }
