@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func TestList_Add(t *testing.T) {
-	list := &MemoryList{}
+func TestMemoryList_Add(t *testing.T) {
+	list := NewMemoryList().(*MemoryList)
 	_ = list.Add("a", &Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
@@ -24,8 +24,8 @@ func TestList_Add(t *testing.T) {
 	t.Log(list.m)
 }
 
-func TestList_Remove(t *testing.T) {
-	list := &MemoryList{}
+func TestMemoryList_Remove(t *testing.T) {
+	list := NewMemoryList().(*MemoryList)
 	_ = list.Add("a", &Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
@@ -40,8 +40,8 @@ func TestList_Remove(t *testing.T) {
 	t.Log(list.m)
 }
 
-func TestList_Purge(t *testing.T) {
-	list := &MemoryList{}
+func TestMemoryList_Purge(t *testing.T) {
+	list := NewMemoryList().(*MemoryList)
 	_ = list.Add("a", &Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
@@ -69,8 +69,8 @@ func TestList_Purge(t *testing.T) {
 	t.Log(list.m)
 }
 
-func TestList_Stat(t *testing.T) {
-	list := &MemoryList{}
+func TestMemoryList_Stat(t *testing.T) {
+	list := NewMemoryList()
 	_ = list.Add("a", &Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
@@ -99,8 +99,8 @@ func TestList_Stat(t *testing.T) {
 	t.Log(result)
 }
 
-func TestList_FindKeysWithPrefix(t *testing.T) {
-	list := &MemoryList{}
+func TestMemoryList_FindKeysWithPrefix(t *testing.T) {
+	list := NewMemoryList()
 	before := time.Now()
 	for i := 0; i < 1_000_000; i++ {
 		key := "http://www.teaos.cn/hello" + strconv.Itoa(i/100000) + "/" + strconv.Itoa(i) + ".html"
@@ -120,4 +120,29 @@ func TestList_FindKeysWithPrefix(t *testing.T) {
 	}
 	t.Log(len(keys))
 	t.Log(time.Since(before).Seconds()*1000, "ms")
+}
+
+func TestMemoryList_GC(t *testing.T) {
+	list := NewMemoryList().(*MemoryList)
+	for i := 0; i < 1_000_000; i++ {
+		key := "http://www.teaos.cn/hello" + strconv.Itoa(i/100000) + "/" + strconv.Itoa(i) + ".html"
+		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &Item{
+			Key:        key,
+			ExpiredAt:  0,
+			BodySize:   0,
+			HeaderSize: 0,
+		})
+	}
+	time.Sleep(10 * time.Second)
+	t.Log("clean...", len(list.m))
+	_ = list.CleanAll()
+	before := time.Now()
+	//runtime.GC()
+	t.Log("gc cost:", time.Since(before).Seconds()*1000, "ms")
+
+	timeout := time.NewTimer(2 * time.Minute)
+	<-timeout.C
+	t.Log("2 minutes passed")
+
+	time.Sleep(30 * time.Minute)
 }

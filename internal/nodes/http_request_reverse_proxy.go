@@ -35,7 +35,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	origin := this.reverseProxy.NextOrigin(requestCall)
 	if origin == nil {
 		err := errors.New(this.requestPath() + ": no available backends for reverse proxy")
-		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)
 		return
 	}
@@ -55,7 +55,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 处理Scheme
 	if origin.Addr == nil {
 		err := errors.New(this.requestPath() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
-		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)
 		return
 	}
@@ -142,7 +142,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 获取请求客户端
 	client, err := SharedHTTPClientPool.Client(this.RawReq, origin, originAddr)
 	if err != nil {
-		remotelogs.Error("REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write502(err)
 		return
 	}
@@ -162,7 +162,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			// TODO 如果超过最大失败次数，则下线
 
 			this.write502(err)
-			remotelogs.Println("REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
+			remotelogs.Println("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
 		} else {
 			// 是否为客户端方面的错误
 			isClientError := false
@@ -189,7 +189,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if this.doWAFResponse(resp) {
 			err = resp.Body.Close()
 			if err != nil {
-				remotelogs.Warn("REQUEST_REVERSE_PROXY", err.Error())
+				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 			}
 			return
 		}
@@ -201,7 +201,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()
 		if err != nil {
-			remotelogs.Warn("REQUEST_REVERSE_PROXY", err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		}
 		return
 	}
@@ -254,17 +254,22 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 	pool.Put(buf)
 
-	err1 := resp.Body.Close()
-	if err1 != nil {
+	closeErr := resp.Body.Close()
+	if closeErr != nil {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("REQUEST_REVERSE_PROXY", err1.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", closeErr.Error())
 		}
 	}
 
 	if err != nil && err != io.EOF {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("REQUEST_REVERSE_PROXY", err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 			this.addError(err)
 		}
+	}
+
+	// 是否成功结束
+	if err == nil && closeErr == nil {
+		this.writer.SetOk()
 	}
 }

@@ -1142,6 +1142,12 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 		return true
 	}
 
+	// 网络错误
+	_, ok := err.(*net.OpError)
+	if ok {
+		return true
+	}
+
 	// 客户端主动取消
 	if err == context.Canceled {
 		return true

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"errors"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/logs"
 	"io"
@@ -68,4 +69,12 @@ func (this *HTTPRequest) doURL(method string, url string, host string, statusCod
 	buf := pool.Get()
 	_, err = io.CopyBuffer(this.writer, resp.Body, buf)
 	pool.Put(buf)
+
+	if err != nil {
+		if !this.canIgnore(err) {
+			remotelogs.Warn("HTTP_REQUEST_URL", "write to client failed: "+err.Error())
+		}
+	} else {
+		this.writer.SetOk()
+	}
 }

@@ -33,6 +33,16 @@ func (this *MemoryList) Reset() error {
 
 func (this *MemoryList) Add(hash string, item *Item) error {
 	this.locker.Lock()
+
+	// 先删除，为了可以正确触发统计
+	oldItem, ok := this.m[hash]
+	if ok {
+		if this.onRemove != nil {
+			this.onRemove(oldItem)
+		}
+	}
+
+	// 添加
 	if this.onAdd != nil {
 		this.onAdd(item)
 	}

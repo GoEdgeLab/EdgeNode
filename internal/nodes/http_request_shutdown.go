@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"io"
@@ -65,8 +66,16 @@ func (this *HTTPRequest) doShutdown() {
 	buf := bytePool1k.Get()
 	_, err = io.CopyBuffer(this.writer, fp, buf)
 	bytePool1k.Put(buf)
+	if err != nil {
+		if !this.canIgnore(err) {
+			remotelogs.Warn("HTTP_REQUEST_SHUTDOWN", "write to client failed: "+err.Error())
+		}
+	} else {
+		this.writer.SetOk()
+	}
+
 	err = fp.Close()
 	if err != nil {
-		logs.Error(err)
+		remotelogs.Warn("HTTP_REQUEST_SHUTDOWN", "close file failed: "+err.Error())
 	}
 }

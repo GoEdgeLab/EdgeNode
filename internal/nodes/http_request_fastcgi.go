@@ -200,14 +200,20 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 	_, err = io.CopyBuffer(this.writer, resp.Body, buf)
 	pool.Put(buf)
 
-	err1 := resp.Body.Close()
-	if err1 != nil {
-		remotelogs.Warn("REQUEST_FASTCGI", err1.Error())
+	closeErr := resp.Body.Close()
+	if closeErr != nil {
+		remotelogs.Warn("HTTP_REQUEST_FASTCGI", closeErr.Error())
 	}
 
 	if err != nil && err != io.EOF {
-		remotelogs.Warn("REQUEST_FASTCGI", err.Error())
+		remotelogs.Warn("HTTP_REQUEST_FASTCGI", err.Error())
 		this.addError(err)
 	}
+
+	// 是否成功结束
+	if err == nil && closeErr == nil {
+		this.writer.SetOk()
+	}
+
 	return
 }

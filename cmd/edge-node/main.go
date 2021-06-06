@@ -7,8 +7,11 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/nodes"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
+	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"io/ioutil"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"syscall"
 )
@@ -17,7 +20,7 @@ func main() {
 	app := apps.NewAppCmd().
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
-		Usage(teaconst.ProcessName + " [-v|start|stop|restart|quit|test|service|daemon]")
+		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|service|daemon|pprof]")
 
 	app.On("test", func() {
 		err := nodes.NewNode().Test()
@@ -56,6 +59,21 @@ func main() {
 		if process != nil {
 			_ = process.Signal(syscall.SIGQUIT)
 		}
+	})
+	app.On("pprof", func() {
+		// TODO 自己指定端口
+		addr := "127.0.0.1:6060"
+		logs.Println("starting with pprof '" + addr + "'...")
+
+		go func() {
+			err := http.ListenAndServe(addr, nil)
+			if err != nil {
+				logs.Println("[error]" + err.Error())
+			}
+		}()
+
+		node := nodes.NewNode()
+		node.Start()
 	})
 	app.Run(func() {
 		node := nodes.NewNode()

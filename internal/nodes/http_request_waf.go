@@ -70,7 +70,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 					for _, action := range actions {
 						goNext, err := action.DoHTTP(this.RawReq, this.RawWriter)
 						if err != nil {
-							remotelogs.Error("REQUEST", "do action '"+err.Error()+"' failed: "+err.Error())
+							remotelogs.Error("HTTP_REQUEST_WAF", "do action '"+err.Error()+"' failed: "+err.Error())
 							return true, false
 						}
 						if !goNext {
@@ -101,7 +101,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 				for _, remoteAddr := range remoteAddrs {
 					result, err := iplibrary.SharedLibrary.Lookup(remoteAddr)
 					if err != nil {
-						remotelogs.Error("REQUEST", "iplibrary lookup failed: "+err.Error())
+						remotelogs.Error("HTTP_REQUEST_WAF", "iplibrary lookup failed: "+err.Error())
 					} else if result != nil {
 						// 检查国家级别封禁
 						if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
@@ -147,7 +147,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 	goNext, ruleGroup, ruleSet, err := w.MatchRequest(this.RawReq, this.writer)
 	if err != nil {
-		remotelogs.Error("REQUEST", this.rawURI+": "+err.Error())
+		remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
 		return
 	}
 
@@ -181,7 +181,7 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 
 	goNext, ruleGroup, ruleSet, err := w.MatchResponse(this.RawReq, resp, this.writer)
 	if err != nil {
-		remotelogs.Error("REQUEST", this.rawURI+": "+err.Error())
+		remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
 		return
 	}
 

@@ -51,14 +51,16 @@ type FileStorage struct {
 	memoryStorage *MemoryStorage                      // 一级缓存
 	totalSize     int64
 
-	list   ListInterface
-	locker sync.RWMutex
-	ticker *utils.Ticker
+	list          ListInterface
+	writingKeyMap map[string]bool // key => bool
+	locker        sync.RWMutex
+	ticker        *utils.Ticker
 }
 
 func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
 	return &FileStorage{
-		policy: policy,
+		policy:        policy,
+		writingKeyMap: map[string]bool{},
 	}
 }
 
@@ -227,6 +229,25 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 		}
 	}
 
+	// 是否正在写入
+	var isWriting = false
+	this.locker.Lock()
+	_, ok := this.writingKeyMap[key]
+	this.locker.Unlock()
+	if ok {
+		return nil, ErrFileIsWriting
+	}
+	this.locker.Lock()
+	this.writingKeyMap[key] = true
+	this.locker.Unlock()
+	defer func() {
+		if !isWriting {
+			this.locker.Lock()
+			delete(this.writingKeyMap, key)
+			this.locker.Unlock()
+		}
+	}()
+
 	// 检查是否超出最大值
 	count, err := this.list.Count()
 	if err != nil {
@@ -264,6 +285,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 	if err != nil {
 		return nil, err
 	}
+	isWriting = true
 
 	isOk := false
 	removeOnFailure := true
@@ -348,7 +370,11 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 
 	isOk = true
 
-	return NewFileWriter(writer, key, expiredAt), nil
+	return NewFileWriter(writer, key, expiredAt, func() {
+		this.locker.Lock()
+		delete(this.writingKeyMap, key)
+		this.locker.Unlock()
+	}), nil
 }
 
 // AddToList 添加到List

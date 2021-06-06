@@ -108,7 +108,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		}
 
 		if !this.canIgnore(err) {
-			remotelogs.Warn("REQUEST_CACHE", "read from cache failed: "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
 		}
 		return
 	}
@@ -142,7 +142,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	})
 	if err != nil {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("REQUEST_CACHE", "read from cache failed: "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
 		}
 		return
 	}
@@ -234,7 +234,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 					return true
 				}
 				if !this.canIgnore(err) {
-					remotelogs.Warn("REQUEST_CACHE", "read from cache failed: "+err.Error())
+					remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
 				}
 				return
 			}
@@ -277,7 +277,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				})
 				if err != nil {
 					if !this.canIgnore(err) {
-						remotelogs.Warn("REQUEST_CACHE", "read from cache failed: "+err.Error())
+						remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
 					}
 					return true
 				}
@@ -300,7 +300,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			})
 			if err != nil {
 				if !this.canIgnore(err) {
-					remotelogs.Warn("REQUEST_CACHE", "read from cache failed: "+err.Error())
+					remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
 				}
 				return
 			}

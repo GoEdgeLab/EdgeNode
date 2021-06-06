@@ -20,6 +20,10 @@ type MemoryItem struct {
 	IsDone      bool
 }
 
+func (this *MemoryItem) IsExpired() bool {
+	return this.ExpiredAt < utils.UnixTime()
+}
+
 type MemoryStorage struct {
 	policy        *serverconfigs.HTTPCachePolicy
 	list          ListInterface
@@ -28,14 +32,16 @@ type MemoryStorage struct {
 	ticker        *utils.Ticker
 	purgeDuration time.Duration
 	totalSize     int64
+	writingKeyMap map[string]bool // key => bool
 }
 
 func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
 	return &MemoryStorage{
-		policy:    policy,
-		list:      NewMemoryList(),
-		locker:    &sync.RWMutex{},
-		valuesMap: map[uint64]*MemoryItem{},
+		policy:        policy,
+		list:          NewMemoryList(),
+		locker:        &sync.RWMutex{},
+		valuesMap:     map[uint64]*MemoryItem{},
+		writingKeyMap: map[string]bool{},
 	}
 }
 
@@ -91,6 +97,29 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 
 // OpenWriter 打开缓存写入器等待写入
 func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	// 是否正在写入
+	var isWriting = false
+	_, ok := this.writingKeyMap[key]
+	if ok {
+		return nil, ErrFileIsWriting
+	}
+	this.writingKeyMap[key] = true
+	defer func() {
+		if !isWriting {
+			delete(this.writingKeyMap, key)
+		}
+	}()
+
+	// 检查是否过期
+	hash := this.hash(key)
+	item, ok := this.valuesMap[hash]
+	if ok && !item.IsExpired() {
+		return nil, ErrFileIsWriting
+	}
+
 	// 检查是否超出最大值
 	totalKeys, err := this.list.Count()
 	if err != nil {
@@ -101,16 +130,21 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (
 	}
 	capacityBytes := this.memoryCapacityBytes()
 	if capacityBytes > 0 && capacityBytes <= this.totalSize {
-		return nil, errors.New("write memory cache failed: over memory size, real size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
+		return nil, errors.New("write memory cache failed: over memory size: " + strconv.FormatInt(capacityBytes, 10) + ", current size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
 	}
 
 	// 先删除
-	err = this.Delete(key)
+	err = this.deleteWithoutKey(key)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewMemoryWriter(this.valuesMap, key, expiredAt, status, this.locker), nil
+	isWriting = true
+	return NewMemoryWriter(this.valuesMap, key, expiredAt, status, this.locker, func() {
+		this.locker.Lock()
+		delete(this.writingKeyMap, key)
+		this.locker.Unlock()
+	}), nil
 }
 
 // Delete 删除某个键值对应的缓存
@@ -234,4 +268,11 @@ func (this *MemoryStorage) memoryCapacityBytes() int64 {
 		}
 	}
 	return c1
+}
+
+func (this *MemoryStorage) deleteWithoutKey(key string) error {
+	hash := this.hash(key)
+	delete(this.valuesMap, hash)
+	_ = this.list.Remove(fmt.Sprintf("%d", hash))
+	return nil
 }

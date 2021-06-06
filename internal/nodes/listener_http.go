@@ -4,12 +4,16 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"golang.org/x/net/http2"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
 	"time"
 )
+
+var httpErrorLogger = log.New(io.Discard, "", 0)
 
 type HTTPListener struct {
 	BaseListener
@@ -37,6 +41,7 @@ func (this *HTTPListener) Serve() error {
 		Handler:           handler,
 		ReadHeaderTimeout: 3 * time.Second, // TODO 改成可以配置
 		IdleTimeout:       2 * time.Minute, // TODO 改成可以配置
+		ErrorLog:          httpErrorLogger,
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:

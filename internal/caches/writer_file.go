@@ -14,17 +14,19 @@ type FileWriter struct {
 	headerSize int64
 	bodySize   int64
 	expiredAt  int64
+	endFunc    func()
 }
 
-func NewFileWriter(rawWriter *os.File, key string, expiredAt int64) *FileWriter {
+func NewFileWriter(rawWriter *os.File, key string, expiredAt int64, endFunc func()) *FileWriter {
 	return &FileWriter{
 		key:       key,
 		rawWriter: rawWriter,
 		expiredAt: expiredAt,
+		endFunc:   endFunc,
 	}
 }
 
-// 写入数据
+// WriteHeader 写入数据
 func (this *FileWriter) WriteHeader(data []byte) (n int, err error) {
 	n, err = this.rawWriter.Write(data)
 	this.headerSize += int64(n)
@@ -34,7 +36,7 @@ func (this *FileWriter) WriteHeader(data []byte) (n int, err error) {
 	return
 }
 
-// 写入Header长度数据
+// WriteHeaderLength 写入Header长度数据
 func (this *FileWriter) WriteHeaderLength(headerLength int) error {
 	bytes4 := make([]byte, 4)
 	binary.BigEndian.PutUint32(bytes4, uint32(headerLength))
@@ -51,7 +53,7 @@ func (this *FileWriter) WriteHeaderLength(headerLength int) error {
 	return nil
 }
 
-// 写入数据
+// Write 写入数据
 func (this *FileWriter) Write(data []byte) (n int, err error) {
 	n, err = this.rawWriter.Write(data)
 	this.bodySize += int64(n)
@@ -61,7 +63,7 @@ func (this *FileWriter) Write(data []byte) (n int, err error) {
 	return
 }
 
-// 写入Body长度数据
+// WriteBodyLength 写入Body长度数据
 func (this *FileWriter) WriteBodyLength(bodyLength int64) error {
 	bytes8 := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes8, uint64(bodyLength))
@@ -78,8 +80,10 @@ func (this *FileWriter) WriteBodyLength(bodyLength int64) error {
 	return nil
 }
 
-// 关闭
+// Close 关闭
 func (this *FileWriter) Close() error {
+	defer this.endFunc()
+
 	err := this.WriteHeaderLength(types.Int(this.headerSize))
 	if err != nil {
 		return err
@@ -103,8 +107,10 @@ func (this *FileWriter) Close() error {
 	return err
 }
 
-// 丢弃
+// Discard 丢弃
 func (this *FileWriter) Discard() error {
+	defer this.endFunc()
+
 	_ = this.rawWriter.Close()
 
 	err := os.Remove(this.rawWriter.Name())
@@ -127,7 +133,7 @@ func (this *FileWriter) Key() string {
 	return this.key
 }
 
-// 内容类型
+// ItemType 获取内容类型
 func (this *FileWriter) ItemType() ItemType {
 	return ItemTypeFile
 }

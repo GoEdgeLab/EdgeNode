@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-// 响应Writer
+// HTTPWriter 响应Writer
 type HTTPWriter struct {
 	req    *HTTPRequest
 	writer http.ResponseWriter
@@ -32,9 +32,11 @@ type HTTPWriter struct {
 
 	cacheWriter  caches.Writer // 缓存写入
 	cacheStorage caches.StorageInterface
+
+	isOk bool // 是否完全成功
 }
 
-// 包装对象
+// NewHTTPWriter 包装对象
 func NewHTTPWriter(req *HTTPRequest, httpResponseWriter http.ResponseWriter) *HTTPWriter {
 	return &HTTPWriter{
 		req:    req,
@@ -42,7 +44,7 @@ func NewHTTPWriter(req *HTTPRequest, httpResponseWriter http.ResponseWriter) *HT
 	}
 }
 
-// 重置
+// Reset 重置
 func (this *HTTPWriter) Reset(httpResponseWriter http.ResponseWriter) {
 	this.writer = httpResponseWriter
 
@@ -58,12 +60,12 @@ func (this *HTTPWriter) Reset(httpResponseWriter http.ResponseWriter) {
 	this.gzipBodyWriter = nil
 }
 
-// 设置Gzip
+// Gzip 设置Gzip
 func (this *HTTPWriter) Gzip(config *serverconfigs.HTTPGzipConfig) {
 	this.gzipConfig = config
 }
 
-// 准备输出
+// Prepare 准备输出
 func (this *HTTPWriter) Prepare(size int64, status int) {
 	this.statusCode = status
 
@@ -71,12 +73,12 @@ func (this *HTTPWriter) Prepare(size int64, status int) {
 	this.prepareCache(size)
 }
 
-// 包装前的原始的Writer
+// Raw 包装前的原始的Writer
 func (this *HTTPWriter) Raw() http.ResponseWriter {
 	return this.writer
 }
 
-// 获取Header
+// Header 获取Header
 func (this *HTTPWriter) Header() http.Header {
 	if this.writer == nil {
 		return http.Header{}
@@ -84,7 +86,7 @@ func (this *HTTPWriter) Header() http.Header {
 	return this.writer.Header()
 }
 
-// 添加一组Header
+// AddHeaders 添加一组Header
 func (this *HTTPWriter) AddHeaders(header http.Header) {
 	if this.writer == nil {
 		return
@@ -99,7 +101,7 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 	}
 }
 
-// 写入数据
+// Write 写入数据
 func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 	if this.writer != nil {
 		if this.gzipWriter != nil {
@@ -115,8 +117,9 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 		if this.cacheWriter != nil {
 			_, err = this.cacheWriter.Write(data)
 			if err != nil {
+				_ = this.cacheWriter.Discard()
 				this.cacheWriter = nil
-				remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+				remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
 			}
 		}
 	} else {
@@ -128,7 +131,7 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 		if this.gzipBodyWriter != nil {
 			_, err := this.gzipBodyWriter.Write(data)
 			if err != nil {
-				remotelogs.Error("REQUEST_WRITER", err.Error())
+				remotelogs.Error("HTTP_WRITER", err.Error())
 			}
 		} else {
 			this.body = append(this.body, data...)
@@ -137,17 +140,17 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 	return
 }
 
-// 写入字符串
+// WriteString 写入字符串
 func (this *HTTPWriter) WriteString(s string) (n int, err error) {
 	return this.Write([]byte(s))
 }
 
-// 读取发送的字节数
+// SentBodyBytes 读取发送的字节数
 func (this *HTTPWriter) SentBodyBytes() int64 {
 	return this.sentBodyBytes
 }
 
-// 写入状态码
+// WriteHeader 写入状态码
 func (this *HTTPWriter) WriteHeader(statusCode int) {
 	if this.writer != nil {
 		this.writer.WriteHeader(statusCode)
@@ -155,7 +158,7 @@ func (this *HTTPWriter) WriteHeader(statusCode int) {
 	this.statusCode = statusCode
 }
 
-// 读取状态码
+// StatusCode 读取状态码
 func (this *HTTPWriter) StatusCode() int {
 	if this.statusCode == 0 {
 		return http.StatusOK
@@ -163,22 +166,22 @@ func (this *HTTPWriter) StatusCode() int {
 	return this.statusCode
 }
 
-// 设置拷贝Body数据
+// SetBodyCopying 设置拷贝Body数据
 func (this *HTTPWriter) SetBodyCopying(b bool) {
 	this.bodyCopying = b
 }
 
-// 判断是否在拷贝Body数据
+// BodyIsCopying 判断是否在拷贝Body数据
 func (this *HTTPWriter) BodyIsCopying() bool {
 	return this.bodyCopying
 }
 
-// 读取拷贝的Body数据
+// Body 读取拷贝的Body数据
 func (this *HTTPWriter) Body() []byte {
 	return this.body
 }
 
-// 读取Header二进制数据
+// HeaderData 读取Header二进制数据
 func (this *HTTPWriter) HeaderData() []byte {
 	if this.writer == nil {
 		return nil
@@ -200,7 +203,12 @@ func (this *HTTPWriter) HeaderData() []byte {
 	return writer.Bytes()
 }
 
-// 关闭
+// SetOk 设置成功
+func (this *HTTPWriter) SetOk() {
+	this.isOk = true
+}
+
+// Close 关闭
 func (this *HTTPWriter) Close() {
 	// gzip writer
 	if this.gzipWriter != nil {
@@ -214,20 +222,24 @@ func (this *HTTPWriter) Close() {
 
 	// cache writer
 	if this.cacheWriter != nil {
-		err := this.cacheWriter.Close()
-		if err == nil {
-			this.cacheStorage.AddToList(&caches.Item{
-				Type:       this.cacheWriter.ItemType(),
-				Key:        this.cacheWriter.Key(),
-				ExpiredAt:  this.cacheWriter.ExpiredAt(),
-				HeaderSize: this.cacheWriter.HeaderSize(),
-				BodySize:   this.cacheWriter.BodySize(),
-			})
+		if this.isOk {
+			err := this.cacheWriter.Close()
+			if err == nil {
+				this.cacheStorage.AddToList(&caches.Item{
+					Type:       this.cacheWriter.ItemType(),
+					Key:        this.cacheWriter.Key(),
+					ExpiredAt:  this.cacheWriter.ExpiredAt(),
+					HeaderSize: this.cacheWriter.HeaderSize(),
+					BodySize:   this.cacheWriter.BodySize(),
+				})
+			}
+		} else {
+			_ = this.cacheWriter.Discard()
 		}
 	}
 }
 
-// Hijack
+// Hijack Hijack
 func (this *HTTPWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err error) {
 	hijack, ok := this.writer.(http.Hijacker)
 	if ok {
@@ -236,7 +248,7 @@ func (this *HTTPWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err erro
 	return
 }
 
-// Flush
+// Flush Flush
 func (this *HTTPWriter) Flush() {
 	flusher, ok := this.writer.(http.Flusher)
 	if ok {
@@ -284,7 +296,7 @@ func (this *HTTPWriter) prepareGzip(size int64) {
 	var err error = nil
 	this.gzipWriter, err = gzip.NewWriterLevel(this.writer, int(this.gzipConfig.Level))
 	if err != nil {
-		remotelogs.Error("REQUEST_WRITER", err.Error())
+		remotelogs.Error("HTTP_WRITER", err.Error())
 		return
 	}
 
@@ -293,7 +305,7 @@ func (this *HTTPWriter) prepareGzip(size int64) {
 		this.gzipBodyBuffer = bytes.NewBuffer([]byte{})
 		this.gzipBodyWriter, err = gzip.NewWriterLevel(this.gzipBodyBuffer, int(this.gzipConfig.Level))
 		if err != nil {
-			remotelogs.Error("REQUEST_WRITER", err.Error())
+			remotelogs.Error("HTTP_WRITER", err.Error())
 		}
 	}
 
@@ -376,7 +388,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	cacheWriter, err := storage.OpenWriter(this.req.cacheKey, expiredAt, this.StatusCode())
 	if err != nil {
 		if err != caches.ErrFileIsWriting {
-			remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
 		}
 		return
 	}
@@ -390,7 +402,8 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		for _, v1 := range v {
 			_, err = cacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
 			if err != nil {
-				remotelogs.Error("REQUEST_WRITER", "write cache failed: "+err.Error())
+				remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
+				_ = this.cacheWriter.Discard()
 				this.cacheWriter = nil
 				return
 			}

@@ -382,6 +382,9 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		}
 	}
 
+	// 设置成功
+	this.writer.SetOk()
+
 	return true
 }
 
