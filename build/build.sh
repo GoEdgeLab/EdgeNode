@@ -76,7 +76,7 @@ function build() {
 		fi
 	fi
 	if [ ! -z $CC_PATH ]; then
-		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -o $DIST/bin/${NAME} -ldflags "-linkmode external -extldflags -static" $ROOT/../cmd/edge-node/main.go
+		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -o $DIST/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" $ROOT/../cmd/edge-node/main.go
 	else
 		env GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
 	fi
