@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// 连接源站
+// OriginConnect 连接源站
 func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.Conn, error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin server address should not be empty")
@@ -70,9 +70,15 @@ func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.C
 		return tls.Dial("tcp", origin.Addr.Host+":"+origin.Addr.PortRange, &tls.Config{
 			InsecureSkipVerify: true,
 		})
+	case serverconfigs.ProtocolUDP:
+		addr, err := net.ResolveUDPAddr("udp", origin.Addr.Host+":"+origin.Addr.PortRange)
+		if err != nil {
+			return nil, err
+		}
+		return net.DialUDP("udp", nil, addr)
 	}
 
 	// TODO 支持从Unix、Pipe、HTTP、HTTPS中读取数据
 
-	return nil, errors.New("invalid scheme '" + origin.Addr.Protocol.String() + "'")
+	return nil, errors.New("invalid origin scheme '" + origin.Addr.Protocol.String() + "'")
 }

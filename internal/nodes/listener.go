@@ -43,8 +43,19 @@ func (this *Listener) Listen() error {
 		return nil
 	}
 	protocol := this.group.Protocol()
+	if protocol.IsUDPFamily() {
+		return this.listenUDP()
+	}
+	return this.listenTCP()
+}
 
-	netListener, err := this.createListener()
+func (this *Listener) listenTCP() error {
+	if this.group == nil {
+		return nil
+	}
+	protocol := this.group.Protocol()
+
+	netListener, err := this.createTCPListener()
 	if err != nil {
 		return err
 	}
@@ -80,11 +91,6 @@ func (this *Listener) Listen() error {
 			BaseListener: BaseListener{Group: this.group},
 			Listener:     netListener,
 		}
-	case serverconfigs.ProtocolUDP:
-		this.listener = &UDPListener{
-			BaseListener: BaseListener{Group: this.group},
-			Listener:     netListener,
-		}
 	default:
 		return errors.New("unknown protocol '" + protocol.String() + "'")
 	}
@@ -108,6 +114,31 @@ func (this *Listener) Listen() error {
 	return nil
 }
 
+func (this *Listener) listenUDP() error {
+	listener, err := this.createUDPListener()
+	if err != nil {
+		return err
+	}
+	events.On(events.EventQuit, func() {
+		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
+		_ = listener.Close()
+	})
+
+	this.listener = &UDPListener{
+		BaseListener: BaseListener{Group: this.group},
+		Listener:     listener,
+	}
+
+	go func() {
+		err := this.listener.Serve()
+		if err != nil {
+			remotelogs.Error("LISTENER", err.Error())
+		}
+	}()
+
+	return nil
+}
+
 func (this *Listener) Close() error {
 	if this.listener == nil {
 		return nil
@@ -115,8 +146,8 @@ func (this *Listener) Close() error {
 	return this.listener.Close()
 }
 
-// 创建监听器
-func (this *Listener) createListener() (net.Listener, error) {
+// 创建TCP监听器
+func (this *Listener) createTCPListener() (net.Listener, error) {
 	listenConfig := net.ListenConfig{
 		Control:   nil,
 		KeepAlive: 0,
@@ -130,4 +161,14 @@ func (this *Listener) createListener() (net.Listener, error) {
 	}
 
 	return listenConfig.Listen(context.Background(), "tcp", this.group.Addr())
+}
+
+// 创建UDP监听器
+func (this *Listener) createUDPListener() (*net.UDPConn, error) {
+	// TODO 将来支持udp4/udp6
+	addr, err := net.ResolveUDPAddr("udp", this.group.Addr())
+	if err != nil {
+		return nil, err
+	}
+	return net.ListenUDP("udp", addr)
 }
