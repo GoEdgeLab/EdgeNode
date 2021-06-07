@@ -45,7 +45,7 @@ func (this *UDPListener) Serve() error {
 			this.connLocker.Lock()
 			conn, ok := this.connMap[addr.String()]
 			this.connLocker.Unlock()
-			if ok && !conn.isOk {
+			if ok && !conn.IsOk() {
 				_ = conn.Close()
 				ok = false
 			}
