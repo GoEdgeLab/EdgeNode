@@ -39,6 +39,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			continue
 		}
 		if cacheRef.Conds.MatchRequest(this.Format) {
+			if cacheRef.IsReverse {
+				return
+			}
 			this.cacheRef = cacheRef
 			refType = "server"
 			break
@@ -53,6 +56,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				continue
 			}
 			if cacheRef.Conds.MatchRequest(this.Format) {
+				if cacheRef.IsReverse {
+					return
+				}
 				this.cacheRef = cacheRef
 				refType = "policy"
 				break
