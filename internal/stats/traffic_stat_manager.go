@@ -15,9 +15,16 @@ import (
 
 var SharedTrafficStatManager = NewTrafficStatManager()
 
+type TrafficItem struct {
+	Bytes               int64
+	CachedBytes         int64
+	CountRequests       int64
+	CountCachedRequests int64
+}
+
 // TrafficStatManager 区域流量统计
 type TrafficStatManager struct {
-	m          map[string]int64 // [timestamp serverId] => bytes
+	itemMap    map[string]*TrafficItem // [timestamp serverId] => bytes
 	locker     sync.Mutex
 	configFunc func() *nodeconfigs.NodeConfig
 }
@@ -25,7 +32,7 @@ type TrafficStatManager struct {
 // NewTrafficStatManager 获取新对象
 func NewTrafficStatManager() *TrafficStatManager {
 	manager := &TrafficStatManager{
-		m: map[string]int64{},
+		itemMap: map[string]*TrafficItem{},
 	}
 
 	return manager
@@ -55,7 +62,7 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 }
 
 // Add 添加流量
-func (this *TrafficStatManager) Add(serverId int64, bytes int64) {
+func (this *TrafficStatManager) Add(serverId int64, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64) {
 	if bytes == 0 {
 		return
 	}
@@ -64,7 +71,15 @@ func (this *TrafficStatManager) Add(serverId int64, bytes int64) {
 
 	key := strconv.FormatInt(timestamp, 10) + strconv.FormatInt(serverId, 10)
 	this.locker.Lock()
-	this.m[key] += bytes
+	item, ok := this.itemMap[key]
+	if !ok {
+		item = &TrafficItem{}
+		this.itemMap[key] = item
+	}
+	item.Bytes += bytes
+	item.CachedBytes += cachedBytes
+	item.CountRequests += countRequests
+	item.CountCachedRequests += countCachedRequests
 	this.locker.Unlock()
 }
 
@@ -81,12 +96,12 @@ func (this *TrafficStatManager) Upload() error {
 	}
 
 	this.locker.Lock()
-	m := this.m
-	this.m = map[string]int64{}
+	m := this.itemMap
+	this.itemMap = map[string]*TrafficItem{}
 	this.locker.Unlock()
 
 	pbStats := []*pb.ServerDailyStat{}
-	for key, bytes := range m {
+	for key, item := range m {
 		timestamp, err := strconv.ParseInt(key[:10], 10, 64)
 		if err != nil {
 			return err
@@ -97,10 +112,13 @@ func (this *TrafficStatManager) Upload() error {
 		}
 
 		pbStats = append(pbStats, &pb.ServerDailyStat{
-			ServerId:  serverId,
-			RegionId:  config.RegionId,
-			Bytes:     bytes,
-			CreatedAt: timestamp,
+			ServerId:            serverId,
+			RegionId:            config.RegionId,
+			Bytes:               item.Bytes,
+			CachedBytes:         item.CachedBytes,
+			CountRequests:       item.CountRequests,
+			CountCachedRequests: item.CountCachedRequests,
+			CreatedAt:           timestamp,
 		})
 	}
 	if len(pbStats) == 0 {

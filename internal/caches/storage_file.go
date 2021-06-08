@@ -36,12 +36,6 @@ const (
 	SizeMeta = SizeExpiresAt + SizeStatus + SizeURLLength + SizeHeaderLength + SizeBodyLength
 )
 
-var (
-	ErrNotFound      = errors.New("cache not found")
-	ErrFileIsWriting = errors.New("the file is writing")
-	ErrInvalidRange  = errors.New("invalid range")
-)
-
 // FileStorage 文件缓存
 //   文件结构：
 //    [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
@@ -254,11 +248,11 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 		return nil, err
 	}
 	if this.policy.MaxKeys > 0 && count > this.policy.MaxKeys {
-		return nil, errors.New("write file cache failed: too many keys in cache storage")
+		return nil, NewCapacityError("write file cache failed: too many keys in cache storage")
 	}
 	capacityBytes := this.diskCapacityBytes()
 	if capacityBytes > 0 && capacityBytes <= this.totalSize {
-		return nil, errors.New("write file cache failed: over disk size, current total size: " + strconv.FormatInt(this.totalSize, 10) + " bytes, capacity: " + strconv.FormatInt(capacityBytes, 10))
+		return nil, NewCapacityError("write file cache failed: over disk size, current total size: " + strconv.FormatInt(this.totalSize, 10) + " bytes, capacity: " + strconv.FormatInt(capacityBytes, 10))
 	}
 
 	hash := stringutil.Md5(key)

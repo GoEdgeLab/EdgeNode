@@ -61,6 +61,7 @@ type HTTPRequest struct {
 	rewriteIsExternalURL bool                              // 重写目标是否为外部URL
 	cacheRef             *serverconfigs.HTTPCacheRef       // 缓存设置
 	cacheKey             string                            // 缓存使用的Key
+	isCached             bool                              // 是否已经被缓存
 
 	// WAF相关
 	firewallPolicyId    int64
@@ -231,7 +232,11 @@ func (this *HTTPRequest) doEnd() {
 	// 流量统计
 	// TODO 增加是否开启开关
 	if this.Server != nil {
-		stats.SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes)
+		if this.isCached {
+			stats.SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1)
+		} else {
+			stats.SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes, 0, 1, 0)
+		}
 	}
 }
 

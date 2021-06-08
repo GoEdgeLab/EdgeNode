@@ -308,5 +308,6 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	this.cacheRef = nil // 终止读取不再往下传递
+	this.isCached = true
 	return true
 }

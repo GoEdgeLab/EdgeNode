@@ -8,15 +8,15 @@ import (
 func TestTrafficStatManager_Add(t *testing.T) {
 	manager := NewTrafficStatManager()
 	for i := 0; i < 100; i++ {
-		manager.Add(1, 10)
+		manager.Add(1, 10, 1, 0)
 	}
-	t.Log(manager.m)
+	t.Log(manager.itemMap)
 }
 
 func TestTrafficStatManager_Upload(t *testing.T) {
 	manager := NewTrafficStatManager()
 	for i := 0; i < 100; i++ {
-		manager.Add(1, 10)
+		manager.Add(1, 10, 1, 0)
 	}
 	err := manager.Upload()
 	if err != nil {
@@ -30,6 +30,6 @@ func BenchmarkTrafficStatManager_Add(b *testing.B) {
 
 	manager := NewTrafficStatManager()
 	for i := 0; i < b.N; i++ {
-		manager.Add(1, 1024)
+		manager.Add(1, 1024, 1, 0)
 	}
 }

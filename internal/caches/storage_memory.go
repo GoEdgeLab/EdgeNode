@@ -3,7 +3,6 @@ package caches
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/cespare/xxhash"
 	"strconv"
@@ -126,11 +125,11 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (
 		return nil, err
 	}
 	if this.policy.MaxKeys > 0 && totalKeys > this.policy.MaxKeys {
-		return nil, errors.New("write memory cache failed: too many keys in cache storage")
+		return nil, NewCapacityError("write memory cache failed: too many keys in cache storage")
 	}
 	capacityBytes := this.memoryCapacityBytes()
 	if capacityBytes > 0 && capacityBytes <= this.totalSize {
-		return nil, errors.New("write memory cache failed: over memory size: " + strconv.FormatInt(capacityBytes, 10) + ", current size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
+		return nil, NewCapacityError("write memory cache failed: over memory size: " + strconv.FormatInt(capacityBytes, 10) + ", current size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
 	}
 
 	// 先删除
