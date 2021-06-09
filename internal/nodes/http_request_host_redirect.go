@@ -13,6 +13,9 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 		if !u.IsOn {
 			continue
 		}
+		if !u.MatchRequest(this.Format) {
+			continue
+		}
 		if u.MatchPrefix { // 匹配前缀
 			if strings.HasPrefix(fullURL, u.BeforeURL) {
 				afterURL := u.AfterURL
