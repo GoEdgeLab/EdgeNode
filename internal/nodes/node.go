@@ -33,8 +33,10 @@ import (
 
 var sharedNodeConfig *nodeconfigs.NodeConfig
 var nodeTaskNotify = make(chan bool, 8)
+var DaemonIsOn = false
+var DaemonPid = 0
 
-// 节点
+// Node 节点
 type Node struct {
 	isLoaded bool
 }
@@ -43,7 +45,7 @@ func NewNode() *Node {
 	return &Node{}
 }
 
-// 检查配置
+// Test 检查配置
 func (this *Node) Test() error {
 	// 检查是否能连接API
 	rpcClient, err := rpc.SharedRPC()
@@ -58,8 +60,15 @@ func (this *Node) Test() error {
 	return nil
 }
 
-// 启动
+// Start 启动
 func (this *Node) Start() {
+	_, ok := os.LookupEnv("EdgeDaemon")
+	if ok {
+		remotelogs.Println("NODE", "start from daemon")
+		DaemonIsOn = true
+		DaemonPid = os.Getppid()
+	}
+
 	// 启动事件
 	events.Notify(events.EventStart)
 
@@ -146,7 +155,7 @@ func (this *Node) Start() {
 	select {}
 }
 
-// 实现守护进程
+// Daemon 实现守护进程
 func (this *Node) Daemon() {
 	path := os.TempDir() + "/edge-node.sock"
 	isDebug := lists.ContainsString(os.Args, "debug")
@@ -164,6 +173,10 @@ func (this *Node) Daemon() {
 				if err != nil {
 					return err
 				}
+
+				// 可以标记当前是从守护进程启动的
+				_ = os.Setenv("EdgeDaemon", "on")
+
 				cmd := exec.Command(exe)
 				err = cmd.Start()
 				if err != nil {
@@ -191,7 +204,7 @@ func (this *Node) Daemon() {
 	}
 }
 
-// 安装系统服务
+// InstallSystemService 安装系统服务
 func (this *Node) InstallSystemService() error {
 	shortName := teaconst.SystemdServiceName
 
@@ -285,6 +298,8 @@ func (this *Node) loop() error {
 			if err != nil {
 				return err
 			}
+		case "nodeVersionChanged":
+			go sharedUpgradeManager.Start()
 		}
 	}
 

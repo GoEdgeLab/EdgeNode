@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/messageconfigs"
@@ -13,6 +14,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/logs"
 	"io"
 	"net/http"
 	"os/exec"
@@ -55,10 +57,16 @@ func (this *APIStream) loop() error {
 		return errors.Wrap(err)
 	}
 	isQuiting := false
+	ctx, cancelFunc := context.WithCancel(rpcClient.Context())
+	nodeStream, err := rpcClient.NodeRPC().NodeStream(ctx)
 	events.On(events.EventQuit, func() {
 		isQuiting = true
+
+		remotelogs.Println("API_STREAM", "quiting")
+		if nodeStream != nil {
+			cancelFunc()
+		}
 	})
-	nodeStream, err := rpcClient.NodeRPC().NodeStream(rpcClient.Context())
 	if err != nil {
 		if isQuiting {
 			return nil
@@ -69,12 +77,14 @@ func (this *APIStream) loop() error {
 
 	for {
 		if isQuiting {
+			logs.Println("API_STREAM", "quit")
 			break
 		}
 
 		message, err := nodeStream.Recv()
 		if err != nil {
 			if isQuiting {
+				remotelogs.Println("API_STREAM", "quit")
 				return nil
 			}
 			return errors.Wrap(err)
