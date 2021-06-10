@@ -488,7 +488,7 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.rawURI
 		case "requestPath":
 			return this.requestPath()
-		case "requestPathExtension": // TODO 需要添加到文档中
+		case "requestPathExtension":
 			return filepath.Ext(this.requestPath())
 		case "requestLength":
 			return strconv.FormatInt(this.requestLength(), 10)
@@ -583,7 +583,6 @@ func (this *HTTPRequest) Format(source string) string {
 		}
 
 		// response.
-		// TODO 需要在文档中添加说明
 		if prefix == "response" {
 			switch suffix {
 			case "contentType":
