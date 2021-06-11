@@ -1,6 +1,8 @@
 package caches
 
-import "time"
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
+)
 
 type ItemType = int
 
@@ -19,7 +21,7 @@ type Item struct {
 }
 
 func (this *Item) IsExpired() bool {
-	return this.ExpiredAt < time.Now().Unix()
+	return this.ExpiredAt < utils.UnixTime()
 }
 
 func (this *Item) TotalSize() int64 {

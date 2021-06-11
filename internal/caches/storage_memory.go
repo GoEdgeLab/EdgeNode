@@ -54,7 +54,7 @@ func (this *MemoryStorage) Init() error {
 	})
 
 	if this.purgeDuration <= 0 {
-		this.purgeDuration = 30 * time.Second
+		this.purgeDuration = 10 * time.Second
 	}
 
 	// 启动定时清理任务

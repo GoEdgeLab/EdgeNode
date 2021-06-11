@@ -1,32 +1,48 @@
 package caches
 
 import (
+	"github.com/iwind/TeaGo/logs"
+	"strconv"
 	"strings"
 	"sync"
+	"testing"
 )
 
 // MemoryList 内存缓存列表管理
 type MemoryList struct {
-	m        map[string]*Item // hash => item
+	itemMaps map[string]map[string]*Item // prefix => { hash => item }
+	prefixes []string
 	locker   sync.RWMutex
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
+
+	purgeIndex int
 }
 
 func NewMemoryList() ListInterface {
 	return &MemoryList{
-		m: map[string]*Item{},
+		itemMaps: map[string]map[string]*Item{},
 	}
 }
 
 func (this *MemoryList) Init() error {
-	// 内存列表不需要初始化
+	this.prefixes = []string{"000"}
+	for i := 100; i <= 999; i++ {
+		this.prefixes = append(this.prefixes, strconv.Itoa(i))
+	}
+
+	for _, prefix := range this.prefixes {
+		this.itemMaps[prefix] = map[string]*Item{}
+	}
+
 	return nil
 }
 
 func (this *MemoryList) Reset() error {
 	this.locker.Lock()
-	this.m = map[string]*Item{}
+	for key := range this.itemMaps {
+		this.itemMaps[key] = map[string]*Item{}
+	}
 	this.locker.Unlock()
 	return nil
 }
@@ -34,8 +50,15 @@ func (this *MemoryList) Reset() error {
 func (this *MemoryList) Add(hash string, item *Item) error {
 	this.locker.Lock()
 
+	prefix := this.prefix(hash)
+	itemMap, ok := this.itemMaps[prefix]
+	if !ok {
+		itemMap = map[string]*Item{}
+		this.itemMaps[prefix] = itemMap
+	}
+
 	// 先删除，为了可以正确触发统计
-	oldItem, ok := this.m[hash]
+	oldItem, ok := itemMap[hash]
 	if ok {
 		if this.onRemove != nil {
 			this.onRemove(oldItem)
@@ -46,7 +69,8 @@ func (this *MemoryList) Add(hash string, item *Item) error {
 	if this.onAdd != nil {
 		this.onAdd(item)
 	}
-	this.m[hash] = item
+
+	itemMap[hash] = item
 	this.locker.Unlock()
 	return nil
 }
@@ -55,7 +79,12 @@ func (this *MemoryList) Exist(hash string) (bool, error) {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
 
-	item, ok := this.m[hash]
+	prefix := this.prefix(hash)
+	itemMap, ok := this.itemMaps[prefix]
+	if !ok {
+		return false, nil
+	}
+	item, ok := itemMap[hash]
 	if !ok {
 		return false, nil
 	}
@@ -69,9 +98,11 @@ func (this *MemoryList) FindKeysWithPrefix(prefix string) (keys []string, err er
 	defer this.locker.RUnlock()
 
 	// TODO 需要优化性能，支持千万级数据低于1s的处理速度
-	for _, item := range this.m {
-		if strings.HasPrefix(item.Key, prefix) {
-			keys = append(keys, item.Key)
+	for _, itemMap := range this.itemMaps {
+		for _, item := range itemMap {
+			if strings.HasPrefix(item.Key, prefix) {
+				keys = append(keys, item.Key)
+			}
 		}
 	}
 	return
@@ -80,12 +111,18 @@ func (this *MemoryList) FindKeysWithPrefix(prefix string) (keys []string, err er
 func (this *MemoryList) Remove(hash string) error {
 	this.locker.Lock()
 
-	item, ok := this.m[hash]
+	itemMap, ok := this.itemMaps[this.prefix(hash)]
+	if !ok {
+		this.locker.Unlock()
+		return nil
+	}
+
+	item, ok := itemMap[hash]
 	if ok {
 		if this.onRemove != nil {
 			this.onRemove(item)
 		}
-		delete(this.m, hash)
+		delete(itemMap, hash)
 	}
 
 	this.locker.Unlock()
@@ -98,7 +135,20 @@ func (this *MemoryList) Remove(hash string) error {
 func (this *MemoryList) Purge(count int, callback func(hash string) error) error {
 	this.locker.Lock()
 	deletedHashList := []string{}
-	for hash, item := range this.m {
+
+	if this.purgeIndex >= len(this.prefixes) {
+		this.purgeIndex = 0
+	}
+	prefix := this.prefixes[this.purgeIndex]
+
+	this.purgeIndex++
+
+	itemMap, ok := this.itemMaps[prefix]
+	if !ok {
+		this.locker.Unlock()
+		return nil
+	}
+	for hash, item := range itemMap {
 		if count <= 0 {
 			break
 		}
@@ -107,7 +157,7 @@ func (this *MemoryList) Purge(count int, callback func(hash string) error) error
 			if this.onRemove != nil {
 				this.onRemove(item)
 			}
-			delete(this.m, hash)
+			delete(itemMap, hash)
 			deletedHashList = append(deletedHashList, hash)
 		}
 
@@ -139,13 +189,15 @@ func (this *MemoryList) Stat(check func(hash string) bool) (*Stat, error) {
 		Count: 0,
 		Size:  0,
 	}
-	for hash, item := range this.m {
-		if !item.IsExpired() {
-			// 检查文件是否存在、内容是否正确等
-			if check != nil && check(hash) {
-				result.Count++
-				result.ValueSize += item.Size()
-				result.Size += item.TotalSize()
+	for _, itemMap := range this.itemMaps {
+		for hash, item := range itemMap {
+			if !item.IsExpired() {
+				// 检查文件是否存在、内容是否正确等
+				if check != nil && check(hash) {
+					result.Count++
+					result.ValueSize += item.Size()
+					result.Size += item.TotalSize()
+				}
 			}
 		}
 	}
@@ -155,9 +207,12 @@ func (this *MemoryList) Stat(check func(hash string) bool) (*Stat, error) {
 // Count 总数量
 func (this *MemoryList) Count() (int64, error) {
 	this.locker.RLock()
-	count := int64(len(this.m))
+	var count = 0
+	for _, itemMap := range this.itemMaps {
+		count += len(itemMap)
+	}
 	this.locker.RUnlock()
-	return count, nil
+	return int64(count), nil
 }
 
 // OnAdd 添加事件
@@ -168,4 +223,28 @@ func (this *MemoryList) OnAdd(f func(item *Item)) {
 // OnRemove 删除事件
 func (this *MemoryList) OnRemove(f func(item *Item)) {
 	this.onRemove = f
+}
+
+func (this *MemoryList) print(t *testing.T) {
+	this.locker.Lock()
+	for _, itemMap := range this.itemMaps {
+		if len(itemMap) > 0 {
+			logs.PrintAsJSON(itemMap, t)
+		}
+	}
+	this.locker.Unlock()
+}
+
+func (this *MemoryList) prefix(hash string) string {
+	var prefix string
+	if len(hash) > 3 {
+		prefix = hash[:3]
+	} else {
+		prefix = hash
+	}
+	_, ok := this.itemMaps[prefix]
+	if !ok {
+		prefix = "000"
+	}
+	return prefix
 }
