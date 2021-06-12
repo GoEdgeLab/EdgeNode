@@ -46,6 +46,8 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
 
 // Init 初始化
 func (this *MemoryStorage) Init() error {
+	_ = this.list.Init()
+
 	this.list.OnAdd(func(item *Item) {
 		atomic.AddInt64(&this.totalSize, item.TotalSize())
 	})
