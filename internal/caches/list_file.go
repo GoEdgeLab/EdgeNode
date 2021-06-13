@@ -32,6 +32,8 @@ type FileList struct {
 
 	oldTables      []string
 	itemsTableName string
+
+	isClosed bool
 }
 
 func NewFileList(dir string) ListInterface {
@@ -170,6 +172,10 @@ func (this *FileList) Reset() error {
 }
 
 func (this *FileList) Add(hash string, item *Item) error {
+	if this.isClosed {
+		return nil
+	}
+
 	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.Host, item.ServerId)
 	if err != nil {
 		return err
@@ -184,6 +190,10 @@ func (this *FileList) Add(hash string, item *Item) error {
 }
 
 func (this *FileList) Exist(hash string) (bool, error) {
+	if this.isClosed {
+		return false, nil
+	}
+
 	rows, err := this.existsByHashStmt.Query(hash, time.Now().Unix())
 	if err != nil {
 		return false, err
@@ -199,6 +209,10 @@ func (this *FileList) Exist(hash string) (bool, error) {
 
 // CleanPrefix 清理某个前缀的缓存数据
 func (this *FileList) CleanPrefix(prefix string) error {
+	if this.isClosed {
+		return nil
+	}
+
 	if len(prefix) == 0 {
 		return nil
 	}
@@ -220,6 +234,10 @@ func (this *FileList) CleanPrefix(prefix string) error {
 }
 
 func (this *FileList) Remove(hash string) error {
+	if this.isClosed {
+		return nil
+	}
+
 	row := this.selectByHashStmt.QueryRow(hash)
 	if row.Err() != nil {
 		return row.Err()
@@ -252,6 +270,10 @@ func (this *FileList) Remove(hash string) error {
 // count 每次遍历的最大数量，控制此数字可以保证每次清理的时候不用花太多时间
 // callback 每次发现过期key的调用
 func (this *FileList) Purge(count int, callback func(hash string) error) error {
+	if this.isClosed {
+		return nil
+	}
+
 	if count <= 0 {
 		count = 1000
 	}
@@ -291,6 +313,10 @@ func (this *FileList) Purge(count int, callback func(hash string) error) error {
 }
 
 func (this *FileList) CleanAll() error {
+	if this.isClosed {
+		return nil
+	}
+
 	_, err := this.deleteAllStmt.Exec()
 	if err != nil {
 		return err
@@ -300,6 +326,10 @@ func (this *FileList) CleanAll() error {
 }
 
 func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
+	if this.isClosed {
+		return &Stat{}, nil
+	}
+
 	// 这里不设置过期时间、不使用 check 函数，目的是让查询更快速一些
 	row := this.statStmt.QueryRow(time.Now().Unix())
 	if row.Err() != nil {
@@ -331,7 +361,17 @@ func (this *FileList) OnRemove(f func(item *Item)) {
 }
 
 func (this *FileList) Close() error {
+	this.isClosed = true
+
 	if this.db != nil {
+		_ = this.existsByHashStmt.Close()
+		_ = this.insertStmt.Close()
+		_ = this.selectByHashStmt.Close()
+		_ = this.deleteByHashStmt.Close()
+		_ = this.statStmt.Close()
+		_ = this.purgeStmt.Close()
+		_ = this.deleteAllStmt.Close()
+
 		return this.db.Close()
 	}
 	return nil
