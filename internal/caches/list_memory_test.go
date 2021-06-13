@@ -134,7 +134,7 @@ func TestMemoryList_Stat(t *testing.T) {
 	t.Log(result)
 }
 
-func TestMemoryList_FindKeysWithPrefix(t *testing.T) {
+func TestMemoryList_CleanPrefix(t *testing.T) {
 	list := NewMemoryList()
 	_ = list.Init()
 	before := time.Now()
@@ -142,7 +142,7 @@ func TestMemoryList_FindKeysWithPrefix(t *testing.T) {
 		key := "http://www.teaos.cn/hello/" + strconv.Itoa(i/10000) + "/" + strconv.Itoa(i) + ".html"
 		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &Item{
 			Key:        key,
-			ExpiredAt:  0,
+			ExpiredAt:  time.Now().Unix() + 3600,
 			BodySize:   0,
 			HeaderSize: 0,
 		})
@@ -150,11 +150,15 @@ func TestMemoryList_FindKeysWithPrefix(t *testing.T) {
 	t.Log(time.Since(before).Seconds()*1000, "ms")
 
 	before = time.Now()
-	keys, err := list.FindKeysWithPrefix("http://www.teaos.cn/hello/50")
+	err := list.CleanPrefix("http://www.teaos.cn/hello/10")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(len(keys))
+
+	logs.Println(list.Stat(func(hash string) bool {
+		return true
+	}))
+
 	t.Log(time.Since(before).Seconds()*1000, "ms")
 }
 

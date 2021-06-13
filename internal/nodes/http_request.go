@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/types"
 	"golang.org/x/net/http2"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -1153,7 +1154,7 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	// 客户端主动取消
-	if err == context.Canceled {
+	if err == context.Canceled || err == io.ErrShortWrite {
 		return true
 	}
 

@@ -231,6 +231,8 @@ func (this *HTTPWriter) Close() {
 					ExpiredAt:  this.cacheWriter.ExpiredAt(),
 					HeaderSize: this.cacheWriter.HeaderSize(),
 					BodySize:   this.cacheWriter.BodySize(),
+					Host:       this.req.Host,
+					ServerId:   this.req.Server.Id,
 				})
 			}
 		} else {

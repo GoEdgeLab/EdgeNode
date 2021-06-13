@@ -191,14 +191,30 @@ func (this *FileStorage) OpenReader(key string) (Reader, error) {
 		}
 	}
 
-	_, path := this.keyPath(key)
+	hash, path := this.keyPath(key)
 
 	// TODO 尝试使用mmap加快读取速度
+	var isOk = false
 	fp, err := os.OpenFile(path, os.O_RDONLY, 0444)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
+		return nil, ErrNotFound
+	}
+	defer func() {
+		if !isOk {
+			_ = fp.Close()
+			_ = os.Remove(path)
+		}
+	}()
+
+	// 检查文件记录是否已过期
+	exists, err := this.list.Exist(hash)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
 		return nil, ErrNotFound
 	}
 
@@ -210,6 +226,8 @@ func (this *FileStorage) OpenReader(key string) (Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	isOk = true
 	return reader, nil
 }
 
@@ -520,33 +538,18 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 
 	// 目录
 	if urlType == "dir" {
-		resultKeys := []string{}
 		for _, key := range keys {
-			subKeys, err := this.list.FindKeysWithPrefix(key)
+			err := this.list.CleanPrefix(key)
 			if err != nil {
 				return err
 			}
-			resultKeys = append(resultKeys, subKeys...)
 		}
-		keys = resultKeys
 	}
 
 	// 文件
 	for _, key := range keys {
 		hash, path := this.keyPath(key)
-		exists, err := this.list.Exist(hash)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			err := os.Remove(path)
-			if err != nil && !os.IsNotExist(err) {
-				return err
-			}
-			continue
-		}
-
-		err = os.Remove(path)
+		err := os.Remove(path)
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -572,6 +575,8 @@ func (this *FileStorage) Stop() {
 	if this.ticker != nil {
 		this.ticker.Stop()
 	}
+
+	_ = this.list.Close()
 }
 
 // TotalDiskSize 消耗的磁盘尺寸
@@ -742,7 +747,7 @@ func (this *FileStorage) decodeFile(path string) (*Item, error) {
 
 // 清理任务
 func (this *FileStorage) purgeLoop() {
-	_ = this.list.Purge(1000, func(hash string) error {
+	err := this.list.Purge(1000, func(hash string) error {
 		path := this.hashPath(hash)
 		err := os.Remove(path)
 		if err != nil && !os.IsNotExist(err) {
@@ -750,6 +755,9 @@ func (this *FileStorage) purgeLoop() {
 		}
 		return nil
 	})
+	if err != nil {
+		remotelogs.Warn("CACHE", "purge file storage failed: " + err.Error())
+	}
 }
 
 func (this *FileStorage) readToBuff(fp *os.File, buf []byte) (ok bool, err error) {

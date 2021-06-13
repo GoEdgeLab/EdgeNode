@@ -4,8 +4,10 @@ package caches
 
 import (
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/rands"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -31,6 +33,8 @@ func TestFileList_Add(t *testing.T) {
 		HeaderSize: 1,
 		MetaSize:   2,
 		BodySize:   3,
+		Host:       "teaos.cn",
+		ServerId:   1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -44,17 +48,22 @@ func TestFileList_Add_Many(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 100_0000; i++ {
+	before := time.Now()
+	for i := 0; i < 2000_0000; i++ {
 		u := "http://edge.teaos.cn/123456" + strconv.Itoa(i)
-		err = list.Add(stringutil.Md5(u), &Item{
+		_ = list.Add(stringutil.Md5(u), &Item{
 			Key:        u,
-			ExpiredAt:  time.Now().Unix(),
+			ExpiredAt:  time.Now().Unix() + 3600,
 			HeaderSize: 1,
 			MetaSize:   2,
 			BodySize:   3,
 		})
 		if err != nil {
 			t.Fatal(err)
+		}
+		if i > 0 && i%10_000 == 0 {
+			t.Log(i, int(10000/time.Since(before).Seconds()), "qps")
+			before = time.Now()
 		}
 	}
 	t.Log("ok")
@@ -66,6 +75,10 @@ func TestFileList_Exist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	before := time.Now()
+	defer func() {
+		t.Log(time.Since(before).Seconds()*1000, "ms")
+	}()
 	{
 		exists, err := list.Exist(stringutil.Md5("123456"))
 		if err != nil {
@@ -74,7 +87,7 @@ func TestFileList_Exist(t *testing.T) {
 		t.Log("exists:", exists)
 	}
 	{
-		exists, err := list.Exist(stringutil.Md5("654321"))
+		exists, err := list.Exist(stringutil.Md5("http://edge.teaos.cn/1234561"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -82,18 +95,70 @@ func TestFileList_Exist(t *testing.T) {
 	}
 }
 
-func TestFileList_FindKeysWithPrefix(t *testing.T) {
+func TestFileList_Exist_Many_DB(t *testing.T) {
+	// 测试在多个数据库下的性能
+	var listSlice = []ListInterface{}
+	for i := 1; i <= 10; i++ {
+		list := NewFileList(Tea.Root + "/data/data" + strconv.Itoa(i))
+		err := list.Init()
+		if err != nil {
+			t.Fatal(err)
+		}
+		listSlice = append(listSlice, list)
+	}
+
+	var wg = sync.WaitGroup{}
+	var threads = 8
+	wg.Add(threads)
+
+	var count = 200_000
+	var countLocker sync.Mutex
+	var tasks = make(chan int, count)
+	for i := 0; i < count; i++ {
+		tasks <- i
+	}
+
+	var hash = stringutil.Md5("http://edge.teaos.cn/1234561")
+
+	before := time.Now()
+	defer func() {
+		t.Log(time.Since(before).Seconds()*1000, "ms")
+	}()
+
+	for i := 0; i < threads; i++ {
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-tasks:
+					countLocker.Lock()
+					count--
+					countLocker.Unlock()
+
+					var list = listSlice[rands.Int(0, len(listSlice)-1)]
+					_, _ = list.Exist(hash)
+				default:
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	t.Log("left:", count)
+}
+
+func TestFileList_CleanPrefix(t *testing.T) {
 	list := NewFileList(Tea.Root + "/data")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 	before := time.Now()
-	keys, err := list.FindKeysWithPrefix("1234")
+	err = list.CleanPrefix("1234")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("keys:", keys)
 	t.Log(time.Since(before).Seconds()*1000, "ms")
 }
 
@@ -169,4 +234,15 @@ func TestFileList_CleanAll(t *testing.T) {
 	}
 	t.Log("ok")
 	t.Log(list.Count())
+}
+
+func BenchmarkFileList_Exist(b *testing.B) {
+	list := NewFileList(Tea.Root + "/data")
+	err := list.Init()
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		_, _ = list.Exist("f0eb5b87e0b0041f3917002c0707475f")
+	}
 }

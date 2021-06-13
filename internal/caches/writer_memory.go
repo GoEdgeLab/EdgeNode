@@ -82,7 +82,7 @@ func (this *MemoryWriter) Close() error {
 func (this *MemoryWriter) Discard() error {
 	// 需要在Locker之外
 	defer this.endFunc()
-	
+
 	this.locker.Lock()
 	delete(this.m, this.hash)
 	this.locker.Unlock()

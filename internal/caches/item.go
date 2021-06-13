@@ -18,6 +18,8 @@ type Item struct {
 	HeaderSize int64    `json:"headerSize"`
 	BodySize   int64    `json:"bodySize"`
 	MetaSize   int64    `json:"metaSize"`
+	Host       string   `json:"host"`     // 主机名
+	ServerId   int64    `json:"serverId"` // 服务ID
 }
 
 func (this *Item) IsExpired() bool {

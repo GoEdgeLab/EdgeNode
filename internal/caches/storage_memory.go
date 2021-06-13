@@ -3,8 +3,10 @@ package caches
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/cespare/xxhash"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -182,15 +184,12 @@ func (this *MemoryStorage) CleanAll() error {
 func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 	// 目录
 	if urlType == "dir" {
-		resultKeys := []string{}
 		for _, key := range keys {
-			subKeys, err := this.list.FindKeysWithPrefix(key)
+			err := this.list.CleanPrefix(key)
 			if err != nil {
 				return err
 			}
-			resultKeys = append(resultKeys, subKeys...)
 		}
-		keys = resultKeys
 	}
 
 	for _, key := range keys {
@@ -205,13 +204,21 @@ func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 // Stop 停止缓存策略
 func (this *MemoryStorage) Stop() {
 	this.locker.Lock()
-	defer this.locker.Unlock()
 
 	this.valuesMap = map[uint64]*MemoryItem{}
+	this.writingKeyMap = map[string]bool{}
 	_ = this.list.Reset()
 	if this.ticker != nil {
 		this.ticker.Stop()
 	}
+
+	_ = this.list.Close()
+
+	this.locker.Unlock()
+
+	runtime.GC()
+
+	remotelogs.Println("CACHE", "close memory storage '"+strconv.FormatInt(this.policy.Id, 10)+"'")
 }
 
 // Policy 获取当前存储的Policy

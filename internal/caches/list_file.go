@@ -5,8 +5,10 @@ package caches
 import (
 	"database/sql"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/iwind/TeaGo/lists"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -19,6 +21,17 @@ type FileList struct {
 
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
+
+	existsByHashStmt *sql.Stmt // 根据hash检查是否存在
+	insertStmt       *sql.Stmt // 写入数据
+	selectByHashStmt *sql.Stmt // 使用hash查询数据
+	deleteByHashStmt *sql.Stmt // 根据hash删除数据
+	statStmt         *sql.Stmt // 统计
+	purgeStmt        *sql.Stmt // 清理
+	deleteAllStmt    *sql.Stmt // 删除所有数据
+
+	oldTables      []string
+	itemsTableName string
 }
 
 func NewFileList(dir string) ListInterface {
@@ -36,51 +49,72 @@ func (this *FileList) Init() error {
 		remotelogs.Println("CACHE", "create cache dir '"+this.dir+"'")
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+this.dir+"/index.db?cache=shared&mode=rwc")
+	this.itemsTableName = "cacheItems_v2"
+
+	db, err := sql.Open("sqlite3", "file:"+this.dir+"/index.db?cache=shared&mode=rwc&_journal_mode=WAL")
 	if err != nil {
 		return err
 	}
 	db.SetMaxOpenConns(1)
+	this.db = db
 
-	_, err = db.Exec("VACUUM")
+	// 清除旧表
+	this.oldTables = []string{
+		"cacheItems",
+	}
+	err = this.removeOldTables()
+	if err != nil {
+		remotelogs.Warn("CACHE", "clean old tables failed: "+err.Error())
+	}
+
+	// TODO 耗时过长，暂时不整理数据库
+	/**_, err = db.Exec("VACUUM")
 	if err != nil {
 		return err
-	}
+	}**/
 
 	// 创建
 	// TODO accessesAt 用来存储访问时间，将来可以根据此访问时间删除不常访问的内容
 	//   且访问时间只需要每隔一个小时存储一个整数值即可，因为不需要那么精确
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "cacheItems" (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
   "key" varchar(1024),
   "headerSize" integer DEFAULT 0,
   "bodySize" integer DEFAULT 0,
   "metaSize" integer DEFAULT 0,
   "expiredAt" integer DEFAULT 0,
-  "accessedAt" integer DEFAULT 0
+  "accessedAt" integer DEFAULT 0,
+  "host" varchar(128),
+  "serverId" integer
+);
+
+CREATE INDEX IF NOT EXISTS "accessedAt"
+ON "` + this.itemsTableName + `" (
+  "accessedAt" ASC
+);
+
+CREATE INDEX IF NOT EXISTS "expiredAt"
+ON "` + this.itemsTableName + `" (
+  "expiredAt" ASC
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "hash"
-ON "cacheItems" (
-  "hash"
+ON "` + this.itemsTableName + `" (
+  "hash" ASC
 );
-CREATE INDEX IF NOT EXISTS "expiredAt"
-ON  "cacheItems" (
-  "expiredAt"
-);
-CREATE INDEX IF NOT EXISTS "accessedAt"
-ON  "cacheItems" (
-  "accessedAt"
+
+CREATE INDEX IF NOT EXISTS "serverId"
+ON "` + this.itemsTableName + `" (
+  "serverId" ASC
 );
 `)
 	if err != nil {
 		return err
 	}
 
-	this.db = db
-
 	// 读取总数量
-	row := this.db.QueryRow("SELECT COUNT(*) FROM cacheItems")
+	row := this.db.QueryRow(`SELECT COUNT(*) FROM "` + this.itemsTableName + `"`)
 	if row.Err() != nil {
 		return row.Err()
 	}
@@ -91,6 +125,42 @@ ON  "cacheItems" (
 	}
 	this.total = total
 
+	// 常用语句
+	this.existsByHashStmt, err = this.db.Prepare(`SELECT "bodySize" FROM "` + this.itemsTableName + `" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
+	if err != nil {
+		return err
+	}
+
+	this.insertStmt, err = this.db.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "host", "serverId") VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+
+	this.selectByHashStmt, err = this.db.Prepare(`SELECT "key", "headerSize", "bodySize", "metaSize", "expiredAt" FROM "` + this.itemsTableName + `" WHERE "hash"=? LIMIT 1`)
+	if err != nil {
+		return err
+	}
+
+	this.deleteByHashStmt, err = this.db.Prepare(`DELETE FROM "` + this.itemsTableName + `" WHERE "hash"=?`)
+	if err != nil {
+		return err
+	}
+
+	this.statStmt, err = this.db.Prepare(`SELECT COUNT(*), IFNULL(SUM(headerSize+bodySize+metaSize), 0), IFNULL(SUM(headerSize+bodySize), 0) FROM "` + this.itemsTableName + `" WHERE expiredAt>?`)
+	if err != nil {
+		return err
+	}
+
+	this.purgeStmt, err = this.db.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" WHERE expiredAt<=? LIMIT ?`)
+	if err != nil {
+		return err
+	}
+
+	this.deleteAllStmt, err = this.db.Prepare(`DELETE FROM "` + this.itemsTableName + `"`)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -100,7 +170,7 @@ func (this *FileList) Reset() error {
 }
 
 func (this *FileList) Add(hash string, item *Item) error {
-	_, err := this.db.Exec(`INSERT INTO cacheItems ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt") VALUES (?, ?, ?, ?, ?, ?)`, hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt)
+	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.Host, item.ServerId)
 	if err != nil {
 		return err
 	}
@@ -114,54 +184,43 @@ func (this *FileList) Add(hash string, item *Item) error {
 }
 
 func (this *FileList) Exist(hash string) (bool, error) {
-	row := this.db.QueryRow(`SELECT "bodySize" FROM cacheItems WHERE "hash"=? LIMIT 1`, hash)
-	if row == nil {
-		return false, nil
-	}
-	if row.Err() != nil {
-		return false, row.Err()
-	}
-	var bodySize int
-	err := row.Scan(&bodySize)
+	rows, err := this.existsByHashStmt.Query(hash, time.Now().Unix())
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
 		return false, err
-	}
-	return true, nil
-}
-
-// FindKeysWithPrefix 根据前缀进行查找
-func (this *FileList) FindKeysWithPrefix(prefix string) (keys []string, err error) {
-	if len(prefix) == 0 {
-		return
-	}
-
-	// TODO 需要优化上千万结果的情况
-
-	rows, err := this.db.Query(`SELECT "key" FROM cacheItems WHERE INSTR("key", ?)==1 LIMIT 100000`, prefix)
-	if err != nil {
-		return nil, err
 	}
 	defer func() {
 		_ = rows.Close()
 	}()
+	if rows.Next() {
+		return true, nil
+	}
+	return false, nil
+}
 
-	for rows.Next() {
-		var key string
-		err = rows.Scan(&key)
-		if err != nil {
-			return nil, err
-		}
-		keys = append(keys, key)
+// CleanPrefix 清理某个前缀的缓存数据
+func (this *FileList) CleanPrefix(prefix string) error {
+	if len(prefix) == 0 {
+		return nil
 	}
 
-	return
+	var count = int64(10000)
+	for {
+		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0 WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND INSTR("key", ?)==1 LIMIT `+strconv.FormatInt(count, 10)+`)`, prefix)
+		if err != nil {
+			return err
+		}
+		affectedRows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if affectedRows < count {
+			return nil
+		}
+	}
 }
 
 func (this *FileList) Remove(hash string) error {
-	row := this.db.QueryRow(`SELECT "key", "headerSize", "bodySize", "metaSize", "expiredAt" FROM cacheItems WHERE "hash"=? LIMIT 1`, hash)
+	row := this.selectByHashStmt.QueryRow(hash)
 	if row.Err() != nil {
 		return row.Err()
 	}
@@ -175,7 +234,7 @@ func (this *FileList) Remove(hash string) error {
 		return err
 	}
 
-	_, err = this.db.Exec(`DELETE FROM cacheItems WHERE "hash"=?`, hash)
+	_, err = this.deleteByHashStmt.Exec(hash)
 	if err != nil {
 		return err
 	}
@@ -197,7 +256,7 @@ func (this *FileList) Purge(count int, callback func(hash string) error) error {
 		count = 1000
 	}
 
-	rows, err := this.db.Query(`SELECT "hash" FROM cacheItems WHERE expiredAt<=? LIMIT ?`, time.Now().Unix(), count)
+	rows, err := this.purgeStmt.Query(time.Now().Unix(), count)
 	if err != nil {
 		return err
 	}
@@ -232,7 +291,7 @@ func (this *FileList) Purge(count int, callback func(hash string) error) error {
 }
 
 func (this *FileList) CleanAll() error {
-	_, err := this.db.Exec("DELETE FROM cacheItems")
+	_, err := this.deleteAllStmt.Exec()
 	if err != nil {
 		return err
 	}
@@ -242,7 +301,7 @@ func (this *FileList) CleanAll() error {
 
 func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
 	// 这里不设置过期时间、不使用 check 函数，目的是让查询更快速一些
-	row := this.db.QueryRow("SELECT COUNT(*), IFNULL(SUM(headerSize+bodySize+metaSize), 0), IFNULL(SUM(headerSize+bodySize), 0) FROM cacheItems")
+	row := this.statStmt.QueryRow(time.Now().Unix())
 	if row.Err() != nil {
 		return nil, row.Err()
 	}
@@ -269,4 +328,38 @@ func (this *FileList) OnAdd(f func(item *Item)) {
 // OnRemove 删除事件
 func (this *FileList) OnRemove(f func(item *Item)) {
 	this.onRemove = f
+}
+
+func (this *FileList) Close() error {
+	if this.db != nil {
+		return this.db.Close()
+	}
+	return nil
+}
+
+func (this *FileList) removeOldTables() error {
+	rows, err := this.db.Query(`SELECT "name" FROM sqlite_master WHERE "type"='table'`)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+	for rows.Next() {
+		var name string
+		err = rows.Scan(&name)
+		if err != nil {
+			return err
+		}
+		if lists.ContainsString(this.oldTables, name) {
+			// 异步执行
+			go func() {
+				remotelogs.Println("CACHE", "remove old table '"+name+"' ...")
+				_, _ = this.db.Exec(`DROP TABLE "` + name + `"`)
+				remotelogs.Println("CACHE", "remove old table '"+name+"' done")
+			}()
+		}
+
+	}
+	return nil
 }

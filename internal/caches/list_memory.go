@@ -92,8 +92,8 @@ func (this *MemoryList) Exist(hash string) (bool, error) {
 	return !item.IsExpired(), nil
 }
 
-// FindKeysWithPrefix 根据前缀进行查找
-func (this *MemoryList) FindKeysWithPrefix(prefix string) (keys []string, err error) {
+// CleanPrefix 根据前缀进行清除
+func (this *MemoryList) CleanPrefix(prefix string) error {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
 
@@ -101,11 +101,11 @@ func (this *MemoryList) FindKeysWithPrefix(prefix string) (keys []string, err er
 	for _, itemMap := range this.itemMaps {
 		for _, item := range itemMap {
 			if strings.HasPrefix(item.Key, prefix) {
-				keys = append(keys, item.Key)
+				item.ExpiredAt = 0
 			}
 		}
 	}
-	return
+	return nil
 }
 
 func (this *MemoryList) Remove(hash string) error {
@@ -223,6 +223,10 @@ func (this *MemoryList) OnAdd(f func(item *Item)) {
 // OnRemove 删除事件
 func (this *MemoryList) OnRemove(f func(item *Item)) {
 	this.onRemove = f
+}
+
+func (this *MemoryList) Close() error {
+	return nil
 }
 
 func (this *MemoryList) print(t *testing.T) {
