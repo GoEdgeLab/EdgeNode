@@ -3,6 +3,7 @@ package caches
 import (
 	"github.com/cespare/xxhash"
 	"sync"
+	"time"
 )
 
 type MemoryWriter struct {
@@ -26,8 +27,9 @@ func NewMemoryWriter(m map[uint64]*MemoryItem, key string, expiredAt int64, stat
 		expiredAt: expiredAt,
 		locker:    locker,
 		item: &MemoryItem{
-			ExpiredAt: expiredAt,
-			Status:    status,
+			ExpiredAt:  expiredAt,
+			ModifiedAt: time.Now().Unix(),
+			Status:     status,
 		},
 		status:  status,
 		endFunc: endFunc,

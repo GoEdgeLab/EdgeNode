@@ -8,6 +8,7 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // 读取缓存
@@ -120,6 +121,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 	defer func() {
 		_ = reader.Close()
+		this.cacheRef = nil // 终止读取不再往下传递
 	}()
 
 	this.varMapping["cache.status"] = "HIT"
@@ -156,6 +158,45 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	if addStatusHeader {
 		this.writer.Header().Set("X-Cache", "HIT, "+refType+", "+reader.TypeName())
 	}
+
+	// ETag
+	var respHeader = this.writer.Header()
+	var eTag = respHeader.Get("ETag")
+	var lastModifiedAt = reader.LastModified()
+	if len(eTag) == 0 {
+		if lastModifiedAt > 0 {
+			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
+			respHeader["ETag"] = []string{eTag}
+		}
+	}
+
+	// 支持 Last-Modified
+	var modifiedTime = respHeader.Get("Last-Modified")
+	if len(modifiedTime) == 0 {
+		if lastModifiedAt > 0 {
+			modifiedTime = time.Unix(lastModifiedAt, 0).Format("Mon, 02 Jan 2006 15:04:05 GMT")
+			if len(respHeader.Get("Last-Modified")) == 0 {
+				respHeader.Set("Last-Modified", modifiedTime)
+			}
+		}
+	}
+
+	// 支持 If-None-Match
+	if len(eTag) > 0 && this.requestHeader("If-None-Match") == eTag {
+		// 自定义Header
+		this.processResponseHeaders(http.StatusNotModified)
+		this.writer.WriteHeader(http.StatusNotModified)
+		return true
+	}
+
+	// 支持 If-Modified-Since
+	if len(modifiedTime) > 0 && this.requestHeader("If-Modified-Since") == modifiedTime {
+		// 自定义Header
+		this.processResponseHeaders(http.StatusNotModified)
+		this.writer.WriteHeader(http.StatusNotModified)
+		return true
+	}
+
 	this.processResponseHeaders(reader.Status())
 
 	// 输出Body
@@ -313,7 +354,6 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		}
 	}
 
-	this.cacheRef = nil // 终止读取不再往下传递
 	this.isCached = true
 	return true
 }

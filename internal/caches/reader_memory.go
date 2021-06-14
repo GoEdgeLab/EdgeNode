@@ -24,6 +24,10 @@ func (this *MemoryReader) Status() int {
 	return this.item.Status
 }
 
+func (this *MemoryReader) LastModified() int64 {
+	return this.item.ModifiedAt
+}
+
 func (this *MemoryReader) HeaderSize() int64 {
 	return int64(len(this.item.HeaderValue))
 }

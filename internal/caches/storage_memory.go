@@ -19,6 +19,7 @@ type MemoryItem struct {
 	BodyValue   []byte
 	Status      int
 	IsDone      bool
+	ModifiedAt  int64
 }
 
 func (this *MemoryItem) IsExpired() bool {

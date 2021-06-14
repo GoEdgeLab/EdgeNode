@@ -162,7 +162,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			// TODO 如果超过最大失败次数，则下线
 
 			this.write502(err)
-			remotelogs.Println("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
 		} else {
 			// 是否为客户端方面的错误
 			isClientError := false

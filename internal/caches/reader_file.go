@@ -114,6 +114,14 @@ func (this *FileReader) Status() int {
 	return this.status
 }
 
+func (this *FileReader) LastModified() int64 {
+	stat, err := this.fp.Stat()
+	if err != nil {
+		return 0
+	}
+	return stat.ModTime().Unix()
+}
+
 func (this *FileReader) HeaderSize() int64 {
 	return int64(this.headerSize)
 }

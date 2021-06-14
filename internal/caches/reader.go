@@ -12,6 +12,9 @@ type Reader interface {
 	// Status 状态码
 	Status() int
 
+	// LastModified 最后修改时间
+	LastModified() int64
+
 	// ReadHeader 读取Header
 	ReadHeader(buf []byte, callback ReaderFunc) error
 
