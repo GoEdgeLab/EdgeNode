@@ -121,7 +121,6 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 	defer func() {
 		_ = reader.Close()
-		this.cacheRef = nil // 终止读取不再往下传递
 	}()
 
 	this.varMapping["cache.status"] = "HIT"
@@ -186,6 +185,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
+		this.cacheRef = nil
 		return true
 	}
 
@@ -194,6 +194,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
+		this.cacheRef = nil
 		return true
 	}
 
@@ -355,5 +356,6 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	this.isCached = true
+	this.cacheRef = nil
 	return true
 }

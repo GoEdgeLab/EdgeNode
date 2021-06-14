@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/cespare/xxhash"
-	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -216,8 +215,6 @@ func (this *MemoryStorage) Stop() {
 	_ = this.list.Close()
 
 	this.locker.Unlock()
-
-	runtime.GC()
 
 	remotelogs.Println("CACHE", "close memory storage '"+strconv.FormatInt(this.policy.Id, 10)+"'")
 }

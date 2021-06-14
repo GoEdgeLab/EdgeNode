@@ -5,6 +5,7 @@ package caches
 import (
 	"database/sql"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
@@ -76,8 +77,6 @@ func (this *FileList) Init() error {
 	}**/
 
 	// 创建
-	// TODO accessesAt 用来存储访问时间，将来可以根据此访问时间删除不常访问的内容
-	//   且访问时间只需要每隔一个小时存储一个整数值即可，因为不需要那么精确
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
@@ -86,14 +85,14 @@ func (this *FileList) Init() error {
   "bodySize" integer DEFAULT 0,
   "metaSize" integer DEFAULT 0,
   "expiredAt" integer DEFAULT 0,
-  "accessedAt" integer DEFAULT 0,
+  "createdAt" integer DEFAULT 0,
   "host" varchar(128),
   "serverId" integer
 );
 
-CREATE INDEX IF NOT EXISTS "accessedAt"
+CREATE INDEX IF NOT EXISTS "createdAt"
 ON "` + this.itemsTableName + `" (
-  "accessedAt" ASC
+  "createdAt" ASC
 );
 
 CREATE INDEX IF NOT EXISTS "expiredAt"
@@ -133,7 +132,7 @@ ON "` + this.itemsTableName + `" (
 		return err
 	}
 
-	this.insertStmt, err = this.db.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "host", "serverId") VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	this.insertStmt, err = this.db.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -176,7 +175,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 		return nil
 	}
 
-	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.Host, item.ServerId)
+	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.Host, item.ServerId, utils.UnixTime())
 	if err != nil {
 		return err
 	}
@@ -219,7 +218,7 @@ func (this *FileList) CleanPrefix(prefix string) error {
 
 	var count = int64(10000)
 	for {
-		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0 WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND INSTR("key", ?)==1 LIMIT `+strconv.FormatInt(count, 10)+`)`, prefix)
+		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0 WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)==1 LIMIT `+strconv.FormatInt(count, 10)+`)`, utils.UnixTime(), prefix)
 		if err != nil {
 			return err
 		}
