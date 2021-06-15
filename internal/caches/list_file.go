@@ -166,7 +166,7 @@ ON "` + this.itemsTableName + `" (
 }
 
 func (this *FileList) Reset() error {
-	// 不错任何事情
+	// 不做任何事情
 	return nil
 }
 
