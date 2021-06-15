@@ -83,23 +83,30 @@ func (this *Node) Start() {
 	}
 
 	// 读取API配置
-	tryTimes := 0
-	for {
-		err = this.syncConfig()
+	err = this.syncConfig()
+	if err != nil {
+		_, err := nodeconfigs.SharedNodeConfig()
 		if err != nil {
-			tryTimes++
+			// 无本地数据时，会尝试多次读取
+			tryTimes := 0
+			for {
+				err := this.syncConfig()
+				if err != nil {
+					tryTimes++
 
-			if tryTimes%10 == 0 {
-				remotelogs.Error("NODE", err.Error())
-			}
-			time.Sleep(1 * time.Second)
+					if tryTimes%10 == 0 {
+						remotelogs.Error("NODE", err.Error())
+					}
+					time.Sleep(1 * time.Second)
 
-			// 不做长时间的无意义的重试
-			if tryTimes > 1000 {
-				return
+					// 不做长时间的无意义的重试
+					if tryTimes > 1000 {
+						return
+					}
+				} else {
+					break
+				}
 			}
-		} else {
-			break
 		}
 	}
 
