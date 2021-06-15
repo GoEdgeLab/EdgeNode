@@ -10,7 +10,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/types"
-	"golang.org/x/net/http2"
 	"io"
 	"net"
 	"net/http"
@@ -1154,16 +1153,14 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	// 客户端主动取消
-	if err == context.Canceled || err == io.ErrShortWrite {
+	if err == context.Canceled || err == io.ErrShortWrite || strings.Contains(err.Error(), "write: connection timed out") || strings.Contains(err.Error(), "write: broken pipe") {
 		return true
 	}
 
 	// HTTP/2流错误
-	{
-		_, ok := err.(http2.StreamError)
-		if ok {
-			return true
-		}
+	if err.Error() == "http2: stream closed" || err.Error() == "client disconnected" { // errStreamClosed, errClientDisconnected
+		return true
 	}
+
 	return false
 }
