@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/iwind/TeaGo/logs"
 	"net/http"
 	"strconv"
 	"time"
@@ -271,7 +270,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			err = reader.ReadBodyRange(buf, rangeSet[0][0], rangeSet[0][1], func(n int) (goNext bool, err error) {
 				_, err = this.writer.Write(buf[:n])
 				if err != nil {
-					return false, err
+					return false, errWritingToClient
 				}
 				return true, nil
 			})
@@ -301,27 +300,30 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 					_, err = this.writer.WriteString("\r\n--" + boundary + "\r\n")
 				}
 				if err != nil {
-					logs.Error(err)
+					// 不提示写入客户端错误
 					return true
 				}
 
 				_, err = this.writer.WriteString("Content-Range: " + "bytes " + strconv.FormatInt(set[0], 10) + "-" + strconv.FormatInt(set[1], 10) + "/" + strconv.FormatInt(reader.BodySize(), 10) + "\r\n")
 				if err != nil {
-					logs.Error(err)
+					// 不提示写入客户端错误
 					return true
 				}
 
 				if len(contentType) > 0 {
 					_, err = this.writer.WriteString("Content-Type: " + contentType + "\r\n\r\n")
 					if err != nil {
-						logs.Error(err)
+						// 不提示写入客户端错误
 						return true
 					}
 				}
 
 				err := reader.ReadBodyRange(buf, set[0], set[1], func(n int) (goNext bool, err error) {
 					_, err = this.writer.Write(buf[:n])
-					return true, err
+					if err != nil {
+						return false, errWritingToClient
+					}
+					return true, nil
 				})
 				if err != nil {
 					if !this.canIgnore(err) {
@@ -333,7 +335,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 
 			_, err = this.writer.WriteString("\r\n--" + boundary + "--\r\n")
 			if err != nil {
-				logs.Error(err)
+				// 不提示写入客户端错误
 				return true
 			}
 		} else { // 没有Range
@@ -342,7 +344,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
 				_, err = this.writer.Write(buf[:n])
 				if err != nil {
-					return false, err
+					return false, errWritingToClient
 				}
 				return true, nil
 			})

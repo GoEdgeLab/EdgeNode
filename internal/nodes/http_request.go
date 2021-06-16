@@ -30,6 +30,9 @@ var bytePool1k = utils.NewBytePool(20480, 1024)
 var bytePool32k = utils.NewBytePool(20480, 32*1024)
 var bytePool128k = utils.NewBytePool(20480, 128*1024)
 
+// errors
+var errWritingToClient = errors.New("writing to client error")
+
 // HTTPRequest HTTP请求
 type HTTPRequest struct {
 	// 外部参数
@@ -1153,7 +1156,7 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	// 客户端主动取消
-	if err == context.Canceled || err == io.ErrShortWrite || strings.Contains(err.Error(), "write: connection timed out") || strings.Contains(err.Error(), "write: broken pipe") {
+	if err == errWritingToClient || err == context.Canceled || err == io.ErrShortWrite || strings.Contains(err.Error(), "write: connection timed out") || strings.Contains(err.Error(), "write: broken pipe") {
 		return true
 	}
 
