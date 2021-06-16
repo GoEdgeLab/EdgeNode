@@ -184,6 +184,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
+		this.isCached = true
 		this.cacheRef = nil
 		return true
 	}
@@ -193,6 +194,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
+		this.isCached = true
 		this.cacheRef = nil
 		return true
 	}
