@@ -236,6 +236,27 @@ func TestFileList_CleanAll(t *testing.T) {
 	t.Log(list.Count())
 }
 
+func TestFileList_Conflict(t *testing.T) {
+	list := NewFileList(Tea.Root + "/data").(*FileList)
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := list.purgeStmt.Query(time.Now().Unix(), 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		time.Sleep(5 * time.Second)
+		_ = rows.Close()
+	}()
+
+	t.Log("before exists")
+	t.Log(list.Exist("123456"))
+	t.Log("after exists")
+}
+
 func BenchmarkFileList_Exist(b *testing.B) {
 	list := NewFileList(Tea.Root + "/data")
 	err := list.Init()

@@ -281,19 +281,18 @@ func (this *FileList) Purge(count int, callback func(hash string) error) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
 
 	hashStrings := []string{}
 	for rows.Next() {
 		var hash string
 		err = rows.Scan(&hash)
 		if err != nil {
+			_ = rows.Close()
 			return err
 		}
 		hashStrings = append(hashStrings, hash)
 	}
+	_ = rows.Close() // 不能使用defer，防止读写冲突
 
 	// 不在 rows.Next() 循环中操作是为了避免死锁
 	for _, hash := range hashStrings {
