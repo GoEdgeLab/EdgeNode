@@ -77,10 +77,9 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 	hash := this.hash(key)
 
 	this.locker.RLock()
-	defer this.locker.RUnlock()
-
 	item := this.valuesMap[hash]
 	if item == nil || !item.IsDone {
+		this.locker.RUnlock()
 		return nil, ErrNotFound
 	}
 
@@ -88,10 +87,13 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 		reader := NewMemoryReader(item)
 		err := reader.Init()
 		if err != nil {
+			this.locker.RUnlock()
 			return nil, err
 		}
+		this.locker.RUnlock()
 		return reader, nil
 	}
+	this.locker.RUnlock()
 
 	_ = this.Delete(key)
 
@@ -137,7 +139,7 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (
 	}
 
 	// 先删除
-	err = this.deleteWithoutKey(key)
+	err = this.deleteWithoutLocker(key)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +278,7 @@ func (this *MemoryStorage) memoryCapacityBytes() int64 {
 	return c1
 }
 
-func (this *MemoryStorage) deleteWithoutKey(key string) error {
+func (this *MemoryStorage) deleteWithoutLocker(key string) error {
 	hash := this.hash(key)
 	delete(this.valuesMap, hash)
 	_ = this.list.Remove(fmt.Sprintf("%d", hash))

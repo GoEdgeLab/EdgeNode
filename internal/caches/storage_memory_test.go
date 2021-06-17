@@ -84,6 +84,19 @@ func TestMemoryStorage_OpenWriter(t *testing.T) {
 	}
 }
 
+func TestMemoryStorage_OpenReaderLock(t *testing.T) {
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	_ = storage.Init()
+
+	var h = storage.hash("test")
+	storage.valuesMap = map[uint64]*MemoryItem{
+		h: {
+			IsDone: true,
+		},
+	}
+	_, _ = storage.OpenReader("test")
+}
+
 func TestMemoryStorage_Delete(t *testing.T) {
 	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
 	{
@@ -236,4 +249,19 @@ func TestMemoryStorage_Expire(t *testing.T) {
 		})
 	}
 	time.Sleep(70 * time.Second)
+}
+
+func TestMemoryStorage_Locker(t *testing.T) {
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	err := storage.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage.locker.Lock()
+	err = storage.deleteWithoutLocker("a")
+	storage.locker.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("ok")
 }
