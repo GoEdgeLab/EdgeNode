@@ -499,29 +499,12 @@ func (this *FileStorage) CleanAll() error {
 	}
 
 	// 重新遍历待删除
-	fp2, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = fp2.Close()
-	}()
-	subDirs, err = fp2.Readdir(-1)
-	if err != nil {
-		return err
-	}
-	for _, info := range subDirs {
-		subDir := info.Name()
-		if !strings.HasSuffix(subDir, "-deleted") {
-			continue
-		}
-
-		// 删除
-		err = os.RemoveAll(dir + "/" + subDir)
+	go func() {
+		err = this.cleanDeletedDirs(dir)
 		if err != nil {
-			return err
+			remotelogs.Warn("CACHE", "delete '*-deleted' dirs failed: "+err.Error())
 		}
-	}
+	}()
 
 	return nil
 }
@@ -756,7 +739,7 @@ func (this *FileStorage) purgeLoop() {
 		return nil
 	})
 	if err != nil {
-		remotelogs.Warn("CACHE", "purge file storage failed: " + err.Error())
+		remotelogs.Warn("CACHE", "purge file storage failed: "+err.Error())
 	}
 }
 
@@ -797,4 +780,35 @@ func (this *FileStorage) diskCapacityBytes() int64 {
 		}
 	}
 	return c1
+}
+
+// 清理 *-deleted 目录
+// 由于在很多硬盘上耗时非常久，所以应该放在后台运行
+func (this *FileStorage) cleanDeletedDirs(dir string) error {
+	fp, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = fp.Close()
+	}()
+	subDirs, err := fp.Readdir(-1)
+	if err != nil {
+		return err
+	}
+	for _, info := range subDirs {
+		subDir := info.Name()
+		if !strings.HasSuffix(subDir, "-deleted") {
+			continue
+		}
+
+		// 删除
+		err = os.RemoveAll(dir + "/" + subDir)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+	return nil
 }

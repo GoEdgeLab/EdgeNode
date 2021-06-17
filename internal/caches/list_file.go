@@ -77,39 +77,7 @@ func (this *FileList) Init() error {
 	}**/
 
 	// 创建
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "hash" varchar(32),
-  "key" varchar(1024),
-  "headerSize" integer DEFAULT 0,
-  "bodySize" integer DEFAULT 0,
-  "metaSize" integer DEFAULT 0,
-  "expiredAt" integer DEFAULT 0,
-  "createdAt" integer DEFAULT 0,
-  "host" varchar(128),
-  "serverId" integer
-);
-
-CREATE INDEX IF NOT EXISTS "createdAt"
-ON "` + this.itemsTableName + `" (
-  "createdAt" ASC
-);
-
-CREATE INDEX IF NOT EXISTS "expiredAt"
-ON "` + this.itemsTableName + `" (
-  "expiredAt" ASC
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS "hash"
-ON "` + this.itemsTableName + `" (
-  "hash" ASC
-);
-
-CREATE INDEX IF NOT EXISTS "serverId"
-ON "` + this.itemsTableName + `" (
-  "serverId" ASC
-);
-`)
+	err = this.initTables(db, 1)
 	if err != nil {
 		return err
 	}
@@ -375,6 +343,58 @@ func (this *FileList) Close() error {
 	return nil
 }
 
+// 初始化
+func (this *FileList) initTables(db *sql.DB, times int) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "hash" varchar(32),
+  "key" varchar(1024),
+  "headerSize" integer DEFAULT 0,
+  "bodySize" integer DEFAULT 0,
+  "metaSize" integer DEFAULT 0,
+  "expiredAt" integer DEFAULT 0,
+  "createdAt" integer DEFAULT 0,
+  "host" varchar(128),
+  "serverId" integer
+);
+
+CREATE INDEX IF NOT EXISTS "createdAt"
+ON "` + this.itemsTableName + `" (
+  "createdAt" ASC
+);
+
+CREATE INDEX IF NOT EXISTS "expiredAt"
+ON "` + this.itemsTableName + `" (
+  "expiredAt" ASC
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "hash"
+ON "` + this.itemsTableName + `" (
+  "hash" ASC
+);
+
+CREATE INDEX IF NOT EXISTS "serverId"
+ON "` + this.itemsTableName + `" (
+  "serverId" ASC
+);
+`)
+	if err != nil {
+		// 尝试删除重建
+		if times < 3 {
+			_, dropErr := db.Exec(`DROP TABLE "` + this.itemsTableName + `"`)
+			if dropErr == nil {
+				return this.initTables(db, times+1)
+			}
+			return err
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+// 删除过期不用的表格
 func (this *FileList) removeOldTables() error {
 	rows, err := this.db.Query(`SELECT "name" FROM sqlite_master WHERE "type"='table'`)
 	if err != nil {
