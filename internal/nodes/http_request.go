@@ -46,6 +46,7 @@ type HTTPRequest struct {
 	IsHTTPS    bool
 
 	// 内部参数
+	isSubRequest         bool
 	writer               *HTTPWriter
 	web                  *serverconfigs.HTTPWebConfig      // Web配置，重要提示：由于引用了别的共享的配置，所以操作中只能读取不要修改
 	reverseProxyRef      *serverconfigs.ReverseProxyRef    // 反向代理引用
@@ -129,7 +130,12 @@ func (this *HTTPRequest) Do() {
 	}
 
 	// 访问控制
-	// TODO 需要实现
+	if !this.isSubRequest && this.web.Auth != nil && this.web.Auth.IsOn {
+		if this.doAuth() {
+			this.doEnd()
+			return
+		}
+	}
 
 	// 自动跳转到HTTPS
 	if this.IsHTTP && this.web.RedirectToHttps != nil && this.web.RedirectToHttps.IsOn {
@@ -350,6 +356,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	if web.FastcgiRef != nil && (web.FastcgiRef.IsPrior || isTop) {
 		this.web.FastcgiRef = web.FastcgiRef
 		this.web.FastcgiList = web.FastcgiList
+	}
+
+	// auth
+	if web.Auth != nil && (web.Auth.IsPrior || isTop) {
+		this.web.Auth = web.Auth
 	}
 
 	// 重写规则
@@ -919,6 +930,11 @@ func (this *HTTPRequest) requestServerPort() int {
 	return 0
 }
 
+// 获取完整的URL
+func (this *HTTPRequest) requestFullURL() string {
+	return this.requestScheme() + "://" + this.Host + this.uri
+}
+
 // 设置代理相关头部信息
 // 参考：https://tools.ietf.org/html/rfc7239
 func (this *HTTPRequest) setForwardHeaders(header http.Header) {
@@ -1146,6 +1162,11 @@ func (this *HTTPRequest) bytePool(contentLength int64) *utils.BytePool {
 // 检查是否可以忽略错误
 func (this *HTTPRequest) canIgnore(err error) bool {
 	if err == nil {
+		return true
+	}
+
+	// 已读到头
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
 		return true
 	}
 
