@@ -11,16 +11,18 @@ require (
 	github.com/dchest/captcha v0.0.0-20200903113550-03f5f0333e1f
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-yaml/yaml v2.1.0+incompatible
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.5.2
 	github.com/iwind/TeaGo v0.0.0-20210411134150-ddf57e240c2f
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/mssola/user_agent v0.5.2
-	github.com/shirou/gopsutil v2.20.9+incompatible
-	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
-	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
-	golang.org/x/text v0.3.2
-	google.golang.org/grpc v1.32.0
+	github.com/shirou/gopsutil v3.21.5+incompatible
+	github.com/tklauser/go-sysconf v0.3.6 // indirect
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+	golang.org/x/text v0.3.6
+	google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced // indirect
+	google.golang.org/grpc v1.38.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 )
