@@ -169,7 +169,25 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 // call response waf
 func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
-	firewallPolicy := sharedNodeConfig.HTTPFirewallPolicy
+	// 当前服务的独立设置
+	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
+		blocked := this.checkWAFResponse(this.web.FirewallPolicy, resp)
+		if blocked {
+			return true
+		}
+	}
+
+	// 公用的防火墙设置
+	if sharedNodeConfig.HTTPFirewallPolicy != nil {
+		blocked := this.checkWAFResponse(sharedNodeConfig.HTTPFirewallPolicy, resp)
+		if blocked {
+			return true
+		}
+	}
+	return
+}
+
+func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, resp *http.Response) (blocked bool) {
 	if firewallPolicy == nil || !firewallPolicy.IsOn || !firewallPolicy.Outbound.IsOn {
 		return
 	}
