@@ -47,48 +47,55 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	// 检查IP白名单
 	remoteAddrs := this.requestRemoteAddrs()
 	inbound := firewallPolicy.Inbound
-	if inbound.AllowListRef != nil && inbound.AllowListRef.IsOn && inbound.AllowListRef.ListId > 0 {
-		list := iplibrary.SharedIPListManager.FindList(inbound.AllowListRef.ListId)
-		if list != nil {
-			found, _ := list.ContainsIPStrings(remoteAddrs)
-			if found {
-				breakChecking = true
-				return
+	if inbound == nil {
+		return
+	}
+	for _, ref := range inbound.AllAllowListRefs() {
+		if ref.IsOn && ref.ListId > 0 {
+			list := iplibrary.SharedIPListManager.FindList(ref.ListId)
+			if list != nil {
+				found, _ := list.ContainsIPStrings(remoteAddrs)
+				if found {
+					breakChecking = true
+					return
+				}
 			}
 		}
 	}
 
 	// 检查IP黑名单
-	if inbound.DenyListRef != nil && inbound.DenyListRef.IsOn && inbound.DenyListRef.ListId > 0 {
-		list := iplibrary.SharedIPListManager.FindList(inbound.DenyListRef.ListId)
-		if list != nil {
-			found, item := list.ContainsIPStrings(remoteAddrs)
-			if found {
-				// 触发事件
-				if item != nil && len(item.EventLevel) > 0 {
-					actions := iplibrary.SharedActionManager.FindEventActions(item.EventLevel)
-					for _, action := range actions {
-						goNext, err := action.DoHTTP(this.RawReq, this.RawWriter)
-						if err != nil {
-							remotelogs.Error("HTTP_REQUEST_WAF", "do action '"+err.Error()+"' failed: "+err.Error())
-							return true, false
-						}
-						if !goNext {
-							this.disableLog = true
-							return true, false
+	for _, ref := range inbound.AllDenyListRefs() {
+		if ref.IsOn && ref.ListId > 0 {
+			list := iplibrary.SharedIPListManager.FindList(ref.ListId)
+			if list != nil {
+				found, item := list.ContainsIPStrings(remoteAddrs)
+				if found {
+					// 触发事件
+					if item != nil && len(item.EventLevel) > 0 {
+						actions := iplibrary.SharedActionManager.FindEventActions(item.EventLevel)
+						for _, action := range actions {
+							goNext, err := action.DoHTTP(this.RawReq, this.RawWriter)
+							if err != nil {
+								remotelogs.Error("HTTP_REQUEST_WAF", "do action '"+err.Error()+"' failed: "+err.Error())
+								return true, false
+							}
+							if !goNext {
+								this.disableLog = true
+								return true, false
+							}
 						}
 					}
+
+					// TODO 需要记录日志信息
+
+					this.writer.WriteHeader(http.StatusForbidden)
+					this.writer.Close()
+
+					// 停止日志
+					this.disableLog = true
+
+					return true, false
 				}
-
-				// TODO 需要记录日志信息
-
-				this.writer.WriteHeader(http.StatusForbidden)
-				this.writer.Close()
-
-				// 停止日志
-				this.disableLog = true
-
-				return true, false
 			}
 		}
 	}

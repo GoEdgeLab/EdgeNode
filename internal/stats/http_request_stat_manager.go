@@ -17,7 +17,7 @@ import (
 
 var SharedHTTPRequestStatManager = NewHTTPRequestStatManager()
 
-// HTTP请求相关的统计
+// HTTPRequestStatManager HTTP请求相关的统计
 // 这里的统计是一个辅助统计，注意不要因为统计而影响服务工作性能
 type HTTPRequestStatManager struct {
 	ipChan                chan string
@@ -32,7 +32,7 @@ type HTTPRequestStatManager struct {
 	dailyFirewallRuleGroupMap map[string]int64 // serverId@firewallRuleGroupId@action => count
 }
 
-// 获取新对象
+// NewHTTPRequestStatManager 获取新对象
 func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 	return &HTTPRequestStatManager{
 		ipChan:                    make(chan string, 10_000), // TODO 将来可以配置容量
@@ -46,7 +46,7 @@ func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 	}
 }
 
-// 启动
+// Start 启动
 func (this *HTTPRequestStatManager) Start() {
 	loopTicker := time.NewTicker(1 * time.Second)
 	uploadTicker := time.NewTicker(30 * time.Minute)
@@ -76,7 +76,7 @@ func (this *HTTPRequestStatManager) Start() {
 	}
 }
 
-// 添加客户端地址
+// AddRemoteAddr 添加客户端地址
 func (this *HTTPRequestStatManager) AddRemoteAddr(serverId int64, remoteAddr string) {
 	if len(remoteAddr) == 0 {
 		return
@@ -100,7 +100,7 @@ func (this *HTTPRequestStatManager) AddRemoteAddr(serverId int64, remoteAddr str
 	}
 }
 
-// 添加UserAgent
+// AddUserAgent 添加UserAgent
 func (this *HTTPRequestStatManager) AddUserAgent(serverId int64, userAgent string) {
 	if len(userAgent) == 0 {
 		return
@@ -113,7 +113,7 @@ func (this *HTTPRequestStatManager) AddUserAgent(serverId int64, userAgent strin
 	}
 }
 
-// 添加防火墙拦截动作
+// AddFirewallRuleGroupId 添加防火墙拦截动作
 func (this *HTTPRequestStatManager) AddFirewallRuleGroupId(serverId int64, firewallRuleGroupId int64, action string) {
 	if firewallRuleGroupId <= 0 {
 		return
@@ -125,7 +125,7 @@ func (this *HTTPRequestStatManager) AddFirewallRuleGroupId(serverId int64, firew
 	}
 }
 
-// 单个循环
+// Loop 单个循环
 func (this *HTTPRequestStatManager) Loop() error {
 	timeout := time.NewTimer(10 * time.Minute) // 执行的最大时间
 	userAgentParser := &user_agent.UserAgent{}
@@ -189,6 +189,7 @@ Loop:
 	return nil
 }
 
+// Upload 上传数据
 func (this *HTTPRequestStatManager) Upload() error {
 	// 上传统计数据
 	rpcClient, err := rpc.SharedRPC()
