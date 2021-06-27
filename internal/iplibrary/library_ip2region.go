@@ -5,6 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/lionsoul2014/ip2region/binding/golang/ip2region"
+	"net"
 	"strings"
 )
 
@@ -25,6 +26,9 @@ func (this *IP2RegionLibrary) Load(dbPath string) error {
 func (this *IP2RegionLibrary) Lookup(ip string) (*Result, error) {
 	// 暂不支持IPv6
 	if strings.Contains(ip, ":") {
+		return nil, nil
+	}
+	if net.ParseIP(ip) == nil {
 		return nil, nil
 	}
 
