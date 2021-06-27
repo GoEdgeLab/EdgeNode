@@ -86,6 +86,7 @@ func (this *TOAManager) SendMsg(msg string) error {
 	if this.conn != nil {
 		_, err := this.conn.Write([]byte(msg + "\n"))
 		if err != nil {
+			_ = this.conn.Close()
 			this.conn = nil
 		}
 		return err
