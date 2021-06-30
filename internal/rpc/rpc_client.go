@@ -109,6 +109,10 @@ func (this *RPCClient) ServerDailyStatRPC() pb.ServerDailyStatServiceClient {
 	return pb.NewServerDailyStatServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) MetricStatRPC() pb.MetricStatServiceClient {
+	return pb.NewMetricStatServiceClient(this.pickConn())
+}
+
 // Context 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()

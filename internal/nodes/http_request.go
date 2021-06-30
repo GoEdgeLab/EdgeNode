@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/types"
@@ -246,6 +247,11 @@ func (this *HTTPRequest) doEnd() {
 		} else {
 			stats.SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes, 0, 1, 0)
 		}
+	}
+
+	// 指标
+	if metrics.SharedManager.HasHTTPMetrics() {
+		this.doMetricsResponse()
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
+	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
@@ -395,6 +396,8 @@ func (this *Node) syncConfig() error {
 	sharedWAFManager.UpdatePolicies(nodeConfig.FindAllFirewallPolicies())
 	iplibrary.SharedActionManager.UpdateActions(nodeConfig.FirewallActions)
 	sharedNodeConfig = nodeConfig
+
+	metrics.SharedManager.Update(nodeConfig.MetricItems)
 
 	// 发送事件
 	events.Notify(events.EventReload)

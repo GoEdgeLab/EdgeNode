@@ -12,10 +12,13 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/golang/protobuf v1.5.2
-	github.com/iwind/TeaGo v0.0.0-20210411134150-ddf57e240c2f
+	github.com/iwind/TeaGo v0.0.0-20210628135026-38575a4ab060
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
+	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v1.14.7
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/mssola/user_agent v0.5.2
 	github.com/shirou/gopsutil v3.21.5+incompatible
 	github.com/tklauser/go-sysconf v0.3.6 // indirect

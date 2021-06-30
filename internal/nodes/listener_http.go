@@ -9,11 +9,14 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 var httpErrorLogger = log.New(io.Discard, "", 0)
+var metricNewConnMap = map[string]bool{} // remoteAddr => bool
+var metricNewConnMapLocker = &sync.Mutex{}
 
 type HTTPListener struct {
 	BaseListener
@@ -39,15 +42,27 @@ func (this *HTTPListener) Serve() error {
 	this.httpServer = &http.Server{
 		Addr:              this.addr,
 		Handler:           handler,
-		ReadHeaderTimeout: 3 * time.Second, // TODO 改成可以配置
+		ReadHeaderTimeout: 2 * time.Second, // TODO 改成可以配置
 		IdleTimeout:       2 * time.Minute, // TODO 改成可以配置
 		ErrorLog:          httpErrorLogger,
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:
 				atomic.AddInt64(&this.countActiveConnections, 1)
+
+				// 为指标存储连接信息
+				if sharedNodeConfig.HasHTTPConnectionMetrics() {
+					metricNewConnMapLocker.Lock()
+					metricNewConnMap[conn.RemoteAddr().String()] = true
+					metricNewConnMapLocker.Unlock()
+				}
 			case http.StateClosed:
 				atomic.AddInt64(&this.countActiveConnections, -1)
+
+				// 移除指标存储连接信息
+				metricNewConnMapLocker.Lock()
+				delete(metricNewConnMap, conn.RemoteAddr().String())
+				metricNewConnMapLocker.Unlock()
 			}
 		},
 	}
