@@ -17,6 +17,6 @@ type Stat struct {
 	keysData []byte
 }
 
-func (this *Stat) Sum(version int, itemId int64) {
-	this.Hash = strconv.FormatUint(xxhash.Sum64String(strconv.FormatInt(this.ServerId, 10)+"@"+string(this.keysData)+"@"+this.Time+"@"+strconv.Itoa(version)+"@"+strconv.FormatInt(itemId, 10)), 10)
+func (this *Stat) Sum(version int32, itemId int64) {
+	this.Hash = strconv.FormatUint(xxhash.Sum64String(strconv.FormatInt(this.ServerId, 10)+"@"+string(this.keysData)+"@"+this.Time+"@"+strconv.Itoa(int(version))+"@"+strconv.FormatInt(itemId, 10)), 10)
 }

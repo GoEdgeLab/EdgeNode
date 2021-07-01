@@ -193,6 +193,7 @@ func TestTask_Upload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	err = task.Start()
 	if err != nil {
 		t.Fatal(err)
