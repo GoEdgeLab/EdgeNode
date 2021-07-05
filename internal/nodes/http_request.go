@@ -243,9 +243,9 @@ func (this *HTTPRequest) doEnd() {
 	// TODO 增加是否开启开关
 	if this.Server != nil {
 		if this.isCached {
-			stats.SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1)
+			stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1)
 		} else {
-			stats.SharedTrafficStatManager.Add(this.Server.Id, this.writer.sentBodyBytes, 0, 1, 0)
+			stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, 0, 1, 0)
 		}
 	}
 

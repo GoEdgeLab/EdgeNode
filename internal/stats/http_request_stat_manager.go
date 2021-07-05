@@ -38,10 +38,10 @@ func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 		ipChan:                    make(chan string, 10_000), // TODO 将来可以配置容量
 		userAgentChan:             make(chan string, 10_000), // TODO 将来可以配置容量
 		firewallRuleGroupChan:     make(chan string, 10_000), // TODO 将来可以配置容量
-		cityMap:            map[string]int64{},
-		providerMap:        map[string]int64{},
-		systemMap:          map[string]int64{},
-		browserMap:         map[string]int64{},
+		cityMap:                   map[string]int64{},
+		providerMap:               map[string]int64{},
+		systemMap:                 map[string]int64{},
+		browserMap:                map[string]int64{},
 		dailyFirewallRuleGroupMap: map[string]int64{},
 	}
 }

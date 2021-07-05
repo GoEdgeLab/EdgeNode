@@ -80,7 +80,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 				}
 
 				// 记录流量
-				stats.SharedTrafficStatManager.Add(firstServer.Id, int64(n), 0, 0, 0)
+				stats.SharedTrafficStatManager.Add(firstServer.Id, "", int64(n), 0, 0, 0)
 			}
 			if err != nil {
 				closer()
