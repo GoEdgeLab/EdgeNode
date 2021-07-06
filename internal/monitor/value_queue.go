@@ -72,7 +72,8 @@ func (this *ValueQueue) Loop() error {
 			CreatedAt: value.CreatedAt,
 		})
 		if err != nil {
-			return err
+			remotelogs.Error("MONITOR", err.Error())
+			continue
 		}
 	}
 	return nil

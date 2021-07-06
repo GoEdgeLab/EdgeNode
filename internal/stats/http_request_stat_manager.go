@@ -1,12 +1,15 @@
 package stats
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
+	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"github.com/mssola/user_agent"
@@ -30,6 +33,8 @@ type HTTPRequestStatManager struct {
 	browserMap  map[string]int64 // serverId@browser@version => count
 
 	dailyFirewallRuleGroupMap map[string]int64 // serverId@firewallRuleGroupId@action => count
+
+	totalAttackRequests int64
 }
 
 // NewHTTPRequestStatManager 获取新对象
@@ -48,6 +53,19 @@ func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 
 // Start 启动
 func (this *HTTPRequestStatManager) Start() {
+	// 上传请求总数
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		go func() {
+			for range ticker.C {
+				if this.totalAttackRequests > 0 {
+					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemAttackRequests, maps.Map{"total": this.totalAttackRequests})
+					this.totalAttackRequests = 0
+				}
+			}
+		}()
+	}()
+
 	loopTicker := time.NewTicker(1 * time.Second)
 	uploadTicker := time.NewTicker(30 * time.Minute)
 	if Tea.IsTesting() {
@@ -118,6 +136,9 @@ func (this *HTTPRequestStatManager) AddFirewallRuleGroupId(serverId int64, firew
 	if firewallRuleGroupId <= 0 {
 		return
 	}
+
+	this.totalAttackRequests ++
+
 	select {
 	case this.firewallRuleGroupChan <- strconv.FormatInt(serverId, 10) + "@" + strconv.FormatInt(firewallRuleGroupId, 10) + "@" + action:
 	default:

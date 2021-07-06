@@ -4,10 +4,12 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"strconv"
 	"strings"
@@ -30,6 +32,8 @@ type TrafficStatManager struct {
 	domainsMap map[string]*TrafficItem // timestamp @ serverId @ domain => *TrafficItem
 	locker     sync.Mutex
 	configFunc func() *nodeconfigs.NodeConfig
+
+	totalRequests int64
 }
 
 // NewTrafficStatManager 获取新对象
@@ -46,6 +50,20 @@ func NewTrafficStatManager() *TrafficStatManager {
 func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig) {
 	this.configFunc = configFunc
 
+	// 上传请求总数
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		go func() {
+			for range ticker.C {
+				if this.totalRequests > 0 {
+					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemRequests, maps.Map{"total": this.totalRequests})
+					this.totalRequests = 0
+				}
+			}
+		}()
+	}()
+
+	// 上传统计数据
 	duration := 5 * time.Minute
 	if Tea.IsTesting() {
 		// 测试环境缩短上传时间，方便我们调试
@@ -70,6 +88,8 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 	if bytes == 0 {
 		return
 	}
+
+	this.totalRequests++
 
 	timestamp := utils.UnixTime() / 300 * 300
 
