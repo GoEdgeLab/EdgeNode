@@ -15,6 +15,7 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
+	"golang.org/x/sys/unix"
 	"os"
 	"runtime"
 	"strings"
@@ -82,6 +83,7 @@ func (this *NodeStatusExecutor) update() {
 	this.updateMem(status)
 	this.updateLoad(status)
 	this.updateDisk(status)
+	this.updateCacheSpace(status)
 	status.UpdatedAt = time.Now().Unix()
 
 	//  发送数据
@@ -211,5 +213,27 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 		"total":    status.DiskTotal,
 		"usage":    status.DiskUsage,
 		"maxUsage": status.DiskMaxUsage,
+	})
+}
+
+// 缓存空间
+func (this *NodeStatusExecutor) updateCacheSpace(status *nodeconfigs.NodeStatus) {
+	var result = []maps.Map{}
+	cachePaths := caches.SharedManager.FindAllCachePaths()
+	for _, path := range cachePaths {
+		var stat unix.Statfs_t
+		err := unix.Statfs(path, &stat)
+		if err != nil {
+			return
+		}
+		result = append(result, maps.Map{
+			"path":  path,
+			"total": stat.Blocks * uint64(stat.Bsize),
+			"avail": stat.Bavail * uint64(stat.Bsize),
+			"used":  (stat.Blocks - stat.Bavail) * uint64(stat.Bsize),
+		})
+	}
+	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemCacheDir, maps.Map{
+		"dirs": result,
 	})
 }

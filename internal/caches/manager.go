@@ -5,6 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/types"
 	"strconv"
 	"sync"
 )
@@ -161,4 +162,26 @@ func (this *Manager) TotalMemorySize() int64 {
 		total += storage.TotalMemorySize()
 	}
 	return total
+}
+
+// FindAllCachePaths 所有缓存路径
+func (this *Manager) FindAllCachePaths() []string {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	var result = []string{}
+	for _, policy := range this.policyMap {
+		if policy.Type == serverconfigs.CachePolicyStorageFile {
+			if policy.Options != nil {
+				dir, ok := policy.Options["dir"]
+				if ok {
+					var dirString = types.String(dir)
+					if len(dirString) > 0 {
+						result = append(result, dirString)
+					}
+				}
+			}
+		}
+	}
+	return result
 }
