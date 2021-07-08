@@ -115,7 +115,7 @@ func (this *FileList) Init() error {
 		return err
 	}
 
-	this.statStmt, err = this.db.Prepare(`SELECT COUNT(*), IFNULL(SUM(headerSize+bodySize+metaSize), 0), IFNULL(SUM(headerSize+bodySize), 0) FROM "` + this.itemsTableName + `" WHERE expiredAt>?`)
+	this.statStmt, err = this.db.Prepare(`SELECT COUNT(*), IFNULL(SUM(headerSize+bodySize+metaSize), 0), IFNULL(SUM(headerSize+bodySize), 0) FROM "` + this.itemsTableName + `"`)
 	if err != nil {
 		return err
 	}
@@ -297,7 +297,7 @@ func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
 	}
 
 	// 这里不设置过期时间、不使用 check 函数，目的是让查询更快速一些
-	row := this.statStmt.QueryRow(time.Now().Unix())
+	row := this.statStmt.QueryRow()
 	if row.Err() != nil {
 		return nil, row.Err()
 	}
