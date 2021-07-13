@@ -164,7 +164,7 @@ func NewUDPConn(serverId int64, addr net.Addr, proxyConn *net.UDPConn, serverCon
 				}
 
 				// 记录流量
-				stats.SharedTrafficStatManager.Add(serverId, "", int64(n), 0, 0, 0)
+				stats.SharedTrafficStatManager.Add(serverId, "", int64(n), 0, 0, 0, 0, 0)
 			}
 			if err != nil {
 				conn.isOk = false

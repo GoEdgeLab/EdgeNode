@@ -67,6 +67,7 @@ type HTTPRequest struct {
 	cacheRef             *serverconfigs.HTTPCacheRef       // 缓存设置
 	cacheKey             string                            // 缓存使用的Key
 	isCached             bool                              // 是否已经被缓存
+	isAttack             bool                              // 是否是攻击请求
 
 	// WAF相关
 	firewallPolicyId    int64
@@ -243,9 +244,13 @@ func (this *HTTPRequest) doEnd() {
 	// TODO 增加是否开启开关
 	if this.Server != nil {
 		if this.isCached {
-			stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1)
+			stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1, 0, 0)
 		} else {
-			stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, 0, 1, 0)
+			if this.isAttack {
+				stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, 0, 1, 0, 1, this.writer.sentBodyBytes)
+			} else {
+				stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, 0, 1, 0, 0, 0)
+			}
 		}
 	}
 

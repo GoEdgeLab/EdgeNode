@@ -164,6 +164,10 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
 
+			if ruleSet.Action == waf.ActionBlock {
+				this.isAttack = true
+			}
+
 			// 添加统计
 			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Action)
 		}
@@ -215,6 +219,10 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
+
+			if ruleSet.Action == waf.ActionBlock {
+				this.isAttack = true
+			}
 
 			// 添加统计
 			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Action)
