@@ -12,7 +12,7 @@ func TestRequestPathCheckpoint_RequestValue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	checkpoint := new(RequestPathCheckpoint)
 	t.Log(checkpoint.RequestValue(req, "", nil))
 }

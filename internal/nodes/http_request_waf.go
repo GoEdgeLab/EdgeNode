@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"bytes"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -8,6 +9,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
+	"io"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -152,27 +155,36 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	if w == nil {
 		return
 	}
-	goNext, ruleGroup, ruleSet, err := w.MatchRequest(this.RawReq, this.writer)
+
+	w.OnAction(func(action waf.ActionInterface) (goNext bool) {
+		switch action.Code() {
+		case waf.ActionTag:
+			this.tags = action.(*waf.TagAction).Tags
+		}
+		return true
+	})
+
+	goNext, ruleGroup, ruleSet, err := w.MatchRequest(this, this.writer)
 	if err != nil {
 		remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
 		return
 	}
 
 	if ruleSet != nil {
-		if ruleSet.Action != waf.ActionAllow {
+		if ruleSet.HasSpecialActions() {
 			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
 
-			if ruleSet.Action == waf.ActionBlock {
+			if ruleSet.HasAttackActions() {
 				this.isAttack = true
 			}
 
 			// 添加统计
-			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Action)
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Actions)
 		}
 
-		this.logAttrs["waf.action"] = ruleSet.Action
+		this.firewallActions = ruleSet.ActionCodes()
 	}
 
 	return !goNext, false
@@ -208,28 +220,79 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 		return
 	}
 
-	goNext, ruleGroup, ruleSet, err := w.MatchResponse(this.RawReq, resp, this.writer)
+	w.OnAction(func(action waf.ActionInterface) (goNext bool) {
+		switch action.Code() {
+		case waf.ActionTag:
+			this.tags = action.(*waf.TagAction).Tags
+		}
+		return true
+	})
+
+	goNext, ruleGroup, ruleSet, err := w.MatchResponse(this, resp, this.writer)
 	if err != nil {
 		remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
 		return
 	}
 
 	if ruleSet != nil {
-		if ruleSet.Action != waf.ActionAllow {
+		if ruleSet.HasSpecialActions() {
 			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
 			this.firewallRuleSetId = types.Int64(ruleSet.Id)
 
-			if ruleSet.Action == waf.ActionBlock {
+			if ruleSet.HasAttackActions() {
 				this.isAttack = true
 			}
 
 			// 添加统计
-			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Action)
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Actions)
 		}
 
-		this.logAttrs["waf.action"] = ruleSet.Action
+		this.firewallActions = ruleSet.ActionCodes()
 	}
 
 	return !goNext
+}
+
+// WAFRaw 原始请求
+func (this *HTTPRequest) WAFRaw() *http.Request {
+	return this.RawReq
+}
+
+// WAFRemoteIP 客户端IP
+func (this *HTTPRequest) WAFRemoteIP() string {
+	return this.requestRemoteAddr()
+}
+
+// WAFGetCacheBody 获取缓存中的Body
+func (this *HTTPRequest) WAFGetCacheBody() []byte {
+	return this.bodyData
+}
+
+// WAFSetCacheBody 设置Body
+func (this *HTTPRequest) WAFSetCacheBody(body []byte) {
+	this.bodyData = body
+}
+
+// WAFReadBody 读取Body
+func (this *HTTPRequest) WAFReadBody(max int64) (data []byte, err error) {
+	if this.RawReq.ContentLength > 0 {
+		data, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, max))
+	}
+	return
+}
+
+// WAFRestoreBody 恢复Body
+func (this *HTTPRequest) WAFRestoreBody(data []byte) {
+	if len(data) > 0 {
+		rawReader := bytes.NewBuffer(data)
+		buf := make([]byte, 1024)
+		_, _ = io.CopyBuffer(rawReader, this.RawReq.Body, buf)
+		this.RawReq.Body = ioutil.NopCloser(rawReader)
+	}
+}
+
+// WAFServerId 服务ID
+func (this *HTTPRequest) WAFServerId() int64 {
+	return this.Server.Id
 }

@@ -128,6 +128,8 @@ func (this *HTTPRequest) log() {
 		FirewallRuleGroupId: this.firewallRuleGroupId,
 		FirewallRuleSetId:   this.firewallRuleSetId,
 		FirewallRuleId:      this.firewallRuleId,
+		FirewallActions:     this.firewallActions,
+		Tags:                this.tags,
 
 		Attrs: this.logAttrs,
 	}

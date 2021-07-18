@@ -1,6 +1,6 @@
 package checkpoints
 
-// all check points list
+// AllCheckpoints all check points list
 var AllCheckpoints = []*CheckpointDefinition{
 	{
 		Name:        "通用请求Header长度限制",

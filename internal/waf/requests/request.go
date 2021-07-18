@@ -1,39 +1,28 @@
 package requests
 
 import (
-	"bytes"
-	"io"
-	"io/ioutil"
 	"net/http"
 )
 
-type Request struct {
-	*http.Request
-	BodyData []byte
-}
+type Request interface {
+	// WAFRaw 原始请求
+	WAFRaw() *http.Request
 
-func NewRequest(raw *http.Request) *Request {
-	return &Request{
-		Request: raw,
-	}
-}
+	// WAFRemoteIP 客户端IP
+	WAFRemoteIP() string
 
-func (this *Request) Raw() *http.Request {
-	return this.Request
-}
+	// WAFGetCacheBody 获取缓存中的Body
+	WAFGetCacheBody() []byte
 
-func (this *Request) ReadBody(max int64) (data []byte, err error) {
-	if this.Request.ContentLength > 0 {
-		data, err = ioutil.ReadAll(io.LimitReader(this.Request.Body, max))
-	}
-	return
-}
+	// WAFSetCacheBody 设置Body
+	WAFSetCacheBody(body []byte)
 
-func (this *Request) RestoreBody(data []byte) {
-	if len(data) > 0 {
-		rawReader := bytes.NewBuffer(data)
-		buf := make([]byte, 1024)
-		_, _ = io.CopyBuffer(rawReader, this.Request.Body, buf)
-		this.Request.Body = ioutil.NopCloser(rawReader)
-	}
+	// WAFReadBody 读取Body
+	WAFReadBody(max int64) (data []byte, err error)
+
+	// WAFRestoreBody 恢复Body
+	WAFRestoreBody(data []byte)
+
+	// WAFServerId 服务ID
+	WAFServerId() int64
 }

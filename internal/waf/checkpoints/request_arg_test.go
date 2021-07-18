@@ -12,7 +12,7 @@ func TestArgParam_RequestValue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 
 	checkpoint := new(RequestArgCheckpoint)
 	t.Log(checkpoint.RequestValue(req, "name", nil))

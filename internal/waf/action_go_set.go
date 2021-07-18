@@ -11,17 +11,33 @@ type GoSetAction struct {
 	SetId   string `yaml:"setId" json:"setId"`
 }
 
-func (this *GoSetAction) Perform(waf *WAF, request *requests.Request, writer http.ResponseWriter) (allow bool) {
-	group := waf.FindRuleGroup(this.GroupId)
-	if group == nil || !group.IsOn {
+func (this *GoSetAction) Init(waf *WAF) error {
+	return nil
+}
+
+func (this *GoSetAction) Code() string {
+	return ActionGoSet
+}
+
+func (this *GoSetAction) IsAttack() bool {
+	return false
+}
+
+func (this *GoSetAction) WillChange() bool {
+	return true
+}
+
+func (this *GoSetAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+	nextGroup := waf.FindRuleGroup(this.GroupId)
+	if nextGroup == nil || !nextGroup.IsOn {
 		return true
 	}
-	set := group.FindRuleSet(this.SetId)
-	if set == nil || !set.IsOn {
+	nextSet := nextGroup.FindRuleSet(this.SetId)
+	if nextSet == nil || !nextSet.IsOn {
 		return true
 	}
 
-	b, err := set.MatchRequest(request)
+	b, err := nextSet.MatchRequest(request)
 	if err != nil {
 		logs.Error(err)
 		return true
@@ -29,9 +45,5 @@ func (this *GoSetAction) Perform(waf *WAF, request *requests.Request, writer htt
 	if !b {
 		return true
 	}
-	actionObject := FindActionInstance(set.Action, set.ActionOptions)
-	if actionObject == nil {
-		return true
-	}
-	return actionObject.Perform(waf, request, writer)
+	return nextSet.PerformActions(waf, nextGroup, request, writer)
 }

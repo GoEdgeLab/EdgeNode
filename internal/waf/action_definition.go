@@ -2,11 +2,12 @@ package waf
 
 import "reflect"
 
-// action definition
+// ActionDefinition action definition
 type ActionDefinition struct {
 	Name        string
 	Code        ActionString
 	Description string
+	Category    string // category: block, verify, allow
 	Instance    ActionInterface
 	Type        reflect.Type
 }

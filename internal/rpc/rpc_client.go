@@ -113,6 +113,10 @@ func (this *RPCClient) MetricStatRPC() pb.MetricStatServiceClient {
 	return pb.NewMetricStatServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) FirewallService() pb.FirewallServiceClient {
+	return pb.NewFirewallServiceClient(this.pickConn())
+}
+
 // Context 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	ctx := context.Background()

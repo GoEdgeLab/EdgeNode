@@ -10,17 +10,17 @@ type RequestRawRemoteAddrCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestRawRemoteAddrCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
-	host, _, err := net.SplitHostPort(req.RemoteAddr)
+func (this *RequestRawRemoteAddrCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+	host, _, err := net.SplitHostPort(req.WAFRaw().RemoteAddr)
 	if err == nil {
 		value = host
 	} else {
-		value = req.RemoteAddr
+		value = req.WAFRaw().RemoteAddr
 	}
 	return
 }
 
-func (this *RequestRawRemoteAddrCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestRawRemoteAddrCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

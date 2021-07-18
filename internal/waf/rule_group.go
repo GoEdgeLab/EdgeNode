@@ -23,12 +23,12 @@ func NewRuleGroup() *RuleGroup {
 	}
 }
 
-func (this *RuleGroup) Init() error {
+func (this *RuleGroup) Init(waf *WAF) error {
 	this.hasRuleSets = len(this.RuleSets) > 0
 
 	if this.hasRuleSets {
 		for _, set := range this.RuleSets {
-			err := set.Init()
+			err := set.Init(waf)
 			if err != nil {
 				return err
 			}
@@ -79,7 +79,7 @@ func (this *RuleGroup) RemoveRuleSet(id string) {
 	this.RuleSets = result
 }
 
-func (this *RuleGroup) MatchRequest(req *requests.Request) (b bool, set *RuleSet, err error) {
+func (this *RuleGroup) MatchRequest(req requests.Request) (b bool, set *RuleSet, err error) {
 	if !this.hasRuleSets {
 		return
 	}
@@ -98,7 +98,7 @@ func (this *RuleGroup) MatchRequest(req *requests.Request) (b bool, set *RuleSet
 	return
 }
 
-func (this *RuleGroup) MatchResponse(req *requests.Request, resp *requests.Response) (b bool, set *RuleSet, err error) {
+func (this *RuleGroup) MatchResponse(req requests.Request, resp *requests.Response) (b bool, set *RuleSet, err error) {
 	if !this.hasRuleSets {
 		return
 	}

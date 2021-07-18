@@ -5,14 +5,12 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
-	"net"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 )
 
-// ${cc.arg}
+// CCCheckpoint ${cc.arg}
 // TODO implement more traffic rules
 type CCCheckpoint struct {
 	Checkpoint
@@ -32,7 +30,7 @@ func (this *CCCheckpoint) Start() {
 	this.cache = ttlcache.NewCache()
 }
 
-func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	value = 0
 
 	if this.cache == nil {
@@ -66,12 +64,12 @@ func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, opti
 		var key = ""
 		switch userType {
 		case "ip":
-			key = this.ip(req)
+			key = req.WAFRemoteIP()
 		case "cookie":
 			if len(userField) == 0 {
-				key = this.ip(req)
+				key = req.WAFRemoteIP()
 			} else {
-				cookie, _ := req.Cookie(userField)
+				cookie, _ := req.WAFRaw().Cookie(userField)
 				if cookie != nil {
 					v := cookie.Value
 					if userIndex > 0 && len(v) > userIndex {
@@ -82,9 +80,9 @@ func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, opti
 			}
 		case "get":
 			if len(userField) == 0 {
-				key = this.ip(req)
+				key = req.WAFRemoteIP()
 			} else {
-				v := req.URL.Query().Get(userField)
+				v := req.WAFRaw().URL.Query().Get(userField)
 				if userIndex > 0 && len(v) > userIndex {
 					v = v[userIndex:]
 				}
@@ -92,9 +90,9 @@ func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, opti
 			}
 		case "post":
 			if len(userField) == 0 {
-				key = this.ip(req)
+				key = req.WAFRemoteIP()
 			} else {
-				v := req.PostFormValue(userField)
+				v := req.WAFRaw().PostFormValue(userField)
 				if userIndex > 0 && len(v) > userIndex {
 					v = v[userIndex:]
 				}
@@ -102,19 +100,19 @@ func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, opti
 			}
 		case "header":
 			if len(userField) == 0 {
-				key = this.ip(req)
+				key = req.WAFRemoteIP()
 			} else {
-				v := req.Header.Get(userField)
+				v := req.WAFRaw().Header.Get(userField)
 				if userIndex > 0 && len(v) > userIndex {
 					v = v[userIndex:]
 				}
 				key = "USER@" + userType + "@" + userField + "@" + v
 			}
 		default:
-			key = this.ip(req)
+			key = req.WAFRemoteIP()
 		}
 		if len(key) == 0 {
-			key = this.ip(req)
+			key = req.WAFRemoteIP()
 		}
 		value = this.cache.IncreaseInt64(key, int64(1), time.Now().Unix()+period)
 	}
@@ -122,7 +120,7 @@ func (this *CCCheckpoint) RequestValue(req *requests.Request, param string, opti
 	return
 }
 
-func (this *CCCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *CCCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}
@@ -209,39 +207,4 @@ func (this *CCCheckpoint) Stop() {
 		this.cache.Destroy()
 		this.cache = nil
 	}
-}
-
-func (this *CCCheckpoint) ip(req *requests.Request) string {
-	// X-Forwarded-For
-	forwardedFor := req.Header.Get("X-Forwarded-For")
-	if len(forwardedFor) > 0 {
-		commaIndex := strings.Index(forwardedFor, ",")
-		if commaIndex > 0 {
-			return forwardedFor[:commaIndex]
-		}
-		return forwardedFor
-	}
-
-	// Real-IP
-	{
-		realIP, ok := req.Header["X-Real-IP"]
-		if ok && len(realIP) > 0 {
-			return realIP[0]
-		}
-	}
-
-	// Real-Ip
-	{
-		realIP, ok := req.Header["X-Real-Ip"]
-		if ok && len(realIP) > 0 {
-			return realIP[0]
-		}
-	}
-
-	// Remote-Addr
-	host, _, err := net.SplitHostPort(req.RemoteAddr)
-	if err == nil {
-		return host
-	}
-	return req.RemoteAddr
 }

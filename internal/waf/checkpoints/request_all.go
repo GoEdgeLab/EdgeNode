@@ -5,32 +5,34 @@ import (
 	"github.com/iwind/TeaGo/maps"
 )
 
-// ${requestAll}
+// RequestAllCheckpoint ${requestAll}
 type RequestAllCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestAllCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	valueBytes := []byte{}
-	if len(req.RequestURI) > 0 {
-		valueBytes = append(valueBytes, req.RequestURI...)
-	} else if req.URL != nil {
-		valueBytes = append(valueBytes, req.URL.RequestURI()...)
+	if len(req.WAFRaw().RequestURI) > 0 {
+		valueBytes = append(valueBytes, req.WAFRaw().RequestURI...)
+	} else if req.WAFRaw().URL != nil {
+		valueBytes = append(valueBytes, req.WAFRaw().URL.RequestURI()...)
 	}
 
-	if req.Body != nil {
+	if req.WAFRaw().Body != nil {
 		valueBytes = append(valueBytes, ' ')
 
-		if len(req.BodyData) == 0 {
-			data, err := req.ReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
+		var bodyData = req.WAFGetCacheBody()
+		if len(bodyData) == 0 {
+			data, err := req.WAFReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
 			if err != nil {
 				return "", err, nil
 			}
 
-			req.BodyData = data
-			req.RestoreBody(data)
+			bodyData = data
+			req.WAFSetCacheBody(data)
+			req.WAFRestoreBody(data)
 		}
-		valueBytes = append(valueBytes, req.BodyData...)
+		valueBytes = append(valueBytes, bodyData...)
 	}
 
 	value = valueBytes
@@ -38,7 +40,7 @@ func (this *RequestAllCheckpoint) RequestValue(req *requests.Request, param stri
 	return
 }
 
-func (this *RequestAllCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestAllCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	value = ""
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)

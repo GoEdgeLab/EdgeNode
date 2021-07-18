@@ -3,29 +3,64 @@ package waf
 import (
 	"bytes"
 	"encoding/base64"
-	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/jsonutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/dchest/captcha"
 	"github.com/iwind/TeaGo/logs"
-	stringutil "github.com/iwind/TeaGo/utils/string"
+	"github.com/iwind/TeaGo/types"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
-var captchaValidator = &CaptchaValidator{}
+var captchaValidator = NewCaptchaValidator()
 
 type CaptchaValidator struct {
 }
 
-func (this *CaptchaValidator) Run(request *requests.Request, writer http.ResponseWriter) {
-	if request.Method == http.MethodPost && len(request.FormValue("TEAWEB_WAF_CAPTCHA_ID")) > 0 {
-		this.validate(request, writer)
+func NewCaptchaValidator() *CaptchaValidator {
+	return &CaptchaValidator{}
+}
+
+func (this *CaptchaValidator) Run(request requests.Request, writer http.ResponseWriter) {
+	var info = request.WAFRaw().URL.Query().Get("info")
+	if len(info) == 0 {
+		writer.WriteHeader(http.StatusBadRequest)
+		_, _ = writer.Write([]byte("invalid request"))
+		return
+	}
+	m, err := utils.SimpleDecryptMap(info)
+	if err != nil {
+		_, _ = writer.Write([]byte("invalid request"))
+		return
+	}
+
+	timestamp := m.GetInt64("timestamp")
+	if timestamp < time.Now().Unix()-600 { // 10分钟之后信息过期
+		http.Redirect(writer, request.WAFRaw(), m.GetString("url"), http.StatusTemporaryRedirect)
+		return
+	}
+
+	var actionConfig = &CaptchaAction{}
+	err = jsonutils.MapToObject(m.GetMap("action"), actionConfig)
+	if err != nil {
+		http.Redirect(writer, request.WAFRaw(), m.GetString("url"), http.StatusTemporaryRedirect)
+		return
+	}
+
+	var setId = m.GetInt64("setId")
+	var originURL = m.GetString("url")
+
+	if request.WAFRaw().Method == http.MethodPost && len(request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")) > 0 {
+		this.validate(actionConfig, setId, originURL, request, writer)
 	} else {
-		this.show(request, writer)
+		this.show(actionConfig, request, writer)
 	}
 }
 
-func (this *CaptchaValidator) show(request *requests.Request, writer http.ResponseWriter) {
+func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests.Request, writer http.ResponseWriter) {
 	// show captcha
 	captchaId := captcha.NewLen(6)
 	buf := bytes.NewBuffer([]byte{})
@@ -35,48 +70,86 @@ func (this *CaptchaValidator) show(request *requests.Request, writer http.Respon
 		return
 	}
 
+	var lang = actionConfig.Language
+	if len(lang) == 0 {
+		acceptLanguage := request.WAFRaw().Header.Get("Accept-Language")
+		if len(acceptLanguage) > 0 {
+			langIndex := strings.Index(acceptLanguage, ",")
+			if langIndex > 0 {
+				lang = acceptLanguage[:langIndex]
+			}
+		}
+	}
+	if len(lang) == 0 {
+		lang = "en-US"
+	}
+
+	var msgTitle = ""
+	var msgPrompt = ""
+	var msgButtonTitle = ""
+
+	switch lang {
+	case "en-US":
+		msgTitle = "Verify Yourself"
+		msgPrompt = "Input verify code above:"
+		msgButtonTitle = "Verify Yourself"
+	case "zh-CN":
+		msgTitle = "身份验证"
+		msgPrompt = "请输入上面的验证码"
+		msgButtonTitle = "提交验证"
+	default:
+		msgTitle = "Verify Yourself"
+		msgPrompt = "Input verify code above:"
+		msgButtonTitle = "Verify Yourself"
+	}
+
+	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = writer.Write([]byte(`<!DOCTYPE html>
 <html>
 <head>
-	<title>Verify Yourself</title>
+	<title>` + msgTitle + `</title>
+	<script type="text/javascript">
+	if (window.addEventListener != null) {
+		window.addEventListener("load", function () {
+			document.getElementById("GOEDGE_WAF_CAPTCHA_CODE").focus()
+		})
+	}
+	</script>
 </head>
 <body>
 <form method="POST">
-	<input type="hidden" name="TEAWEB_WAF_CAPTCHA_ID" value="` + captchaId + `"/>
+	<input type="hidden" name="GOEDGE_WAF_CAPTCHA_ID" value="` + captchaId + `"/>
 	<img src="data:image/png;base64, ` + base64.StdEncoding.EncodeToString(buf.Bytes()) + `"/>` + `
 	<div>
-		<p>Input verify code above:</p>
-		<input type="text" name="TEAWEB_WAF_CAPTCHA_CODE" maxlength="6" size="18" autocomplete="off" z-index="1" style="font-size:16px;line-height:24px; letter-spacing: 15px; padding-left: 4px"/>
+		<p>` + msgPrompt + `</p>
+		<input type="text" name="GOEDGE_WAF_CAPTCHA_CODE" id="GOEDGE_WAF_CAPTCHA_CODE" maxlength="6" autocomplete="off" z-index="1" style="font-size:16px;line-height:24px; letter-spacing: 15px; padding-left: 4px; width: 160px"/>
 	</div>
 	<div>
-		<button type="submit" onclick="window.location = '/webhook'" style="line-height:24px;margin-top:10px">Verify Yourself</button>
+		<button type="submit" style="line-height:24px;margin-top:10px">` + msgButtonTitle + `</button>
 	</div>
 </form>
 </body>
 </html>`))
 }
 
-func (this *CaptchaValidator) validate(request *requests.Request, writer http.ResponseWriter) (allow bool) {
-	captchaId := request.FormValue("TEAWEB_WAF_CAPTCHA_ID")
+func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, setId int64, originURL string, request requests.Request, writer http.ResponseWriter) (allow bool) {
+	captchaId := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
 	if len(captchaId) > 0 {
-		captchaCode := request.FormValue("TEAWEB_WAF_CAPTCHA_CODE")
+		captchaCode := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
 		if captcha.VerifyString(captchaId, captchaCode) {
-			// set cookie
-			timestamp := fmt.Sprintf("%d", time.Now().Unix()+CaptchaSeconds)
-			m := stringutil.Md5(captchaSalt + timestamp)
-			http.SetCookie(writer, &http.Cookie{
-				Name:   "TEAWEB_WAF_CAPTCHA",
-				Value:  m + timestamp,
-				MaxAge: CaptchaSeconds, // TODO 这个时间可以设置
-				Path:   "/", // all of dirs
-			})
+			var life = CaptchaSeconds
+			if actionConfig.Life > 0 {
+				life = types.Int(actionConfig.Life)
+			}
 
-			rawURL := request.URL.Query().Get("url")
-			http.Redirect(writer, request.Raw(), rawURL, http.StatusSeeOther)
+			// 加入到白名单
+			SharedIPWhiteList.Add("set:"+strconv.FormatInt(setId, 10), request.WAFRemoteIP(), time.Now().Unix()+int64(life)) // TODO
+
+			http.Redirect(writer, request.WAFRaw(), originURL, http.StatusSeeOther)
 
 			return false
 		} else {
-			http.Redirect(writer, request.Raw(), request.URL.String(), http.StatusSeeOther)
+			http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusSeeOther)
 		}
 	}
 

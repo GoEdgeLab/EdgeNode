@@ -68,12 +68,15 @@ type HTTPRequest struct {
 	cacheKey             string                            // 缓存使用的Key
 	isCached             bool                              // 是否已经被缓存
 	isAttack             bool                              // 是否是攻击请求
+	bodyData             []byte                            // 读取的Body内容
 
 	// WAF相关
 	firewallPolicyId    int64
 	firewallRuleGroupId int64
 	firewallRuleSetId   int64
 	firewallRuleId      int64
+	firewallActions     []string
+	tags                []string
 
 	logAttrs map[string]string
 
@@ -1194,6 +1197,11 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 
 	// HTTP/2流错误
 	if err.Error() == "http2: stream closed" || err.Error() == "client disconnected" { // errStreamClosed, errClientDisconnected
+		return true
+	}
+
+	// HTTP内部错误
+	if strings.HasPrefix(err.Error(), "http:")  || strings.HasPrefix(err.Error(), "http2:") {
 		return true
 	}
 

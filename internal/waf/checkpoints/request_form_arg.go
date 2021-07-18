@@ -6,33 +6,35 @@ import (
 	"net/url"
 )
 
-// ${requestForm.arg}
+// RequestFormArgCheckpoint ${requestForm.arg}
 type RequestFormArgCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestFormArgCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
-	if req.Body == nil {
+func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+	if req.WAFRaw().Body == nil {
 		value = ""
 		return
 	}
 
-	if len(req.BodyData) == 0 {
-		data, err := req.ReadBody(32 * 1024 * 1024) // read 32m bytes
+	var bodyData = req.WAFGetCacheBody()
+	if len(bodyData) == 0 {
+		data, err := req.WAFReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
 		if err != nil {
 			return "", err, nil
 		}
 
-		req.BodyData = data
-		req.RestoreBody(data)
+		bodyData = data
+		req.WAFSetCacheBody(data)
+		req.WAFRestoreBody(data)
 	}
 
 	// TODO improve performance
-	values, _ := url.ParseQuery(string(req.BodyData))
+	values, _ := url.ParseQuery(string(bodyData))
 	return values.Get(param), nil, nil
 }
 
-func (this *RequestFormArgCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestFormArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

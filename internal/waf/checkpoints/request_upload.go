@@ -11,63 +11,65 @@ import (
 	"strings"
 )
 
-// ${requestUpload.arg}
+// RequestUploadCheckpoint ${requestUpload.arg}
 type RequestUploadCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestUploadCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	value = ""
 	if param == "minSize" || param == "maxSize" {
 		value = 0
 	}
 
-	if req.Method != http.MethodPost {
+	if req.WAFRaw().Method != http.MethodPost {
 		return
 	}
 
-	if req.Body == nil {
+	if req.WAFRaw().Body == nil {
 		return
 	}
 
-	if req.MultipartForm == nil {
-		if len(req.BodyData) == 0 {
-			data, err := req.ReadBody(32 * 1024 * 1024)
+	if req.WAFRaw().MultipartForm == nil {
+		var bodyData = req.WAFGetCacheBody()
+		if len(bodyData) == 0 {
+			data, err := req.WAFReadBody(32 * 1024 * 1024)
 			if err != nil {
 				sysErr = err
 				return
 			}
 
-			req.BodyData = data
-			defer req.RestoreBody(data)
+			bodyData = data
+			req.WAFSetCacheBody(data)
+			defer req.WAFRestoreBody(data)
 		}
-		oldBody := req.Body
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(req.BodyData))
+		oldBody := req.WAFRaw().Body
+		req.WAFRaw().Body = ioutil.NopCloser(bytes.NewBuffer(bodyData))
 
-		err := req.ParseMultipartForm(32 * 1024 * 1024)
+		err := req.WAFRaw().ParseMultipartForm(32 * 1024 * 1024)
 
 		// 还原
-		req.Body = oldBody
+		req.WAFRaw().Body = oldBody
 
 		if err != nil {
 			userErr = err
 			return
 		}
 
-		if req.MultipartForm == nil {
+		if req.WAFRaw().MultipartForm == nil {
 			return
 		}
 	}
 
 	if param == "field" { // field
 		fields := []string{}
-		for field := range req.MultipartForm.File {
+		for field := range req.WAFRaw().MultipartForm.File {
 			fields = append(fields, field)
 		}
 		value = strings.Join(fields, ",")
 	} else if param == "minSize" { // minSize
 		minSize := int64(0)
-		for _, files := range req.MultipartForm.File {
+		for _, files := range req.WAFRaw().MultipartForm.File {
 			for _, file := range files {
 				if minSize == 0 || minSize > file.Size {
 					minSize = file.Size
@@ -77,7 +79,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req *requests.Request, param s
 		value = minSize
 	} else if param == "maxSize" { // maxSize
 		maxSize := int64(0)
-		for _, files := range req.MultipartForm.File {
+		for _, files := range req.WAFRaw().MultipartForm.File {
 			for _, file := range files {
 				if maxSize < file.Size {
 					maxSize = file.Size
@@ -87,7 +89,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req *requests.Request, param s
 		value = maxSize
 	} else if param == "name" { // name
 		names := []string{}
-		for _, files := range req.MultipartForm.File {
+		for _, files := range req.WAFRaw().MultipartForm.File {
 			for _, file := range files {
 				if !lists.ContainsString(names, file.Filename) {
 					names = append(names, file.Filename)
@@ -97,7 +99,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req *requests.Request, param s
 		value = strings.Join(names, ",")
 	} else if param == "ext" { // ext
 		extensions := []string{}
-		for _, files := range req.MultipartForm.File {
+		for _, files := range req.WAFRaw().MultipartForm.File {
 			for _, file := range files {
 				if len(file.Filename) > 0 {
 					exit := strings.ToLower(filepath.Ext(file.Filename))
@@ -113,7 +115,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req *requests.Request, param s
 	return
 }
 
-func (this *RequestUploadCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestUploadCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

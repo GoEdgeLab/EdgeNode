@@ -8,24 +8,27 @@ import (
 	"strings"
 )
 
-// ${requestJSON.arg}
+// RequestJSONArgCheckpoint ${requestJSON.arg}
 type RequestJSONArgCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestJSONArgCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
-	if len(req.BodyData) == 0 {
-		data, err := req.ReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
+func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+	var bodyData = req.WAFGetCacheBody()
+	if len(bodyData) == 0 {
+		data, err := req.WAFReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
 		if err != nil {
 			return "", err, nil
 		}
-		req.BodyData = data
-		defer req.RestoreBody(data)
+
+		bodyData = data
+		req.WAFSetCacheBody(data)
+		defer req.WAFRestoreBody(data)
 	}
 
 	// TODO improve performance
 	var m interface{} = nil
-	err := json.Unmarshal(req.BodyData, &m)
+	err := json.Unmarshal(bodyData, &m)
 	if err != nil || m == nil {
 		return "", nil, err
 	}
@@ -37,7 +40,7 @@ func (this *RequestJSONArgCheckpoint) RequestValue(req *requests.Request, param 
 	return "", nil, nil
 }
 
-func (this *RequestJSONArgCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestJSONArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

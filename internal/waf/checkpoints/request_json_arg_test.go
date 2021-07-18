@@ -20,7 +20,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Map(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	//req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	checkpoint := new(RequestJSONArgCheckpoint)
@@ -31,7 +31,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Map(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "books", nil))
 	t.Log(checkpoint.RequestValue(req, "books.1", nil))
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := ioutil.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Array(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	//req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	checkpoint := new(RequestJSONArgCheckpoint)
@@ -61,7 +61,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Array(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "0.books", nil))
 	t.Log(checkpoint.RequestValue(req, "0.books.1", nil))
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := ioutil.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Error(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	//req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	checkpoint := new(RequestJSONArgCheckpoint)
@@ -91,7 +91,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Error(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "0.books", nil))
 	t.Log(checkpoint.RequestValue(req, "0.books.1", nil))
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := ioutil.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}

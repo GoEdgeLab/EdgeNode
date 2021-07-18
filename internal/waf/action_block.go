@@ -23,12 +23,48 @@ type BlockAction struct {
 	StatusCode int    `yaml:"statusCode" json:"statusCode"`
 	Body       string `yaml:"body" json:"body"` // supports HTML
 	URL        string `yaml:"url" json:"url"`
+	Timeout    int32  `yaml:"timeout" json:"timeout"`
 }
 
-func (this *BlockAction) Perform(waf *WAF, request *requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *BlockAction) Init(waf *WAF) error {
+	if waf.DefaultBlockAction != nil {
+		if this.StatusCode <= 0 {
+			this.StatusCode = waf.DefaultBlockAction.StatusCode
+		}
+		if len(this.Body) == 0 {
+			this.Body = waf.DefaultBlockAction.Body
+		}
+		if len(this.URL) == 0 {
+			this.URL = waf.DefaultBlockAction.URL
+		}
+		if this.Timeout <= 0 {
+			this.Timeout = waf.DefaultBlockAction.Timeout
+		}
+	}
+	return nil
+}
+
+func (this *BlockAction) Code() string {
+	return ActionBlock
+}
+
+func (this *BlockAction) IsAttack() bool {
+	return true
+}
+
+func (this *BlockAction) WillChange() bool {
+	return true
+}
+
+func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+	if this.Timeout > 0 {
+		// 加入到黑名单
+		SharedIPBlackLIst.Add(IPTypeAll, request.WAFRemoteIP(), time.Now().Unix()+int64(this.Timeout))
+	}
+
 	if writer != nil {
-		// if status code eq 444, we close the connection
-		if this.StatusCode == 444 {
+		// close the connection
+		defer func() {
 			hijack, ok := writer.(http.Hijacker)
 			if ok {
 				conn, _, _ := hijack.Hijack()
@@ -37,7 +73,7 @@ func (this *BlockAction) Perform(waf *WAF, request *requests.Request, writer htt
 					return
 				}
 			}
-		}
+		}()
 
 		// output response
 		if this.StatusCode > 0 {

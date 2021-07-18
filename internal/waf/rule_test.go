@@ -25,7 +25,7 @@ func TestRule_Init_Single(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	t.Log(rule.MatchRequest(req))
 }
 
@@ -44,7 +44,7 @@ func TestRule_Init_Composite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	t.Log(rule.MatchRequest(req))
 }
 

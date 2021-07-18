@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/assert"
 	"net/http"
 	"testing"
@@ -24,7 +25,7 @@ func TestWAF_MatchRequest(t *testing.T) {
 			Value:    "20",
 		},
 	}
-	set.Action = ActionBlock
+	set.AddAction(ActionBlock, nil)
 
 	group := NewRuleGroup()
 	group.AddRuleSet(set)
@@ -37,15 +38,15 @@ func TestWAF_MatchRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	waf.OnAction(func(action ActionString) (goNext bool) {
-		return action != ActionBlock
+	waf.OnAction(func(action ActionInterface) (goNext bool) {
+		return action.Code() != ActionBlock
 	})
 
 	req, err := http.NewRequest(http.MethodGet, "http://teaos.cn/hello?name=lu&age=20", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	goNext, _, set, err := waf.MatchRequest(req, nil)
+	goNext, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

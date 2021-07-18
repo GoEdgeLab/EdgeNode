@@ -58,6 +58,10 @@ func TestList_Start_GC(t *testing.T) {
 	list.Add(2, time.Now().Unix()+1)
 	list.Add(3, time.Now().Unix()+2)
 	list.Add(4, time.Now().Unix()+5)
+	list.Add(5, time.Now().Unix()+5)
+	list.Add(6, time.Now().Unix()+6)
+	list.Add(7, time.Now().Unix()+6)
+	list.Add(8, time.Now().Unix()+6)
 
 	go func() {
 		list.StartGC(func(itemId int64) {
@@ -66,7 +70,7 @@ func TestList_Start_GC(t *testing.T) {
 		})
 	}()
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 }
 
 func TestList_ManyItems(t *testing.T) {

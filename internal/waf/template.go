@@ -20,7 +20,7 @@ func Template() *WAF {
 			set.Name = "Javascript事件"
 			set.Code = "1001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestURI}",
 				Operator:          RuleOperatorMatch,
@@ -36,7 +36,7 @@ func Template() *WAF {
 			set.Name = "Javascript函数"
 			set.Code = "1002"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestURI}",
 				Operator:          RuleOperatorMatch,
@@ -52,7 +52,7 @@ func Template() *WAF {
 			set.Name = "HTML标签"
 			set.Code = "1003"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestURI}",
 				Operator:          RuleOperatorMatch,
@@ -80,7 +80,7 @@ func Template() *WAF {
 			set.Name = "上传文件扩展名"
 			set.Code = "2001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestUpload.ext}",
 				Operator:          RuleOperatorMatch,
@@ -108,7 +108,7 @@ func Template() *WAF {
 			set.Name = "Web Shell"
 			set.Code = "3001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestAll}",
 				Operator:          RuleOperatorMatch,
@@ -135,7 +135,7 @@ func Template() *WAF {
 			set.Name = "命令注入"
 			set.Code = "4001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestURI}",
 				Operator:          RuleOperatorMatch,
@@ -169,7 +169,7 @@ func Template() *WAF {
 			set.Name = "路径穿越"
 			set.Code = "5001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestURI}",
 				Operator:          RuleOperatorMatch,
@@ -197,7 +197,7 @@ func Template() *WAF {
 			set.Name = "特殊目录"
 			set.Code = "6001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:             "${requestPath}",
 				Operator:          RuleOperatorMatch,
@@ -225,7 +225,7 @@ func Template() *WAF {
 			set.Name = "Union SQL Injection"
 			set.Code = "7001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 
 			set.AddRule(&Rule{
 				Param:             "${requestAll}",
@@ -243,7 +243,7 @@ func Template() *WAF {
 			set.Name = "SQL注释"
 			set.Code = "7002"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 
 			set.AddRule(&Rule{
 				Param:             "${requestAll}",
@@ -261,7 +261,7 @@ func Template() *WAF {
 			set.Name = "SQL条件"
 			set.Code = "7003"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 
 			set.AddRule(&Rule{
 				Param:             "${requestAll}",
@@ -297,7 +297,7 @@ func Template() *WAF {
 			set.Name = "SQL函数"
 			set.Code = "7004"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 
 			set.AddRule(&Rule{
 				Param:             "${requestAll}",
@@ -315,7 +315,7 @@ func Template() *WAF {
 			set.Name = "SQL附加语句"
 			set.Code = "7005"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 
 			set.AddRule(&Rule{
 				Param:             "${requestAll}",
@@ -345,7 +345,7 @@ func Template() *WAF {
 			set.Name = "常见网络爬虫"
 			set.Code = "20001"
 			set.Connector = RuleConnectorOr
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 
 			set.AddRule(&Rule{
 				Param:             "${userAgent}",
@@ -376,7 +376,7 @@ func Template() *WAF {
 			set.Description = "限制单IP在一定时间内的请求数"
 			set.Code = "8001"
 			set.Connector = RuleConnectorAnd
-			set.Action = ActionBlock
+			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
 				Param:    "${cc.requests}",
 				Operator: RuleOperatorGt,

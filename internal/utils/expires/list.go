@@ -12,6 +12,7 @@ type List struct {
 	itemsMap  map[int64]int64   // itemId => timestamp
 
 	locker sync.Mutex
+	ticker *time.Ticker
 }
 
 func NewList() *List {
@@ -21,10 +22,7 @@ func NewList() *List {
 	}
 }
 
-func (this *List) Add(itemId int64, expiredAt int64) {
-	if expiredAt <= time.Now().Unix() {
-		return
-	}
+func (this *List) Add(itemId int64, expiresAt int64) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
@@ -34,17 +32,17 @@ func (this *List) Add(itemId int64, expiredAt int64) {
 		this.removeItem(itemId)
 	}
 
-	expireItemMap, ok := this.expireMap[expiredAt]
+	expireItemMap, ok := this.expireMap[expiresAt]
 	if ok {
 		expireItemMap[itemId] = true
 	} else {
 		expireItemMap = ItemMap{
 			itemId: true,
 		}
-		this.expireMap[expiredAt] = expireItemMap
+		this.expireMap[expiresAt] = expireItemMap
 	}
 
-	this.itemsMap[itemId] = expiredAt
+	this.itemsMap[itemId] = expiresAt
 }
 
 func (this *List) Remove(itemId int64) {
@@ -64,21 +62,22 @@ func (this *List) GC(timestamp int64, callback func(itemId int64)) {
 }
 
 func (this *List) StartGC(callback func(itemId int64)) {
-	ticker := time.NewTicker(1 * time.Second)
+	this.ticker = time.NewTicker(1 * time.Second)
 	lastTimestamp := int64(0)
-	for range ticker.C {
+	for range this.ticker.C {
 		timestamp := time.Now().Unix()
 		if lastTimestamp == 0 {
 			lastTimestamp = timestamp - 3600
 		}
 
-		// 防止死循环
-		if lastTimestamp > timestamp {
-			continue
-		}
-
-		for i := lastTimestamp; i <= timestamp; i++ {
-			this.GC(timestamp, callback)
+		if timestamp >= lastTimestamp {
+			for i := lastTimestamp; i <= timestamp; i++ {
+				this.GC(i, callback)
+			}
+		} else {
+			for i := timestamp; i <= lastTimestamp; i++ {
+				this.GC(i, callback)
+			}
 		}
 
 		// 这样做是为了防止系统时钟突变

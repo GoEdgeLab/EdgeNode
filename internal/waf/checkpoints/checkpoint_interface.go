@@ -5,32 +5,32 @@ import (
 	"github.com/iwind/TeaGo/maps"
 )
 
-// Check Point
+// CheckpointInterface Check Point
 type CheckpointInterface interface {
-	// initialize
+	// Init initialize
 	Init()
 
-	// is request?
+	// IsRequest is request?
 	IsRequest() bool
 
-	// is composed?
+	// IsComposed is composed?
 	IsComposed() bool
 
-	// get request value
-	RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error)
+	// RequestValue get request value
+	RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error)
 
-	// get response value
-	ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error)
+	// ResponseValue get response value
+	ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error)
 
-	// param option list
+	// ParamOptions param option list
 	ParamOptions() *ParamOptions
 
-	// options
+	// Options options
 	Options() []OptionInterface
 
-	// start
+	// Start start
 	Start()
 
-	// stop
+	// Stop stop
 	Stop()
 }

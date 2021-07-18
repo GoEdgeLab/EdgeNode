@@ -12,8 +12,8 @@ func TestRequestHostCheckpoint_RequestValue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
-	req.Header.Set("Host", "cloud.teaos.cn")
+	req := requests.NewTestRequest(rawReq)
+	req.WAFRaw().Header.Set("Host", "cloud.teaos.cn")
 
 	checkpoint := new(RequestHostCheckpoint)
 	t.Log(checkpoint.RequestValue(req, "", nil))

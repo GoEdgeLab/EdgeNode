@@ -10,13 +10,29 @@ type GoGroupAction struct {
 	GroupId string `yaml:"groupId" json:"groupId"`
 }
 
-func (this *GoGroupAction) Perform(waf *WAF, request *requests.Request, writer http.ResponseWriter) (allow bool) {
-	group := waf.FindRuleGroup(this.GroupId)
-	if group == nil || !group.IsOn {
+func (this *GoGroupAction) Init(waf *WAF) error {
+	return nil
+}
+
+func (this *GoGroupAction) Code() string {
+	return ActionGoGroup
+}
+
+func (this *GoGroupAction) IsAttack() bool {
+	return false
+}
+
+func (this *GoGroupAction) WillChange() bool {
+	return true
+}
+
+func (this *GoGroupAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+	nextGroup := waf.FindRuleGroup(this.GroupId)
+	if nextGroup == nil || !nextGroup.IsOn {
 		return true
 	}
 
-	b, set, err := group.MatchRequest(request)
+	b, nextSet, err := nextGroup.MatchRequest(request)
 	if err != nil {
 		logs.Error(err)
 		return true
@@ -26,9 +42,5 @@ func (this *GoGroupAction) Perform(waf *WAF, request *requests.Request, writer h
 		return true
 	}
 
-	actionObject := FindActionInstance(set.Action, set.ActionOptions)
-	if actionObject == nil {
-		return true
-	}
-	return actionObject.Perform(waf, request, writer)
+	return nextSet.PerformActions(waf, nextGroup, request, writer)
 }

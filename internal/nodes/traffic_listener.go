@@ -2,7 +2,10 @@
 
 package nodes
 
-import "net"
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
+	"net"
+)
 
 // TrafficListener 用于统计流量的网络监听
 type TrafficListener struct {
@@ -18,6 +21,17 @@ func (this *TrafficListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 是否在WAF名单中
+	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	if err == nil {
+		if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, ip) && waf.SharedIPBlackLIst.Contains(waf.IPTypeAll, ip) {
+			go func() {
+				_ = conn.Close()
+			}()
+			return conn, nil
+		}
+	}
+
 	return NewTrafficConn(conn), nil
 }
 

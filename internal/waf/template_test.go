@@ -2,6 +2,7 @@ package waf
 
 import (
 	"bytes"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/logs"
@@ -22,8 +23,8 @@ func Test_Template(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	template.OnAction(func(action ActionString) (goNext bool) {
-		return action != ActionBlock
+	template.OnAction(func(action ActionInterface) (goNext bool) {
+		return action.Code() != ActionBlock
 	})
 
 	testTemplate1001(a, t, template)
@@ -40,7 +41,7 @@ func Test_Template(t *testing.T) {
 
 func Test_Template2(t *testing.T) {
 	reader := bytes.NewReader([]byte(strings.Repeat("HELLO", 1024)))
-	req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=123", reader)
+	req, err := http.NewRequest(http.MethodGet, "https://example.com/index.php?id=123", reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func Test_Template2(t *testing.T) {
 	}
 
 	now := time.Now()
-	goNext, _, set, err := waf.MatchRequest(req, nil)
+	goNext, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +81,7 @@ func BenchmarkTemplate(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		_, _, _, _ = waf.MatchRequest(req, nil)
+		_, _, _, _ = waf.MatchRequest(requests.NewTestRequest(req), nil)
 	}
 }
 
@@ -89,7 +90,7 @@ func testTemplate1001(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, result, err := template.MatchRequest(req, nil)
+	_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +105,7 @@ func testTemplate1002(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, result, err := template.MatchRequest(req, nil)
+	_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +120,7 @@ func testTemplate1003(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, result, err := template.MatchRequest(req, nil)
+	_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +186,7 @@ func testTemplate2001(a *assert.Assertion, t *testing.T, template *WAF) {
 
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 
-	_, _, result, err := template.MatchRequest(req, nil)
+	_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +201,7 @@ func testTemplate3001(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, result, err := template.MatchRequest(req, nil)
+	_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +216,7 @@ func testTemplate4001(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, result, err := template.MatchRequest(req, nil)
+	_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +232,7 @@ func testTemplate5001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, result, err := template.MatchRequest(req, nil)
+		_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -246,7 +247,7 @@ func testTemplate5001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, result, err := template.MatchRequest(req, nil)
+		_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -263,7 +264,7 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, result, err := template.MatchRequest(req, nil)
+		_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -278,7 +279,7 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, result, err := template.MatchRequest(req, nil)
+		_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -301,7 +302,7 @@ func testTemplate7001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, result, err := template.MatchRequest(req, nil)
+		_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -338,7 +339,7 @@ func testTemplate20001(a *assert.Assertion, t *testing.T, template *WAF) {
 			t.Fatal(err)
 		}
 		req.Header.Set("User-Agent", bot)
-		_, _, result, err := template.MatchRequest(req, nil)
+		_, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
 		if err != nil {
 			t.Fatal(err)
 		}

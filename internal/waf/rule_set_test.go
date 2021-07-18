@@ -28,7 +28,7 @@ func TestRuleSet_MatchRequest(t *testing.T) {
 		},
 	}
 
-	err := set.Init()
+	err := set.Init(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestRuleSet_MatchRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	t.Log(set.MatchRequest(req))
 }
 
@@ -60,7 +60,7 @@ func TestRuleSet_MatchRequest2(t *testing.T) {
 		},
 	}
 
-	err := set.Init()
+	err := set.Init(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestRuleSet_MatchRequest2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	a.IsTrue(set.MatchRequest(req))
 }
 
@@ -102,7 +102,7 @@ func BenchmarkRuleSet_MatchRequest(b *testing.B) {
 		},
 	}
 
-	err := set.Init()
+	err := set.Init(nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func BenchmarkRuleSet_MatchRequest(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	for i := 0; i < b.N; i++ {
 		_, _ = set.MatchRequest(req)
 	}
@@ -132,7 +132,7 @@ func BenchmarkRuleSet_MatchRequest_Regexp(b *testing.B) {
 		},
 	}
 
-	err := set.Init()
+	err := set.Init(nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func BenchmarkRuleSet_MatchRequest_Regexp(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	req := requests.NewRequest(rawReq)
+	req := requests.NewTestRequest(rawReq)
 	for i := 0; i < b.N; i++ {
 		_, _ = set.MatchRequest(req)
 	}

@@ -22,13 +22,11 @@ type WAF struct {
 	Outbound       []*RuleGroup `yaml:"outbound" json:"outbound"`
 	CreatedVersion string       `yaml:"createdVersion" json:"createdVersion"`
 
-	ActionBlock *BlockAction `yaml:"actionBlock" json:"actionBlock"` // action block config
-
-	IPTables []*IPTable `yaml:"ipTables" json:"ipTables"` // IP table list
+	DefaultBlockAction *BlockAction
 
 	hasInboundRules  bool
 	hasOutboundRules bool
-	onActionCallback func(action ActionString) (goNext bool)
+	onActionCallback func(action ActionInterface) (goNext bool)
 
 	checkpointsMap map[string]checkpoints.CheckpointInterface // prefix => checkpoint
 }
@@ -87,7 +85,7 @@ func (this *WAF) Init() error {
 				}
 			}
 
-			err := group.Init()
+			err := group.Init(this)
 			if err != nil {
 				return err
 			}
@@ -103,7 +101,7 @@ func (this *WAF) Init() error {
 				}
 			}
 
-			err := group.Init()
+			err := group.Init(this)
 			if err != nil {
 				return err
 			}
@@ -241,16 +239,21 @@ func (this *WAF) MoveOutboundRuleGroup(fromIndex int, toIndex int) {
 	this.Outbound = result
 }
 
-func (this *WAF) MatchRequest(rawReq *http.Request, writer http.ResponseWriter) (goNext bool, group *RuleGroup, set *RuleSet, err error) {
+func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) (goNext bool, group *RuleGroup, set *RuleSet, err error) {
 	if !this.hasInboundRules {
 		return true, nil, nil, nil
 	}
 
-	req := requests.NewRequest(rawReq)
-
 	// validate captcha
-	if rawReq.URL.Path == "/WAFCAPTCHA" {
+	var rawPath = req.WAFRaw().URL.Path
+	if rawPath == CaptchaPath {
 		captchaValidator.Run(req, writer)
+		return
+	}
+
+	// Get 302验证
+	if rawPath == Get302Path {
+		get302Validator.Run(req, writer)
 		return
 	}
 
@@ -264,31 +267,17 @@ func (this *WAF) MatchRequest(rawReq *http.Request, writer http.ResponseWriter) 
 			return true, nil, nil, err
 		}
 		if b {
-			if this.onActionCallback == nil {
-				if set.Action == ActionBlock && this.ActionBlock != nil {
-					return this.ActionBlock.Perform(this, req, writer), group, set, nil
-				} else {
-					actionObject := FindActionInstance(set.Action, set.ActionOptions)
-					if actionObject == nil {
-						return true, group, set, errors.New("no action called '" + set.Action + "'")
-					}
-					goNext := actionObject.Perform(this, req, writer)
-					return goNext, group, set, nil
-				}
-			} else {
-				goNext = this.onActionCallback(set.Action)
-			}
+			goNext := set.PerformActions(this, group, req, writer)
 			return goNext, group, set, nil
 		}
 	}
 	return true, nil, nil, nil
 }
 
-func (this *WAF) MatchResponse(rawReq *http.Request, rawResp *http.Response, writer http.ResponseWriter) (goNext bool, group *RuleGroup, set *RuleSet, err error) {
+func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, writer http.ResponseWriter) (goNext bool, group *RuleGroup, set *RuleSet, err error) {
 	if !this.hasOutboundRules {
 		return true, nil, nil, nil
 	}
-	req := requests.NewRequest(rawReq)
 	resp := requests.NewResponse(rawResp)
 	for _, group := range this.Outbound {
 		if !group.IsOn {
@@ -299,27 +288,14 @@ func (this *WAF) MatchResponse(rawReq *http.Request, rawResp *http.Response, wri
 			return true, nil, nil, err
 		}
 		if b {
-			if this.onActionCallback == nil {
-				if set.Action == ActionBlock && this.ActionBlock != nil {
-					return this.ActionBlock.Perform(this, req, writer), group, set, nil
-				} else {
-					actionObject := FindActionInstance(set.Action, set.ActionOptions)
-					if actionObject == nil {
-						return true, group, set, errors.New("no action called '" + set.Action + "'")
-					}
-					goNext := actionObject.Perform(this, req, writer)
-					return goNext, group, set, nil
-				}
-			} else {
-				goNext = this.onActionCallback(set.Action)
-			}
+			goNext := set.PerformActions(this, group, req, writer)
 			return goNext, group, set, nil
 		}
 	}
 	return true, nil, nil, nil
 }
 
-// save to file path
+// Save save to file path
 func (this *WAF) Save(path string) error {
 	if len(path) == 0 {
 		return errors.New("path should not be empty")
@@ -378,7 +354,7 @@ func (this *WAF) CountOutboundRuleSets() int {
 	return count
 }
 
-func (this *WAF) OnAction(onActionCallback func(action ActionString) (goNext bool)) {
+func (this *WAF) OnAction(onActionCallback func(action ActionInterface) (goNext bool)) {
 	this.onActionCallback = onActionCallback
 }
 
@@ -390,21 +366,21 @@ func (this *WAF) FindCheckpointInstance(prefix string) checkpoints.CheckpointInt
 	return nil
 }
 
-// start
+// Start start
 func (this *WAF) Start() {
 	for _, checkpoint := range this.checkpointsMap {
 		checkpoint.Start()
 	}
 }
 
-// call stop() when the waf was deleted
+// Stop call stop() when the waf was deleted
 func (this *WAF) Stop() {
 	for _, checkpoint := range this.checkpointsMap {
 		checkpoint.Stop()
 	}
 }
 
-// merge with template
+// MergeTemplate merge with template
 func (this *WAF) MergeTemplate() (changedItems []string) {
 	changedItems = []string{}
 

@@ -7,7 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/sslconfigs"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
-	http2 "golang.org/x/net/http2"
+	"golang.org/x/net/http2"
 	"sync"
 )
 

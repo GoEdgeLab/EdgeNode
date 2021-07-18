@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// IP名单
+// IPList IP名单
 type IPList struct {
 	itemsMap   map[int64]*IPItem  // id => item
 	ipMap      map[uint64][]int64 // ip => itemIds
@@ -96,7 +96,7 @@ func (this *IPList) Delete(itemId int64) {
 	this.isAll = len(this.ipMap[0]) > 0
 }
 
-// 判断是否包含某个IP
+// Contains 判断是否包含某个IP
 func (this *IPList) Contains(ip uint64) bool {
 	this.locker.RLock()
 	if this.isAll {
@@ -109,7 +109,7 @@ func (this *IPList) Contains(ip uint64) bool {
 	return ok
 }
 
-// 是否包含一组IP
+// ContainsIPStrings 是否包含一组IP
 func (this *IPList) ContainsIPStrings(ipStrings []string) (found bool, item *IPItem) {
 	if len(ipStrings) == 0 {
 		return

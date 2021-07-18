@@ -63,8 +63,8 @@ func TestRequestUploadCheckpoint_RequestValue(t *testing.T) {
 		t.Fatal()
 	}
 
-	req := requests.NewRequest(rawReq)
-	req.Header.Add("Content-Type", writer.FormDataContentType())
+	req := requests.NewTestRequest(rawReq)
+	req.WAFRaw().Header.Add("Content-Type", writer.FormDataContentType())
 
 	checkpoint := new(RequestUploadCheckpoint)
 	t.Log(checkpoint.RequestValue(req, "field", nil))
@@ -73,7 +73,7 @@ func TestRequestUploadCheckpoint_RequestValue(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "name", nil))
 	t.Log(checkpoint.RequestValue(req, "ext", nil))
 
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := ioutil.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,8 +15,8 @@ func TestRequestFormArgCheckpoint_RequestValue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req := requests.NewRequest(rawReq)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req := requests.NewTestRequest(rawReq)
+	req.WAFRaw().Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	checkpoint := new(RequestFormArgCheckpoint)
 	t.Log(checkpoint.RequestValue(req, "name", nil))
@@ -24,7 +24,7 @@ func TestRequestFormArgCheckpoint_RequestValue(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "Hello", nil))
 	t.Log(checkpoint.RequestValue(req, "encoded", nil))
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := ioutil.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}

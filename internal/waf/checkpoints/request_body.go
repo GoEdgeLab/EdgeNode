@@ -5,31 +5,33 @@ import (
 	"github.com/iwind/TeaGo/maps"
 )
 
-// ${requestBody}
+// RequestBodyCheckpoint ${requestBody}
 type RequestBodyCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestBodyCheckpoint) RequestValue(req *requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
-	if req.Body == nil {
+func (this *RequestBodyCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+	if req.WAFRaw().Body == nil {
 		value = ""
 		return
 	}
 
-	if len(req.BodyData) == 0 {
-		data, err := req.ReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
+	var bodyData = req.WAFGetCacheBody()
+	if len(bodyData) == 0 {
+		data, err := req.WAFReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
 		if err != nil {
 			return "", err, nil
 		}
 
-		req.BodyData = data
-		req.RestoreBody(data)
+		bodyData = data
+		req.WAFSetCacheBody(data)
+		req.WAFRestoreBody(data)
 	}
 
-	return req.BodyData, nil, nil
+	return bodyData, nil, nil
 }
 
-func (this *RequestBodyCheckpoint) ResponseValue(req *requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestBodyCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

@@ -183,7 +183,7 @@ func (this *Rule) Init() error {
 	return err
 }
 
-func (this *Rule) MatchRequest(req *requests.Request) (b bool, err error) {
+func (this *Rule) MatchRequest(req requests.Request) (b bool, err error) {
 	if this.singleCheckpoint != nil {
 		value, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions)
 		if err != nil {
@@ -233,7 +233,7 @@ func (this *Rule) MatchRequest(req *requests.Request) (b bool, err error) {
 	return this.Test(value), nil
 }
 
-func (this *Rule) MatchResponse(req *requests.Request, resp *requests.Response) (b bool, err error) {
+func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (b bool, err error) {
 	if this.singleCheckpoint != nil {
 		// if is request param
 		if this.singleCheckpoint.IsRequest() {

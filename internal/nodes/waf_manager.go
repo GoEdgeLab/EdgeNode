@@ -11,20 +11,20 @@ import (
 
 var sharedWAFManager = NewWAFManager()
 
-// WAF管理器
+// WAFManager WAF管理器
 type WAFManager struct {
 	mapping map[int64]*waf.WAF // policyId => WAF
 	locker  sync.RWMutex
 }
 
-// 获取新对象
+// NewWAFManager 获取新对象
 func NewWAFManager() *WAFManager {
 	return &WAFManager{
 		mapping: map[int64]*waf.WAF{},
 	}
 }
 
-// 更新策略
+// UpdatePolicies 更新策略
 func (this *WAFManager) UpdatePolicies(policies []*firewallconfigs.HTTPFirewallPolicy) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -44,7 +44,7 @@ func (this *WAFManager) UpdatePolicies(policies []*firewallconfigs.HTTPFirewallP
 	this.mapping = m
 }
 
-// 查找WAF
+// FindWAF 查找WAF
 func (this *WAFManager) FindWAF(policyId int64) *waf.WAF {
 	this.locker.RLock()
 	w, _ := this.mapping[policyId]
@@ -78,14 +78,15 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			// rule sets
 			for _, set := range group.Sets {
 				s := &waf.RuleSet{
-					Id:            strconv.FormatInt(set.Id, 10),
-					Code:          set.Code,
-					IsOn:          set.IsOn,
-					Name:          set.Name,
-					Description:   set.Description,
-					Connector:     set.Connector,
-					Action:        set.Action,
-					ActionOptions: set.ActionOptions,
+					Id:          strconv.FormatInt(set.Id, 10),
+					Code:        set.Code,
+					IsOn:        set.IsOn,
+					Name:        set.Name,
+					Description: set.Description,
+					Connector:   set.Connector,
+				}
+				for _, a := range set.Actions {
+					s.AddAction(a.Code, a.Options)
 				}
 
 				// rules
@@ -132,14 +133,16 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			// rule sets
 			for _, set := range group.Sets {
 				s := &waf.RuleSet{
-					Id:            strconv.FormatInt(set.Id, 10),
-					Code:          set.Code,
-					IsOn:          set.IsOn,
-					Name:          set.Name,
-					Description:   set.Description,
-					Connector:     set.Connector,
-					Action:        set.Action,
-					ActionOptions: set.ActionOptions,
+					Id:          strconv.FormatInt(set.Id, 10),
+					Code:        set.Code,
+					IsOn:        set.IsOn,
+					Name:        set.Name,
+					Description: set.Description,
+					Connector:   set.Connector,
+				}
+
+				for _, a := range set.Actions {
+					s.AddAction(a.Code, a.Options)
 				}
 
 				// rules
@@ -164,10 +167,11 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 
 	// action
 	if policy.BlockOptions != nil {
-		w.ActionBlock = &waf.BlockAction{
+		w.DefaultBlockAction = &waf.BlockAction{
 			StatusCode: policy.BlockOptions.StatusCode,
 			Body:       policy.BlockOptions.Body,
-			URL:        "",
+			URL:        policy.BlockOptions.URL,
+			Timeout:    policy.BlockOptions.Timeout,
 		}
 	}
 
