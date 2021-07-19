@@ -4,7 +4,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/lists"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/utils/string"
 	"net/http"
@@ -127,7 +126,6 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 					return false
 				}
 			}
-			logs.Printf("perform1: %#v", instance) // TODO
 			instance.Perform(waf, group, this, req, writer)
 		}
 	}
@@ -142,7 +140,6 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 					return false
 				}
 			}
-			logs.Printf("perform2: %#v", instance) // TODO
 			return instance.Perform(waf, group, this, req, writer)
 		}
 	}

@@ -367,7 +367,7 @@ func Template() *WAF {
 		group.IsInbound = true
 		group.Name = "CC攻击"
 		group.Description = "Challenge Collapsar，防止短时间大量请求涌入，请谨慎开启和设置"
-		group.Code = "cc"
+		group.Code = "cc2"
 
 		{
 			set := NewRuleSet()
@@ -378,11 +378,13 @@ func Template() *WAF {
 			set.Connector = RuleConnectorAnd
 			set.AddAction(ActionBlock, nil)
 			set.AddRule(&Rule{
-				Param:    "${cc.requests}",
+				Param:    "${cc2}",
 				Operator: RuleOperatorGt,
 				Value:    "1000",
 				CheckpointOptions: map[string]interface{}{
-					"period": "60",
+					"period":    "60",
+					"threshold": 1000,
+					"keys":      []string{"${remoteAddr}", "${requestPath}"},
 				},
 				IsCaseInsensitive: false,
 			})
