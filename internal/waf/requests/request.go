@@ -25,4 +25,7 @@ type Request interface {
 
 	// WAFServerId 服务ID
 	WAFServerId() int64
+
+	// Format 格式化变量
+	Format(string) string
 }

@@ -65,3 +65,7 @@ func (this *TestRequest) WAFRestoreBody(data []byte) {
 func (this *TestRequest) WAFServerId() int64 {
 	return 0
 }
+
+func (this *TestRequest) Format(s string) string {
+	return s
+}

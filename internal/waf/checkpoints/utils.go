@@ -185,11 +185,18 @@ var AllCheckpoints = []*CheckpointDefinition{
 		Instance:    new(RequestHeaderCheckpoint),
 	},
 	{
-		Name:        "CC统计",
+		Name:        "CC统计（旧）",
 		Prefix:      "cc",
 		Description: "统计某段时间段内的请求信息",
 		HasParams:   true,
 		Instance:    new(CCCheckpoint),
+	},
+	{
+		Name:        "CC统计（新）",
+		Prefix:      "cc2",
+		Description: "统计某段时间段内的请求信息",
+		HasParams:   true,
+		Instance:    new(CC2Checkpoint),
 	},
 	{
 		Name:        "通用响应Header长度限制",

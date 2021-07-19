@@ -514,6 +514,12 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.requestRemoteUser()
 		case "requestURI", "requestUri":
 			return this.rawURI
+		case "requestURL":
+			var scheme = "http"
+			if this.IsHTTPS {
+				scheme = "https"
+			}
+			return scheme + "://" + this.Host + this.rawURI
 		case "requestPath":
 			return this.requestPath()
 		case "requestPathExtension":
@@ -1201,7 +1207,7 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	// HTTP内部错误
-	if strings.HasPrefix(err.Error(), "http:")  || strings.HasPrefix(err.Error(), "http2:") {
+	if strings.HasPrefix(err.Error(), "http:") || strings.HasPrefix(err.Error(), "http2:") {
 		return true
 	}
 
