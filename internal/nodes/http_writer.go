@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/types"
 	"net"
 	"net/http"
 	"strings"
@@ -223,17 +224,29 @@ func (this *HTTPWriter) Close() {
 	// cache writer
 	if this.cacheWriter != nil {
 		if this.isOk {
-			err := this.cacheWriter.Close()
-			if err == nil {
-				this.cacheStorage.AddToList(&caches.Item{
-					Type:       this.cacheWriter.ItemType(),
-					Key:        this.cacheWriter.Key(),
-					ExpiredAt:  this.cacheWriter.ExpiredAt(),
-					HeaderSize: this.cacheWriter.HeaderSize(),
-					BodySize:   this.cacheWriter.BodySize(),
-					Host:       this.req.Host,
-					ServerId:   this.req.Server.Id,
-				})
+			// 对比Content-Length
+			contentLengthString := this.Header().Get("Content-Length")
+			if len(contentLengthString) > 0 {
+				contentLength := types.Int64(contentLengthString)
+				if contentLength != this.cacheWriter.BodySize() {
+					this.isOk = false
+					_ = this.cacheWriter.Discard()
+				}
+			}
+
+			if this.isOk {
+				err := this.cacheWriter.Close()
+				if err == nil {
+					this.cacheStorage.AddToList(&caches.Item{
+						Type:       this.cacheWriter.ItemType(),
+						Key:        this.cacheWriter.Key(),
+						ExpiredAt:  this.cacheWriter.ExpiredAt(),
+						HeaderSize: this.cacheWriter.HeaderSize(),
+						BodySize:   this.cacheWriter.BodySize(),
+						Host:       this.req.Host,
+						ServerId:   this.req.Server.Id,
+					})
+				}
 			}
 		} else {
 			_ = this.cacheWriter.Discard()
