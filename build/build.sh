@@ -66,6 +66,10 @@ function build() {
 			CC_PATH="aarch64-linux-musl-gcc"
 			CXX_PATH="aarch64-linux-musl-g++"
 		fi
+		if [ "${ARCH}" == "arm" ]; then
+			CC_PATH="arm-linux-musleabi-gcc"
+			CXX_PATH="arm-linux-musleabi-g++"
+		fi
 		if [ "${ARCH}" == "mips64" ]; then
 			CC_PATH="mips64-linux-musl-gcc"
 			CXX_PATH="mips64-linux-musl-g++"
