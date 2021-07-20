@@ -108,8 +108,6 @@ func (this *SyncAPINodesTask) isSame(endpoints1 []string, endpoints2 []string) b
 	return strings.Join(endpoints1, "&") == strings.Join(endpoints2, "&")
 }
 
-
-
 func (this *SyncAPINodesTask) testEndpoints(endpoints []string) bool {
 	if len(endpoints) == 0 {
 		return false
