@@ -1,6 +1,8 @@
 package nodes
 
 import (
+	"context"
+	"crypto/tls"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
@@ -8,8 +10,12 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,7 +26,7 @@ func init() {
 	})
 }
 
-// API节点同步任务
+// SyncAPINodesTask API节点同步任务
 type SyncAPINodesTask struct {
 }
 
@@ -74,6 +80,12 @@ func (this *SyncAPINodesTask) Loop() error {
 		return nil
 	}
 
+	// 测试是否有API节点可用
+	hasOk := this.testEndpoints(newEndpoints)
+	if !hasOk {
+		return nil
+	}
+
 	// 修改RPC对象配置
 	config.RPC.Endpoints = newEndpoints
 	err = rpcClient.UpdateConfig(config)
@@ -94,4 +106,50 @@ func (this *SyncAPINodesTask) isSame(endpoints1 []string, endpoints2 []string) b
 	sort.Strings(endpoints1)
 	sort.Strings(endpoints2)
 	return strings.Join(endpoints1, "&") == strings.Join(endpoints2, "&")
+}
+
+
+
+func (this *SyncAPINodesTask) testEndpoints(endpoints []string) bool {
+	if len(endpoints) == 0 {
+		return false
+	}
+
+	var wg = sync.WaitGroup{}
+	wg.Add(len(endpoints))
+
+	var ok = false
+
+	for _, endpoint := range endpoints {
+		go func(endpoint string) {
+			defer wg.Done()
+
+			u, err := url.Parse(endpoint)
+			if err != nil {
+				return
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer func() {
+				cancel()
+			}()
+			var conn *grpc.ClientConn
+			if u.Scheme == "http" {
+				conn, err = grpc.DialContext(ctx, u.Host, grpc.WithInsecure(), grpc.WithBlock())
+			} else if u.Scheme == "https" {
+				conn, err = grpc.DialContext(ctx, u.Host, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+					InsecureSkipVerify: true,
+				})), grpc.WithBlock())
+			}
+			if err != nil {
+				return
+			}
+			_ = conn.Close()
+
+			ok = true
+		}(endpoint)
+	}
+	wg.Wait()
+
+	return ok
 }
