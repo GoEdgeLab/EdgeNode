@@ -54,7 +54,12 @@ func (this *FileList) Init() error {
 
 	this.itemsTableName = "cacheItems_v2"
 
-	db, err := sql.Open("sqlite3", "file:"+this.dir+"/index.db?cache=shared&mode=rwc&_journal_mode=WAL")
+	var dir = this.dir
+	if dir == "/" {
+		// 防止sqlite提示authority错误
+		dir = ""
+	}
+	db, err := sql.Open("sqlite3", "file:"+dir+"/index.db?cache=shared&mode=rwc&_journal_mode=WAL")
 	if err != nil {
 		return err
 	}
