@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -21,14 +20,14 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/maps"
+	"github.com/iwind/gosock/pkg/gosock"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"runtime"
-	"syscall"
 	"time"
 )
 
@@ -40,6 +39,7 @@ var DaemonPid = 0
 // Node 节点
 type Node struct {
 	isLoaded bool
+	sock     *gosock.Sock
 }
 
 func NewNode() *Node {
@@ -72,9 +72,6 @@ func (this *Node) Start() {
 
 	// 启动事件
 	events.Notify(events.EventStart)
-
-	// 处理信号
-	this.listenSignals()
 
 	// 本地Sock
 	err := this.listenSock()
@@ -152,13 +149,6 @@ func (this *Node) Start() {
 		return
 	}
 
-	// 写入PID
-	err = apps.WritePid()
-	if err != nil {
-		remotelogs.Error("NODE", "write pid failed: "+err.Error())
-		return
-	}
-
 	// hold住进程
 	select {}
 }
@@ -227,32 +217,6 @@ func (this *Node) InstallSystemService() error {
 		return err
 	}
 	return nil
-}
-
-// 处理信号
-func (this *Node) listenSignals() {
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGQUIT)
-	go func() {
-		for s := range signals {
-			switch s {
-			case syscall.SIGQUIT:
-				events.Notify(events.EventQuit)
-
-				// 监控连接数，如果连接数为0，则退出进程
-				go func() {
-					for {
-						countActiveConnections := sharedListenerManager.TotalActiveConnections()
-						if countActiveConnections <= 0 {
-							os.Exit(0)
-							return
-						}
-						time.Sleep(1 * time.Second)
-					}
-				}()
-			}
-		}
-	}()
 }
 
 // 循环
@@ -493,37 +457,65 @@ func (this *Node) checkClusterConfig() error {
 
 // 监听本地sock
 func (this *Node) listenSock() error {
-	path := os.TempDir() + "/edge-node.sock"
+	this.sock = gosock.NewTmpSock(teaconst.ProcessName)
 
-	// 检查是否已经存在
-	_, err := os.Stat(path)
-	if err == nil {
-		conn, err := net.Dial("unix", path)
-		if err != nil {
-			_ = os.Remove(path)
+	// 检查是否在运行
+	if this.sock.IsListening() {
+		reply, err := this.sock.Send(&gosock.Command{Code: "pid"})
+		if err == nil {
+			return errors.New("error: the process is already running, pid: " + maps.NewMap(reply.Params).GetString("pid"))
 		} else {
-			_ = conn.Close()
+			return errors.New("error: the process is already running")
 		}
 	}
 
-	// 新的监听任务
-	listener, err := net.Listen("unix", path)
-	if err != nil {
-		return err
-	}
-	events.On(events.EventQuit, func() {
-		remotelogs.Println("NODE", "quit unix sock")
-		_ = listener.Close()
-	})
-
+	// 启动监听
 	go func() {
-		for {
-			_, err := listener.Accept()
-			if err != nil {
-				return
+		this.sock.OnCommand(func(cmd *gosock.Command) {
+			switch cmd.Code {
+			case "pid":
+				_ = cmd.Reply(&gosock.Command{
+					Code: "pid",
+					Params: map[string]interface{}{
+						"pid": os.Getpid(),
+					},
+				})
+			case "stop":
+				_ = cmd.ReplyOk()
+
+				// 退出主进程
+				events.Notify(events.EventQuit)
+				os.Exit(0)
+			case "quit":
+				_ = cmd.ReplyOk()
+				_ = this.sock.Close()
+
+				events.Notify(events.EventQuit)
+
+				// 监控连接数，如果连接数为0，则退出进程
+				go func() {
+					for {
+						countActiveConnections := sharedListenerManager.TotalActiveConnections()
+						if countActiveConnections <= 0 {
+							os.Exit(0)
+							return
+						}
+						time.Sleep(1 * time.Second)
+					}
+				}()
 			}
+		})
+
+		err := this.sock.Listen()
+		if err != nil {
+			logs.Println("NODE", err.Error())
 		}
 	}()
+
+	events.On(events.EventQuit, func() {
+		logs.Println("NODE", "quit unix sock")
+		_ = this.sock.Close()
+	})
 
 	return nil
 }

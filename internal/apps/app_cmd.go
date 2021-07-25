@@ -2,8 +2,11 @@ package apps
 
 import (
 	"fmt"
-	"github.com/iwind/TeaGo/Tea"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/maps"
+	"github.com/iwind/TeaGo/types"
+	"github.com/iwind/gosock/pkg/gosock"
 	"os"
 	"os/exec"
 	"runtime"
@@ -11,7 +14,7 @@ import (
 	"time"
 )
 
-// App命令帮助
+// AppCmd App命令帮助
 type AppCmd struct {
 	product       string
 	version       string
@@ -20,10 +23,14 @@ type AppCmd struct {
 	appendStrings []string
 
 	directives []*Directive
+
+	sock *gosock.Sock
 }
 
 func NewAppCmd() *AppCmd {
-	return &AppCmd{}
+	return &AppCmd{
+		sock: gosock.NewTmpSock(teaconst.ProcessName),
+	}
 }
 
 type CommandHelpOption struct {
@@ -31,25 +38,25 @@ type CommandHelpOption struct {
 	Description string
 }
 
-// 产品
+// Product 产品
 func (this *AppCmd) Product(product string) *AppCmd {
 	this.product = product
 	return this
 }
 
-// 版本
+// Version 版本
 func (this *AppCmd) Version(version string) *AppCmd {
 	this.version = version
 	return this
 }
 
-// 使用方法
+// Usage 使用方法
 func (this *AppCmd) Usage(usage string) *AppCmd {
 	this.usage = usage
 	return this
 }
 
-// 选项
+// Option 选项
 func (this *AppCmd) Option(code string, description string) *AppCmd {
 	this.options = append(this.options, &CommandHelpOption{
 		Code:        code,
@@ -58,13 +65,13 @@ func (this *AppCmd) Option(code string, description string) *AppCmd {
 	return this
 }
 
-// 附加内容
+// Append 附加内容
 func (this *AppCmd) Append(appendString string) *AppCmd {
 	this.appendStrings = append(this.appendStrings, appendString)
 	return this
 }
 
-// 打印
+// Print 打印
 func (this *AppCmd) Print() {
 	fmt.Println(this.product + " v" + this.version)
 
@@ -103,7 +110,7 @@ func (this *AppCmd) Print() {
 	}
 }
 
-// 添加指令
+// On 添加指令
 func (this *AppCmd) On(arg string, callback func()) {
 	this.directives = append(this.directives, &Directive{
 		Arg:      arg,
@@ -111,7 +118,7 @@ func (this *AppCmd) On(arg string, callback func()) {
 	})
 }
 
-// 运行
+// Run 运行
 func (this *AppCmd) Run(main func()) {
 	// 获取参数
 	args := os.Args[1:]
@@ -161,7 +168,7 @@ func (this *AppCmd) Run(main func()) {
 
 // 版本号
 func (this *AppCmd) runVersion() {
-	fmt.Println(this.product+" v"+this.version, "(build: "+runtime.Version(), runtime.GOOS, runtime.GOARCH+")")
+	fmt.Println(this.product+" v"+this.version, "(build: "+runtime.Version(), runtime.GOOS, runtime.GOARCH, teaconst.Tag+")")
 }
 
 // 帮助
@@ -171,9 +178,9 @@ func (this *AppCmd) runHelp() {
 
 // 启动
 func (this *AppCmd) runStart() {
-	proc := this.checkPid()
-	if proc != nil {
-		fmt.Println(this.product+" already started, pid:", proc.Pid)
+	var pid = this.getPID()
+	if pid > 0 {
+		fmt.Println(this.product+" already started, pid:", pid)
 		return
 	}
 
@@ -189,18 +196,15 @@ func (this *AppCmd) runStart() {
 
 // 停止
 func (this *AppCmd) runStop() {
-	proc := this.checkPid()
-	if proc == nil {
+	var pid = this.getPID()
+	if pid == 0 {
 		fmt.Println(this.product + " not started yet")
 		return
 	}
 
-	// 停止进程
-	_ = proc.Kill()
+	_, _ = this.sock.Send(&gosock.Command{Code: "stop"})
 
-	// 在Windows上经常不能及时释放资源
-	_ = DeletePid(Tea.Root + "/bin/pid")
-	fmt.Println(this.product+" stopped ok, pid:", proc.Pid)
+	fmt.Println(this.product+" stopped ok, pid:", types.String(pid))
 }
 
 // 重启
@@ -212,15 +216,24 @@ func (this *AppCmd) runRestart() {
 
 // 状态
 func (this *AppCmd) runStatus() {
-	proc := this.checkPid()
-	if proc == nil {
+	var pid = this.getPID()
+	if pid == 0 {
 		fmt.Println(this.product + " not started yet")
-	} else {
-		fmt.Println(this.product + " is running, pid: " + fmt.Sprintf("%d", proc.Pid))
+		return
 	}
+
+	fmt.Println(this.product + " is running, pid: " + types.String(pid))
 }
 
-// 检查PID
-func (this *AppCmd) checkPid() *os.Process {
-	return CheckPid(Tea.Root + "/bin/pid")
+// 获取当前的PID
+func (this *AppCmd) getPID() int {
+	if !this.sock.IsListening() {
+		return 0
+	}
+
+	reply, err := this.sock.Send(&gosock.Command{Code: "pid"})
+	if err != nil {
+		return 0
+	}
+	return maps.NewMap(reply.Params).GetInt("pid")
 }

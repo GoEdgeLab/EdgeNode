@@ -14,6 +14,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/iwind/TeaGo v0.0.0-20210628135026-38575a4ab060
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
+	github.com/iwind/gosock v0.0.0-20210722083328-12b2d66abec3
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mssola/user_agent v0.5.2
