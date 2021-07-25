@@ -24,7 +24,6 @@ import (
 	"github.com/iwind/gosock/pkg/gosock"
 	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -43,7 +42,9 @@ type Node struct {
 }
 
 func NewNode() *Node {
-	return &Node{}
+	return &Node{
+		sock: gosock.NewTmpSock(teaconst.ProcessName),
+	}
 }
 
 // Test 检查配置
@@ -155,11 +156,10 @@ func (this *Node) Start() {
 
 // Daemon 实现守护进程
 func (this *Node) Daemon() {
-	path := os.TempDir() + "/edge-node.sock"
 	isDebug := lists.ContainsString(os.Args, "debug")
 	isDebug = true
 	for {
-		conn, err := net.DialTimeout("unix", path, 1*time.Second)
+		conn, err := this.sock.Dial()
 		if err != nil {
 			if isDebug {
 				log.Println("[DAEMON]starting ...")
@@ -457,8 +457,6 @@ func (this *Node) checkClusterConfig() error {
 
 // 监听本地sock
 func (this *Node) listenSock() error {
-	this.sock = gosock.NewTmpSock(teaconst.ProcessName)
-
 	// 检查是否在运行
 	if this.sock.IsListening() {
 		reply, err := this.sock.Send(&gosock.Command{Code: "pid"})
