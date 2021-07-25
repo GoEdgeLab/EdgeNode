@@ -7,6 +7,7 @@ function build() {
 	DIST=$ROOT/"../dist/${NAME}"
 	OS=${1}
 	ARCH=${2}
+	TAG=${3}
 
 	if [ -z $OS ]; then
 		echo "usage: build.sh OS ARCH"
@@ -16,6 +17,9 @@ function build() {
 		echo "usage: build.sh OS ARCH"
 		exit
 	fi
+	if [ -z $TAG ]; then
+		TAG="community"
+	fi
 
 	echo "checking ..."
 	ZIP_PATH=$(which zip)
@@ -24,8 +28,8 @@ function build() {
 		exit
 	fi
 
-	echo "building v${VERSION}/${OS}/${ARCH} ..."
-	ZIP="${NAME}-${OS}-${ARCH}-v${VERSION}.zip"
+	echo "building v${VERSION}/${OS}/${ARCH}/${TAG} ..."
+	ZIP="${NAME}-${OS}-${ARCH}-${TAG}-v${VERSION}.zip"
 
 	echo "copying ..."
 	if [ ! -d $DIST ]; then
@@ -80,9 +84,9 @@ function build() {
 		fi
 	fi
 	if [ ! -z $CC_PATH ]; then
-		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -o $DIST/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" $ROOT/../cmd/edge-node/main.go
+		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -tags $TAG -o $DIST/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" $ROOT/../cmd/edge-node/main.go
 	else
-		env GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
+		env GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -tags $TAG -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
 	fi
 
 	# delete hidden files
@@ -114,4 +118,4 @@ function lookup-version() {
 	fi
 }
 
-build $1 $2
+build $1 $2 $3
