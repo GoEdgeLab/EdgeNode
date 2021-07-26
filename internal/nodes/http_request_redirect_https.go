@@ -7,8 +7,13 @@ import (
 	"strings"
 )
 
-func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.HTTPRedirectToHTTPSConfig) {
+func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.HTTPRedirectToHTTPSConfig) (shouldBreak bool) {
 	host := this.RawReq.Host
+
+	// 检查域名是否匹配
+	if !redirectToHTTPSConfig.MatchDomain(host) {
+		return false
+	}
 
 	if len(redirectToHTTPSConfig.Host) > 0 {
 		if redirectToHTTPSConfig.Port > 0 && redirectToHTTPSConfig.Port != 443 {
@@ -38,4 +43,6 @@ func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.
 
 	newURL := "https://" + host + this.RawReq.RequestURI
 	http.Redirect(this.writer, this.RawReq, newURL, statusCode)
+
+	return true
 }

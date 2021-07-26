@@ -144,9 +144,10 @@ func (this *HTTPRequest) Do() {
 
 	// 自动跳转到HTTPS
 	if this.IsHTTP && this.web.RedirectToHttps != nil && this.web.RedirectToHttps.IsOn {
-		this.doRedirectToHTTPS(this.web.RedirectToHttps)
-		this.doEnd()
-		return
+		if this.doRedirectToHTTPS(this.web.RedirectToHttps) {
+			this.doEnd()
+			return
+		}
 	}
 
 	// Gzip
