@@ -65,7 +65,9 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 	http.Redirect(writer, request.WAFRaw(), Get302Path+"?info="+url.QueryEscape(info), http.StatusFound)
 
 	// 关闭连接
-	_ = this.CloseConn(writer)
+	if request.WAFRaw().ProtoMajor == 1 {
+		_ = this.CloseConn(writer)
+	}
 
 	return true
 }

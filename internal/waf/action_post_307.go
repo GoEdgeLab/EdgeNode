@@ -81,8 +81,9 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 
 	http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusTemporaryRedirect)
 
-	// 关闭连接
-	_ = this.CloseConn(writer)
+	if request.WAFRaw().ProtoMajor == 1 {
+		_ = this.CloseConn(writer)
+	}
 
 	return true
 }
