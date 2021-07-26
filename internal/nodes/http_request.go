@@ -570,6 +570,12 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.Host
 		case "referer":
 			return this.RawReq.Referer()
+		case "referer.host":
+			u, err := url.Parse(this.RawReq.Referer())
+			if err == nil {
+				return u.Host
+			}
+			return ""
 		case "userAgent":
 			return this.RawReq.UserAgent()
 		case "contentType":
