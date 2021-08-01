@@ -342,7 +342,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		return
 	}
 
-	cachePolicy := sharedNodeConfig.HTTPCachePolicy
+	cachePolicy := this.req.Server.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
 	}

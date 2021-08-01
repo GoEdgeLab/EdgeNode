@@ -28,8 +28,8 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	}
 
 	// 公用的防火墙设置
-	if sharedNodeConfig.HTTPFirewallPolicy != nil {
-		blocked, breakChecking := this.checkWAFRequest(sharedNodeConfig.HTTPFirewallPolicy)
+	if this.Server.HTTPFirewallPolicy != nil && this.Server.HTTPFirewallPolicy.IsOn {
+		blocked, breakChecking := this.checkWAFRequest(this.Server.HTTPFirewallPolicy)
 		if blocked {
 			return true
 		}
@@ -201,8 +201,8 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 	}
 
 	// 公用的防火墙设置
-	if sharedNodeConfig.HTTPFirewallPolicy != nil {
-		blocked := this.checkWAFResponse(sharedNodeConfig.HTTPFirewallPolicy, resp)
+	if this.Server.HTTPFirewallPolicy != nil && this.Server.HTTPFirewallPolicy.IsOn {
+		blocked := this.checkWAFResponse(this.Server.HTTPFirewallPolicy, resp)
 		if blocked {
 			return true
 		}

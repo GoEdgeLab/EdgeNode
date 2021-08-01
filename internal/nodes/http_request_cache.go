@@ -12,7 +12,7 @@ import (
 
 // 读取缓存
 func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
-	cachePolicy := sharedNodeConfig.HTTPCachePolicy
+	cachePolicy := this.Server.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
 	}
