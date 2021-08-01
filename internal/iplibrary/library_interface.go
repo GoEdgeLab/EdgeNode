@@ -1,12 +1,13 @@
 package iplibrary
 
 type LibraryInterface interface {
-	// 加载数据库文件
+	// Load 加载数据库文件
 	Load(dbPath string) error
 
-	// 查询IP
+	// Lookup 查询IP
+	// 返回结果有可能为空
 	Lookup(ip string) (*Result, error)
 
-	// 关闭数据库文件
+	// Close 关闭数据库文件
 	Close()
 }

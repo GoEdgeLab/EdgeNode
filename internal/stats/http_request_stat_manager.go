@@ -165,7 +165,7 @@ Loop:
 			ip := ipString[atIndex+1:]
 			if iplibrary.SharedLibrary != nil {
 				result, err := iplibrary.SharedLibrary.Lookup(ip)
-				if err == nil {
+				if err == nil && result != nil {
 					this.cityMap[serverId+"@"+result.Country+"@"+result.Province+"@"+result.City]  ++
 
 					if len(result.ISP) > 0 {
