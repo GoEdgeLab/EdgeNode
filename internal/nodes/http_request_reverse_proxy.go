@@ -160,6 +160,9 @@ func (this *HTTPRequest) doReverseProxy() {
 		httpErr, ok := err.(*url.Error)
 		if !ok || httpErr.Err != context.Canceled {
 			// TODO 如果超过最大失败次数，则下线
+			SharedOriginStateManager.Fail(origin, this.reverseProxy, func() {
+				this.reverseProxy.ResetScheduling()
+			})
 
 			this.write502(err)
 			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
@@ -182,6 +185,11 @@ func (this *HTTPRequest) doReverseProxy() {
 			_ = resp.Body.Close()
 		}
 		return
+	}
+	if !origin.IsOk {
+		SharedOriginStateManager.Success(origin, func() {
+			this.reverseProxy.ResetScheduling()
+		})
 	}
 
 	// WAF对出站进行检查
