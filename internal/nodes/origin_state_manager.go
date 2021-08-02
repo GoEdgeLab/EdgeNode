@@ -151,11 +151,13 @@ func (this *OriginStateManager) Success(origin *serverconfigs.OriginConfig, call
 	if origin == nil {
 		return
 	}
+
 	if !origin.IsOk {
 		if callback != nil {
-			callback()
+			defer callback()
 		}
 	}
+
 	origin.IsOk = true
 	this.locker.Lock()
 	delete(this.stateMap, origin.Id)
