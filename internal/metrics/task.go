@@ -131,7 +131,7 @@ ON "` + this.statTableName + `" (
 	}
 
 	// select topN stmt
-	this.selectTopStmt, err = db.Prepare(`SELECT "id", "hash", "keys", "value", "isUploaded" FROM "` + this.statTableName + `" WHERE "serverId"=? AND "version"=? AND time=? ORDER BY "value" DESC LIMIT 100`)
+	this.selectTopStmt, err = db.Prepare(`SELECT "id", "hash", "keys", "value", "isUploaded" FROM "` + this.statTableName + `" WHERE "serverId"=? AND "version"=? AND time=? ORDER BY "value" DESC LIMIT 20`)
 	if err != nil {
 		return err
 	}
@@ -354,8 +354,7 @@ func (this *Task) Upload(pauseDuration time.Duration) error {
 
 				var pbStats []*pb.UploadingMetricStat
 				for rows.Next() {
-					var pbStat = &pb.UploadingMetricStat{
-					}
+					var pbStat = &pb.UploadingMetricStat{}
 					// "id", "hash", "keys", "value", "isUploaded"
 					var isUploaded int
 					var keysData []byte
@@ -363,9 +362,11 @@ func (this *Task) Upload(pauseDuration time.Duration) error {
 					if err != nil {
 						return nil, err
 					}
-					if isUploaded == 1 {
+
+					// TODO 先不判断是否已经上传，需要改造API进行配合
+					/**if isUploaded == 1 {
 						continue
-					}
+					}**/
 					if len(keysData) > 0 {
 						err = json.Unmarshal(keysData, &pbStat.Keys)
 						if err != nil {
