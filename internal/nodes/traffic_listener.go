@@ -25,7 +25,7 @@ func (this *TrafficListener) Accept() (net.Conn, error) {
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err == nil {
 		if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, ip) && waf.SharedIPBlackLIst.Contains(waf.IPTypeAll, ip) {
-			go func() {
+			defer func() {
 				_ = conn.Close()
 			}()
 			return conn, nil
