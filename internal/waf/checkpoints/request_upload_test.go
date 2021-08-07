@@ -17,46 +17,67 @@ func TestRequestUploadCheckpoint_RequestValue(t *testing.T) {
 	{
 		part, err := writer.CreateFormField("name")
 		if err == nil {
-			part.Write([]byte("lu"))
+			_, err := part.Write([]byte("lu"))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
 	{
 		part, err := writer.CreateFormField("age")
 		if err == nil {
-			part.Write([]byte("20"))
+			_, err = part.Write([]byte("20"))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
 	{
 		part, err := writer.CreateFormFile("myFile", "hello.txt")
 		if err == nil {
-			part.Write([]byte("Hello, World!"))
+			_, err = part.Write([]byte("Hello, World!"))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
 	{
 		part, err := writer.CreateFormFile("myFile2", "hello.PHP")
 		if err == nil {
-			part.Write([]byte("Hello, World, PHP!"))
+			_, err = part.Write([]byte("Hello, World, PHP!"))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
 	{
 		part, err := writer.CreateFormFile("myFile3", "hello.asp")
 		if err == nil {
-			part.Write([]byte("Hello, World, ASP Pages!"))
+			_, err = part.Write([]byte("Hello, World, ASP Pages!"))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
 	{
 		part, err := writer.CreateFormFile("myFile4", "hello.asp")
 		if err == nil {
-			part.Write([]byte("Hello, World, ASP Pages!"))
+			_, err = part.Write([]byte("Hello, World, ASP Pages!"))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
-	writer.Close()
+	err := writer.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	rawReq, err := http.NewRequest(http.MethodPost, "http://teaos.cn/", body)
 	if err != nil {

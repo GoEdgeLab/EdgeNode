@@ -49,6 +49,9 @@ func TestFileReader(t *testing.T) {
 		t.Log("body:", string(buf[:n]))
 		return true, nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestFileReader_Range(t *testing.T) {
