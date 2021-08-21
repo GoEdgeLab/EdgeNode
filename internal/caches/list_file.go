@@ -5,6 +5,7 @@ package caches
 import (
 	"database/sql"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
 	_ "github.com/mattn/go-sqlite3"
@@ -35,10 +36,15 @@ type FileList struct {
 	itemsTableName string
 
 	isClosed bool
+
+	memoryCache *ttlcache.Cache
 }
 
 func NewFileList(dir string) ListInterface {
-	return &FileList{dir: dir}
+	return &FileList{
+		dir:         dir,
+		memoryCache: ttlcache.NewCache(),
+	}
 }
 
 func (this *FileList) Init() error {
@@ -100,7 +106,7 @@ func (this *FileList) Init() error {
 	this.total = total
 
 	// 常用语句
-	this.existsByHashStmt, err = this.db.Prepare(`SELECT "bodySize" FROM "` + this.itemsTableName + `" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
+	this.existsByHashStmt, err = this.db.Prepare(`SELECT "expiredAt" FROM "` + this.itemsTableName + `" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
 	if err != nil {
 		return err
 	}
@@ -166,6 +172,11 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		return false, nil
 	}
 
+	item := this.memoryCache.Read(hash)
+	if item != nil {
+		return true, nil
+	}
+
 	rows, err := this.existsByHashStmt.Query(hash, time.Now().Unix())
 	if err != nil {
 		return false, err
@@ -174,6 +185,12 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		_ = rows.Close()
 	}()
 	if rows.Next() {
+		var expiredAt int64
+		err = rows.Scan(&expiredAt)
+		if err != nil {
+			return true, nil
+		}
+		this.memoryCache.Write(hash, 1, expiredAt)
 		return true, nil
 	}
 	return false, nil
@@ -209,6 +226,9 @@ func (this *FileList) Remove(hash string) error {
 	if this.isClosed {
 		return nil
 	}
+
+	// 从缓存中删除
+	this.memoryCache.Delete(hash)
 
 	row := this.selectByHashStmt.QueryRow(hash)
 	if row.Err() != nil {
@@ -287,6 +307,8 @@ func (this *FileList) CleanAll() error {
 	if this.isClosed {
 		return nil
 	}
+
+	this.memoryCache.Clean()
 
 	_, err := this.deleteAllStmt.Exec()
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// TTL缓存
+// Cache TTL缓存
 // 最大的缓存时间为30 * 86400
 // Piece数据结构：
 //      Piece1          |  Piece2 | Piece3 | ...
@@ -134,6 +134,12 @@ func (this *Cache) GC() {
 		newIndex = 0
 	}
 	this.gcPieceIndex = newIndex
+}
+
+func (this *Cache) Clean() {
+	for _, piece := range this.pieces {
+		piece.Clean()
+	}
 }
 
 func (this *Cache) Destroy() {

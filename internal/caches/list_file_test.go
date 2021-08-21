@@ -50,7 +50,7 @@ func TestFileList_Add_Many(t *testing.T) {
 	}
 	before := time.Now()
 	for i := 0; i < 2000_0000; i++ {
-		u := "http://edge.teaos.cn/123456" + strconv.Itoa(i)
+		u := "https://edge.teaos.cn/123456" + strconv.Itoa(i)
 		_ = list.Add(stringutil.Md5(u), &Item{
 			Key:        u,
 			ExpiredAt:  time.Now().Unix() + 3600,

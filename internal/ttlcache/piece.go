@@ -17,7 +17,7 @@ func NewPiece(maxItems int) *Piece {
 	return &Piece{m: map[uint64]*Item{}, maxItems: maxItems}
 }
 
-func (this *Piece) Add(key uint64, item *Item) () {
+func (this *Piece) Add(key uint64, item *Item) {
 	this.locker.Lock()
 	if len(this.m) >= this.maxItems {
 		this.locker.Unlock()
@@ -79,6 +79,12 @@ func (this *Piece) GC() {
 			delete(this.m, k)
 		}
 	}
+	this.locker.Unlock()
+}
+
+func (this *Piece) Clean() {
+	this.locker.Lock()
+	this.m = map[uint64]*Item{}
 	this.locker.Unlock()
 }
 
