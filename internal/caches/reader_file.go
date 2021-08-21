@@ -34,13 +34,7 @@ func (this *FileReader) Init() error {
 		}
 	}()
 
-	// 读取状态
-	_, err := this.fp.Seek(SizeExpiresAt, io.SeekStart)
-	if err != nil {
-		_ = this.discard()
-		return err
-	}
-	buf := make([]byte, 3)
+	var buf = make([]byte, SizeMeta)
 	ok, err := this.readToBuff(this.fp, buf)
 	if err != nil {
 		return err
@@ -48,37 +42,18 @@ func (this *FileReader) Init() error {
 	if !ok {
 		return ErrNotFound
 	}
-	status := types.Int(string(buf))
+
+	status := types.Int(string(buf[SizeExpiresAt : SizeExpiresAt+SizeStatus]))
 	if status < 100 || status > 999 {
 		return errors.New("invalid status")
 	}
 	this.status = status
 
 	// URL
-	_, err = this.fp.Seek(SizeExpiresAt+SizeStatus, io.SeekStart)
-	if err != nil {
-		return err
-	}
-
-	bytes4 := make([]byte, 4)
-	ok, err = this.readToBuff(this.fp, bytes4)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return ErrNotFound
-	}
-	urlLength := binary.BigEndian.Uint32(bytes4)
+	urlLength := binary.BigEndian.Uint32(buf[SizeExpiresAt+SizeStatus : SizeExpiresAt+SizeStatus+SizeURLLength])
 
 	// header
-	ok, err = this.readToBuff(this.fp, bytes4)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return ErrNotFound
-	}
-	headerSize := int(binary.BigEndian.Uint32(bytes4))
+	headerSize := int(binary.BigEndian.Uint32(buf[SizeExpiresAt+SizeStatus+SizeURLLength : SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength]))
 	if headerSize == 0 {
 		return nil
 	}
@@ -86,15 +61,7 @@ func (this *FileReader) Init() error {
 	this.headerOffset = int64(SizeMeta) + int64(urlLength)
 
 	// body
-	bytes8 := make([]byte, 8)
-	ok, err = this.readToBuff(this.fp, bytes8)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return ErrNotFound
-	}
-	bodySize := int(binary.BigEndian.Uint64(bytes8))
+	bodySize := int(binary.BigEndian.Uint64(buf[SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength : SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength+SizeBodyLength]))
 	if bodySize == 0 {
 		return nil
 	}
