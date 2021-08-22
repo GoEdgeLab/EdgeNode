@@ -3,6 +3,7 @@
 package metrics
 
 import (
+	"encoding/json"
 	"github.com/cespare/xxhash"
 	"strconv"
 )
@@ -13,10 +14,9 @@ type Stat struct {
 	Hash     string
 	Value    int64
 	Time     string
-
-	keysData []byte
 }
 
-func (this *Stat) Sum(version int32, itemId int64) {
-	this.Hash = strconv.FormatUint(xxhash.Sum64String(strconv.FormatInt(this.ServerId, 10)+"@"+string(this.keysData)+"@"+this.Time+"@"+strconv.Itoa(int(version))+"@"+strconv.FormatInt(itemId, 10)), 10)
+func SumStat(serverId int64, keys []string, time string, version int32, itemId int64) string {
+	keysData, _ := json.Marshal(keys)
+	return strconv.FormatUint(xxhash.Sum64String(strconv.FormatInt(serverId, 10)+"@"+string(keysData)+"@"+time+"@"+strconv.Itoa(int(version))+"@"+strconv.FormatInt(itemId, 10)), 10)
 }
