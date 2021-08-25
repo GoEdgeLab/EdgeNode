@@ -12,6 +12,10 @@ func (this *HTTPRequest) doACME() {
 	// TODO 对请求进行校验，防止恶意攻击
 
 	token := filepath.Base(this.RawReq.URL.Path)
+	if token == "acme-challenge" || len(token) <= 32 {
+		this.writer.WriteHeader(http.StatusNotFound)
+		return
+	}
 
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
