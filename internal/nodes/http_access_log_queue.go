@@ -9,14 +9,14 @@ import (
 
 var sharedHTTPAccessLogQueue = NewHTTPAccessLogQueue()
 
-// HTTP访问日志队列
+// HTTPAccessLogQueue HTTP访问日志队列
 type HTTPAccessLogQueue struct {
 	queue chan *pb.HTTPAccessLog
 }
 
-// 获取新对象
+// NewHTTPAccessLogQueue 获取新对象
 func NewHTTPAccessLogQueue() *HTTPAccessLogQueue {
-	// 队列中最大的值，超出此数量的访问日志会被抛弃
+	// 队列中最大的值，超出此数量的访问日志会被丢弃
 	// TODO 需要可以在界面中设置
 	maxSize := 10000
 	queue := &HTTPAccessLogQueue{
@@ -27,7 +27,7 @@ func NewHTTPAccessLogQueue() *HTTPAccessLogQueue {
 	return queue
 }
 
-// 开始处理访问日志
+// Start 开始处理访问日志
 func (this *HTTPAccessLogQueue) Start() {
 	ticker := time.NewTicker(1 * time.Second)
 	for range ticker.C {
@@ -38,7 +38,7 @@ func (this *HTTPAccessLogQueue) Start() {
 	}
 }
 
-// 加入新访问日志
+// Push 加入新访问日志
 func (this *HTTPAccessLogQueue) Push(accessLog *pb.HTTPAccessLog) {
 	select {
 	case this.queue <- accessLog:
