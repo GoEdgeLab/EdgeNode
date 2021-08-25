@@ -167,6 +167,16 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
+	// 特殊URL处理
+	if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
+		// ACME
+		// TODO 需要配置是否启用ACME检测
+		if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
+			this.doACME()
+			return
+		}
+	}
+
 	// 统计
 	if this.web.StatRef != nil && this.web.StatRef.IsOn {
 		this.doStat()
@@ -175,16 +185,6 @@ func (this *HTTPRequest) doBegin() {
 	// 跳转
 	if len(this.web.HostRedirects) > 0 {
 		if this.doHostRedirect() {
-			return
-		}
-	}
-
-	// 特殊URL处理
-	if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
-		// ACME
-		// TODO 需要配置是否启用ACME检测
-		if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
-			this.doACME()
 			return
 		}
 	}
