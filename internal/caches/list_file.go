@@ -206,6 +206,10 @@ func (this *FileList) CleanPrefix(prefix string) error {
 		return nil
 	}
 
+	defer func() {
+		this.memoryCache.Clean()
+	}()
+
 	var count = int64(10000)
 	for {
 		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0 WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+strconv.FormatInt(count, 10)+`)`, utils.UnixTime(), prefix)

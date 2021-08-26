@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/messageconfigs"
@@ -16,6 +17,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/logs"
 	"io"
+	"net"
 	"net/http"
 	"os/exec"
 	"strconv"
@@ -367,7 +369,28 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(msg.Keys))
-	client := http.Client{} // TODO 可以设置请求超时事件
+	client := &http.Client{
+		Timeout: 30 * time.Second, // TODO 可以设置请求超时时间
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				_, port, err := net.SplitHostPort(addr)
+				if err != nil {
+					return nil, err
+				}
+				return net.Dial(network, "127.0.0.1:"+port)
+			},
+			MaxIdleConns:          4096,
+			MaxIdleConnsPerHost:   32,
+			MaxConnsPerHost:       32,
+			IdleConnTimeout:       2 * time.Minute,
+			ExpectContinueTimeout: 1 * time.Second,
+			TLSHandshakeTimeout:   0,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+	defer client.CloseIdleConnections()
 	errorMessages := []string{}
 	locker := sync.Mutex{}
 	for _, key := range msg.Keys {
@@ -381,7 +404,9 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 				locker.Unlock()
 				return
 			}
+
 			// TODO 可以在管理界面自定义Header
+			req.Header.Set("X-Cache-Action", "preheat")
 			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
 			req.Header.Set("Accept-Encoding", "gzip, deflate, br") // TODO 这里需要记录下缓存是否为gzip的
 			resp, err := client.Do(req)

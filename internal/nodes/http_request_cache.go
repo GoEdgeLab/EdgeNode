@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,12 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	if this.web.Cache == nil || !this.web.Cache.IsOn || (len(cachePolicy.CacheRefs) == 0 && len(this.web.Cache.CacheRefs) == 0) {
 		return
 	}
+
+	// 判断是否在预热
+	if strings.HasPrefix(this.RawReq.RemoteAddr, "127.") && this.RawReq.Header.Get("X-Cache-Action") == "preheat" {
+		return
+	}
+
 	var addStatusHeader = this.web.Cache.AddStatusHeader
 	if addStatusHeader {
 		defer func() {
