@@ -360,6 +360,8 @@ func (this *FileList) OnRemove(f func(item *Item)) {
 func (this *FileList) Close() error {
 	this.isClosed = true
 
+	this.memoryCache.Destroy()
+
 	if this.db != nil {
 		_ = this.existsByHashStmt.Close()
 		_ = this.insertStmt.Close()
