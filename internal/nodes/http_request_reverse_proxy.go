@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -36,7 +37,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if origin == nil {
 		err := errors.New(this.requestPath() + ": no available backends for reverse proxy")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
-		this.write502(err)
+		this.write50x(err, http.StatusBadGateway)
 		return
 	}
 	this.origin = origin // 设置全局变量是为了日志等处理
@@ -56,7 +57,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if origin.Addr == nil {
 		err := errors.New(this.requestPath() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
-		this.write502(err)
+		this.write50x(err, http.StatusBadGateway)
 		return
 	}
 	this.RawReq.URL.Scheme = origin.Addr.Protocol.Primary().Scheme()
@@ -143,7 +144,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	client, err := SharedHTTPClientPool.Client(this.RawReq, origin, originAddr)
 	if err != nil {
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
-		this.write502(err)
+		this.write50x(err, http.StatusBadGateway)
 		return
 	}
 
@@ -158,13 +159,23 @@ func (this *HTTPRequest) doReverseProxy() {
 	if err != nil {
 		// 客户端取消请求，则不提示
 		httpErr, ok := err.(*url.Error)
-		if !ok || httpErr.Err != context.Canceled {
-			// TODO 如果超过最大失败次数，则下线
+		if !ok {
 			SharedOriginStateManager.Fail(origin, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
 			})
-
-			this.write502(err)
+			this.write50x(err, http.StatusBadGateway)
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
+		} else if httpErr.Err != context.Canceled {
+			SharedOriginStateManager.Fail(origin, this.reverseProxy, func() {
+				this.reverseProxy.ResetScheduling()
+			})
+			if httpErr.Timeout() {
+				this.write50x(err, http.StatusGatewayTimeout)
+			} else if httpErr.Temporary() {
+				this.write50x(err, http.StatusServiceUnavailable)
+			} else {
+				this.write50x(err, http.StatusBadGateway)
+			}
 			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
 		} else {
 			// 是否为客户端方面的错误
@@ -178,7 +189,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			}
 
 			if !isClientError {
-				this.write502(err)
+				this.write50x(err, http.StatusBadGateway)
 			}
 		}
 		if resp != nil && resp.Body != nil {

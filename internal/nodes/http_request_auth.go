@@ -33,7 +33,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 			return writer.StatusCode(), nil
 		}, this.Format)
 		if err != nil {
-			this.write502(err)
+			this.write50x(err, http.StatusInternalServerError)
 			return
 		}
 		if b {

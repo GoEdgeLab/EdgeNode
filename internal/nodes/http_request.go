@@ -121,7 +121,7 @@ func (this *HTTPRequest) Do() {
 	// Web配置
 	err := this.configureWeb(this.Server.Web, true, 0)
 	if err != nil {
-		this.write500(err)
+		this.write50x(err, http.StatusInternalServerError)
 		this.doEnd()
 		return
 	}

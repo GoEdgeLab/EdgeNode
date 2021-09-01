@@ -15,6 +15,7 @@ import (
 	"github.com/iwind/gofcgi/pkg/fcgi"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -80,7 +81,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 
 	client, err := fcgi.SharedPool(fastcgi.Network(), fastcgi.RealAddress(), uint(poolSize)).Client()
 	if err != nil {
-		this.write500(err)
+		this.write50x(err, http.StatusInternalServerError)
 		return
 	}
 
@@ -158,13 +159,13 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 
 	resp, stderr, err := client.Call(fcgiReq)
 	if err != nil {
-		this.write500(err)
+		this.write50x(err, http.StatusInternalServerError)
 		return
 	}
 
 	if len(stderr) > 0 {
 		err := errors.New("Fastcgi Error: " + strings.TrimSpace(string(stderr)) + " script: " + maps.NewMap(params).GetString("SCRIPT_FILENAME"))
-		this.write500(err)
+		this.write50x(err, http.StatusInternalServerError)
 		return
 	}
 

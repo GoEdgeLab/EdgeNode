@@ -36,7 +36,7 @@ func (this *HTTPRequest) doURL(method string, url string, host string, statusCod
 	resp, err := client.Do(req)
 	if err != nil {
 		logs.Error(errors.New(req.URL.String() + ": " + err.Error()))
-		this.write500(err)
+		this.write50x(err, http.StatusInternalServerError)
 		return
 	}
 	defer func() {
