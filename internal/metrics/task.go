@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+const MaxQueueSize = 10240
+
 // Task 单个指标任务
 // 数据库存储：
 //  data/
@@ -225,12 +227,15 @@ func (this *Task) Add(obj MetricInterface) {
 		oldStat.Value += v
 		oldStat.Hash = hash
 	} else {
-		this.statsMap[hash] = &Stat{
-			ServerId: obj.MetricServerId(),
-			Keys:     keys,
-			Value:    v,
-			Time:     this.item.CurrentTime(),
-			Hash:     hash,
+		// 防止过载
+		if len(this.statsMap) < MaxQueueSize {
+			this.statsMap[hash] = &Stat{
+				ServerId: obj.MetricServerId(),
+				Keys:     keys,
+				Value:    v,
+				Time:     this.item.CurrentTime(),
+				Hash:     hash,
+			}
 		}
 	}
 	this.statsLocker.Unlock()
