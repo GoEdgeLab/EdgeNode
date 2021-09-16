@@ -290,7 +290,7 @@ func (this *Node) syncConfig() error {
 				if os.IsNotExist(clusterErr) {
 					return err
 				}
-				return clusterErr
+				return errors.New("check cluster config failed: " + clusterErr.Error())
 			}
 		} else {
 			return err
@@ -347,7 +347,7 @@ func (this *Node) syncConfig() error {
 	} else {
 		remotelogs.Println("NODE", "loading config ...")
 	}
-	
+
 	nodeconfigs.ResetNodeConfig(nodeConfig)
 	caches.SharedManager.MaxDiskCapacity = nodeConfig.MaxCacheDiskCapacity
 	caches.SharedManager.MaxMemoryCapacity = nodeConfig.MaxCacheMemoryCapacity
@@ -425,7 +425,7 @@ func (this *Node) checkClusterConfig() error {
 		return err
 	}
 
-	logs.Println("[NODE]registering node ...")
+	logs.Println("[NODE]registering node to cluster ...")
 	resp, err := rpcClient.NodeRPC().RegisterClusterNode(rpcClient.ClusterContext(config.ClusterId, config.Secret), &pb.RegisterClusterNodeRequest{Name: HOSTNAME})
 	if err != nil {
 		return err

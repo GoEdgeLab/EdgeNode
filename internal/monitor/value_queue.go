@@ -15,7 +15,7 @@ import (
 var SharedValueQueue = NewValueQueue()
 
 func init() {
-	events.On(events.EventStart, func() {
+	events.On(events.EventLoaded, func() {
 		go SharedValueQueue.Start()
 	})
 }

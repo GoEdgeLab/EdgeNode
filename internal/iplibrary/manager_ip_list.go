@@ -15,12 +15,12 @@ var SharedIPListManager = NewIPListManager()
 var IPListUpdateNotify = make(chan bool, 1)
 
 func init() {
-	events.On(events.EventStart, func() {
+	events.On(events.EventLoaded, func() {
 		go SharedIPListManager.Start()
 	})
 }
 
-// IP名单管理
+// IPListManager IP名单管理
 type IPListManager struct {
 	// 缓存文件
 	// 每行一个数据：id|from|to|expiredAt

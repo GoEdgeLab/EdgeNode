@@ -20,12 +20,12 @@ import (
 var SharedCountryManager = NewCountryManager()
 
 func init() {
-	events.On(events.EventStart, func() {
+	events.On(events.EventLoaded, func() {
 		go SharedCountryManager.Start()
 	})
 }
 
-// 国家信息管理
+// CountryManager 国家/地区信息管理
 type CountryManager struct {
 	cacheFile string
 

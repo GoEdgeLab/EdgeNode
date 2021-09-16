@@ -24,12 +24,12 @@ const (
 var SharedProvinceManager = NewProvinceManager()
 
 func init() {
-	events.On(events.EventStart, func() {
+	events.On(events.EventLoaded, func() {
 		go SharedProvinceManager.Start()
 	})
 }
 
-// 国家信息管理
+// ProvinceManager 中国省份信息管理
 type ProvinceManager struct {
 	cacheFile string
 
