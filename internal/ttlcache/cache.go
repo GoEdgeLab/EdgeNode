@@ -24,7 +24,7 @@ type Cache struct {
 
 func NewCache(opt ...OptionInterface) *Cache {
 	countPieces := 128
-	maxItems := 1_000_000
+	maxItems := 10_000_000
 	for _, option := range opt {
 		if option == nil {
 			continue

@@ -65,6 +65,7 @@ func TestCache_Read(t *testing.T) {
 	for i := 0; i < 10_000_000; i++ {
 		cache.Write("HELLO_WORLD_"+strconv.Itoa(i), i, time.Now().Unix()+int64(i%10240)+1)
 	}
+	time.Sleep(10 * time.Second)
 
 	total := 0
 	for _, piece := range cache.pieces {
