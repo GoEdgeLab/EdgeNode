@@ -33,7 +33,9 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	// 源站
 	requestCall := shared.NewRequestCall()
+	requestCall.Request = this.RawReq
 	origin := this.reverseProxy.NextOrigin(requestCall)
+	requestCall.CallResponseCallbacks(this.writer)
 	if origin == nil {
 		err := errors.New(this.requestPath() + ": no available backends for reverse proxy")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
