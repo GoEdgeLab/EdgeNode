@@ -34,6 +34,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 源站
 	requestCall := shared.NewRequestCall()
 	requestCall.Request = this.RawReq
+	requestCall.Formatter = this.Format
 	origin := this.reverseProxy.NextOrigin(requestCall)
 	requestCall.CallResponseCallbacks(this.writer)
 	if origin == nil {
