@@ -19,7 +19,7 @@ func (this *HTTPRequest) doRewrite() (shouldShop bool) {
 			if len(this.rewriteRule.ProxyHost) > 0 {
 				host = this.rewriteRule.ProxyHost
 			}
-			this.doURL(this.RawReq.Method, this.rewriteReplace, host, 0)
+			this.doURL(this.RawReq.Method, this.rewriteReplace, host, 0, false)
 			return true
 		}
 

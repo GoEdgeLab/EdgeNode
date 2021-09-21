@@ -17,7 +17,7 @@ func (this *HTTPRequest) doShutdown() {
 	}
 
 	if urlPrefixRegexp.MatchString(shutdown.URL) { // URL
-		this.doURL(http.MethodGet, shutdown.URL, "", shutdown.Status)
+		this.doURL(http.MethodGet, shutdown.URL, "", shutdown.Status, true)
 		return
 	}
 

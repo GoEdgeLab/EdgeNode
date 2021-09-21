@@ -21,7 +21,7 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 	for _, page := range this.web.Pages {
 		if page.Match(status) {
 			if urlPrefixRegexp.MatchString(page.URL) {
-				this.doURL(http.MethodGet, page.URL, "", page.NewStatus)
+				this.doURL(http.MethodGet, page.URL, "", page.NewStatus, true)
 				return true
 			} else {
 				file := Tea.Root + Tea.DS + page.URL
