@@ -2,9 +2,9 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
-	"io"
 	"net/http"
 	"os"
 )
@@ -64,7 +64,9 @@ func (this *HTTPRequest) doShutdown() {
 		this.writer.WriteHeader(http.StatusOK)
 	}
 	buf := bytePool1k.Get()
-	_, err = io.CopyBuffer(this.writer, fp, buf)
+	_, err = utils.CopyWithFilter(this.writer, fp, buf, func(p []byte) []byte {
+		return []byte(this.Format(string(p)))
+	})
 	bytePool1k.Put(buf)
 	if err != nil {
 		if !this.canIgnore(err) {
