@@ -63,6 +63,7 @@ func (this *FileReader) Init() error {
 	// body
 	bodySize := int(binary.BigEndian.Uint64(buf[SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength : SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength+SizeBodyLength]))
 	if bodySize == 0 {
+		isOk = true
 		return nil
 	}
 	this.bodySize = int64(bodySize)
