@@ -14,7 +14,7 @@ type ListenerInterface interface {
 	Close() error
 
 	// Reload 重载配置
-	Reload(serverGroup *serverconfigs.ServerGroup)
+	Reload(serverGroup *serverconfigs.ServerAddressGroup)
 
 	// CountActiveListeners 获取当前活跃的连接数
 	CountActiveListeners() int

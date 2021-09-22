@@ -84,7 +84,7 @@ func (this *UDPListener) Close() error {
 	return this.Listener.Close()
 }
 
-func (this *UDPListener) Reload(group *serverconfigs.ServerGroup) {
+func (this *UDPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Group = group
 	this.Reset()
 }

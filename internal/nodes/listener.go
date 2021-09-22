@@ -11,7 +11,7 @@ import (
 )
 
 type Listener struct {
-	group       *serverconfigs.ServerGroup
+	group       *serverconfigs.ServerAddressGroup
 	isListening bool
 	listener    ListenerInterface // 监听器
 
@@ -22,7 +22,7 @@ func NewListener() *Listener {
 	return &Listener{}
 }
 
-func (this *Listener) Reload(group *serverconfigs.ServerGroup) {
+func (this *Listener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.locker.Lock()
 	this.group = group
 	if this.listener != nil {

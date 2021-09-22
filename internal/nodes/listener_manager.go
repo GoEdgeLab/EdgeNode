@@ -70,7 +70,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	groupAddrs := []string{}
 	availableServerGroups := node.AvailableGroups()
 	if !node.IsOn {
-		availableServerGroups = []*serverconfigs.ServerGroup{}
+		availableServerGroups = []*serverconfigs.ServerAddressGroup{}
 	}
 
 	if len(availableServerGroups) == 0 {

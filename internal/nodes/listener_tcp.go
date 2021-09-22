@@ -42,7 +42,7 @@ func (this *TCPListener) Serve() error {
 	return nil
 }
 
-func (this *TCPListener) Reload(group *serverconfigs.ServerGroup) {
+func (this *TCPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Group = group
 	this.Reset()
 }

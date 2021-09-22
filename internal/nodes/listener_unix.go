@@ -22,7 +22,7 @@ func (this *UnixListener) Close() error {
 	return nil
 }
 
-func (this *UnixListener) Reload(group *serverconfigs.ServerGroup) {
+func (this *UnixListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Group = group
 	this.Reset()
 }

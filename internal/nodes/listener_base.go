@@ -16,7 +16,7 @@ type BaseListener struct {
 	namedServersLocker sync.RWMutex
 	namedServers       map[string]*NamedServer // 域名 => server
 
-	Group *serverconfigs.ServerGroup
+	Group *serverconfigs.ServerAddressGroup
 
 	countActiveConnections int64 // 当前活跃的连接数
 }

@@ -102,7 +102,7 @@ func (this *HTTPListener) Close() error {
 	return this.Listener.Close()
 }
 
-func (this *HTTPListener) Reload(group *serverconfigs.ServerGroup) {
+func (this *HTTPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Group = group
 
 	this.Reset()
