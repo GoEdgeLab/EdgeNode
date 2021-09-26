@@ -25,6 +25,7 @@ func TestNewCache(t *testing.T) {
 	t.Log(cache.Read("a"))
 	time.Sleep(2 * time.Second)
 	t.Log(cache.Read("d"))
+	t.Log(cache.Count(), "items")
 }
 
 func BenchmarkCache_Add(b *testing.B) {
