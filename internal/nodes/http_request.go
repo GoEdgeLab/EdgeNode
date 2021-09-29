@@ -150,9 +150,9 @@ func (this *HTTPRequest) Do() {
 		}
 	}
 
-	// Gzip
-	if this.web.GzipRef != nil && this.web.GzipRef.IsOn && this.web.Gzip != nil && this.web.Gzip.IsOn && this.web.Gzip.Level > 0 {
-		this.writer.Gzip(this.web.Gzip)
+	// Compression
+	if this.web.Compression != nil && this.web.Compression.IsOn && this.web.Compression.Level > 0 {
+		this.writer.SetCompression(this.web.Compression)
 	}
 
 	// 开始调用
@@ -333,10 +333,9 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.Websocket = web.Websocket
 	}
 
-	// gzip
-	if web.GzipRef != nil && (web.GzipRef.IsPrior || isTop) {
-		this.web.GzipRef = web.GzipRef
-		this.web.Gzip = web.Gzip
+	// compression
+	if web.Compression != nil && (web.Compression.IsPrior || isTop) {
+		this.web.Compression = web.Compression
 	}
 
 	// cache

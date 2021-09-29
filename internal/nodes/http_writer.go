@@ -3,15 +3,16 @@ package nodes
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,16 +21,17 @@ type HTTPWriter struct {
 	req    *HTTPRequest
 	writer http.ResponseWriter
 
-	gzipConfig *serverconfigs.HTTPGzipConfig
-	gzipWriter *gzip.Writer
+	compressionConfig *serverconfigs.HTTPCompressionConfig
+	compressionWriter compressions.Writer
+	compressionType   serverconfigs.HTTPCompressionType
 
 	statusCode    int
 	sentBodyBytes int64
 
-	bodyCopying    bool
-	body           []byte
-	gzipBodyBuffer *bytes.Buffer // 当使用gzip压缩时使用
-	gzipBodyWriter *gzip.Writer  // 当使用gzip压缩时使用
+	bodyCopying           bool
+	body                  []byte
+	compressionBodyBuffer *bytes.Buffer       // 当使用压缩时使用
+	compressionBodyWriter compressions.Writer // 当使用压缩时使用
 
 	cacheWriter  caches.Writer // 缓存写入
 	cacheStorage caches.StorageInterface
@@ -49,28 +51,28 @@ func NewHTTPWriter(req *HTTPRequest, httpResponseWriter http.ResponseWriter) *HT
 func (this *HTTPWriter) Reset(httpResponseWriter http.ResponseWriter) {
 	this.writer = httpResponseWriter
 
-	this.gzipConfig = nil
-	this.gzipWriter = nil
+	this.compressionConfig = nil
+	this.compressionWriter = nil
 
 	this.statusCode = 0
 	this.sentBodyBytes = 0
 
 	this.bodyCopying = false
 	this.body = nil
-	this.gzipBodyBuffer = nil
-	this.gzipBodyWriter = nil
+	this.compressionBodyBuffer = nil
+	this.compressionBodyWriter = nil
 }
 
-// Gzip 设置Gzip
-func (this *HTTPWriter) Gzip(config *serverconfigs.HTTPGzipConfig) {
-	this.gzipConfig = config
+// SetCompression 设置内容压缩配置
+func (this *HTTPWriter) SetCompression(config *serverconfigs.HTTPCompressionConfig) {
+	this.compressionConfig = config
 }
 
 // Prepare 准备输出
 func (this *HTTPWriter) Prepare(size int64, status int) {
 	this.statusCode = status
 
-	this.prepareGzip(size)
+	this.prepareCompression(size)
 	this.prepareCache(size)
 }
 
@@ -105,8 +107,8 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 // Write 写入数据
 func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 	if this.writer != nil {
-		if this.gzipWriter != nil {
-			n, err = this.gzipWriter.Write(data)
+		if this.compressionWriter != nil {
+			n, err = this.compressionWriter.Write(data)
 		} else {
 			n, err = this.writer.Write(data)
 		}
@@ -129,8 +131,8 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 		}
 	}
 	if this.bodyCopying {
-		if this.gzipBodyWriter != nil {
-			_, err := this.gzipBodyWriter.Write(data)
+		if this.compressionBodyWriter != nil {
+			_, err := this.compressionBodyWriter.Write(data)
 			if err != nil {
 				remotelogs.Error("HTTP_WRITER", err.Error())
 			}
@@ -211,14 +213,14 @@ func (this *HTTPWriter) SetOk() {
 
 // Close 关闭
 func (this *HTTPWriter) Close() {
-	// gzip writer
-	if this.gzipWriter != nil {
-		if this.bodyCopying && this.gzipBodyWriter != nil {
-			_ = this.gzipBodyWriter.Close()
-			this.body = this.gzipBodyBuffer.Bytes()
+	// compression writer
+	if this.compressionWriter != nil {
+		if this.bodyCopying && this.compressionBodyWriter != nil {
+			_ = this.compressionBodyWriter.Close()
+			this.body = this.compressionBodyBuffer.Bytes()
 		}
-		_ = this.gzipWriter.Close()
-		this.gzipWriter = nil
+		_ = this.compressionWriter.Close()
+		this.compressionWriter = nil
 	}
 
 	// cache writer
@@ -271,35 +273,10 @@ func (this *HTTPWriter) Flush() {
 	}
 }
 
-// 准备Gzip
-func (this *HTTPWriter) prepareGzip(size int64) {
-	if this.gzipConfig == nil || this.gzipConfig.Level <= 0 {
+// 准备压缩
+func (this *HTTPWriter) prepareCompression(size int64) {
+	if this.compressionConfig == nil || !this.compressionConfig.IsOn || this.compressionConfig.Level <= 0 {
 		return
-	}
-
-	// 判断Accept是否支持gzip
-	if !strings.Contains(this.req.requestHeader("Accept-Encoding"), "gzip") {
-		return
-	}
-
-	// 尺寸和类型
-	if size < this.gzipConfig.MinBytes() || (this.gzipConfig.MaxBytes() > 0 && size > this.gzipConfig.MaxBytes()) {
-		return
-	}
-
-	// 校验其他条件
-	if this.gzipConfig.Conds != nil {
-		if len(this.gzipConfig.Conds.Groups) > 0 {
-			if !this.gzipConfig.Conds.MatchRequest(this.req.Format) || !this.gzipConfig.Conds.MatchResponse(this.req.Format) {
-				return
-			}
-		} else {
-			// 默认校验文档类型
-			contentType := this.writer.Header().Get("Content-Type")
-			if len(contentType) > 0 && (!strings.HasPrefix(contentType, "text/") && !strings.HasPrefix(contentType, "application/")) {
-				return
-			}
-		}
 	}
 
 	// 如果已经有编码则不处理
@@ -307,9 +284,21 @@ func (this *HTTPWriter) prepareGzip(size int64) {
 		return
 	}
 
-	// gzip writer
+	// 尺寸和类型
+	if !this.compressionConfig.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.requestPath()), this.req.Format) {
+		return
+	}
+
+	// 判断Accept是否支持压缩
+	compressionType, compressionEncoding, ok := this.compressionConfig.MatchAcceptEncoding(this.req.RawReq.Header.Get("Accept-Encoding"))
+	if !ok {
+		return
+	}
+	this.compressionType = compressionType
+
+	// compression writer
 	var err error = nil
-	this.gzipWriter, err = gzip.NewWriterLevel(this.writer, int(this.gzipConfig.Level))
+	this.compressionWriter, err = compressions.NewWriter(this.writer, compressionType, int(this.compressionConfig.Level))
 	if err != nil {
 		remotelogs.Error("HTTP_WRITER", err.Error())
 		return
@@ -317,16 +306,15 @@ func (this *HTTPWriter) prepareGzip(size int64) {
 
 	// body copy
 	if this.bodyCopying {
-		this.gzipBodyBuffer = bytes.NewBuffer([]byte{})
-		this.gzipBodyWriter, err = gzip.NewWriterLevel(this.gzipBodyBuffer, int(this.gzipConfig.Level))
+		this.compressionBodyBuffer = bytes.NewBuffer([]byte{})
+		this.compressionBodyWriter, err = compressions.NewWriter(this.compressionBodyBuffer, compressionType, int(this.compressionConfig.Level))
 		if err != nil {
 			remotelogs.Error("HTTP_WRITER", err.Error())
 		}
 	}
 
 	header := this.writer.Header()
-	header.Set("Content-Encoding", "gzip")
-	header.Set("Transfer-Encoding", "chunked")
+	header.Set("Content-Encoding", compressionEncoding)
 	header.Set("Vary", "Accept-Encoding")
 	header.Del("Content-Length")
 }
@@ -408,8 +396,13 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		return
 	}
 	this.cacheWriter = cacheWriter
-	if this.gzipWriter != nil {
-		this.cacheWriter = caches.NewGzipWriter(this.cacheWriter, this.req.cacheKey, expiredAt)
+	if this.compressionWriter != nil {
+		cacheCompressionWriter, err := compressions.NewWriter(this.cacheWriter, this.compressionType, this.compressionWriter.Level())
+		if err != nil {
+			remotelogs.Error("HTTP_WRITER", "create cache compression writer failed: "+err.Error())
+			return
+		}
+		this.cacheWriter = caches.NewCompressionWriter(this.cacheWriter, cacheCompressionWriter, this.req.cacheKey, expiredAt)
 	}
 
 	// 写入Header
