@@ -11,6 +11,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 )
 
@@ -304,4 +305,18 @@ func (this *HTTPRequest) WAFRestoreBody(data []byte) {
 // WAFServerId 服务ID
 func (this *HTTPRequest) WAFServerId() int64 {
 	return this.Server.Id
+}
+
+// WAFClose 关闭连接
+func (this *HTTPRequest) WAFClose() {
+	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
+	if requestConn == nil {
+		return
+	}
+	conn, ok := requestConn.(net.Conn)
+	if ok {
+		_ = conn.Close()
+		return
+	}
+	return
 }

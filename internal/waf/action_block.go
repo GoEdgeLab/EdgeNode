@@ -66,16 +66,7 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 
 	if writer != nil {
 		// close the connection
-		defer func() {
-			hijack, ok := writer.(http.Hijacker)
-			if ok {
-				conn, _, _ := hijack.Hijack()
-				if conn != nil {
-					_ = conn.Close()
-					return
-				}
-			}
-		}()
+		defer request.WAFClose()
 
 		// output response
 		if this.StatusCode > 0 {
@@ -128,5 +119,6 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 			_, _ = writer.Write([]byte("The request is blocked by " + teaconst.ProductName))
 		}
 	}
+
 	return false
 }

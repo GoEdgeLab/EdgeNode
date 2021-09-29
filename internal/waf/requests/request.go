@@ -26,6 +26,9 @@ type Request interface {
 	// WAFServerId 服务ID
 	WAFServerId() int64
 
+	// WAFClose 关闭当前请求所在的连接
+	WAFClose()
+
 	// Format 格式化变量
 	Format(string) string
 }

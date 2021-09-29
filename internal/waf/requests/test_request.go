@@ -66,6 +66,10 @@ func (this *TestRequest) WAFServerId() int64 {
 	return 0
 }
 
+// WAFClose 关闭当前请求所在的连接
+func (this *TestRequest) WAFClose() {
+}
+
 func (this *TestRequest) Format(s string) string {
 	return s
 }
