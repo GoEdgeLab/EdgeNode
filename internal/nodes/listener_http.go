@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"context"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"golang.org/x/net/http2"
@@ -17,6 +18,12 @@ import (
 var httpErrorLogger = log.New(io.Discard, "", 0)
 var metricNewConnMap = map[string]bool{} // remoteAddr => bool
 var metricNewConnMapLocker = &sync.Mutex{}
+
+type contextKey struct {
+	key string
+}
+
+var HTTPConnContextKey = &contextKey{key: "http-conn"}
 
 type HTTPListener struct {
 	BaseListener
@@ -64,6 +71,9 @@ func (this *HTTPListener) Serve() error {
 				delete(metricNewConnMap, conn.RemoteAddr().String())
 				metricNewConnMapLocker.Unlock()
 			}
+		},
+		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+			return context.WithValue(ctx, HTTPConnContextKey, c)
 		},
 	}
 	this.httpServer.SetKeepAlivesEnabled(true)

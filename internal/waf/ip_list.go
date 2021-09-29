@@ -9,7 +9,7 @@ import (
 )
 
 var SharedIPWhiteList = NewIPList()
-var SharedIPBlackLIst = NewIPList()
+var SharedIPBlackList = NewIPList()
 
 const IPTypeAll = "*"
 

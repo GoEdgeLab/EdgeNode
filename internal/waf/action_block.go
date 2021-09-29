@@ -57,10 +57,12 @@ func (this *BlockAction) WillChange() bool {
 }
 
 func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
-	if this.Timeout > 0 {
-		// 加入到黑名单
-		SharedIPBlackLIst.Add(IPTypeAll, request.WAFRemoteIP(), time.Now().Unix()+int64(this.Timeout))
+	// 加入到黑名单
+	var timeout = this.Timeout
+	if timeout <= 0 {
+		timeout = 60 // 默认封锁60秒
 	}
+	SharedIPBlackList.Add(IPTypeAll, request.WAFRemoteIP(), time.Now().Unix()+int64(timeout))
 
 	if writer != nil {
 		// close the connection

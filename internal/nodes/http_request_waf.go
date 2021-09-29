@@ -16,6 +16,15 @@ import (
 
 // 调用WAF
 func (this *HTTPRequest) doWAFRequest() (blocked bool) {
+	// 当前连接是否已关闭
+	var conn = this.RawReq.Context().Value(HTTPConnContextKey)
+	if conn != nil {
+		trafficConn, ok := conn.(*TrafficConn)
+		if ok && trafficConn.IsClosed() {
+			return true
+		}
+	}
+
 	// 当前服务的独立设置
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
 		blocked, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy)

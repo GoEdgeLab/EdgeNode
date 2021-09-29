@@ -44,7 +44,8 @@ func init() {
 
 // TrafficConn 用于统计流量的连接
 type TrafficConn struct {
-	rawConn net.Conn
+	rawConn  net.Conn
+	isClosed bool
 }
 
 func NewTrafficConn(conn net.Conn) net.Conn {
@@ -68,6 +69,7 @@ func (this *TrafficConn) Write(b []byte) (n int, err error) {
 }
 
 func (this *TrafficConn) Close() error {
+	this.isClosed = true
 	return this.rawConn.Close()
 }
 
@@ -89,4 +91,8 @@ func (this *TrafficConn) SetReadDeadline(t time.Time) error {
 
 func (this *TrafficConn) SetWriteDeadline(t time.Time) error {
 	return this.rawConn.SetWriteDeadline(t)
+}
+
+func (this *TrafficConn) IsClosed() bool {
+	return this.isClosed
 }

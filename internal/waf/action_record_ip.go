@@ -92,7 +92,7 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 	if this.Type == "black" {
 		_ = this.CloseConn(writer)
 
-		SharedIPBlackLIst.Add(IPTypeAll, request.WAFRemoteIP(), expiredAt)
+		SharedIPBlackList.Add(IPTypeAll, request.WAFRemoteIP(), expiredAt)
 	} else {
 		// 加入本地白名单
 		timeout := this.Timeout
