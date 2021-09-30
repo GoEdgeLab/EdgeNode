@@ -2,6 +2,7 @@ package waf
 
 import (
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
@@ -15,12 +16,13 @@ import (
 )
 
 type WAF struct {
-	Id             string       `yaml:"id" json:"id"`
-	IsOn           bool         `yaml:"isOn" json:"isOn"`
-	Name           string       `yaml:"name" json:"name"`
-	Inbound        []*RuleGroup `yaml:"inbound" json:"inbound"`
-	Outbound       []*RuleGroup `yaml:"outbound" json:"outbound"`
-	CreatedVersion string       `yaml:"createdVersion" json:"createdVersion"`
+	Id             string                       `yaml:"id" json:"id"`
+	IsOn           bool                         `yaml:"isOn" json:"isOn"`
+	Name           string                       `yaml:"name" json:"name"`
+	Inbound        []*RuleGroup                 `yaml:"inbound" json:"inbound"`
+	Outbound       []*RuleGroup                 `yaml:"outbound" json:"outbound"`
+	CreatedVersion string                       `yaml:"createdVersion" json:"createdVersion"`
+	Mode           firewallconfigs.FirewallMode `yaml:"mode" json:"mode"`
 
 	DefaultBlockAction *BlockAction
 

@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/lists"
@@ -117,6 +118,10 @@ func (this *RuleSet) ActionCodes() []string {
 }
 
 func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Request, writer http.ResponseWriter) bool {
+	if waf.Mode != firewallconfigs.FirewallModeDefend {
+		return true
+	}
+
 	// 先执行allow
 	for _, instance := range this.actionInstances {
 		if !instance.WillChange() {

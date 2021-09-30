@@ -61,6 +61,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 		Id:   strconv.FormatInt(policy.Id, 10),
 		IsOn: policy.IsOn,
 		Name: policy.Name,
+		Mode: policy.Mode,
 	}
 
 	// inbound
