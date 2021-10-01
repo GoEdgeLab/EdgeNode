@@ -240,6 +240,42 @@ func (this *HTTPWriter) SetOk() {
 
 // Close 关闭
 func (this *HTTPWriter) Close() {
+	// webp writer
+	if this.isOk && this.webpIsEncoding {
+		imageData, _, err := image.Decode(this.webpBuffer)
+		if err != nil {
+			_, _ = io.Copy(this.writer, this.webpBuffer)
+
+			// 处理缓存
+			if this.cacheWriter != nil {
+				_ = this.cacheWriter.Discard()
+			}
+			this.cacheWriter = nil
+		} else {
+			var f = types.Float32(this.req.web.WebP.Quality)
+			if f > 100 {
+				f = 100
+			}
+			this.webpIsWriting = true
+			err = webp.Encode(this, imageData, &webp.Options{
+				Lossless: false,
+				Quality:  f,
+				Exact:    true,
+			})
+			if err != nil {
+				if !this.req.canIgnore(err) {
+					remotelogs.Error("HTTP_WRITER", "encode webp failed: "+err.Error())
+				}
+
+				// 处理缓存
+				if this.cacheWriter != nil {
+					_ = this.cacheWriter.Discard()
+				}
+				this.cacheWriter = nil
+			}
+		}
+	}
+
 	// compression writer
 	if this.compressionWriter != nil {
 		if this.bodyCopying && this.compressionBodyWriter != nil {
@@ -279,40 +315,6 @@ func (this *HTTPWriter) Close() {
 			}
 		} else {
 			_ = this.cacheWriter.Discard()
-		}
-	}
-
-	// webp writer
-	if this.webpIsEncoding {
-		imageData, _, err := image.Decode(this.webpBuffer)
-		if err != nil {
-			_, _ = io.Copy(this.writer, this.webpBuffer)
-
-			// 处理缓存
-			if this.cacheWriter != nil {
-				_ = this.cacheWriter.Discard()
-			}
-			this.cacheWriter = nil
-		} else {
-			var f = types.Float32(this.req.web.WebP.Quality)
-			if f > 100 {
-				f = 100
-			}
-			this.webpIsWriting = true
-			err = webp.Encode(this, imageData, &webp.Options{
-				Lossless: false,
-				Quality:  f,
-				Exact:    true,
-			})
-			if err != nil {
-				remotelogs.Error("HTTP_WRITER", "encode webp failed: "+err.Error())
-
-				// 处理缓存
-				if this.cacheWriter != nil {
-					_ = this.cacheWriter.Discard()
-				}
-				this.cacheWriter = nil
-			}
 		}
 	}
 }

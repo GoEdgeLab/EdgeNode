@@ -193,6 +193,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		this.writer.WriteHeader(http.StatusNotModified)
 		this.isCached = true
 		this.cacheRef = nil
+		this.writer.SetOk()
 		return true
 	}
 
@@ -203,6 +204,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		this.writer.WriteHeader(http.StatusNotModified)
 		this.isCached = true
 		this.cacheRef = nil
+		this.writer.SetOk()
 		return true
 	}
 
@@ -349,7 +351,6 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			}
 		} else { // 没有Range
 			this.writer.PrepareCompression(reader.BodySize())
-
 			this.writer.WriteHeader(reader.Status())
 
 			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
@@ -370,5 +371,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 
 	this.isCached = true
 	this.cacheRef = nil
+
+	this.writer.SetOk()
+
 	return true
 }
