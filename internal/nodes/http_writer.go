@@ -22,12 +22,21 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 )
+
+// 限制WebP能够同时使用的Buffer内存使用量
+const webpMaxBufferSize int64 = 1_000_000_000
+
+var webpTotalBufferSize int64 = 0
+var webpBufferPool = utils.NewBufferPool(1024)
 
 // HTTPWriter 响应Writer
 type HTTPWriter struct {
 	req    *HTTPRequest
 	writer http.ResponseWriter
+
+	size int64
 
 	webpIsEncoding bool
 	webpBuffer     *bytes.Buffer
@@ -83,6 +92,7 @@ func (this *HTTPWriter) SetCompression(config *serverconfigs.HTTPCompressionConf
 // Prepare 准备输出
 // 缓存不调用此函数
 func (this *HTTPWriter) Prepare(size int64, status int) {
+	this.size = size
 	this.statusCode = status
 
 	if status == http.StatusOK {
@@ -240,8 +250,18 @@ func (this *HTTPWriter) SetOk() {
 
 // Close 关闭
 func (this *HTTPWriter) Close() {
+	if this.webpIsEncoding {
+		defer func() {
+			atomic.AddInt64(&webpTotalBufferSize, -this.size*32)
+			webpBufferPool.Put(this.webpBuffer)
+		}()
+	}
+
 	// webp writer
 	if this.isOk && this.webpIsEncoding {
+		var bufferLen = int64(this.webpBuffer.Len())
+		atomic.AddInt64(&webpTotalBufferSize, bufferLen*8)
+
 		imageData, _, err := image.Decode(this.webpBuffer)
 		if err != nil {
 			_, _ = io.Copy(this.writer, this.webpBuffer)
@@ -257,6 +277,7 @@ func (this *HTTPWriter) Close() {
 				f = 100
 			}
 			this.webpIsWriting = true
+
 			err = webp.Encode(this, imageData, &webp.Options{
 				Lossless: false,
 				Quality:  f,
@@ -274,6 +295,9 @@ func (this *HTTPWriter) Close() {
 				this.cacheWriter = nil
 			}
 		}
+
+		atomic.AddInt64(&webpTotalBufferSize, -bufferLen*8)
+		this.webpBuffer.Reset()
 	}
 
 	// compression writer
@@ -343,12 +367,15 @@ func (this *HTTPWriter) prepareWebP(size int64) {
 		this.req.web.WebP.IsOn &&
 		this.req.web.WebP.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.requestPath()), this.req.Format) &&
 		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) &&
-		len(this.writer.Header().Get("Content-Encoding")) == 0 {
+		len(this.writer.Header().Get("Content-Encoding")) == 0 &&
+		atomic.LoadInt64(&webpTotalBufferSize) < webpMaxBufferSize {
 		this.webpIsEncoding = true
-		this.webpBuffer = &bytes.Buffer{}
+		this.webpBuffer = webpBufferPool.Get()
 
 		this.Header().Del("Content-Length")
 		this.Header().Set("Content-Type", "image/webp")
+
+		atomic.AddInt64(&webpTotalBufferSize, size*32)
 	}
 }
 
