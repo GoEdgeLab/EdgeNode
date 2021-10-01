@@ -338,6 +338,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.Compression = web.Compression
 	}
 
+	// webp
+	if web.WebP != nil && (web.WebP.IsPrior || isTop) {
+		this.web.WebP = web.WebP
+	}
+
 	// cache
 	if web.Cache != nil && (web.Cache.IsPrior || isTop) {
 		this.web.Cache = web.Cache

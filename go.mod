@@ -9,6 +9,7 @@ require (
 	github.com/TeaOSLab/EdgeCommon v0.0.0-00010101000000-000000000000
 	github.com/andybalholm/brotli v1.0.3
 	github.com/cespare/xxhash v1.1.0
+	github.com/chai2010/webp v1.1.0
 	github.com/dchest/captcha v0.0.0-20200903113550-03f5f0333e1f
 	github.com/dop251/goja v0.0.0-20210804101310-32956a348b49
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -22,6 +23,7 @@ require (
 	github.com/mssola/user_agent v0.5.2
 	github.com/shirou/gopsutil v3.21.5+incompatible
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
+	golang.org/x/image v0.0.0-20190802002840-cff245a6509b
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 	golang.org/x/text v0.3.6

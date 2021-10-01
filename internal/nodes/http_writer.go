@@ -8,8 +8,16 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/chai2010/webp"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/webp"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -20,6 +28,10 @@ import (
 type HTTPWriter struct {
 	req    *HTTPRequest
 	writer http.ResponseWriter
+
+	webpIsEncoding bool
+	webpBuffer     *bytes.Buffer
+	webpIsWriting  bool
 
 	compressionConfig *serverconfigs.HTTPCompressionConfig
 	compressionWriter compressions.Writer
@@ -69,11 +81,20 @@ func (this *HTTPWriter) SetCompression(config *serverconfigs.HTTPCompressionConf
 }
 
 // Prepare 准备输出
+// 缓存不调用此函数
 func (this *HTTPWriter) Prepare(size int64, status int) {
 	this.statusCode = status
 
-	this.prepareCompression(size)
+	if status == http.StatusOK {
+		this.prepareWebP(size)
+	}
+
 	this.prepareCache(size)
+
+	// 在WebP模式下，压缩暂不可用
+	if !this.webpIsEncoding {
+		this.PrepareCompression(size)
+	}
 }
 
 // Raw 包装前的原始的Writer
@@ -106,40 +127,46 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 
 // Write 写入数据
 func (this *HTTPWriter) Write(data []byte) (n int, err error) {
-	if this.writer != nil {
-		if this.compressionWriter != nil {
-			n, err = this.compressionWriter.Write(data)
-		} else {
-			n, err = this.writer.Write(data)
-		}
-		if n > 0 {
-			this.sentBodyBytes += int64(n)
-		}
+	n = len(data)
 
-		// 写入缓存
-		if this.cacheWriter != nil {
-			_, err = this.cacheWriter.Write(data)
-			if err != nil {
-				_ = this.cacheWriter.Discard()
-				this.cacheWriter = nil
-				remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
-			}
-		}
-	} else {
-		if n == 0 {
-			n = len(data) // 防止出现short write错误
-		}
-	}
-	if this.bodyCopying {
-		if this.compressionBodyWriter != nil {
-			_, err := this.compressionBodyWriter.Write(data)
-			if err != nil {
-				remotelogs.Error("HTTP_WRITER", err.Error())
-			}
+	if this.writer != nil {
+		if this.webpIsEncoding && !this.webpIsWriting {
+			this.webpBuffer.Write(data)
 		} else {
-			this.body = append(this.body, data...)
+			// 写入压缩
+			var n1 int
+			if this.compressionWriter != nil {
+				n1, err = this.compressionWriter.Write(data)
+			} else {
+				n1, err = this.writer.Write(data)
+			}
+			if n1 > 0 {
+				this.sentBodyBytes += int64(n1)
+			}
+
+			// 写入缓存
+			if this.cacheWriter != nil {
+				_, err = this.cacheWriter.Write(data)
+				if err != nil {
+					_ = this.cacheWriter.Discard()
+					this.cacheWriter = nil
+					remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
+				}
+			}
+
+			if this.bodyCopying {
+				if this.compressionBodyWriter != nil {
+					_, err := this.compressionBodyWriter.Write(data)
+					if err != nil {
+						remotelogs.Error("HTTP_WRITER", err.Error())
+					}
+				} else {
+					this.body = append(this.body, data...)
+				}
+			}
 		}
 	}
+
 	return
 }
 
@@ -254,6 +281,40 @@ func (this *HTTPWriter) Close() {
 			_ = this.cacheWriter.Discard()
 		}
 	}
+
+	// webp writer
+	if this.webpIsEncoding {
+		imageData, _, err := image.Decode(this.webpBuffer)
+		if err != nil {
+			_, _ = io.Copy(this.writer, this.webpBuffer)
+
+			// 处理缓存
+			if this.cacheWriter != nil {
+				_ = this.cacheWriter.Discard()
+			}
+			this.cacheWriter = nil
+		} else {
+			var f = types.Float32(this.req.web.WebP.Quality)
+			if f > 100 {
+				f = 100
+			}
+			this.webpIsWriting = true
+			err = webp.Encode(this, imageData, &webp.Options{
+				Lossless: false,
+				Quality:  f,
+				Exact:    true,
+			})
+			if err != nil {
+				remotelogs.Error("HTTP_WRITER", "encode webp failed: "+err.Error())
+
+				// 处理缓存
+				if this.cacheWriter != nil {
+					_ = this.cacheWriter.Discard()
+				}
+				this.cacheWriter = nil
+			}
+		}
+	}
 }
 
 // Hijack Hijack
@@ -273,8 +334,24 @@ func (this *HTTPWriter) Flush() {
 	}
 }
 
-// 准备压缩
-func (this *HTTPWriter) prepareCompression(size int64) {
+// 准备Webp
+func (this *HTTPWriter) prepareWebP(size int64) {
+	if this.req.web != nil &&
+		this.req.web.WebP != nil &&
+		this.req.web.WebP.IsOn &&
+		this.req.web.WebP.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.requestPath()), this.req.Format) &&
+		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) &&
+		len(this.writer.Header().Get("Content-Encoding")) == 0 {
+		this.webpIsEncoding = true
+		this.webpBuffer = &bytes.Buffer{}
+
+		this.Header().Del("Content-Length")
+		this.Header().Set("Content-Type", "image/webp")
+	}
+}
+
+// PrepareCompression 准备压缩
+func (this *HTTPWriter) PrepareCompression(size int64) {
 	if this.compressionConfig == nil || !this.compressionConfig.IsOn || this.compressionConfig.Level <= 0 {
 		return
 	}
@@ -396,14 +473,6 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		return
 	}
 	this.cacheWriter = cacheWriter
-	if this.compressionWriter != nil {
-		cacheCompressionWriter, err := compressions.NewWriter(this.cacheWriter, this.compressionType, this.compressionWriter.Level())
-		if err != nil {
-			remotelogs.Error("HTTP_WRITER", "create cache compression writer failed: "+err.Error())
-			return
-		}
-		this.cacheWriter = caches.NewCompressionWriter(this.cacheWriter, cacheCompressionWriter, this.req.cacheKey, expiredAt)
-	}
 
 	// 写入Header
 	for k, v := range this.Header() {
