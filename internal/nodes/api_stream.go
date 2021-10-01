@@ -145,6 +145,16 @@ func (this *APIStream) handleConnectedAPINode(message *pb.NodeStreamMessage) err
 		return errors.Wrap(err)
 	}
 	remotelogs.Println("API_STREAM", "connected to api node '"+strconv.FormatInt(msg.APINodeId, 10)+"'")
+
+	// 重新读取配置
+	if nodeConfigUpdatedAt == 0 {
+		select {
+		case nodeConfigChangedNotify <- true:
+		default:
+
+		}
+	}
+
 	return nil
 }
 

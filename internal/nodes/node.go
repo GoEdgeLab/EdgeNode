@@ -27,11 +27,14 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"time"
 )
 
 var sharedNodeConfig *nodeconfigs.NodeConfig
 var nodeTaskNotify = make(chan bool, 8)
+var nodeConfigChangedNotify = make(chan bool, 8)
+var nodeConfigUpdatedAt int64
 var DaemonIsOn = false
 var DaemonPid = 0
 
@@ -39,6 +42,7 @@ var DaemonPid = 0
 type Node struct {
 	isLoaded bool
 	sock     *gosock.Sock
+	locker   sync.Mutex
 }
 
 func NewNode() *Node {
@@ -280,6 +284,9 @@ func (this *Node) loop() error {
 
 // 读取API配置
 func (this *Node) syncConfig() error {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
 	// 检查api.yaml是否存在
 	apiConfigFile := Tea.ConfigFile("api.yaml")
 	_, err := os.Stat(apiConfigFile)
@@ -315,6 +322,7 @@ func (this *Node) syncConfig() error {
 	if !configResp.IsChanged {
 		return nil
 	}
+	nodeConfigUpdatedAt = time.Now().Unix()
 
 	configJSON := configResp.NodeJSON
 	nodeConfig := &nodeconfigs.NodeConfig{}
@@ -394,6 +402,12 @@ func (this *Node) startSyncTimer() {
 				}
 			case <-nodeTaskNotify:
 				err := this.loop()
+				if err != nil {
+					remotelogs.Error("NODE", "sync config error: "+err.Error())
+					continue
+				}
+			case <-nodeConfigChangedNotify:
+				err := this.syncConfig()
 				if err != nil {
 					remotelogs.Error("NODE", "sync config error: "+err.Error())
 					continue
