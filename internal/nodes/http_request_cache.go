@@ -348,6 +348,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				return true
 			}
 		} else { // 没有Range
+			this.writer.PrepareCompression(reader.BodySize())
+
 			this.writer.WriteHeader(reader.Status())
 
 			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
