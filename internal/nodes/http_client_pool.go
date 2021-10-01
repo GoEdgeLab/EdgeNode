@@ -72,9 +72,6 @@ func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.Orig
 	if numberCPU < 8 {
 		numberCPU = 8
 	}
-	if maxConnections <= 0 {
-		maxConnections = numberCPU * 8
-	}
 
 	if idleConns <= 0 {
 		idleConns = numberCPU * 4
