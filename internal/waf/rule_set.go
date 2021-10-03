@@ -118,7 +118,7 @@ func (this *RuleSet) ActionCodes() []string {
 }
 
 func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Request, writer http.ResponseWriter) bool {
-	if waf.Mode != firewallconfigs.FirewallModeDefend {
+	if len(waf.Mode) != 0 && waf.Mode != firewallconfigs.FirewallModeDefend {
 		return true
 	}
 

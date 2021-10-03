@@ -57,6 +57,9 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 	if policy == nil {
 		return nil, errors.New("policy should not be nil")
 	}
+	if len(policy.Mode) == 0 {
+		policy.Mode = firewallconfigs.FirewallModeDefend
+	}
 	w := &waf.WAF{
 		Id:   strconv.FormatInt(policy.Id, 10),
 		IsOn: policy.IsOn,
