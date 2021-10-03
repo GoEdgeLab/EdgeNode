@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -98,6 +99,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		this.cacheRef = nil
 		return
 	}
+
 	this.cacheKey = key
 
 	// 读取缓存
@@ -112,18 +114,32 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		bytePool32k.Put(buf)
 	}()
 
-	reader, err := storage.OpenReader(key)
-	if err != nil {
-		if err == caches.ErrNotFound {
-			// cache相关变量
-			this.varMapping["cache.status"] = "MISS"
+	var reader caches.Reader
+	var err error
+
+	// 是否优先检查WebP
+	if this.web.WebP != nil &&
+		this.web.WebP.IsOn &&
+		this.web.WebP.MatchRequest(filepath.Ext(this.requestPath()), this.Format) &&
+		this.web.WebP.MatchAccept(this.requestHeader("Accept")) {
+		reader, _ = storage.OpenReader(key + webpSuffix)
+	}
+
+	// 检查正常的文件
+	if reader == nil {
+		reader, err = storage.OpenReader(key)
+		if err != nil {
+			if err == caches.ErrNotFound {
+				// cache相关变量
+				this.varMapping["cache.status"] = "MISS"
+				return
+			}
+
+			if !this.canIgnore(err) {
+				remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
+			}
 			return
 		}
-
-		if !this.canIgnore(err) {
-			remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
-		}
-		return
 	}
 	defer func() {
 		_ = reader.Close()

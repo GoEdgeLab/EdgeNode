@@ -342,6 +342,15 @@ func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
 		}()
 	}
 
+	// WEBP缓存
+	if msg.Type == "file" {
+		var keys = msg.Keys
+		for _, key := range keys {
+			keys = append(keys, key+webpSuffix)
+		}
+		msg.Keys = keys
+	}
+
 	err = storage.Purge(msg.Keys, msg.Type)
 	if err != nil {
 		this.replyFail(message.RequestId, "purge keys failed: "+err.Error())

@@ -188,7 +188,7 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		var expiredAt int64
 		err = rows.Scan(&expiredAt)
 		if err != nil {
-			return true, nil
+			return false, nil
 		}
 		this.memoryCache.Write(hash, 1, expiredAt)
 		return true, nil

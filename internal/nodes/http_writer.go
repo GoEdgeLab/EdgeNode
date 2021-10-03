@@ -27,6 +27,7 @@ import (
 
 // 限制WebP能够同时使用的Buffer内存使用量
 const webpMaxBufferSize int64 = 1_000_000_000
+const webpSuffix = "@GOEDGE_WEBP"
 
 var webpTotalBufferSize int64 = 0
 var webpBufferPool = utils.NewBufferPool(1024)
@@ -494,7 +495,11 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		life = 60
 	}
 	expiredAt := utils.UnixTime() + life
-	cacheWriter, err := storage.OpenWriter(this.req.cacheKey, expiredAt, this.StatusCode())
+	var cacheKey = this.req.cacheKey
+	if this.webpIsEncoding {
+		cacheKey += webpSuffix
+	}
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode())
 	if err != nil {
 		if !caches.CanIgnoreErr(err) {
 			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
