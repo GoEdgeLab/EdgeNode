@@ -28,6 +28,15 @@ func TestNewCache(t *testing.T) {
 	t.Log(cache.Count(), "items")
 }
 
+func TestCache_Memory(t *testing.T) {
+	cache := NewCache()
+	for i := 0; i < 20_000_000; i++ {
+		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+3600)
+	}
+	t.Log("waiting ...")
+	time.Sleep(10 * time.Second)
+}
+
 func BenchmarkCache_Add(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 

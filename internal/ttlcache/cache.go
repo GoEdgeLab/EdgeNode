@@ -24,7 +24,13 @@ type Cache struct {
 
 func NewCache(opt ...OptionInterface) *Cache {
 	countPieces := 128
-	maxItems := 10_000_000
+	maxItems := 2_000_000
+
+	var delta = systemMemoryGB() / 4
+	if delta > 0 {
+		maxItems *= delta
+	}
+
 	for _, option := range opt {
 		if option == nil {
 			continue
@@ -61,7 +67,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 	return cache
 }
 
-func (this *Cache) Write(key string, value interface{}, expiredAt int64) {
+func (this *Cache) Write(key string, value interface{}, expiredAt int64) (ok bool) {
 	if this.isDestroyed {
 		return
 	}
@@ -77,7 +83,7 @@ func (this *Cache) Write(key string, value interface{}, expiredAt int64) {
 	}
 	uint64Key := HashKey([]byte(key))
 	pieceIndex := uint64Key % this.countPieces
-	this.pieces[pieceIndex].Add(uint64Key, &Item{
+	return this.pieces[pieceIndex].Add(uint64Key, &Item{
 		Value:     value,
 		expiredAt: expiredAt,
 	})

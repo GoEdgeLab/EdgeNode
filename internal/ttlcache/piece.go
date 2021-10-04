@@ -17,7 +17,7 @@ func NewPiece(maxItems int) *Piece {
 	return &Piece{m: map[uint64]*Item{}, maxItems: maxItems}
 }
 
-func (this *Piece) Add(key uint64, item *Item) {
+func (this *Piece) Add(key uint64, item *Item) (ok bool) {
 	this.locker.Lock()
 	if len(this.m) >= this.maxItems {
 		this.locker.Unlock()
@@ -25,6 +25,7 @@ func (this *Piece) Add(key uint64, item *Item) {
 	}
 	this.m[key] = item
 	this.locker.Unlock()
+	return true
 }
 
 func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64) (result int64) {
