@@ -77,81 +77,85 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 
 	// 检查IP黑名单
-	for _, ref := range inbound.AllDenyListRefs() {
-		if ref.IsOn && ref.ListId > 0 {
-			list := iplibrary.SharedIPListManager.FindList(ref.ListId)
-			if list != nil {
-				item, found := list.ContainsIPStrings(remoteAddrs)
-				if found {
-					// 触发事件
-					if item != nil && len(item.EventLevel) > 0 {
-						actions := iplibrary.SharedActionManager.FindEventActions(item.EventLevel)
-						for _, action := range actions {
-							goNext, err := action.DoHTTP(this.RawReq, this.RawWriter)
-							if err != nil {
-								remotelogs.Error("HTTP_REQUEST_WAF", "do action '"+err.Error()+"' failed: "+err.Error())
-								return true, false
-							}
-							if !goNext {
-								this.disableLog = true
-								return true, false
+	if firewallPolicy.Mode == firewallconfigs.FirewallModeDefend {
+		for _, ref := range inbound.AllDenyListRefs() {
+			if ref.IsOn && ref.ListId > 0 {
+				list := iplibrary.SharedIPListManager.FindList(ref.ListId)
+				if list != nil {
+					item, found := list.ContainsIPStrings(remoteAddrs)
+					if found {
+						// 触发事件
+						if item != nil && len(item.EventLevel) > 0 {
+							actions := iplibrary.SharedActionManager.FindEventActions(item.EventLevel)
+							for _, action := range actions {
+								goNext, err := action.DoHTTP(this.RawReq, this.RawWriter)
+								if err != nil {
+									remotelogs.Error("HTTP_REQUEST_WAF", "do action '"+err.Error()+"' failed: "+err.Error())
+									return true, false
+								}
+								if !goNext {
+									this.disableLog = true
+									return true, false
+								}
 							}
 						}
+
+						// TODO 需要记录日志信息
+
+						this.writer.WriteHeader(http.StatusForbidden)
+						this.writer.Close()
+
+						// 停止日志
+						this.disableLog = true
+
+						return true, false
 					}
-
-					// TODO 需要记录日志信息
-
-					this.writer.WriteHeader(http.StatusForbidden)
-					this.writer.Close()
-
-					// 停止日志
-					this.disableLog = true
-
-					return true, false
 				}
 			}
 		}
 	}
 
 	// 检查地区封禁
-	if iplibrary.SharedLibrary != nil {
-		if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
-			regionConfig := firewallPolicy.Inbound.Region
-			if regionConfig.IsNotEmpty() {
-				for _, remoteAddr := range remoteAddrs {
-					result, err := iplibrary.SharedLibrary.Lookup(remoteAddr)
-					if err != nil {
-						remotelogs.Error("HTTP_REQUEST_WAF", "iplibrary lookup failed: "+err.Error())
-					} else if result != nil {
-						// 检查国家级别封禁
-						if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
-							countryId := iplibrary.SharedCountryManager.Lookup(result.Country)
-							if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
-								// TODO 可以配置对封禁的处理方式等
-								// TODO 需要记录日志信息
-								this.writer.WriteHeader(http.StatusForbidden)
-								this.writer.Close()
+	if firewallPolicy.Mode == firewallconfigs.FirewallModeDefend {
+		if iplibrary.SharedLibrary != nil {
+			if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
+				regionConfig := firewallPolicy.Inbound.Region
+				if regionConfig.IsNotEmpty() {
+					for _, remoteAddr := range remoteAddrs {
+						result, err := iplibrary.SharedLibrary.Lookup(remoteAddr)
+						if err != nil {
+							remotelogs.Error("HTTP_REQUEST_WAF", "iplibrary lookup failed: "+err.Error())
+						} else if result != nil {
+							// 检查国家级别封禁
+							if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
+								countryId := iplibrary.SharedCountryManager.Lookup(result.Country)
+								if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
+									// TODO 可以配置对封禁的处理方式等
+									// TODO 需要记录日志信息
+									this.writer.WriteHeader(http.StatusForbidden)
+									this.writer.Close()
 
-								// 停止日志
-								this.disableLog = true
+									// 停止日志
+									this.disableLog = true
 
-								return true, false
+									return true, false
+								}
 							}
-						}
 
-						// 检查省份封禁
-						if len(regionConfig.DenyProvinceIds) > 0 && len(result.Province) > 0 {
-							provinceId := iplibrary.SharedProvinceManager.Lookup(result.Province)
-							if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
-								// TODO 可以配置对封禁的处理方式等
-								// TODO 需要记录日志信息
-								this.writer.WriteHeader(http.StatusForbidden)
-								this.writer.Close()
+							// 检查省份封禁
+							if len(regionConfig.DenyProvinceIds) > 0 && len(result.Province) > 0 {
+								provinceId := iplibrary.SharedProvinceManager.Lookup(result.Province)
+								if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
+									// TODO 可以配置对封禁的处理方式等
+									// TODO 需要记录日志信息
+									this.writer.WriteHeader(http.StatusForbidden)
+									this.writer.Close()
 
-								// 停止日志
-								this.disableLog = true
+									// 停止日志
+									this.disableLog = true
 
-								return true, false
+									return true, false
+								}
 							}
 						}
 					}
