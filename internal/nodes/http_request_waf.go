@@ -67,7 +67,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		if ref.IsOn && ref.ListId > 0 {
 			list := iplibrary.SharedIPListManager.FindList(ref.ListId)
 			if list != nil {
-				found, _ := list.ContainsIPStrings(remoteAddrs)
+				_, found := list.ContainsIPStrings(remoteAddrs)
 				if found {
 					breakChecking = true
 					return
@@ -81,7 +81,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		if ref.IsOn && ref.ListId > 0 {
 			list := iplibrary.SharedIPListManager.FindList(ref.ListId)
 			if list != nil {
-				found, item := list.ContainsIPStrings(remoteAddrs)
+				item, found := list.ContainsIPStrings(remoteAddrs)
 				if found {
 					// 触发事件
 					if item != nil && len(item.EventLevel) > 0 {

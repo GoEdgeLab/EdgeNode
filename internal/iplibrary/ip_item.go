@@ -10,7 +10,7 @@ const (
 	IPItemTypeAll  IPItemType = "all"  // 所有IP
 )
 
-// IP条目
+// IPItem IP条目
 type IPItem struct {
 	Type       string `json:"type"`
 	Id         int64  `json:"id"`
@@ -20,7 +20,7 @@ type IPItem struct {
 	EventLevel string `json:"eventLevel"`
 }
 
-// 检查是否包含某个IP
+// Contains 检查是否包含某个IP
 func (this *IPItem) Contains(ip uint64) bool {
 	switch this.Type {
 	case IPItemTypeIPv4:

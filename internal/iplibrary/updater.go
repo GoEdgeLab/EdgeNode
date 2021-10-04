@@ -7,9 +7,9 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/logs"
 	"os"
 	"time"
 )
@@ -21,16 +21,16 @@ func init() {
 	})
 }
 
-// IP库更新程序
+// Updater IP库更新程序
 type Updater struct {
 }
 
-// 获取新对象
+// NewUpdater 获取新对象
 func NewUpdater() *Updater {
 	return &Updater{}
 }
 
-// 开始更新
+// Start 开始更新
 func (this *Updater) Start() {
 	// 这里不需要太频繁检查更新，因为通常不需要更新IP库
 	ticker := time.NewTicker(1 * time.Hour)
@@ -38,7 +38,7 @@ func (this *Updater) Start() {
 		for range ticker.C {
 			err := this.loop()
 			if err != nil {
-				logs.Println("[IP_LIBRARY]" + err.Error())
+				remotelogs.Error("IP_LIBRARY", err.Error())
 			}
 		}
 	}()

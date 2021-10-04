@@ -5,9 +5,9 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/files"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"regexp"
 	"strings"
@@ -21,7 +21,7 @@ func init() {
 		// 初始化
 		library, err := SharedManager.Load()
 		if err != nil {
-			logs.Println("[IP_LIBRARY]" + err.Error())
+			remotelogs.Error("IP_LIBRARY", err.Error())
 			return
 		}
 		SharedLibrary = library

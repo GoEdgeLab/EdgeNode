@@ -112,12 +112,16 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		return false, nil
 	}
 	this.locker.Lock()
+	var changedLists = map[*IPList]bool{}
 	for _, item := range items {
 		list, ok := this.listMap[item.ListId]
 		if !ok {
 			list = NewIPList()
 			this.listMap[item.ListId] = list
 		}
+
+		changedLists[list] = true
+
 		if item.IsDeleted {
 			list.Delete(item.Id)
 
@@ -127,7 +131,7 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 			continue
 		}
 
-		list.Add(&IPItem{
+		list.AddDelay(&IPItem{
 			Id:         item.Id,
 			Type:       item.Type,
 			IPFrom:     utils.IP2Long(item.IpFrom),
@@ -140,6 +144,11 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		SharedActionManager.DeleteItem(item.ListType, item)
 		SharedActionManager.AddItem(item.ListType, item)
 	}
+
+	for changedList := range changedLists {
+		changedList.Sort()
+	}
+
 	this.locker.Unlock()
 	this.version = items[len(items)-1].Version
 
