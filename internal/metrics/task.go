@@ -212,6 +212,12 @@ func (this *Task) Add(obj MetricInterface) {
 	var keys = []string{}
 	for _, key := range this.item.Keys {
 		k := obj.MetricKey(key)
+
+		// 忽略499状态
+		if key == "${status}" && k == "499" {
+			return
+		}
+
 		keys = append(keys, k)
 	}
 
