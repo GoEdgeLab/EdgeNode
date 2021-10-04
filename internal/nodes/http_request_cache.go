@@ -181,25 +181,22 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	// ETag
+	// 这里强制设置ETag，如果先前源站设置了ETag，将会被覆盖，避免因为源站的ETag导致源站返回304 Not Modified
 	var respHeader = this.writer.Header()
-	var eTag = respHeader.Get("ETag")
+	var eTag = ""
 	var lastModifiedAt = reader.LastModified()
-	if len(eTag) == 0 {
-		if lastModifiedAt > 0 {
-			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
-			respHeader["ETag"] = []string{eTag}
-		}
+	if lastModifiedAt > 0 {
+		eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
+		respHeader.Del("Etag")
+		respHeader["ETag"] = []string{eTag}
 	}
 
 	// 支持 Last-Modified
-	var modifiedTime = respHeader.Get("Last-Modified")
-	if len(modifiedTime) == 0 {
-		if lastModifiedAt > 0 {
-			modifiedTime = time.Unix(lastModifiedAt, 0).Format("Mon, 02 Jan 2006 15:04:05 GMT")
-			if len(respHeader.Get("Last-Modified")) == 0 {
-				respHeader.Set("Last-Modified", modifiedTime)
-			}
-		}
+	// 这里强制设置Last-Modified，如果先前源站设置了Last-Modified，将会被覆盖，避免因为源站的Last-Modified导致源站返回304 Not Modified
+	var modifiedTime = ""
+	if lastModifiedAt > 0 {
+		modifiedTime = time.Unix(lastModifiedAt, 0).Format("Mon, 02 Jan 2006 15:04:05 GMT")
+		respHeader.Set("Last-Modified", modifiedTime)
 	}
 
 	// 支持 If-None-Match
