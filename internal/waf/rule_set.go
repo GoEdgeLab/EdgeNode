@@ -76,6 +76,18 @@ func (this *RuleSet) Init(waf *WAF) error {
 		}
 	}
 
+	// sort actions
+	sort.Slice(this.actionInstances, func(i, j int) bool {
+		var instance1 = this.actionInstances[i]
+		if !instance1.WillChange() {
+			return true
+		}
+		if instance1.Code() == ActionRecordIP {
+			return true
+		}
+		return false
+	})
+
 	return nil
 }
 
@@ -122,18 +134,6 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 	if len(waf.Mode) != 0 && waf.Mode != firewallconfigs.FirewallModeDefend {
 		return true
 	}
-
-	// 排序
-	sort.Slice(this.actionInstances, func(i, j int) bool {
-		var instance1 = this.actionInstances[i]
-		if !instance1.WillChange() {
-			return true
-		}
-		if instance1.Code() == ActionRecordIP {
-			return true
-		}
-		return false
-	})
 
 	// 先执行allow
 	for _, instance := range this.actionInstances {
