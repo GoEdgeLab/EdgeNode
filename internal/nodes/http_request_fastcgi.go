@@ -41,7 +41,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 	}
 
 	if !env.Has("REMOTE_ADDR") {
-		env["REMOTE_ADDR"] = this.requestRemoteAddr()
+		env["REMOTE_ADDR"] = this.requestRemoteAddr(true)
 	}
 	if !env.Has("QUERY_STRING") {
 		u, err := url.ParseRequestURI(this.uri)

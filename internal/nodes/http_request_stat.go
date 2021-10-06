@@ -9,6 +9,6 @@ func (this *HTTPRequest) doStat() {
 	}
 
 	// 内置的统计
-	stats.SharedHTTPRequestStatManager.AddRemoteAddr(this.Server.Id, this.requestRemoteAddr())
+	stats.SharedHTTPRequestStatManager.AddRemoteAddr(this.Server.Id, this.requestRemoteAddr(true))
 	stats.SharedHTTPRequestStatManager.AddUserAgent(this.Server.Id, this.requestHeader("User-Agent"))
 }

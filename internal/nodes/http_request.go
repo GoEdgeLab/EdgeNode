@@ -322,6 +322,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.Root = web.Root
 	}
 
+	// remote addr
+	if web.RemoteAddr != nil && (web.RemoteAddr.IsPrior || isTop) && web.RemoteAddr.IsOn {
+		this.web.RemoteAddr = web.RemoteAddr
+	}
+
 	// charset
 	if web.Charset != nil && (web.Charset.IsPrior || isTop) {
 		this.web.Charset = web.Charset
@@ -505,7 +510,9 @@ func (this *HTTPRequest) Format(source string) string {
 		case "edgeVersion":
 			return teaconst.Version
 		case "remoteAddr":
-			return this.requestRemoteAddr()
+			return this.requestRemoteAddr(true)
+		case "remoteAddrValue":
+			return this.requestRemoteAddr(false)
 		case "rawRemoteAddr":
 			addr := this.RawReq.RemoteAddr
 			host, _, err := net.SplitHostPort(addr)
@@ -761,22 +768,36 @@ func (this *HTTPRequest) addVarMapping(varMapping map[string]string) {
 }
 
 // 获取请求的客户端地址
-func (this *HTTPRequest) requestRemoteAddr() string {
+func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
+	if supportVar &&
+		this.web.RemoteAddr != nil &&
+		this.web.RemoteAddr.IsOn &&
+		!this.web.RemoteAddr.IsEmpty() {
+		var remoteAddr = this.Format(this.web.RemoteAddr.Value)
+		if net.ParseIP(remoteAddr) != nil {
+			return remoteAddr
+		}
+	}
+
 	// X-Forwarded-For
 	forwardedFor := this.RawReq.Header.Get("X-Forwarded-For")
 	if len(forwardedFor) > 0 {
 		commaIndex := strings.Index(forwardedFor, ",")
 		if commaIndex > 0 {
-			return forwardedFor[:commaIndex]
+			forwardedFor = forwardedFor[:commaIndex]
 		}
-		return forwardedFor
+		if net.ParseIP(forwardedFor) != nil {
+			return forwardedFor
+		}
 	}
 
 	// Real-IP
 	{
 		realIP, ok := this.RawReq.Header["X-Real-IP"]
 		if ok && len(realIP) > 0 {
-			return realIP[0]
+			if net.ParseIP(realIP[0]) != nil {
+				return realIP[0]
+			}
 		}
 	}
 
@@ -784,7 +805,9 @@ func (this *HTTPRequest) requestRemoteAddr() string {
 	{
 		realIP, ok := this.RawReq.Header["X-Real-Ip"]
 		if ok && len(realIP) > 0 {
-			return realIP[0]
+			if net.ParseIP(realIP[0]) != nil {
+				return realIP[0]
+			}
 		}
 	}
 

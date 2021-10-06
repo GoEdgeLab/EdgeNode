@@ -88,7 +88,7 @@ func (this *HTTPRequest) log() {
 		RequestId:       strconv.FormatInt(this.requestFromTime.UnixNano(), 10) + strconv.FormatInt(atomic.AddInt64(&requestId, 1), 10) + sharedNodeConfig.PaddedId(),
 		NodeId:          sharedNodeConfig.Id,
 		ServerId:        this.Server.Id,
-		RemoteAddr:      this.requestRemoteAddr(),
+		RemoteAddr:      this.requestRemoteAddr(true),
 		RawRemoteAddr:   addr,
 		RemotePort:      int32(this.requestRemotePort()),
 		RemoteUser:      this.requestRemoteUser(),

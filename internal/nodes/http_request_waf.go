@@ -275,7 +275,7 @@ func (this *HTTPRequest) WAFRaw() *http.Request {
 
 // WAFRemoteIP 客户端IP
 func (this *HTTPRequest) WAFRemoteIP() string {
-	return this.requestRemoteAddr()
+	return this.requestRemoteAddr(true)
 }
 
 // WAFGetCacheBody 获取缓存中的Body
