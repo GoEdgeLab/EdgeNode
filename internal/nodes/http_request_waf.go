@@ -198,7 +198,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Actions)
 		}
 
-		this.firewallActions = ruleSet.ActionCodes()
+		this.firewallActions = append(ruleSet.ActionCodes(), firewallPolicy.Mode)
 	}
 
 	return !goNext, false
@@ -262,7 +262,7 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Actions)
 		}
 
-		this.firewallActions = ruleSet.ActionCodes()
+		this.firewallActions = append(ruleSet.ActionCodes(), firewallPolicy.Mode)
 	}
 
 	return !goNext
