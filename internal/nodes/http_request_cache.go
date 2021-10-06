@@ -24,7 +24,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	// 判断是否在预热
-	if strings.HasPrefix(this.RawReq.RemoteAddr, "127.") && this.RawReq.Header.Get("X-Cache-Action") == "preheat" {
+	if (strings.HasPrefix(this.RawReq.RemoteAddr, "127.") || strings.HasPrefix(this.RawReq.RemoteAddr, "[::1]")) && this.RawReq.Header.Get("X-Cache-Action") == "preheat" {
 		return
 	}
 
