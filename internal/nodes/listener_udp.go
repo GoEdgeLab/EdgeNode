@@ -147,6 +147,10 @@ func NewUDPConn(serverId int64, addr net.Addr, proxyConn *net.UDPConn, serverCon
 		activatedAt: time.Now().Unix(),
 		isOk:        true,
 	}
+
+	// 统计
+	stats.SharedTrafficStatManager.Add(serverId, "", 0, 0, 1, 0, 0, 0)
+
 	go func() {
 		buffer := bytePool32k.Get()
 		defer func() {

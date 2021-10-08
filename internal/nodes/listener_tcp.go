@@ -55,6 +55,24 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	if firstServer.ReverseProxy == nil {
 		return errors.New("no ReverseProxy configured for the server")
 	}
+
+	// 记录域名排行
+	tlsConn, ok := conn.(*tls.Conn)
+	var recordStat = false
+	if ok {
+		var serverName = tlsConn.ConnectionState().ServerName
+		if len(serverName) > 0 {
+			// 统计
+			stats.SharedTrafficStatManager.Add(firstServer.Id, serverName, 0, 0, 1, 0, 0, 0)
+			recordStat = true
+		}
+	}
+
+	// 统计
+	if !recordStat {
+		stats.SharedTrafficStatManager.Add(firstServer.Id, "", 0, 0, 1, 0, 0, 0)
+	}
+
 	originConn, err := this.connectOrigin(firstServer.ReverseProxy, conn.RemoteAddr().String())
 	if err != nil {
 		return err

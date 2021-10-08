@@ -87,7 +87,7 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 
 // Add 添加流量
 func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64) {
-	if bytes == 0 {
+	if bytes == 0 && countRequests == 0 {
 		return
 	}
 
