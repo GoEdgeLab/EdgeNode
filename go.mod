@@ -8,6 +8,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/TeaOSLab/EdgeCommon v0.0.0-00010101000000-000000000000
 	github.com/andybalholm/brotli v1.0.3
+	github.com/biessek/golang-ico v0.0.0-20180326222316-d348d9ea4670
 	github.com/cespare/xxhash v1.1.0
 	github.com/chai2010/webp v1.1.0
 	github.com/dchest/captcha v0.0.0-20200903113550-03f5f0333e1f
@@ -18,6 +19,7 @@ require (
 	github.com/iwind/TeaGo v0.0.0-20210628135026-38575a4ab060
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20210722083328-12b2d66abec3
+	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mssola/user_agent v0.5.2

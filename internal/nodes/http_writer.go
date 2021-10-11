@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	_ "github.com/biessek/golang-ico"
 	"github.com/chai2010/webp"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
