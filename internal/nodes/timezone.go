@@ -19,12 +19,13 @@ func init() {
 				timeZone = "Asia/Shanghai"
 			}
 
-			location, err := time.LoadLocation(sharedNodeConfig.TimeZone)
-			if err != nil {
-				remotelogs.Error("TIMEZONE", "change time zone failed: "+err.Error())
-				return
-			}
 			if lastTimeZone != timeZone {
+				location, err := time.LoadLocation(timeZone)
+				if err != nil {
+					remotelogs.Error("TIMEZONE", "change time zone failed: "+err.Error())
+					return
+				}
+
 				remotelogs.Println("TIMEZONE", "change time zone to '"+timeZone+"'")
 				time.Local = location
 				lastTimeZone = timeZone
