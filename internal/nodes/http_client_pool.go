@@ -6,10 +6,12 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/pires/go-proxyproto"
 	"net"
 	"net/http"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -37,7 +39,7 @@ func NewHTTPClientPool() *HTTPClientPool {
 }
 
 // Client 根据地址获取客户端
-func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.OriginConfig, originAddr string) (rawClient *http.Client, err error) {
+func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.OriginConfig, originAddr string, proxyProtocol *serverconfigs.ProxyProtocolConfig) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
@@ -105,7 +107,7 @@ func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.Orig
 				for i := 1; i <= retries; i++ {
 					port := int(toaConfig.RandLocalPort())
 					// TODO 思考是否支持X-Real-IP/X-Forwarded-IP
-					err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + req.RemoteAddr)
+					err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + req.requestRemoteAddr(true))
 					if err != nil {
 						remotelogs.Error("TOA", "add failed: "+err.Error())
 					} else {
@@ -126,10 +128,43 @@ func (this *HTTPClientPool) Client(req *http.Request, origin *serverconfigs.Orig
 			}
 
 			// 普通的连接
-			return (&net.Dialer{
+			conn, err := (&net.Dialer{
 				Timeout:   connectionTimeout,
 				KeepAlive: 1 * time.Minute,
 			}).DialContext(ctx, network, originAddr)
+			if err != nil {
+				return nil, err
+			}
+
+			if proxyProtocol != nil && proxyProtocol.IsOn && (proxyProtocol.Version == serverconfigs.ProxyProtocolVersion1 || proxyProtocol.Version == serverconfigs.ProxyProtocolVersion2) {
+				var remoteAddr = req.requestRemoteAddr(true)
+				var transportProtocol = proxyproto.TCPv4
+				if strings.Contains(remoteAddr, ":") {
+					transportProtocol = proxyproto.TCPv6
+				}
+				var destAddr = conn.RemoteAddr()
+				var reqConn = req.RawReq.Context().Value(HTTPConnContextKey)
+				if reqConn != nil {
+					destAddr = reqConn.(net.Conn).LocalAddr()
+				}
+				header := proxyproto.Header{
+					Version:           byte(proxyProtocol.Version),
+					Command:           proxyproto.PROXY,
+					TransportProtocol: transportProtocol,
+					SourceAddr: &net.TCPAddr{
+						IP:   net.ParseIP(remoteAddr),
+						Port: req.requestRemotePort(),
+					},
+					DestinationAddr: destAddr,
+				}
+				_, err = header.WriteTo(conn)
+				if err != nil {
+					_ = conn.Close()
+					return nil, err
+				}
+			}
+
+			return conn, nil
 		},
 		MaxIdleConns:          0,
 		MaxIdleConnsPerHost:   idleConns,

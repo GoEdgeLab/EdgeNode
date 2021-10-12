@@ -6,7 +6,9 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
+	"github.com/pires/go-proxyproto"
 	"net"
+	"strings"
 	"sync/atomic"
 )
 
@@ -83,6 +85,31 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 		_ = originConn.Close()
 	}
 
+	// PROXY Protocol
+	if firstServer.ReverseProxy != nil &&
+		firstServer.ReverseProxy.ProxyProtocol != nil &&
+		firstServer.ReverseProxy.ProxyProtocol.IsOn &&
+		(firstServer.ReverseProxy.ProxyProtocol.Version == serverconfigs.ProxyProtocolVersion1 || firstServer.ReverseProxy.ProxyProtocol.Version == serverconfigs.ProxyProtocolVersion2) {
+		var remoteAddr = conn.RemoteAddr()
+		var transportProtocol = proxyproto.TCPv4
+		if strings.Contains(remoteAddr.String(), "[") {
+			transportProtocol = proxyproto.TCPv6
+		}
+		header := proxyproto.Header{
+			Version:           byte(firstServer.ReverseProxy.ProxyProtocol.Version),
+			Command:           proxyproto.PROXY,
+			TransportProtocol: transportProtocol,
+			SourceAddr:        remoteAddr,
+			DestinationAddr:   conn.LocalAddr(),
+		}
+		_, err = header.WriteTo(originConn)
+		if err != nil {
+			closer()
+			return err
+		}
+	}
+
+	// 从源站读取
 	go func() {
 		originBuffer := bytePool32k.Get()
 		defer func() {
@@ -107,6 +134,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 		}
 	}()
 
+	// 从客户端读取
 	clientBuffer := bytePool32k.Get()
 	defer func() {
 		bytePool32k.Put(clientBuffer)

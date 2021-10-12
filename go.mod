@@ -23,6 +23,7 @@ require (
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mssola/user_agent v0.5.2
+	github.com/pires/go-proxyproto v0.6.1
 	github.com/shirou/gopsutil v3.21.5+incompatible
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	golang.org/x/image v0.0.0-20190802002840-cff245a6509b

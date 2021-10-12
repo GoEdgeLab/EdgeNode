@@ -6,7 +6,9 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/pires/go-proxyproto"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -19,6 +21,8 @@ type UDPListener struct {
 	connMap    map[string]*UDPConn
 	connLocker sync.Mutex
 	connTicker *utils.Ticker
+
+	reverseProxy *serverconfigs.ReverseProxyConfig
 }
 
 func (this *UDPListener) Serve() error {
@@ -26,8 +30,9 @@ func (this *UDPListener) Serve() error {
 	if firstServer == nil {
 		return errors.New("no server available")
 	}
-	if firstServer.ReverseProxy == nil {
-		return errors.New("no ReverseProxy configured for the server")
+	this.reverseProxy = firstServer.ReverseProxy
+	if this.reverseProxy == nil {
+		return errors.New("no ReverseProxy configured for the server '" + firstServer.Name + "'")
 	}
 
 	this.connMap = map[string]*UDPConn{}
@@ -50,7 +55,7 @@ func (this *UDPListener) Serve() error {
 				ok = false
 			}
 			if !ok {
-				originConn, err := this.connectOrigin(firstServer.ReverseProxy, "")
+				originConn, err := this.connectOrigin(this.reverseProxy, addr)
 				if err != nil {
 					remotelogs.Error("UDP_LISTENER", "unable to connect to origin server: "+err.Error())
 					continue
@@ -87,9 +92,16 @@ func (this *UDPListener) Close() error {
 func (this *UDPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Group = group
 	this.Reset()
+
+	// 重置配置
+	firstServer := this.Group.FirstServer()
+	if firstServer == nil {
+		return
+	}
+	this.reverseProxy = firstServer.ReverseProxy
 }
 
-func (this *UDPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr string) (conn net.Conn, err error) {
+func (this *UDPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr net.Addr) (conn net.Conn, err error) {
 	if reverseProxy == nil {
 		return nil, errors.New("no reverse proxy config")
 	}
@@ -100,11 +112,34 @@ func (this *UDPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyC
 		if origin == nil {
 			continue
 		}
-		conn, err = OriginConnect(origin, remoteAddr)
+		conn, err = OriginConnect(origin, remoteAddr.String())
 		if err != nil {
 			remotelogs.Error("UDP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
 			continue
 		} else {
+			// PROXY Protocol
+			if reverseProxy != nil &&
+				reverseProxy.ProxyProtocol != nil &&
+				reverseProxy.ProxyProtocol.IsOn &&
+				(reverseProxy.ProxyProtocol.Version == serverconfigs.ProxyProtocolVersion1 || reverseProxy.ProxyProtocol.Version == serverconfigs.ProxyProtocolVersion2) {
+				var transportProtocol = proxyproto.UDPv4
+				if strings.Contains(remoteAddr.String(), "[") {
+					transportProtocol = proxyproto.UDPv6
+				}
+				header := proxyproto.Header{
+					Version:           byte(reverseProxy.ProxyProtocol.Version),
+					Command:           proxyproto.PROXY,
+					TransportProtocol: transportProtocol,
+					SourceAddr:        remoteAddr,
+					DestinationAddr:   this.Listener.LocalAddr(),
+				}
+				_, err = header.WriteTo(conn)
+				if err != nil {
+					_ = conn.Close()
+					return nil, err
+				}
+			}
+
 			return
 		}
 	}
