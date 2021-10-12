@@ -66,7 +66,7 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 
 	// 关闭连接
 	if request.WAFRaw().ProtoMajor == 1 {
-		_ = this.CloseConn(writer)
+		request.WAFClose()
 	}
 
 	return true

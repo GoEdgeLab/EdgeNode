@@ -90,7 +90,9 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 	expiredAt := time.Now().Unix() + int64(timeout)
 
 	if this.Type == "black" {
-		_ = this.CloseConn(writer)
+		writer.WriteHeader(http.StatusForbidden)
+
+		request.WAFClose()
 
 		SharedIPBlackList.Add(IPTypeAll, request.WAFRemoteIP(), expiredAt)
 	} else {
