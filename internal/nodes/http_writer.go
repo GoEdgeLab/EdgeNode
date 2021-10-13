@@ -3,11 +3,14 @@ package nodes
 import (
 	"bufio"
 	"bytes"
+	"compress/flate"
+	"compress/gzip"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/andybalholm/brotli"
 	_ "github.com/biessek/golang-ico"
 	"github.com/chai2010/webp"
 	"github.com/iwind/TeaGo/lists"
@@ -18,6 +21,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -43,6 +47,7 @@ type HTTPWriter struct {
 	webpBuffer            *bytes.Buffer
 	webpIsWriting         bool
 	webpOriginContentType string
+	webpOriginEncoding    string // gzip
 
 	compressionConfig *serverconfigs.HTTPCompressionConfig
 	compressionWriter compressions.Writer
@@ -272,7 +277,34 @@ func (this *HTTPWriter) Close() {
 
 		// 需要把字节读取出来做备份，防止在image.Decode()过程中丢失
 		var imageBytes = this.webpBuffer.Bytes()
-		imageData, _, err := image.Decode(this.webpBuffer)
+		var imageData image.Image
+		var err error
+		if this.webpOriginEncoding == "gzip" {
+			this.Header().Del("Content-Encoding")
+			var reader *gzip.Reader
+			reader, err = gzip.NewReader(this.webpBuffer)
+			if err == nil {
+				defer func() {
+					_ = reader.Close()
+				}()
+				imageData, _, err = image.Decode(reader)
+			}
+		} else if this.webpOriginEncoding == "deflate" {
+			this.Header().Del("Content-Encoding")
+			var reader io.ReadCloser
+			reader = flate.NewReader(this.webpBuffer)
+			defer func() {
+				_ = reader.Close()
+			}()
+			imageData, _, err = image.Decode(reader)
+		} else if this.webpOriginEncoding == "br" {
+			this.Header().Del("Content-Encoding")
+			var reader *brotli.Reader
+			reader = brotli.NewReader(this.webpBuffer)
+			imageData, _, err = image.Decode(reader)
+		} else {
+			imageData, _, err = image.Decode(this.webpBuffer)
+		}
 		if err != nil {
 			this.Header().Set("Content-Type", this.webpOriginContentType)
 			this.WriteHeader(http.StatusOK)
@@ -383,11 +415,20 @@ func (this *HTTPWriter) prepareWebP(size int64) {
 		this.req.web.WebP.IsOn &&
 		this.req.web.WebP.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.requestPath()), this.req.Format) &&
 		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) &&
-		len(this.writer.Header().Get("Content-Encoding")) == 0 &&
 		atomic.LoadInt64(&webpTotalBufferSize) < webpMaxBufferSize {
+
+		var contentEncoding = this.writer.Header().Get("Content-Encoding")
+		switch contentEncoding {
+		case "gzip", "deflate", "br":
+			this.webpOriginEncoding = contentEncoding
+		case "": // 空
+		default:
+			return
+		}
+
 		this.webpIsEncoding = true
-		this.webpBuffer = webpBufferPool.Get()
 		this.webpOriginContentType = this.Header().Get("Content-Type")
+		this.webpBuffer = webpBufferPool.Get()
 
 		this.Header().Del("Content-Length")
 		this.Header().Set("Content-Type", "image/webp")
