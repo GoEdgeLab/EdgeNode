@@ -18,7 +18,6 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -40,9 +39,10 @@ type HTTPWriter struct {
 
 	size int64
 
-	webpIsEncoding bool
-	webpBuffer     *bytes.Buffer
-	webpIsWriting  bool
+	webpIsEncoding        bool
+	webpBuffer            *bytes.Buffer
+	webpIsWriting         bool
+	webpOriginContentType string
 
 	compressionConfig *serverconfigs.HTTPCompressionConfig
 	compressionWriter compressions.Writer
@@ -93,12 +93,16 @@ func (this *HTTPWriter) SetCompression(config *serverconfigs.HTTPCompressionConf
 
 // Prepare 准备输出
 // 缓存不调用此函数
-func (this *HTTPWriter) Prepare(size int64, status int) {
+func (this *HTTPWriter) Prepare(size int64, status int) (delayHeaders bool) {
 	this.size = size
 	this.statusCode = status
 
 	if status == http.StatusOK {
 		this.prepareWebP(size)
+
+		if this.webpIsEncoding {
+			delayHeaders = true
+		}
 	}
 
 	this.prepareCache(size)
@@ -107,6 +111,8 @@ func (this *HTTPWriter) Prepare(size int64, status int) {
 	if !this.webpIsEncoding {
 		this.PrepareCompression(size)
 	}
+
+	return
 }
 
 // Raw 包装前的原始的Writer
@@ -262,11 +268,15 @@ func (this *HTTPWriter) Close() {
 	// webp writer
 	if this.isOk && this.webpIsEncoding {
 		var bufferLen = int64(this.webpBuffer.Len())
-		atomic.AddInt64(&webpTotalBufferSize, bufferLen*8)
+		atomic.AddInt64(&webpTotalBufferSize, bufferLen*4)
 
+		// 需要把字节读取出来做备份，防止在image.Decode()过程中丢失
+		var imageBytes = this.webpBuffer.Bytes()
 		imageData, _, err := image.Decode(this.webpBuffer)
 		if err != nil {
-			_, _ = io.Copy(this.writer, this.webpBuffer)
+			this.Header().Set("Content-Type", this.webpOriginContentType)
+			this.WriteHeader(http.StatusOK)
+			_, _ = this.writer.Write(imageBytes)
 
 			// 处理缓存
 			if this.cacheWriter != nil {
@@ -290,6 +300,10 @@ func (this *HTTPWriter) Close() {
 					remotelogs.Error("HTTP_WRITER", "encode webp failed: "+err.Error())
 				}
 
+				this.Header().Set("Content-Type", this.webpOriginContentType)
+				this.WriteHeader(http.StatusOK)
+				_, _ = this.writer.Write(imageBytes)
+
 				// 处理缓存
 				if this.cacheWriter != nil {
 					_ = this.cacheWriter.Discard()
@@ -298,7 +312,7 @@ func (this *HTTPWriter) Close() {
 			}
 		}
 
-		atomic.AddInt64(&webpTotalBufferSize, -bufferLen*8)
+		atomic.AddInt64(&webpTotalBufferSize, -bufferLen*4)
 		this.webpBuffer.Reset()
 	}
 
@@ -373,6 +387,7 @@ func (this *HTTPWriter) prepareWebP(size int64) {
 		atomic.LoadInt64(&webpTotalBufferSize) < webpMaxBufferSize {
 		this.webpIsEncoding = true
 		this.webpBuffer = webpBufferPool.Get()
+		this.webpOriginContentType = this.Header().Get("Content-Type")
 
 		this.Header().Del("Content-Length")
 		this.Header().Set("Content-Type", "image/webp")

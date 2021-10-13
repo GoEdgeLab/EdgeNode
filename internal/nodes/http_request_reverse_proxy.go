@@ -249,10 +249,12 @@ func (this *HTTPRequest) doReverseProxy() {
 	shouldAutoFlush := this.reverseProxy.AutoFlush || this.RawReq.Header.Get("Accept") == "text/event-stream"
 
 	// 准备
-	this.writer.Prepare(resp.ContentLength, resp.StatusCode)
+	delayHeaders := this.writer.Prepare(resp.ContentLength, resp.StatusCode)
 
 	// 设置响应代码
-	this.writer.WriteHeader(resp.StatusCode)
+	if !delayHeaders {
+		this.writer.WriteHeader(resp.StatusCode)
+	}
 
 	// 输出到客户端
 	pool := this.bytePool(resp.ContentLength)
