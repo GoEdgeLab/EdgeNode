@@ -553,7 +553,7 @@ func (this *Node) handlePanic() {
 	if err == nil {
 		var index = bytes.Index(data, []byte("panic:"))
 		if index >= 0 {
-			remotelogs.Error("NODE", "fatal error: "+string(data[index:]))
+			remotelogs.Error("NODE", "系统错误，请上报给开发者: "+string(data[index:]))
 		}
 	}
 
