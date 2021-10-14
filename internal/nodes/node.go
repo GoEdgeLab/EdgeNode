@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
@@ -28,6 +29,7 @@ import (
 	"os/exec"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -74,6 +76,9 @@ func (this *Node) Start() {
 		DaemonIsOn = true
 		DaemonPid = os.Getppid()
 	}
+
+	// 处理异常
+	this.handlePanic()
 
 	// 启动事件
 	events.Notify(events.EventStart)
@@ -178,6 +183,7 @@ func (this *Node) Daemon() {
 
 				// 可以标记当前是从守护进程启动的
 				_ = os.Setenv("EdgeDaemon", "on")
+				_ = os.Setenv("EdgeBackground", "on")
 
 				cmd := exec.Command(exe)
 				err = cmd.Start()
@@ -530,4 +536,34 @@ func (this *Node) listenSock() error {
 	})
 
 	return nil
+}
+
+// 处理异常
+func (this *Node) handlePanic() {
+	// 如果是在前台运行就直接返回
+	backgroundEnv, _ := os.LookupEnv("EdgeBackground")
+	if backgroundEnv != "on" {
+		return
+	}
+
+	var panicFile = Tea.Root + "/logs/panic.log"
+
+	// 分析panic
+	data, err := ioutil.ReadFile(panicFile)
+	if err == nil {
+		var index = bytes.Index(data, []byte("panic:"))
+		if index >= 0 {
+			remotelogs.Error("NODE", "fatal error: "+string(data[index:]))
+		}
+	}
+
+	fp, err := os.OpenFile(panicFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0777)
+	if err != nil {
+		logs.Println("NODE", "open 'panic.log' failed: "+err.Error())
+		return
+	}
+	err = syscall.Dup2(int(fp.Fd()), int(os.Stderr.Fd()))
+	if err != nil {
+		logs.Println("NODE", "write to 'panic.log' failed: "+err.Error())
+	}
 }

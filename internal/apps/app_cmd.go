@@ -184,6 +184,8 @@ func (this *AppCmd) runStart() {
 		return
 	}
 
+	_ = os.Setenv("EdgeBackground", "on")
+
 	cmd := exec.Command(os.Args[0])
 	err := cmd.Start()
 	if err != nil {

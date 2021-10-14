@@ -6,6 +6,10 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/utils/time"
 	"log"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strconv"
 )
 
 type LogWriter struct {
@@ -34,7 +38,23 @@ func (this *LogWriter) Init() {
 }
 
 func (this *LogWriter) Write(message string) {
-	log.Println(message)
+	// 文件和行号
+	var callDepth = 3
+	var file string
+	var line int
+	var ok bool
+	_, file, line, ok = runtime.Caller(callDepth)
+	if !ok {
+		file = "???"
+		line = 0
+	} else {
+		file = filepath.Base(file)
+	}
+
+	backgroundEnv, _ := os.LookupEnv("EdgeBackground")
+	if backgroundEnv != "on" {
+		log.Println(message + " (" + file + ":" + strconv.Itoa(line) + ")")
+	}
 
 	if this.fileAppender != nil {
 		_, err := this.fileAppender.AppendString(timeutil.Format("Y/m/d H:i:s ") + message + "\n")
