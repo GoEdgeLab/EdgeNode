@@ -40,13 +40,28 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 						return true
 					}
 
+					stat, err := fp.Stat()
+					if err != nil {
+						logs.Error(err)
+						msg := "404 could not read page content: '" + page.URL + "'"
+
+						this.writer.WriteHeader(http.StatusNotFound)
+						_, err := this.writer.Write([]byte(msg))
+						if err != nil {
+							logs.Error(err)
+						}
+						return true
+					}
+
 					// 修改状态码
 					if page.NewStatus > 0 {
 						// 自定义响应Headers
 						this.processResponseHeaders(page.NewStatus)
+						this.writer.Prepare(stat.Size(), page.NewStatus)
 						this.writer.WriteHeader(page.NewStatus)
 					} else {
 						this.processResponseHeaders(status)
+						this.writer.Prepare(stat.Size(), status)
 						this.writer.WriteHeader(status)
 					}
 					buf := bytePool1k.Get()
@@ -69,17 +84,21 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 
 				return true
 			} else if page.BodyType == shared.BodyTypeHTML {
+				var content = this.Format(page.Body)
+
 				// 修改状态码
 				if page.NewStatus > 0 {
 					// 自定义响应Headers
 					this.processResponseHeaders(page.NewStatus)
+					this.writer.Prepare(int64(len(content)), page.NewStatus)
 					this.writer.WriteHeader(page.NewStatus)
 				} else {
 					this.processResponseHeaders(status)
+					this.writer.Prepare(int64(len(content)), status)
 					this.writer.WriteHeader(status)
 				}
 
-				_, err := this.writer.WriteString(this.Format(page.Body))
+				_, err := this.writer.WriteString(content)
 				if err != nil {
 					if !this.canIgnore(err) {
 						remotelogs.Warn("HTTP_REQUEST_PAGE", "write to client failed: "+err.Error())
