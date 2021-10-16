@@ -21,19 +21,19 @@ type BaseListener struct {
 	countActiveConnections int64 // 当前活跃的连接数
 }
 
-// 初始化
+// Init 初始化
 func (this *BaseListener) Init() {
 	this.namedServers = map[string]*NamedServer{}
 }
 
-// 清除既有配置
+// Reset 清除既有配置
 func (this *BaseListener) Reset() {
 	this.namedServersLocker.Lock()
 	this.namedServers = map[string]*NamedServer{}
 	this.namedServersLocker.Unlock()
 }
 
-// 获取当前活跃连接数
+// CountActiveListeners 获取当前活跃连接数
 func (this *BaseListener) CountActiveListeners() int {
 	return types.Int(this.countActiveConnections)
 }
@@ -252,4 +252,39 @@ func (this *BaseListener) findNamedServerMatched(name string) (serverConfig *ser
 	}
 
 	return nil, name
+}
+
+// 使用CNAME来查找服务
+// TODO 防止单IP随机生成域名攻击
+func (this *BaseListener) findServerWithCname(domain string) *serverconfigs.ServerConfig {
+	if !sharedNodeConfig.SupportCNAME {
+		return nil
+	}
+
+	var realName = sharedCNAMEManager.Lookup(domain)
+	if len(realName) == 0 {
+		return nil
+	}
+
+	this.serversLocker.Lock()
+	defer this.serversLocker.Unlock()
+
+	group := this.Group
+	if group == nil {
+		return nil
+	}
+
+	currentServers := group.Servers
+	countServers := len(currentServers)
+	if countServers == 0 {
+		return nil
+	}
+
+	for _, server := range currentServers {
+		if server.SupportCNAME && lists.ContainsString(server.AliasServerNames, realName) {
+			return server
+		}
+	}
+
+	return nil
 }

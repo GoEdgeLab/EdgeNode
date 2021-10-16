@@ -157,33 +157,38 @@ func (this *HTTPListener) handleHTTP(rawWriter http.ResponseWriter, rawReq *http
 
 	server, serverName := this.findNamedServer(domain)
 	if server == nil {
-		// 严格匹配域名模式下，我们拒绝用户访问
-		if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
-			httpAllConfig := sharedNodeConfig.GlobalConfig.HTTPAll
-			mismatchAction := httpAllConfig.DomainMismatchAction
-			if mismatchAction != nil && mismatchAction.Code == "page" {
-				if mismatchAction.Options != nil {
-					rawWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
-					rawWriter.WriteHeader(mismatchAction.Options.GetInt("statusCode"))
-					_, _ = rawWriter.Write([]byte(mismatchAction.Options.GetString("contentHTML")))
+		server = this.findServerWithCname(domain)
+		if server == nil {
+			// 严格匹配域名模式下，我们拒绝用户访问
+			if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
+				httpAllConfig := sharedNodeConfig.GlobalConfig.HTTPAll
+				mismatchAction := httpAllConfig.DomainMismatchAction
+				if mismatchAction != nil && mismatchAction.Code == "page" {
+					if mismatchAction.Options != nil {
+						rawWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
+						rawWriter.WriteHeader(mismatchAction.Options.GetInt("statusCode"))
+						_, _ = rawWriter.Write([]byte(mismatchAction.Options.GetString("contentHTML")))
+					} else {
+						http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
+					}
+					return
 				} else {
-					http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
-				}
-				return
-			} else {
-				hijacker, ok := rawWriter.(http.Hijacker)
-				if ok {
-					conn, _, _ := hijacker.Hijack()
-					if conn != nil {
-						_ = conn.Close()
-						return
+					hijacker, ok := rawWriter.(http.Hijacker)
+					if ok {
+						conn, _, _ := hijacker.Hijack()
+						if conn != nil {
+							_ = conn.Close()
+							return
+						}
 					}
 				}
 			}
-		}
 
-		http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
-		return
+			http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
+			return
+		} else {
+			serverName = domain
+		}
 	}
 
 	// 包装新请求对象

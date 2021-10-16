@@ -22,6 +22,7 @@ require (
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
+	github.com/miekg/dns v1.1.43
 	github.com/mssola/user_agent v0.5.2
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/shirou/gopsutil v3.21.5+incompatible
