@@ -27,7 +27,7 @@ func (this *Item) IsExpired() bool {
 }
 
 func (this *Item) TotalSize() int64 {
-	return this.Size() + this.MetaSize + int64(len(this.Key)) + 64
+	return this.Size() + this.MetaSize + int64(len(this.Key)) + int64(len(this.Host)) + 64
 }
 
 func (this *Item) Size() int64 {

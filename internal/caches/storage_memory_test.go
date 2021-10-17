@@ -1,9 +1,12 @@
 package caches
 
 import (
+	"bytes"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"testing"
 	"time"
@@ -264,4 +267,39 @@ func TestMemoryStorage_Locker(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("ok")
+}
+
+func TestMemoryStorage_Stop(t *testing.T) {
+	var stat1 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat1)
+
+	var m = map[uint64]*MemoryItem{}
+	for i := 0; i < 1_000_000; i++ {
+		m[uint64(i)] = &MemoryItem{
+			HeaderValue: []byte("Hello, World"),
+			BodyValue:   bytes.Repeat([]byte("Hello"), 1024),
+		}
+	}
+
+	m = map[uint64]*MemoryItem{}
+
+	var before = time.Now()
+	//runtime.GC()
+	debug.FreeOSMemory()
+	/**go func() {
+		time.Sleep(10 * time.Second)
+		runtime.GC()
+	}()**/
+	t.Log(time.Since(before).Seconds()*1000, "ms")
+
+	var stat2 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat2)
+
+	if stat2.HeapInuse > stat1.HeapInuse {
+		t.Log(stat2.HeapInuse, stat1.HeapInuse, (stat2.HeapInuse-stat1.HeapInuse)/1024/1024, "MB")
+	} else {
+		t.Log("0 MB")
+	}
+
+	t.Log(len(m))
 }

@@ -3,8 +3,10 @@ package nodes
 import (
 	"bytes"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -107,6 +109,32 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	if storage == nil {
 		this.cacheRef = nil
 		return
+	}
+
+	// 判断是否在Purge
+	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("Edge-Purge-Key") == this.web.Cache.PurgeKey {
+		err := storage.Delete(key)
+		if err != nil {
+			remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
+		}
+
+		go func() {
+			rpcClient, err := rpc.SharedRPC()
+			if err == nil {
+				for _, rpcServerService := range rpcClient.ServerRPCList() {
+					_, err = rpcServerService.PurgeServerCache(rpcClient.Context(), &pb.PurgeServerCacheRequest{
+						Domains:  []string{this.Host},
+						Keys:     []string{key},
+						Prefixes: nil,
+					})
+					if err != nil {
+						remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
+					}
+				}
+			}
+		}()
+
+		return true
 	}
 
 	buf := bytePool32k.Get()

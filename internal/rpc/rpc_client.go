@@ -105,6 +105,18 @@ func (this *RPCClient) ServerRPC() pb.ServerServiceClient {
 	return pb.NewServerServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) ServerRPCList() []pb.ServerServiceClient {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	var clients = []pb.ServerServiceClient{}
+	for _, conn := range this.conns {
+		clients = append(clients, pb.NewServerServiceClient(conn))
+	}
+
+	return clients
+}
+
 func (this *RPCClient) ServerDailyStatRPC() pb.ServerDailyStatServiceClient {
 	return pb.NewServerDailyStatServiceClient(this.pickConn())
 }
