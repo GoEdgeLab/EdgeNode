@@ -8,6 +8,31 @@ import (
 	"io"
 )
 
+type ContentEncoding = string
+
+const (
+	ContentEncodingBr      ContentEncoding = "br"
+	ContentEncodingGzip    ContentEncoding = "gzip"
+	ContentEncodingDeflate ContentEncoding = "deflate"
+)
+
+var ErrNotSupportedContentEncoding = errors.New("not supported content encoding")
+
+// NewReader 获取Reader
+func NewReader(reader io.Reader, contentEncoding ContentEncoding) (Reader, error) {
+	switch contentEncoding {
+	case ContentEncodingBr:
+		return NewBrotliReader(reader)
+	case ContentEncodingGzip:
+		return NewGzipReader(reader)
+	case ContentEncodingDeflate:
+		return NewDeflateReader(reader)
+	}
+	return nil, ErrNotSupportedContentEncoding
+}
+
+// NewWriter 获取Writer
+// TODO 考虑重用Writer
 func NewWriter(writer io.Writer, compressType serverconfigs.HTTPCompressionType, level int) (Writer, error) {
 	switch compressType {
 	case serverconfigs.HTTPCompressionTypeGzip:

@@ -39,21 +39,22 @@ func (this *LogWriter) Init() {
 
 func (this *LogWriter) Write(message string) {
 	// 文件和行号
-	var callDepth = 3
+	var callDepth = 2
 	var file string
 	var line int
 	var ok bool
 	_, file, line, ok = runtime.Caller(callDepth)
-	if !ok {
-		file = "???"
-		line = 0
-	} else {
+	if ok {
 		file = filepath.Base(file)
 	}
 
 	backgroundEnv, _ := os.LookupEnv("EdgeBackground")
 	if backgroundEnv != "on" {
-		log.Println(message + " (" + file + ":" + strconv.Itoa(line) + ")")
+		if len(file) > 0 {
+			log.Println(message + " (" + file + ":" + strconv.Itoa(line) + ")")
+		} else {
+			log.Println(message)
+		}
 	}
 
 	if this.fileAppender != nil {

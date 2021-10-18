@@ -444,7 +444,8 @@ func (this *HTTPWriter) PrepareCompression(size int64) {
 	}
 
 	// 如果已经有编码则不处理
-	if len(this.writer.Header().Get("Content-Encoding")) > 0 {
+	var contentEncoding = this.writer.Header().Get("Content-Encoding")
+	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding)) {
 		return
 	}
 
@@ -458,6 +459,12 @@ func (this *HTTPWriter) PrepareCompression(size int64) {
 	if !ok {
 		return
 	}
+
+	// 压缩前后如果编码一致，则不处理
+	if compressionEncoding == contentEncoding {
+		return
+	}
+
 	this.compressionType = compressionType
 
 	// compression writer
@@ -466,6 +473,15 @@ func (this *HTTPWriter) PrepareCompression(size int64) {
 	if err != nil {
 		remotelogs.Error("HTTP_WRITER", err.Error())
 		return
+	}
+
+	// convert between encodings
+	if len(contentEncoding) > 0 {
+		this.compressionWriter, err = compressions.NewEncodingWriter(contentEncoding, this.compressionWriter)
+		if err != nil {
+			remotelogs.Error("HTTP_WRITER", err.Error())
+			return
+		}
 	}
 
 	// body copy
