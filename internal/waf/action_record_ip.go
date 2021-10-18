@@ -58,6 +58,7 @@ type RecordIPAction struct {
 	IPListId int64  `yaml:"ipListId" json:"ipListId"`
 	Level    string `yaml:"level" json:"level"`
 	Timeout  int32  `yaml:"timeout" json:"timeout"`
+	Scope    string `yaml:"scope" json:"scope"`
 }
 
 func (this *RecordIPAction) Init(waf *WAF) error {
@@ -78,11 +79,10 @@ func (this *RecordIPAction) WillChange() bool {
 
 func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
 	// 是否在本地白名单中
-	if SharedIPWhiteList.Contains("set:"+set.Id, set.Id) {
+	if SharedIPWhiteList.Contains("set:"+set.Id, this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
 		return true
 	}
 
-	// 先加入本地的黑名单
 	timeout := this.Timeout
 	if timeout <= 0 {
 		timeout = 86400 // 1天
@@ -94,14 +94,11 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 
 		request.WAFClose()
 
-		SharedIPBlackList.Add(IPTypeAll, request.WAFRemoteIP(), expiredAt)
+		// 先加入本地的黑名单
+		SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiredAt)
 	} else {
 		// 加入本地白名单
-		timeout := this.Timeout
-		if timeout <= 0 {
-			timeout = 86400 // 1天
-		}
-		SharedIPWhiteList.Add("set:"+set.Id, request.WAFRemoteIP(), expiredAt)
+		SharedIPWhiteList.Add("set:"+set.Id, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiredAt)
 	}
 
 	// 上报

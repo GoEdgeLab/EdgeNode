@@ -44,7 +44,7 @@ func (this *Get302Validator) Run(request requests.Request, writer http.ResponseW
 		life = 600 // 默认10分钟
 	}
 	setId := m.GetString("setId")
-	SharedIPWhiteList.Add("set:"+setId, request.WAFRemoteIP(), time.Now().Unix()+life)
+	SharedIPWhiteList.Add("set:"+setId, m.GetString("scope"), request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life)
 
 	// 返回原始URL
 	var url = m.GetString("url")

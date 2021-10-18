@@ -20,7 +20,8 @@ const (
 type Get302Action struct {
 	BaseAction
 
-	Life int32 `yaml:"life" json:"life"`
+	Life  int32  `yaml:"life" json:"life"`
+	Scope string `yaml:"scope" json:"scope"`
 }
 
 func (this *Get302Action) Init(waf *WAF) error {
@@ -46,7 +47,7 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 	}
 
 	// 是否已经在白名单中
-	if SharedIPWhiteList.Contains("set:"+set.Id, request.WAFRemoteIP()) {
+	if SharedIPWhiteList.Contains("set:"+set.Id, this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
 		return true
 	}
 
@@ -54,6 +55,7 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 		"url":       request.WAFRaw().URL.String(),
 		"timestamp": time.Now().Unix(),
 		"life":      this.Life,
+		"scope":     this.Scope,
 		"setId":     set.Id,
 	}
 	info, err := utils.SimpleEncryptMap(m)
@@ -66,7 +68,7 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 
 	// 关闭连接
 	if request.WAFRaw().ProtoMajor == 1 {
-		request.WAFClose()
+		_ = this.CloseConn(writer)
 	}
 
 	return true

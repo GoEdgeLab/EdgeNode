@@ -23,6 +23,7 @@ type CaptchaAction struct {
 	Life           int32  `yaml:"life" json:"life"`
 	Language       string `yaml:"language" json:"language"`             // 语言，zh-CN, en-US ...
 	AddToWhiteList bool   `yaml:"addToWhiteList" json:"addToWhiteList"` // 是否加入到白名单
+	Scope          string `yaml:"scope" json:"scope"`
 }
 
 func (this *CaptchaAction) Init(waf *WAF) error {
@@ -43,7 +44,7 @@ func (this *CaptchaAction) WillChange() bool {
 
 func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
 	// 是否在白名单中
-	if SharedIPWhiteList.Contains("set:"+set.Id, request.WAFRemoteIP()) {
+	if SharedIPWhiteList.Contains("set:"+set.Id, this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
 		return true
 	}
 

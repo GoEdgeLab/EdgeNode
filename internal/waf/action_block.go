@@ -24,6 +24,7 @@ type BlockAction struct {
 	Body       string `yaml:"body" json:"body"` // supports HTML
 	URL        string `yaml:"url" json:"url"`
 	Timeout    int32  `yaml:"timeout" json:"timeout"`
+	Scope      string `yaml:"scope" json:"scope"`
 }
 
 func (this *BlockAction) Init(waf *WAF) error {
@@ -62,7 +63,7 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 	if timeout <= 0 {
 		timeout = 60 // 默认封锁60秒
 	}
-	SharedIPBlackList.Add(IPTypeAll, request.WAFRemoteIP(), time.Now().Unix()+int64(timeout))
+	SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(timeout))
 
 	if writer != nil {
 		// close the connection

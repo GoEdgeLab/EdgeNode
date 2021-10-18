@@ -3,7 +3,9 @@
 package waf
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
+	"github.com/iwind/TeaGo/types"
 	"sync"
 	"sync/atomic"
 )
@@ -43,8 +45,15 @@ func NewIPList() *IPList {
 }
 
 // Add 添加IP
-func (this *IPList) Add(ipType string, ip string, expiresAt int64) {
-	ip = ip + "@" + ipType
+func (this *IPList) Add(ipType string, scope firewallconfigs.FirewallScope, serverId int64, ip string, expiresAt int64) {
+	switch scope {
+	case firewallconfigs.FirewallScopeGlobal:
+		ip = "*@" + ip + "@" + ipType
+	case firewallconfigs.FirewallScopeService:
+		ip = types.String(serverId) + "@" + ip + "@" + ipType
+	default:
+		ip = types.String(serverId) + "@" + ip + "@" + ipType
+	}
 
 	var id = this.nextId()
 	this.expireList.Add(id, expiresAt)
@@ -55,8 +64,15 @@ func (this *IPList) Add(ipType string, ip string, expiresAt int64) {
 }
 
 // Contains 判断是否有某个IP
-func (this *IPList) Contains(ipType string, ip string) bool {
-	ip = ip + "@" + ipType
+func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope, serverId int64, ip string) bool {
+	switch scope {
+	case firewallconfigs.FirewallScopeGlobal:
+		ip = "*@" + ip + "@" + ipType
+	case firewallconfigs.FirewallScopeService:
+		ip = types.String(serverId) + "@" + ip + "@" + ipType
+	default:
+		ip = types.String(serverId) + "@" + ip + "@" + ipType
+	}
 
 	this.locker.RLock()
 	defer this.locker.RUnlock()

@@ -10,7 +10,8 @@ import (
 )
 
 type Post307Action struct {
-	Life int32 `yaml:"life" json:"life"`
+	Life  int32  `yaml:"life" json:"life"`
+	Scope string `yaml:"scope" json:"scope"`
 
 	BaseAction
 }
@@ -40,7 +41,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	}
 
 	// 是否已经在白名单中
-	if SharedIPWhiteList.Contains("set:"+set.Id, request.WAFRemoteIP()) {
+	if SharedIPWhiteList.Contains("set:"+set.Id, this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
 		return true
 	}
 
@@ -54,7 +55,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 				life = 600 // 默认10分钟
 			}
 			var setId = m.GetString("setId")
-			SharedIPWhiteList.Add("set:"+setId, request.WAFRemoteIP(), time.Now().Unix()+life)
+			SharedIPWhiteList.Add("set:"+setId, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life)
 			return true
 		}
 	}
@@ -62,6 +63,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	var m = maps.Map{
 		"timestamp": time.Now().Unix(),
 		"life":      this.Life,
+		"scope":     this.Scope,
 		"setId":     set.Id,
 		"remoteIP":  request.WAFRemoteIP(),
 	}
@@ -82,7 +84,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusTemporaryRedirect)
 
 	if request.WAFRaw().ProtoMajor == 1 {
-		request.WAFClose()
+		_ = this.CloseConn(writer)
 	}
 
 	return true
