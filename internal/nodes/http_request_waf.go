@@ -22,8 +22,23 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	if conn != nil {
 		trafficConn, ok := conn.(*TrafficConn)
 		if ok && trafficConn.IsClosed() {
+			this.disableLog = true
 			return true
 		}
+	}
+
+	// 检查是否在临时黑名单中
+	if waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeService, this.Server.Id, this.WAFRemoteIP()) {
+		this.disableLog = true
+
+		if conn != nil {
+			trafficConn, ok := conn.(*TrafficConn)
+			if ok && !trafficConn.IsClosed() {
+				_ = trafficConn.Close()
+			}
+		}
+
+		return true
 	}
 
 	// 当前服务的独立设置
