@@ -177,6 +177,14 @@ func (this *HTTPRequest) doBegin() {
 		}
 	}
 
+	// 处理健康检查
+	var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
+	if len(healthCheckKey) > 0 {
+		if this.doHealthCheck(healthCheckKey) {
+			return
+		}
+	}
+
 	// 统计
 	if this.web.StatRef != nil && this.web.StatRef.IsOn {
 		this.doStat()
