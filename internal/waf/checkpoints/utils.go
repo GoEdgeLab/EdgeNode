@@ -199,6 +199,13 @@ var AllCheckpoints = []*CheckpointDefinition{
 		Instance:    new(CC2Checkpoint),
 	},
 	{
+		Name:        "防盗链",
+		Prefix:      "refererBlock",
+		Description: "阻止一些域名访问引用本站资源",
+		HasParams:   true,
+		Instance:    new(RequestRefererBlockCheckpoint),
+	},
+	{
 		Name:        "通用响应Header长度限制",
 		Prefix:      "responseGeneralHeaderLength",
 		Description: "通用Header比如Cache-Control、Accept之类的长度限制，防止缓冲区溢出攻击",

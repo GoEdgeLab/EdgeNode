@@ -23,7 +23,7 @@ import (
 
 var singleParamRegexp = regexp.MustCompile("^\\${[\\w.-]+}$")
 
-// rule
+// Rule
 type Rule struct {
 	Description       string                 `yaml:"description" json:"description"`
 	Param             string                 `yaml:"param" json:"param"` // such as ${arg.name} or ${args}, can be composite as ${arg.firstName}${arg.lastName}
