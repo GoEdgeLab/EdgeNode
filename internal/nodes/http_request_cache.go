@@ -112,7 +112,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	// 判断是否在Purge
-	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("Edge-Purge-Key") == this.web.Cache.PurgeKey {
+	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey {
 		err := storage.Delete(key)
 		if err != nil {
 			remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
