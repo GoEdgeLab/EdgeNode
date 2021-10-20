@@ -126,6 +126,17 @@ func (this *HTTPRequest) Do() {
 		return
 	}
 
+	// 特殊URL处理
+	if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
+		// ACME
+		// TODO 需要配置是否启用ACME检测
+		if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
+			this.doACME()
+			this.doEnd()
+			return
+		}
+	}
+
 	// WAF
 	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 		if this.doWAFRequest() {
@@ -167,16 +178,6 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
-	// 特殊URL处理
-	if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
-		// ACME
-		// TODO 需要配置是否启用ACME检测
-		if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
-			this.doACME()
-			return
-		}
-	}
-
 	// 处理健康检查
 	var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
 	if len(healthCheckKey) > 0 {
