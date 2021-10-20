@@ -59,7 +59,7 @@ func (this *Listener) listenTCP() error {
 	if err != nil {
 		return err
 	}
-	netListener = NewTrafficListener(netListener)
+	netListener = NewClientListener(netListener)
 	events.On(events.EventQuit, func() {
 		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
 		_ = netListener.Close()

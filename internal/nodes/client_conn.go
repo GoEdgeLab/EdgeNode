@@ -42,17 +42,23 @@ func init() {
 	})
 }
 
-// TrafficConn 用于统计流量的连接
-type TrafficConn struct {
+// ClientConn 客户端连接
+type ClientConn struct {
 	rawConn  net.Conn
 	isClosed bool
 }
 
-func NewTrafficConn(conn net.Conn) net.Conn {
-	return &TrafficConn{rawConn: conn}
+func NewClientConn(conn net.Conn) net.Conn {
+	tcpConn, ok := conn.(*net.TCPConn)
+	if ok {
+		// TODO 可以设置此值
+		_ = tcpConn.SetLinger(0)
+	}
+
+	return &ClientConn{rawConn: conn}
 }
 
-func (this *TrafficConn) Read(b []byte) (n int, err error) {
+func (this *ClientConn) Read(b []byte) (n int, err error) {
 	n, err = this.rawConn.Read(b)
 	if n > 0 {
 		atomic.AddUint64(&inTrafficBytes, uint64(n))
@@ -60,7 +66,7 @@ func (this *TrafficConn) Read(b []byte) (n int, err error) {
 	return
 }
 
-func (this *TrafficConn) Write(b []byte) (n int, err error) {
+func (this *ClientConn) Write(b []byte) (n int, err error) {
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
 		atomic.AddUint64(&outTrafficBytes, uint64(n))
@@ -68,31 +74,31 @@ func (this *TrafficConn) Write(b []byte) (n int, err error) {
 	return
 }
 
-func (this *TrafficConn) Close() error {
+func (this *ClientConn) Close() error {
 	this.isClosed = true
 	return this.rawConn.Close()
 }
 
-func (this *TrafficConn) LocalAddr() net.Addr {
+func (this *ClientConn) LocalAddr() net.Addr {
 	return this.rawConn.LocalAddr()
 }
 
-func (this *TrafficConn) RemoteAddr() net.Addr {
+func (this *ClientConn) RemoteAddr() net.Addr {
 	return this.rawConn.RemoteAddr()
 }
 
-func (this *TrafficConn) SetDeadline(t time.Time) error {
+func (this *ClientConn) SetDeadline(t time.Time) error {
 	return this.rawConn.SetDeadline(t)
 }
 
-func (this *TrafficConn) SetReadDeadline(t time.Time) error {
+func (this *ClientConn) SetReadDeadline(t time.Time) error {
 	return this.rawConn.SetReadDeadline(t)
 }
 
-func (this *TrafficConn) SetWriteDeadline(t time.Time) error {
+func (this *ClientConn) SetWriteDeadline(t time.Time) error {
 	return this.rawConn.SetWriteDeadline(t)
 }
 
-func (this *TrafficConn) IsClosed() bool {
+func (this *ClientConn) IsClosed() bool {
 	return this.isClosed
 }

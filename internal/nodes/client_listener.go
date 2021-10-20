@@ -8,16 +8,16 @@ import (
 	"net"
 )
 
-// TrafficListener 用于统计流量的网络监听
-type TrafficListener struct {
+// ClientListener 客户端网络监听
+type ClientListener struct {
 	rawListener net.Listener
 }
 
-func NewTrafficListener(listener net.Listener) net.Listener {
-	return &TrafficListener{rawListener: listener}
+func NewClientListener(listener net.Listener) net.Listener {
+	return &ClientListener{rawListener: listener}
 }
 
-func (this *TrafficListener) Accept() (net.Conn, error) {
+func (this *ClientListener) Accept() (net.Conn, error) {
 	conn, err := this.rawListener.Accept()
 	if err != nil {
 		return nil, err
@@ -33,13 +33,13 @@ func (this *TrafficListener) Accept() (net.Conn, error) {
 		}
 	}
 
-	return NewTrafficConn(conn), nil
+	return NewClientConn(conn), nil
 }
 
-func (this *TrafficListener) Close() error {
+func (this *ClientListener) Close() error {
 	return this.rawListener.Close()
 }
 
-func (this *TrafficListener) Addr() net.Addr {
+func (this *ClientListener) Addr() net.Addr {
 	return this.rawListener.Addr()
 }

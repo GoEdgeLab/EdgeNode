@@ -20,7 +20,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	// 当前连接是否已关闭
 	var conn = this.RawReq.Context().Value(HTTPConnContextKey)
 	if conn != nil {
-		trafficConn, ok := conn.(*TrafficConn)
+		trafficConn, ok := conn.(*ClientConn)
 		if ok && trafficConn.IsClosed() {
 			this.disableLog = true
 			return true
@@ -32,7 +32,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 		this.disableLog = true
 
 		if conn != nil {
-			trafficConn, ok := conn.(*TrafficConn)
+			trafficConn, ok := conn.(*ClientConn)
 			if ok && !trafficConn.IsClosed() {
 				_ = trafficConn.Close()
 			}
