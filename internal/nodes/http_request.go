@@ -137,6 +137,13 @@ func (this *HTTPRequest) Do() {
 		}
 	}
 
+	// 带宽限制
+	if this.Server.BandwidthLimit != nil && this.Server.BandwidthLimit.IsOn && !this.Server.BandwidthLimit.IsEmpty() && this.Server.BandwidthLimitStatus != nil && this.Server.BandwidthLimitStatus.IsValid() {
+		this.doBandwidthLimit()
+		this.doEnd()
+		return
+	}
+
 	// WAF
 	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 		if this.doWAFRequest() {
