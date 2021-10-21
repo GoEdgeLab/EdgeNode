@@ -52,7 +52,7 @@ func (this *IPList) Add(ipType string, scope firewallconfigs.FirewallScope, serv
 	case firewallconfigs.FirewallScopeService:
 		ip = types.String(serverId) + "@" + ip + "@" + ipType
 	default:
-		ip = types.String(serverId) + "@" + ip + "@" + ipType
+		ip = "*@" + ip + "@" + ipType
 	}
 
 	var id = this.nextId()
@@ -71,7 +71,7 @@ func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope,
 	case firewallconfigs.FirewallScopeService:
 		ip = types.String(serverId) + "@" + ip + "@" + ipType
 	default:
-		ip = types.String(serverId) + "@" + ip + "@" + ipType
+		ip = "*@" + ip + "@" + ipType
 	}
 
 	this.locker.RLock()
