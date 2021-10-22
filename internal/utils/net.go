@@ -1,3 +1,6 @@
+//go:build !freebsd
+// +build !freebsd
+
 package utils
 
 import (
@@ -7,7 +10,7 @@ import (
 	"syscall"
 )
 
-// 监听可重用的端口
+// ListenReuseAddr 监听可重用的端口
 func ListenReuseAddr(network string, addr string) (net.Listener, error) {
 	config := &net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
