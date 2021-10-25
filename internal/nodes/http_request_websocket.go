@@ -56,7 +56,7 @@ func (this *HTTPRequest) doWebsocket() {
 	}
 
 	clientConn, _, err := this.writer.Hijack()
-	if err != nil {
+	if err != nil || clientConn == nil {
 		this.write50x(err, http.StatusInternalServerError)
 		return
 	}

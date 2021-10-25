@@ -15,7 +15,7 @@ func (this *BaseAction) CloseConn(writer http.ResponseWriter) error {
 	hijack, ok := writer.(http.Hijacker)
 	if ok {
 		conn, _, err := hijack.Hijack()
-		if err == nil {
+		if err == nil && conn != nil {
 			return conn.Close()
 		}
 	}

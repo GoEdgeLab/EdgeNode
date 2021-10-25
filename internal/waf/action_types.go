@@ -13,6 +13,7 @@ const (
 	ActionPost307  ActionString = "post_307"  // 针对POST的307重定向认证
 	ActionRecordIP ActionString = "record_ip" // 记录IP
 	ActionTag      ActionString = "tag"       // 标签
+	ActionPage     ActionString = "page"      // 显示网页
 	ActionAllow    ActionString = "allow"     // allow
 	ActionGoGroup  ActionString = "go_group"  // go to next rule group
 	ActionGoSet    ActionString = "go_set"    // go to next rule set
@@ -72,6 +73,12 @@ var AllActions = []*ActionDefinition{
 		Code:     ActionTag,
 		Instance: new(TagAction),
 		Type:     reflect.TypeOf(new(TagAction)).Elem(),
+	},
+	{
+		Name:     "显示页面",
+		Code:     ActionPage,
+		Instance: new(PageAction),
+		Type:     reflect.TypeOf(new(PageAction)).Elem(),
 	},
 	{
 		Name:     "跳到下一个规则分组",
