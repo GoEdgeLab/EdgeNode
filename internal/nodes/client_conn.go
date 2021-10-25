@@ -48,11 +48,13 @@ type ClientConn struct {
 	isClosed bool
 }
 
-func NewClientConn(conn net.Conn) net.Conn {
-	tcpConn, ok := conn.(*net.TCPConn)
-	if ok {
-		// TODO 可以设置此值
-		_ = tcpConn.SetLinger(0)
+func NewClientConn(conn net.Conn, quickClose bool) net.Conn {
+	if quickClose {
+		tcpConn, ok := conn.(*net.TCPConn)
+		if ok {
+			// TODO 可以设置此值
+			_ = tcpConn.SetLinger(0)
+		}
 	}
 
 	return &ClientConn{rawConn: conn}

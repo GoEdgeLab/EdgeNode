@@ -20,22 +20,18 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	// 当前连接是否已关闭
 	var conn = this.RawReq.Context().Value(HTTPConnContextKey)
 	if conn != nil {
-		trafficConn, ok := conn.(*ClientConn)
-		if ok && trafficConn.IsClosed() {
+		if isClientConnClosed(conn.(net.Conn)) {
 			this.disableLog = true
 			return true
 		}
 	}
 
 	// 检查是否在临时黑名单中
-	if waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeService, this.Server.Id, this.WAFRemoteIP()) {
+	var remoteAddr = this.WAFRemoteIP()
+	if waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeService, this.Server.Id, remoteAddr) || waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteAddr) {
 		this.disableLog = true
-
 		if conn != nil {
-			trafficConn, ok := conn.(*ClientConn)
-			if ok && !trafficConn.IsClosed() {
-				_ = trafficConn.Close()
-			}
+			_ = conn.(net.Conn).Close()
 		}
 
 		return true

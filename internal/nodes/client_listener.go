@@ -11,10 +11,14 @@ import (
 // ClientListener 客户端网络监听
 type ClientListener struct {
 	rawListener net.Listener
+	quickClose  bool
 }
 
-func NewClientListener(listener net.Listener) net.Listener {
-	return &ClientListener{rawListener: listener}
+func NewClientListener(listener net.Listener, quickClose bool) net.Listener {
+	return &ClientListener{
+		rawListener: listener,
+		quickClose:  quickClose,
+	}
 }
 
 func (this *ClientListener) Accept() (net.Conn, error) {
@@ -25,15 +29,20 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 	// 是否在WAF名单中
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err == nil {
-		if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) && waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) {
-			defer func() {
-				_ = conn.Close()
-			}()
-			return conn, nil
+		if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
+			waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) {
+
+			tcpConn, ok := conn.(*net.TCPConn)
+			if ok {
+				_ = tcpConn.SetLinger(0)
+			}
+
+			_ = conn.Close()
+			return this.Accept()
 		}
 	}
 
-	return NewClientConn(conn), nil
+	return NewClientConn(conn, this.quickClose), nil
 }
 
 func (this *ClientListener) Close() error {
