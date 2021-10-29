@@ -10,7 +10,7 @@ require (
 	github.com/andybalholm/brotli v1.0.3
 	github.com/biessek/golang-ico v0.0.0-20180326222316-d348d9ea4670
 	github.com/cespare/xxhash v1.1.0
-	github.com/chai2010/webp v1.1.0
+	github.com/chai2010/webp v1.1.0 // indirect
 	github.com/dchest/captcha v0.0.0-20200903113550-03f5f0333e1f
 	github.com/dop251/goja v0.0.0-20210804101310-32956a348b49
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -19,6 +19,7 @@ require (
 	github.com/iwind/TeaGo v0.0.0-20210628135026-38575a4ab060
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20210722083328-12b2d66abec3
+	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible

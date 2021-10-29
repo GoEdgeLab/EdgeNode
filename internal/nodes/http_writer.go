@@ -12,12 +12,13 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/andybalholm/brotli"
 	_ "github.com/biessek/golang-ico"
-	"github.com/chai2010/webp"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
+	"github.com/iwind/gowebp"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/webp"
 	"image"
+	"image/gif"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -278,6 +279,9 @@ func (this *HTTPWriter) Close() {
 		// 需要把字节读取出来做备份，防止在image.Decode()过程中丢失
 		var imageBytes = this.webpBuffer.Bytes()
 		var imageData image.Image
+		var gifImage *gif.GIF
+		var isGif = strings.Contains(this.webpOriginContentType, "image/gif")
+
 		var err error
 		if this.webpOriginEncoding == "gzip" {
 			this.Header().Del("Content-Encoding")
@@ -287,7 +291,11 @@ func (this *HTTPWriter) Close() {
 				defer func() {
 					_ = reader.Close()
 				}()
-				imageData, _, err = image.Decode(reader)
+				if isGif {
+					gifImage, err = gif.DecodeAll(reader)
+				} else {
+					imageData, _, err = image.Decode(reader)
+				}
 			}
 		} else if this.webpOriginEncoding == "deflate" {
 			this.Header().Del("Content-Encoding")
@@ -296,14 +304,26 @@ func (this *HTTPWriter) Close() {
 			defer func() {
 				_ = reader.Close()
 			}()
-			imageData, _, err = image.Decode(reader)
+			if isGif {
+				gifImage, err = gif.DecodeAll(reader)
+			} else {
+				imageData, _, err = image.Decode(reader)
+			}
 		} else if this.webpOriginEncoding == "br" {
 			this.Header().Del("Content-Encoding")
 			var reader *brotli.Reader
 			reader = brotli.NewReader(this.webpBuffer)
-			imageData, _, err = image.Decode(reader)
+			if isGif {
+				gifImage, err = gif.DecodeAll(reader)
+			} else {
+				imageData, _, err = image.Decode(reader)
+			}
 		} else {
-			imageData, _, err = image.Decode(this.webpBuffer)
+			if isGif {
+				gifImage, err = gif.DecodeAll(this.webpBuffer)
+			} else {
+				imageData, _, err = image.Decode(this.webpBuffer)
+			}
 		}
 		if err != nil {
 			this.Header().Set("Content-Type", this.webpOriginContentType)
@@ -322,11 +342,38 @@ func (this *HTTPWriter) Close() {
 			}
 			this.webpIsWriting = true
 
-			err = webp.Encode(this, imageData, &webp.Options{
-				Lossless: false,
-				Quality:  f,
-				Exact:    true,
-			})
+			if imageData != nil {
+				err = gowebp.Encode(this, imageData, &gowebp.Options{
+					Lossless: false,
+					Quality:  f,
+					Exact:    true,
+				})
+			} else if gifImage != nil {
+				anim := gowebp.NewWebpAnimation(gifImage.Config.Width, gifImage.Config.Height, gifImage.LoopCount)
+				anim.WebPAnimEncoderOptions.SetKmin(9)
+				anim.WebPAnimEncoderOptions.SetKmax(17)
+				defer anim.ReleaseMemory()
+				webpConfig := gowebp.NewWebpConfig()
+				//webpConfig.SetLossless(1)
+				webpConfig.SetQuality(f)
+
+				timeline := 0
+
+				for i, img := range gifImage.Image {
+					err = anim.AddFrame(img, timeline, webpConfig)
+					if err != nil {
+						break
+					}
+					timeline += gifImage.Delay[i] * 10
+				}
+				if err == nil {
+					err = anim.AddFrame(nil, timeline, webpConfig)
+
+					if err == nil {
+						err = anim.Encode(this)
+					}
+				}
+			}
 			if err != nil {
 				if !this.req.canIgnore(err) {
 					remotelogs.Error("HTTP_WRITER", "encode webp failed: "+err.Error())
