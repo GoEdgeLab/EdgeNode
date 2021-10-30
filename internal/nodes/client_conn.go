@@ -53,7 +53,7 @@ func NewClientConn(conn net.Conn, quickClose bool) net.Conn {
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			// TODO 可以设置此值
-			_ = tcpConn.SetLinger(0)
+			_ = tcpConn.SetLinger(3)
 		}
 	}
 
