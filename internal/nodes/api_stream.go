@@ -15,7 +15,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/iwind/TeaGo/logs"
 	"io"
 	"net"
 	"net/http"
@@ -45,7 +44,7 @@ func (this *APIStream) Start() {
 		}
 		err := this.loop()
 		if err != nil {
-			remotelogs.Error("API_STREAM", err.Error())
+			remotelogs.Warn("API_STREAM", err.Error())
 			time.Sleep(10 * time.Second)
 			continue
 		}
@@ -79,7 +78,7 @@ func (this *APIStream) loop() error {
 
 	for {
 		if isQuiting {
-			logs.Println("API_STREAM", "quit")
+			remotelogs.Println("API_STREAM", "quit")
 			break
 		}
 
