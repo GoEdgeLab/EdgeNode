@@ -496,6 +496,16 @@ func (this *Node) listenSock() error {
 						"pid": os.Getpid(),
 					},
 				})
+			case "info":
+				exePath, _ := os.Executable()
+				_ = cmd.Reply(&gosock.Command{
+					Code: "info",
+					Params: map[string]interface{}{
+						"pid":     os.Getpid(),
+						"version": teaconst.Version,
+						"path":    exePath,
+					},
+				})
 			case "stop":
 				_ = cmd.ReplyOk()
 
