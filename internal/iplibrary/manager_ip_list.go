@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"sync"
 	"time"
@@ -124,6 +125,16 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 
 		if item.IsDeleted {
 			list.Delete(item.Id)
+
+			// 从临时名单中删除
+			if len(item.IpFrom) > 0 && len(item.IpTo) == 0 {
+				switch item.ListType {
+				case "black":
+					waf.SharedIPBlackList.RemoveIP(item.IpFrom)
+				case "white":
+					waf.SharedIPWhiteList.RemoveIP(item.IpFrom)
+				}
+			}
 
 			// 操作事件
 			SharedActionManager.DeleteItem(item.ListType, item)

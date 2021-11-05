@@ -39,6 +39,7 @@ func TestIPList_Contains(t *testing.T) {
 	for i := 0; i < 1_0000; i++ {
 		list.Add(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "192.168.1."+strconv.Itoa(i), time.Now().Unix()+3600)
 	}
+	//list.RemoveIP("192.168.1.100")
 	a.IsTrue(list.Contains(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "192.168.1.100"))
 	a.IsFalse(list.Contains(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "192.168.2.100"))
 }

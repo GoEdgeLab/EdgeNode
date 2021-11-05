@@ -80,6 +80,14 @@ func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope,
 	return ok
 }
 
+// RemoveIP 删除IP
+// 暂时没办法清除某个服务相关的IP
+func (this *IPList) RemoveIP(ip string) {
+	this.locker.Lock()
+	delete(this.ipMap, "*@"+ip+"@"+IPTypeAll)
+	this.locker.Unlock()
+}
+
 func (this *IPList) remove(id int64) {
 	this.locker.Lock()
 	ip, ok := this.idMap[id]
