@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// IPSet动作
+// IPSetAction IPSet动作
 // 相关命令：
 //   - 利用Firewalld管理set：
 //       - 添加：firewall-cmd --permanent --new-ipset=edge_ip_list --type=hash:ip --option="timeout=0"
