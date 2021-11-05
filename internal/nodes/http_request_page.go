@@ -23,7 +23,11 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 		if page.Match(status) {
 			if len(page.BodyType) == 0 || page.BodyType == shared.BodyTypeURL {
 				if urlPrefixRegexp.MatchString(page.URL) {
-					this.doURL(http.MethodGet, page.URL, "", page.NewStatus, true)
+					var newStatus = page.NewStatus
+					if newStatus <= 0 {
+						newStatus = status
+					}
+					this.doURL(http.MethodGet, page.URL, "", newStatus, true)
 					return true
 				} else {
 					file := Tea.Root + Tea.DS + page.URL
