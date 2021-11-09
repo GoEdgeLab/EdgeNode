@@ -144,9 +144,9 @@ func (this *HTTPRequest) Do() {
 		return
 	}
 
-	// 带宽限制
-	if this.Server.BandwidthLimit != nil && this.Server.BandwidthLimit.IsOn && !this.Server.BandwidthLimit.IsEmpty() && this.Server.BandwidthLimitStatus != nil && this.Server.BandwidthLimitStatus.IsValid() {
-		this.doBandwidthLimit()
+	// 流量限制
+	if this.Server.TrafficLimit != nil && this.Server.TrafficLimit.IsOn && !this.Server.TrafficLimit.IsEmpty() && this.Server.TrafficLimitStatus != nil && this.Server.TrafficLimitStatus.IsValid() {
+		this.doTrafficLimit()
 		this.doEnd()
 		return
 	}

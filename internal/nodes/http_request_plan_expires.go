@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-// 带宽限制
+// 套餐过期
 func (this *HTTPRequest) doPlanExpires() {
 	this.tags = append(this.tags, "plan")
 

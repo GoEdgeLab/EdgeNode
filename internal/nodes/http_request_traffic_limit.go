@@ -6,9 +6,9 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 )
 
-// 带宽限制
-func (this *HTTPRequest) doBandwidthLimit() {
-	var config = this.Server.BandwidthLimit
+// 流量限制
+func (this *HTTPRequest) doTrafficLimit() {
+	var config = this.Server.TrafficLimit
 
 	this.tags = append(this.tags, "bandwidth")
 
@@ -19,6 +19,6 @@ func (this *HTTPRequest) doBandwidthLimit() {
 	if len(config.NoticePageBody) != 0 {
 		_, _ = this.writer.WriteString(config.NoticePageBody)
 	} else {
-		_, _ = this.writer.WriteString(serverconfigs.DefaultBandwidthLimitNoticePageBody)
+		_, _ = this.writer.WriteString(serverconfigs.DefaultTrafficLimitNoticePageBody)
 	}
 }
