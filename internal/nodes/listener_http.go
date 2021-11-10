@@ -37,18 +37,13 @@ type HTTPListener struct {
 }
 
 func (this *HTTPListener) Serve() error {
-	handler := http.NewServeMux()
-	handler.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		this.handleHTTP(writer, request)
-	})
-
 	this.addr = this.Group.Addr()
 	this.isHTTP = this.Group.IsHTTP()
 	this.isHTTPS = this.Group.IsHTTPS()
 
 	this.httpServer = &http.Server{
 		Addr:              this.addr,
-		Handler:           handler,
+		Handler:           this,
 		ReadHeaderTimeout: 2 * time.Second, // TODO 改成可以配置
 		IdleTimeout:       2 * time.Minute, // TODO 改成可以配置
 		ErrorLog:          httpErrorLogger,
@@ -118,8 +113,8 @@ func (this *HTTPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Reset()
 }
 
-// 处理HTTP请求
-func (this *HTTPListener) handleHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
+// ServerHTTP 处理HTTP请求
+func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
 	// 域名
 	reqHost := rawReq.Host
 
