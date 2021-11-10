@@ -36,7 +36,7 @@ func (this *ValueQueue) Start() {
 	// 这里单次循环就行，因为Loop里已经使用了Range通道
 	err := this.Loop()
 	if err != nil {
-		remotelogs.Error("MONITOR_QUEUE", err.Error())
+		remotelogs.ErrorObject("MONITOR_QUEUE", err)
 	}
 }
 
@@ -72,7 +72,11 @@ func (this *ValueQueue) Loop() error {
 			CreatedAt: value.CreatedAt,
 		})
 		if err != nil {
-			remotelogs.Error("MONITOR", err.Error())
+			if rpc.IsConnError(err) {
+				remotelogs.Warn("MONITOR", err.Error())
+			} else {
+				remotelogs.Error("MONITOR", err.Error())
+			}
 			continue
 		}
 	}

@@ -21,7 +21,7 @@ func init() {
 		// 初始化
 		library, err := SharedManager.Load()
 		if err != nil {
-			remotelogs.Error("IP_LIBRARY", err.Error())
+			remotelogs.ErrorObject("IP_LIBRARY", err)
 			return
 		}
 		SharedLibrary = library

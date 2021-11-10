@@ -50,13 +50,13 @@ func (this *ProvinceManager) Start() {
 	// 从缓存中读取
 	err := this.load()
 	if err != nil {
-		remotelogs.Error("PROVINCE_MANAGER", err.Error())
+		remotelogs.ErrorObject("PROVINCE_MANAGER", err)
 	}
 
 	// 第一次更新
 	err = this.loop()
 	if err != nil {
-		remotelogs.Error("PROVINCE_MANAGER", err.Error())
+		remotelogs.ErrorObject("PROVINCE_MANAGER", err)
 	}
 
 	// 定时更新
@@ -67,7 +67,7 @@ func (this *ProvinceManager) Start() {
 	for range ticker.C {
 		err := this.loop()
 		if err != nil {
-			remotelogs.Error("PROVINCE_MANAGER", err.Error())
+			remotelogs.ErrorObject("PROVINCE_MANAGER", err)
 		}
 	}
 }

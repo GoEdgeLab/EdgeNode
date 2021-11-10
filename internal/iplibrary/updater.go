@@ -38,7 +38,7 @@ func (this *Updater) Start() {
 		for range ticker.C {
 			err := this.loop()
 			if err != nil {
-				remotelogs.Error("IP_LIBRARY", err.Error())
+				remotelogs.ErrorObject("IP_LIBRARY", err)
 			}
 		}
 	}()

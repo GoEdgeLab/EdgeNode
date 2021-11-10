@@ -81,13 +81,21 @@ func (this *HTTPRequestStatManager) Start() {
 	for range loopTicker.C {
 		err := this.Loop()
 		if err != nil {
-			remotelogs.Error("HTTP_REQUEST_STAT_MANAGER", err.Error())
+			if rpc.IsConnError(err) {
+				remotelogs.Warn("HTTP_REQUEST_STAT_MANAGER", err.Error())
+			} else {
+				remotelogs.Error("HTTP_REQUEST_STAT_MANAGER", err.Error())
+			}
 		}
 		select {
 		case <-uploadTicker.C:
 			err := this.Upload()
 			if err != nil {
-				remotelogs.Error("HTTP_REQUEST_STAT_MANAGER", "upload failed: "+err.Error())
+				if !rpc.IsConnError(err) {
+					remotelogs.Error("HTTP_REQUEST_STAT_MANAGER", "upload failed: "+err.Error())
+				} else {
+					remotelogs.Warn("HTTP_REQUEST_STAT_MANAGER", "upload failed: "+err.Error())
+				}
 			}
 		default:
 
@@ -166,10 +174,10 @@ Loop:
 			if iplibrary.SharedLibrary != nil {
 				result, err := iplibrary.SharedLibrary.Lookup(ip)
 				if err == nil && result != nil {
-					this.cityMap[serverId+"@"+result.Country+"@"+result.Province+"@"+result.City]  ++
+					this.cityMap[serverId+"@"+result.Country+"@"+result.Province+"@"+result.City]++
 
 					if len(result.ISP) > 0 {
-						this.providerMap[serverId+"@"+result.ISP] ++
+						this.providerMap[serverId+"@"+result.ISP]++
 					}
 				}
 			}
@@ -197,7 +205,7 @@ Loop:
 				if dotIndex > -1 {
 					browserVersion = browserVersion[:dotIndex]
 				}
-				this.browserMap[serverId+"@"+browser+"@"+browserVersion] ++
+				this.browserMap[serverId+"@"+browser+"@"+browserVersion]++
 			}
 		case firewallRuleGroupString := <-this.firewallRuleGroupChan:
 			this.dailyFirewallRuleGroupMap[firewallRuleGroupString]++

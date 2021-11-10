@@ -26,6 +26,7 @@ type TrafficItem struct {
 	CountCachedRequests  int64
 	CountAttackRequests  int64
 	AttackBytes          int64
+	PlanId               int64
 	CheckingTrafficLimit bool
 }
 
@@ -81,13 +82,17 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 	for range ticker.C {
 		err := this.Upload()
 		if err != nil {
-			remotelogs.Error("TRAFFIC_STAT_MANAGER", "upload stats failed: "+err.Error())
+			if !rpc.IsConnError(err) {
+				remotelogs.Error("TRAFFIC_STAT_MANAGER", "upload stats failed: "+err.Error())
+			} else {
+				remotelogs.Warn("TRAFFIC_STAT_MANAGER", "upload stats failed: "+err.Error())
+			}
 		}
 	}
 }
 
 // Add 添加流量
-func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64, checkingTrafficLimit bool) {
+func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64, checkingTrafficLimit bool, planId int64) {
 	if bytes == 0 && countRequests == 0 {
 		return
 	}
@@ -112,6 +117,7 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 	item.CountAttackRequests += countAttacks
 	item.AttackBytes += attackBytes
 	item.CheckingTrafficLimit = checkingTrafficLimit
+	item.PlanId = planId
 
 	// 单个域名流量
 	var domainKey = strconv.FormatInt(timestamp, 10) + "@" + strconv.FormatInt(serverId, 10) + "@" + domain
@@ -171,6 +177,7 @@ func (this *TrafficStatManager) Upload() error {
 			CountAttackRequests:  item.CountAttackRequests,
 			AttackBytes:          item.AttackBytes,
 			CheckTrafficLimiting: item.CheckingTrafficLimit,
+			PlanId:               item.PlanId,
 			CreatedAt:            timestamp,
 		})
 	}

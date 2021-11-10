@@ -48,7 +48,7 @@ func (this *IPListManager) Start() {
 	// 第一次读取
 	err := this.loop()
 	if err != nil {
-		remotelogs.Error("IP_LIST_MANAGER", err.Error())
+		remotelogs.ErrorObject("IP_LIST_MANAGER", err)
 	}
 
 	ticker := time.NewTicker(60 * time.Second)
@@ -65,7 +65,7 @@ func (this *IPListManager) Start() {
 		if err != nil {
 			countErrors++
 
-			remotelogs.Error("IP_LIST_MANAGER", err.Error())
+			remotelogs.ErrorObject("IP_LIST_MANAGER", err)
 
 			// 连续错误小于3次的我们立即重试
 			if countErrors <= 3 {

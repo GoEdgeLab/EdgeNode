@@ -101,7 +101,11 @@ func (this *NodeStatusExecutor) update() {
 		StatusJSON: jsonData,
 	})
 	if err != nil {
-		remotelogs.Error("NODE_STATUS", "rpc UpdateNodeStatus() failed: "+err.Error())
+		if rpc.IsConnError(err) {
+			remotelogs.Warn("NODE_STATUS", "rpc UpdateNodeStatus() failed: "+err.Error())
+		} else {
+			remotelogs.Error("NODE_STATUS", "rpc UpdateNodeStatus() failed: "+err.Error())
+		}
 		return
 	}
 }

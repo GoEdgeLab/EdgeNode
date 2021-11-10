@@ -93,6 +93,18 @@ func Error(tag string, description string) {
 	}
 }
 
+// ErrorObject 打印错误对象
+func ErrorObject(tag string, err error) {
+	if err == nil {
+		return
+	}
+	if rpc.IsConnError(err) {
+		Warn(tag, err.Error())
+	} else {
+		Error(tag, err.Error())
+	}
+}
+
 // ServerError 打印服务相关错误信息
 func ServerError(serverId int64, tag string, description string) {
 	logs.Println("[" + tag + "]" + description)

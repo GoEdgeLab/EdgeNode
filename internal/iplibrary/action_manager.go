@@ -14,7 +14,7 @@ import (
 
 var SharedActionManager = NewActionManager()
 
-// 动作管理器定义
+// ActionManager 动作管理器定义
 type ActionManager struct {
 	locker sync.Mutex
 
@@ -23,7 +23,7 @@ type ActionManager struct {
 	instanceMap map[int64]ActionInterface                       // id => instance
 }
 
-// 获取动作管理对象
+// NewActionManager 获取动作管理对象
 func NewActionManager() *ActionManager {
 	return &ActionManager{
 		configMap:   map[int64]*firewallconfigs.FirewallActionConfig{},
@@ -31,7 +31,7 @@ func NewActionManager() *ActionManager {
 	}
 }
 
-// 更新配置
+// UpdateActions 更新配置
 func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActionConfig) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -108,14 +108,14 @@ func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActi
 	}
 }
 
-// 查找事件对应的动作
+// FindEventActions 查找事件对应的动作
 func (this *ActionManager) FindEventActions(eventLevel string) []ActionInterface {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 	return this.eventMap[eventLevel]
 }
 
-// 执行添加IP动作
+// AddItem 执行添加IP动作
 func (this *ActionManager) AddItem(listType IPListType, item *pb.IPItem) {
 	instances, ok := this.eventMap[item.EventLevel]
 	if ok {
@@ -128,7 +128,7 @@ func (this *ActionManager) AddItem(listType IPListType, item *pb.IPItem) {
 	}
 }
 
-// 执行删除IP动作
+// DeleteItem 执行删除IP动作
 func (this *ActionManager) DeleteItem(listType IPListType, item *pb.IPItem) {
 	instances, ok := this.eventMap[item.EventLevel]
 	if ok {
