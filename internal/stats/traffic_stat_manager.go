@@ -20,12 +20,13 @@ import (
 var SharedTrafficStatManager = NewTrafficStatManager()
 
 type TrafficItem struct {
-	Bytes               int64
-	CachedBytes         int64
-	CountRequests       int64
-	CountCachedRequests int64
-	CountAttackRequests int64
-	AttackBytes         int64
+	Bytes                int64
+	CachedBytes          int64
+	CountRequests        int64
+	CountCachedRequests  int64
+	CountAttackRequests  int64
+	AttackBytes          int64
+	CheckingTrafficLimit bool
 }
 
 // TrafficStatManager 区域流量统计
@@ -86,7 +87,7 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 }
 
 // Add 添加流量
-func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64) {
+func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64, checkingTrafficLimit bool) {
 	if bytes == 0 && countRequests == 0 {
 		return
 	}
@@ -110,6 +111,7 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 	item.CountCachedRequests += countCachedRequests
 	item.CountAttackRequests += countAttacks
 	item.AttackBytes += attackBytes
+	item.CheckingTrafficLimit = checkingTrafficLimit
 
 	// 单个域名流量
 	var domainKey = strconv.FormatInt(timestamp, 10) + "@" + strconv.FormatInt(serverId, 10) + "@" + domain
@@ -160,15 +162,16 @@ func (this *TrafficStatManager) Upload() error {
 		}
 
 		pbServerStats = append(pbServerStats, &pb.ServerDailyStat{
-			ServerId:            serverId,
-			RegionId:            config.RegionId,
-			Bytes:               item.Bytes,
-			CachedBytes:         item.CachedBytes,
-			CountRequests:       item.CountRequests,
-			CountCachedRequests: item.CountCachedRequests,
-			CountAttackRequests: item.CountAttackRequests,
-			AttackBytes:         item.AttackBytes,
-			CreatedAt:           timestamp,
+			ServerId:             serverId,
+			RegionId:             config.RegionId,
+			Bytes:                item.Bytes,
+			CachedBytes:          item.CachedBytes,
+			CountRequests:        item.CountRequests,
+			CountCachedRequests:  item.CountCachedRequests,
+			CountAttackRequests:  item.CountAttackRequests,
+			AttackBytes:          item.AttackBytes,
+			CheckTrafficLimiting: item.CheckingTrafficLimit,
+			CreatedAt:            timestamp,
 		})
 	}
 	if len(pbServerStats) == 0 {

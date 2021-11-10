@@ -65,14 +65,14 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 		var serverName = tlsConn.ConnectionState().ServerName
 		if len(serverName) > 0 {
 			// 统计
-			stats.SharedTrafficStatManager.Add(firstServer.Id, serverName, 0, 0, 1, 0, 0, 0)
+			stats.SharedTrafficStatManager.Add(firstServer.Id, serverName, 0, 0, 1, 0, 0, 0, firstServer.ShouldCheckTrafficLimit())
 			recordStat = true
 		}
 	}
 
 	// 统计
 	if !recordStat {
-		stats.SharedTrafficStatManager.Add(firstServer.Id, "", 0, 0, 1, 0, 0, 0)
+		stats.SharedTrafficStatManager.Add(firstServer.Id, "", 0, 0, 1, 0, 0, 0, firstServer.ShouldCheckTrafficLimit())
 	}
 
 	originConn, err := this.connectOrigin(firstServer.ReverseProxy, conn.RemoteAddr().String())
@@ -125,7 +125,9 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 				}
 
 				// 记录流量
-				stats.SharedTrafficStatManager.Add(firstServer.Id, "", int64(n), 0, 0, 0, 0, 0)
+				if firstServer != nil {
+					stats.SharedTrafficStatManager.Add(firstServer.Id, "", int64(n), 0, 0, 0, 0, 0, firstServer.ShouldCheckTrafficLimit())
+				}
 			}
 			if err != nil {
 				closer()

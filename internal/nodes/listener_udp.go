@@ -64,7 +64,7 @@ func (this *UDPListener) Serve() error {
 					remotelogs.Error("UDP_LISTENER", "unable to find a origin server")
 					continue
 				}
-				conn = NewUDPConn(firstServer.Id, addr, this.Listener, originConn.(*net.UDPConn))
+				conn = NewUDPConn(firstServer, addr, this.Listener, originConn.(*net.UDPConn))
 				this.connLocker.Lock()
 				this.connMap[addr.String()] = conn
 				this.connLocker.Unlock()
@@ -174,7 +174,7 @@ type UDPConn struct {
 	isClosed    bool
 }
 
-func NewUDPConn(serverId int64, addr net.Addr, proxyConn *net.UDPConn, serverConn *net.UDPConn) *UDPConn {
+func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyConn *net.UDPConn, serverConn *net.UDPConn) *UDPConn {
 	conn := &UDPConn{
 		addr:        addr,
 		proxyConn:   proxyConn,
@@ -184,7 +184,9 @@ func NewUDPConn(serverId int64, addr net.Addr, proxyConn *net.UDPConn, serverCon
 	}
 
 	// 统计
-	stats.SharedTrafficStatManager.Add(serverId, "", 0, 0, 1, 0, 0, 0)
+	if server != nil {
+		stats.SharedTrafficStatManager.Add(server.Id, "", 0, 0, 1, 0, 0, 0, server.ShouldCheckTrafficLimit())
+	}
 
 	go func() {
 		buffer := bytePool32k.Get()
@@ -203,7 +205,9 @@ func NewUDPConn(serverId int64, addr net.Addr, proxyConn *net.UDPConn, serverCon
 				}
 
 				// 记录流量
-				stats.SharedTrafficStatManager.Add(serverId, "", int64(n), 0, 0, 0, 0, 0)
+				if server != nil {
+					stats.SharedTrafficStatManager.Add(server.Id, "", int64(n), 0, 0, 0, 0, 0, server.ShouldCheckTrafficLimit())
+				}
 			}
 			if err != nil {
 				conn.isOk = false
