@@ -5,6 +5,7 @@ package caches
 import (
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/rands"
+	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"strconv"
 	"sync"
@@ -184,7 +185,7 @@ func TestFileList_Purge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = list.Purge(2, func(hash string) error {
+	_, err = list.Purge(2, func(hash string) error {
 		t.Log(hash)
 		return nil
 	})
@@ -255,6 +256,50 @@ func TestFileList_Conflict(t *testing.T) {
 	t.Log("before exists")
 	t.Log(list.Exist("123456"))
 	t.Log("after exists")
+}
+
+func TestFileList_IIF(t *testing.T) {
+	list := NewFileList(Tea.Root + "/data").(*FileList)
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := list.db.Query("SELECT IIF(0, 2, 3)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	if rows.Next() {
+		var result int
+		err = rows.Scan(&result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("result:", result)
+	}
+}
+
+func TestFileList_IncreaseHit(t *testing.T) {
+	list := NewFileList(Tea.Root + "/data")
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var before = time.Now()
+	defer func() {
+		t.Log(time.Since(before).Seconds()*1000, "ms")
+	}()
+	for i := 0; i < 1000_000; i++ {
+		err = list.IncreaseHit(stringutil.Md5("abc" + types.String(i)))
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("ok")
 }
 
 func BenchmarkFileList_Exist(b *testing.B) {

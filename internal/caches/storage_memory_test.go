@@ -230,8 +230,9 @@ func TestMemoryStorage_Purge(t *testing.T) {
 }
 
 func TestMemoryStorage_Expire(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
-	storage.purgeDuration = 5 * time.Second
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{
+		MemoryAutoPurgeInterval: 5,
+	})
 	err := storage.Init()
 	if err != nil {
 		t.Fatal(err)

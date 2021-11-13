@@ -22,7 +22,10 @@ type ListInterface interface {
 	Remove(hash string) error
 
 	// Purge 清理过期数据
-	Purge(count int, callback func(hash string) error) error
+	Purge(count int, callback func(hash string) error) (int, error)
+
+	// PurgeLFU 清理LFU数据
+	PurgeLFU(count int, callback func(hash string) error) error
 
 	// CleanAll 清除所有缓存
 	CleanAll() error
@@ -41,4 +44,7 @@ type ListInterface interface {
 
 	// Close 关闭
 	Close() error
+
+	// IncreaseHit 增加点击量
+	IncreaseHit(hash string) error
 }

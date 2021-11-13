@@ -11,10 +11,13 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/rands"
+	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -165,12 +168,16 @@ func (this *FileStorage) Init() error {
 				Life:        this.policy.Life,
 				MinLife:     this.policy.MinLife,
 				MaxLife:     this.policy.MaxLife,
+
+				MemoryAutoPurgeCount:    this.policy.MemoryAutoPurgeCount,
+				MemoryAutoPurgeInterval: this.policy.MemoryAutoPurgeInterval,
+				MemoryLFUFreePercent:    this.policy.MemoryLFUFreePercent,
 			}
 			err = memoryPolicy.Init()
 			if err != nil {
 				return err
 			}
-			memoryStorage := NewMemoryStorage(memoryPolicy)
+			memoryStorage := NewMemoryStorage(memoryPolicy, this)
 			err = memoryStorage.Init()
 			if err != nil {
 				return err
@@ -225,6 +232,17 @@ func (this *FileStorage) OpenReader(key string) (Reader, error) {
 	err = reader.Init()
 	if err != nil {
 		return nil, err
+	}
+
+	// 增加点击量
+	// 1/1000采样
+	// TODO 考虑是否在缓存策略里设置
+	if rands.Int(0, 1000) == 0 {
+		var hitErr = this.list.IncreaseHit(hash)
+		if hitErr != nil {
+			// 此错误可以忽略
+			remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
+		}
 	}
 
 	isOk = true
@@ -398,7 +416,7 @@ func (this *FileStorage) AddToList(item *Item) {
 		}
 	}
 
-	item.MetaSize = SizeMeta
+	item.MetaSize = SizeMeta + 128
 	hash := stringutil.Md5(item.Key)
 	err := this.list.Add(hash, item)
 	if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -619,7 +637,14 @@ func (this *FileStorage) initList() error {
 	}()
 
 	// 启动定时清理任务
-	this.ticker = utils.NewTicker(30 * time.Second)
+	var autoPurgeInterval = this.policy.PersistenceAutoPurgeInterval
+	if autoPurgeInterval <= 0 {
+		autoPurgeInterval = 30
+		if Tea.IsTesting() {
+			autoPurgeInterval = 10
+		}
+	}
+	this.ticker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
 	events.On(events.EventQuit, func() {
 		remotelogs.Println("CACHE", "quit clean timer")
 		var ticker = this.ticker
@@ -730,16 +755,87 @@ func (this *FileStorage) decodeFile(path string) (*Item, error) {
 
 // 清理任务
 func (this *FileStorage) purgeLoop() {
-	err := this.list.Purge(1000, func(hash string) error {
-		path := this.hashPath(hash)
-		err := os.Remove(path)
-		if err != nil && !os.IsNotExist(err) {
-			remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
+	// 计算是否应该开启LFU清理
+	var capacityBytes = this.policy.CapacityBytes()
+	var startLFU = false
+	var usedPercent = float32(this.TotalDiskSize()*100) / float32(capacityBytes)
+	var lfuFreePercent = this.policy.PersistenceLFUFreePercent
+	if lfuFreePercent <= 0 {
+		lfuFreePercent = 5
+	}
+	if capacityBytes > 0 {
+		if lfuFreePercent < 100 {
+			if usedPercent >= 100-lfuFreePercent {
+				startLFU = true
+			}
 		}
-		return nil
-	})
-	if err != nil {
-		remotelogs.Warn("CACHE", "purge file storage failed: "+err.Error())
+	}
+
+	// 清理过期
+	{
+		var times = 1
+
+		// 空闲时间多清理
+		if utils.SharedFreeHoursManager.IsFreeHour() {
+			times = 5
+		}
+
+		// 处于LFU阈值时，多清理
+		if startLFU {
+			times = 5
+		}
+
+		var purgeCount = this.policy.PersistenceAutoPurgeCount
+		if purgeCount <= 0 {
+			purgeCount = 1000
+		}
+		for i := 0; i < times; i++ {
+			countFound, err := this.list.Purge(purgeCount, func(hash string) error {
+				path := this.hashPath(hash)
+				err := os.Remove(path)
+				if err != nil && !os.IsNotExist(err) {
+					remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
+				}
+				return nil
+			})
+			if err != nil {
+				remotelogs.Warn("CACHE", "purge file storage failed: "+err.Error())
+				continue
+			}
+
+			if countFound < purgeCount {
+				break
+			}
+
+			time.Sleep(1 * time.Second)
+		}
+	}
+
+	// 磁盘空间不足时，清除老旧的缓存
+	if startLFU {
+		var total, _ = this.list.Count()
+		if total > 0 {
+			var count = types.Int(math.Ceil(float64(total) * float64(lfuFreePercent*2) / 100))
+			if count > 0 {
+				// 限制单次清理的条数，防止占用太多系统资源
+				if count > 2000 {
+					count = 2000
+				}
+
+				remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
+				err := this.list.PurgeLFU(count, func(hash string) error {
+					path := this.hashPath(hash)
+					err := os.Remove(path)
+					if err != nil && !os.IsNotExist(err) {
+						remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
+					}
+					return nil
+				})
+				if err != nil {
+					remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
+				}
+			}
+		}
 	}
 }
 

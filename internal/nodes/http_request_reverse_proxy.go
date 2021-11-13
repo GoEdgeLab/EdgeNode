@@ -281,7 +281,7 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	closeErr := resp.Body.Close()
 	if closeErr != nil {
-		if !this.canIgnore(err) {
+		if !this.canIgnore(closeErr) {
 			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", closeErr.Error())
 		}
 	}

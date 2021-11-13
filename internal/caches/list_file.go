@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
+	timeutil "github.com/iwind/TeaGo/utils/time"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"strconv"
@@ -24,6 +25,7 @@ type FileList struct {
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
 
+	// cacheItems
 	existsByHashStmt *sql.Stmt // 根据hash检查是否存在
 	insertStmt       *sql.Stmt // 写入数据
 	selectByHashStmt *sql.Stmt // 使用hash查询数据
@@ -32,8 +34,15 @@ type FileList struct {
 	purgeStmt        *sql.Stmt // 清理
 	deleteAllStmt    *sql.Stmt // 删除所有数据
 
+	// hits
+	insertHitStmt       *sql.Stmt // 写入数据
+	increaseHitStmt     *sql.Stmt // 增加点击量
+	deleteHitByHashStmt *sql.Stmt // 根据hash删除数据
+	lfuHitsStmt         *sql.Stmt // 读取老的数据
+
 	oldTables      []string
 	itemsTableName string
+	hitsTableName  string
 
 	isClosed bool
 
@@ -59,6 +68,7 @@ func (this *FileList) Init() error {
 	}
 
 	this.itemsTableName = "cacheItems_v2"
+	this.hitsTableName = "hits"
 
 	var dir = this.dir
 	if dir == "/" {
@@ -141,6 +151,23 @@ func (this *FileList) Init() error {
 		return err
 	}
 
+	this.insertHitStmt, err = this.db.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?)`)
+
+	this.increaseHitStmt, err = this.db.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?) ON CONFLICT("hash") DO UPDATE SET "week1Hits"=IIF("week"=?, "week1Hits", "week2Hits"), "week2Hits"=IIF("week"=?, "week2Hits"+1, 1), "week"=?`)
+	if err != nil {
+		return err
+	}
+
+	this.deleteHitByHashStmt, err = this.db.Prepare(`DELETE FROM "` + this.hitsTableName + `" WHERE "hash"=?`)
+	if err != nil {
+		return err
+	}
+
+	this.lfuHitsStmt, err = this.db.Prepare(`SELECT "hash" FROM "` + this.hitsTableName + `" ORDER BY "week" ASC, "week1Hits"+"week2Hits" ASC LIMIT ?`)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -155,6 +182,11 @@ func (this *FileList) Add(hash string, item *Item) error {
 	}
 
 	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.Host, item.ServerId, utils.UnixTime())
+	if err != nil {
+		return err
+	}
+
+	_, err = this.insertHitStmt.Exec(hash, timeutil.Format("YW"))
 	if err != nil {
 		return err
 	}
@@ -253,6 +285,11 @@ func (this *FileList) Remove(hash string) error {
 		return err
 	}
 
+	_, err = this.deleteHitByHashStmt.Exec(hash)
+	if err != nil {
+		return err
+	}
+
 	atomic.AddInt64(&this.total, -1)
 
 	if this.onRemove != nil {
@@ -265,9 +302,9 @@ func (this *FileList) Remove(hash string) error {
 // Purge 清理过期的缓存
 // count 每次遍历的最大数量，控制此数字可以保证每次清理的时候不用花太多时间
 // callback 每次发现过期key的调用
-func (this *FileList) Purge(count int, callback func(hash string) error) error {
+func (this *FileList) Purge(count int, callback func(hash string) error) (int, error) {
 	if this.isClosed {
-		return nil
+		return 0, nil
 	}
 
 	if count <= 0 {
@@ -276,10 +313,55 @@ func (this *FileList) Purge(count int, callback func(hash string) error) error {
 
 	rows, err := this.purgeStmt.Query(time.Now().Unix(), count)
 	if err != nil {
+		return 0, err
+	}
+
+	hashStrings := []string{}
+	var countFound = 0
+	for rows.Next() {
+		var hash string
+		err = rows.Scan(&hash)
+		if err != nil {
+			_ = rows.Close()
+			return 0, err
+		}
+		hashStrings = append(hashStrings, hash)
+		countFound++
+	}
+	_ = rows.Close() // 不能使用defer，防止读写冲突
+
+	// 不在 rows.Next() 循环中操作是为了避免死锁
+	for _, hash := range hashStrings {
+		err = this.Remove(hash)
+		if err != nil {
+			return 0, err
+		}
+
+		err = callback(hash)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return countFound, nil
+}
+
+func (this *FileList) PurgeLFU(count int, callback func(hash string) error) error {
+	if this.isClosed {
+		return nil
+	}
+
+	if count <= 0 {
+		return nil
+	}
+
+	rows, err := this.lfuHitsStmt.Query(count)
+	if err != nil {
 		return err
 	}
 
 	hashStrings := []string{}
+	var countFound = 0
 	for rows.Next() {
 		var hash string
 		err = rows.Scan(&hash)
@@ -288,6 +370,7 @@ func (this *FileList) Purge(count int, callback func(hash string) error) error {
 			return err
 		}
 		hashStrings = append(hashStrings, hash)
+		countFound++
 	}
 	_ = rows.Close() // 不能使用defer，防止读写冲突
 
@@ -303,7 +386,6 @@ func (this *FileList) Purge(count int, callback func(hash string) error) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -347,6 +429,13 @@ func (this *FileList) Count() (int64, error) {
 	return atomic.LoadInt64(&this.total), nil
 }
 
+// IncreaseHit 增加点击量
+func (this *FileList) IncreaseHit(hash string) error {
+	var week = timeutil.Format("YW")
+	_, err := this.increaseHitStmt.Exec(hash, week, week, week, week)
+	return err
+}
+
 // OnAdd 添加事件
 func (this *FileList) OnAdd(f func(item *Item)) {
 	this.onAdd = f
@@ -371,6 +460,11 @@ func (this *FileList) Close() error {
 		_ = this.purgeStmt.Close()
 		_ = this.deleteAllStmt.Close()
 
+		_ = this.insertHitStmt.Close()
+		_ = this.increaseHitStmt.Close()
+		_ = this.deleteHitByHashStmt.Close()
+		_ = this.lfuHitsStmt.Close()
+
 		return this.db.Close()
 	}
 	return nil
@@ -378,7 +472,8 @@ func (this *FileList) Close() error {
 
 // 初始化
 func (this *FileList) initTables(db *sql.DB, times int) error {
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
+	{
+		_, err := db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
   "key" varchar(1024),
@@ -411,17 +506,46 @@ ON "` + this.itemsTableName + `" (
   "serverId" ASC
 );
 `)
-	if err != nil {
-		// 尝试删除重建
-		if times < 3 {
-			_, dropErr := db.Exec(`DROP TABLE "` + this.itemsTableName + `"`)
-			if dropErr == nil {
-				return this.initTables(db, times+1)
+		if err != nil {
+			// 尝试删除重建
+			if times < 3 {
+				_, dropErr := db.Exec(`DROP TABLE "` + this.itemsTableName + `"`)
+				if dropErr == nil {
+					return this.initTables(db, times+1)
+				}
+				return err
 			}
+
 			return err
 		}
+	}
 
-		return err
+	{
+		_, err := db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.hitsTableName + `" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "hash" varchar(32),
+  "week1Hits" integer DEFAULT 0,
+  "week2Hits" integer DEFAULT 0,
+  "week" varchar(6)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "hits_hash"
+ON "` + this.hitsTableName + `" (
+  "hash" ASC
+);
+`)
+		if err != nil {
+			// 尝试删除重建
+			if times < 3 {
+				_, dropErr := db.Exec(`DROP TABLE "` + this.hitsTableName + `"`)
+				if dropErr == nil {
+					return this.initTables(db, times+1)
+				}
+				return err
+			}
+
+			return err
+		}
 	}
 
 	return nil

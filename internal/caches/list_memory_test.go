@@ -31,6 +31,8 @@ func TestMemoryList_Add(t *testing.T) {
 	})
 	t.Log(list.prefixes)
 	logs.PrintAsJSON(list.itemMaps, t)
+	logs.PrintAsJSON(list.weekItemMaps, t)
+	t.Log(list.Count())
 }
 
 func TestMemoryList_Remove(t *testing.T) {
@@ -48,6 +50,8 @@ func TestMemoryList_Remove(t *testing.T) {
 	})
 	_ = list.Remove("b")
 	list.print(t)
+	logs.PrintAsJSON(list.weekItemMaps, t)
+	t.Log(list.Count())
 }
 
 func TestMemoryList_Purge(t *testing.T) {
@@ -73,19 +77,22 @@ func TestMemoryList_Purge(t *testing.T) {
 		ExpiredAt:  time.Now().Unix() - 2,
 		HeaderSize: 1024,
 	})
-	_ = list.Purge(100, func(hash string) error {
+	_, _ = list.Purge(100, func(hash string) error {
 		t.Log("delete:", hash)
 		return nil
 	})
 	list.print(t)
+	logs.PrintAsJSON(list.weekItemMaps, t)
 
 	for i := 0; i < 1000; i++ {
-		_ = list.Purge(100, func(hash string) error {
+		_, _ = list.Purge(100, func(hash string) error {
 			t.Log("delete:", hash)
 			return nil
 		})
 		t.Log(list.purgeIndex)
 	}
+
+	t.Log(list.Count())
 }
 
 func TestMemoryList_Purge_Large_List(t *testing.T) {
@@ -139,7 +146,7 @@ func TestMemoryList_CleanPrefix(t *testing.T) {
 	_ = list.Init()
 	before := time.Now()
 	for i := 0; i < 1_000_000; i++ {
-		key := "http://www.teaos.cn/hello/" + strconv.Itoa(i/10000) + "/" + strconv.Itoa(i) + ".html"
+		key := "https://www.teaos.cn/hello/" + strconv.Itoa(i/10000) + "/" + strconv.Itoa(i) + ".html"
 		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &Item{
 			Key:        key,
 			ExpiredAt:  time.Now().Unix() + 3600,
@@ -150,7 +157,7 @@ func TestMemoryList_CleanPrefix(t *testing.T) {
 	t.Log(time.Since(before).Seconds()*1000, "ms")
 
 	before = time.Now()
-	err := list.CleanPrefix("http://www.teaos.cn/hello/10")
+	err := list.CleanPrefix("https://www.teaos.cn/hello/10")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,11 +169,77 @@ func TestMemoryList_CleanPrefix(t *testing.T) {
 	t.Log(time.Since(before).Seconds()*1000, "ms")
 }
 
+func TestMemoryList_PurgeLFU(t *testing.T) {
+	var list = NewMemoryList().(*MemoryList)
+	list.minWeek = 2704
+
+	var before = time.Now()
+	defer func() {
+		t.Log(time.Since(before).Seconds()*1000, "ms")
+	}()
+
+	t.Log("current week:", currentWeek())
+
+	_ = list.Add("1", &Item{})
+	_ = list.Add("2", &Item{})
+	_ = list.Add("3", &Item{})
+	_ = list.Add("4", &Item{})
+	_ = list.Add("5", &Item{})
+	_ = list.Add("6", &Item{Week: 2704})
+	_ = list.Add("7", &Item{Week: 2704})
+	_ = list.Add("8", &Item{Week: 2705})
+
+	err := list.PurgeLFU(2, func(hash string) error {
+		t.Log("purge lfu:", hash)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("ok")
+
+	logs.PrintAsJSON(list.weekItemMaps, t)
+	t.Log(list.Count())
+}
+
+func TestMemoryList_IncreaseHit(t *testing.T) {
+	var list = NewMemoryList().(*MemoryList)
+	var item = &Item{}
+	item.Week = 2705
+	item.Week2Hits = 100
+
+	_ = list.Add("a", &Item{})
+	_ = list.Add("a", item)
+	t.Log("hits1:", item.Week1Hits, "hits2:", item.Week2Hits, "week:", item.Week)
+	logs.PrintAsJSON(list.weekItemMaps, t)
+
+	_ = list.IncreaseHit("a")
+	t.Log("hits1:", item.Week1Hits, "hits2:", item.Week2Hits, "week:", item.Week)
+	logs.PrintAsJSON(list.weekItemMaps, t)
+
+	_ = list.IncreaseHit("a")
+	t.Log("hits1:", item.Week1Hits, "hits2:", item.Week2Hits, "week:", item.Week)
+	logs.PrintAsJSON(list.weekItemMaps, t)
+}
+
+func TestMemoryList_CleanAll(t *testing.T) {
+	var list = NewMemoryList().(*MemoryList)
+	var item = &Item{}
+	item.Week = 2705
+	item.Week2Hits = 100
+
+	_ = list.Add("a", &Item{})
+	_ = list.CleanAll()
+	logs.PrintAsJSON(list.itemMaps, t)
+	logs.PrintAsJSON(list.weekItemMaps, t)
+	t.Log(list.Count())
+}
+
 func TestMemoryList_GC(t *testing.T) {
 	list := NewMemoryList().(*MemoryList)
 	_ = list.Init()
 	for i := 0; i < 1_000_000; i++ {
-		key := "http://www.teaos.cn/hello" + strconv.Itoa(i/100000) + "/" + strconv.Itoa(i) + ".html"
+		key := "https://www.teaos.cn/hello" + strconv.Itoa(i/100000) + "/" + strconv.Itoa(i) + ".html"
 		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &Item{
 			Key:        key,
 			ExpiredAt:  0,

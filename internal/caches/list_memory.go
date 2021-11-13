@@ -5,12 +5,19 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
 // MemoryList 内存缓存列表管理
 type MemoryList struct {
+	count int64
+
 	itemMaps map[string]map[string]*Item // prefix => { hash => item }
+
+	weekItemMaps map[int32]map[string]bool // week => { hash => true }
+	minWeek      int32
+
 	prefixes []string
 	locker   sync.RWMutex
 	onAdd    func(item *Item)
@@ -21,7 +28,9 @@ type MemoryList struct {
 
 func NewMemoryList() ListInterface {
 	return &MemoryList{
-		itemMaps: map[string]map[string]*Item{},
+		itemMaps:     map[string]map[string]*Item{},
+		weekItemMaps: map[int32]map[string]bool{},
+		minWeek:      currentWeek(),
 	}
 }
 
@@ -43,11 +52,19 @@ func (this *MemoryList) Reset() error {
 	for key := range this.itemMaps {
 		this.itemMaps[key] = map[string]*Item{}
 	}
+	this.weekItemMaps = map[int32]map[string]bool{}
 	this.locker.Unlock()
+
+	atomic.StoreInt64(&this.count, 0)
+
 	return nil
 }
 
 func (this *MemoryList) Add(hash string, item *Item) error {
+	if item.Week == 0 {
+		item.Week = currentWeek()
+	}
+
 	this.locker.Lock()
 
 	prefix := this.prefix(hash)
@@ -60,9 +77,20 @@ func (this *MemoryList) Add(hash string, item *Item) error {
 	// 先删除，为了可以正确触发统计
 	oldItem, ok := itemMap[hash]
 	if ok {
+		// 从week map中删除
+		if oldItem.Week > 0 {
+			wm, ok := this.weekItemMaps[oldItem.Week]
+			if ok {
+				delete(wm, hash)
+			}
+		}
+
+		// 回调
 		if this.onRemove != nil {
 			this.onRemove(oldItem)
 		}
+	} else {
+		atomic.AddInt64(&this.count, 1)
 	}
 
 	// 添加
@@ -71,6 +99,15 @@ func (this *MemoryList) Add(hash string, item *Item) error {
 	}
 
 	itemMap[hash] = item
+
+	// week map
+	wm, ok := this.weekItemMaps[item.Week]
+	if ok {
+		wm[hash] = true
+	} else {
+		this.weekItemMaps[item.Week] = map[string]bool{hash: true}
+	}
+
 	this.locker.Unlock()
 	return nil
 }
@@ -122,7 +159,17 @@ func (this *MemoryList) Remove(hash string) error {
 		if this.onRemove != nil {
 			this.onRemove(item)
 		}
+
+		atomic.AddInt64(&this.count, -1)
 		delete(itemMap, hash)
+
+		// week map
+		if item.Week > 0 {
+			wm, ok := this.weekItemMaps[item.Week]
+			if ok {
+				delete(wm, hash)
+			}
+		}
 	}
 
 	this.locker.Unlock()
@@ -132,7 +179,7 @@ func (this *MemoryList) Remove(hash string) error {
 // Purge 清理过期的缓存
 // count 每次遍历的最大数量，控制此数字可以保证每次清理的时候不用花太多时间
 // callback 每次发现过期key的调用
-func (this *MemoryList) Purge(count int, callback func(hash string) error) error {
+func (this *MemoryList) Purge(count int, callback func(hash string) error) (int, error) {
 	this.locker.Lock()
 	deletedHashList := []string{}
 
@@ -146,8 +193,9 @@ func (this *MemoryList) Purge(count int, callback func(hash string) error) error
 	itemMap, ok := this.itemMaps[prefix]
 	if !ok {
 		this.locker.Unlock()
-		return nil
+		return 0, nil
 	}
+	var countFound = 0
 	for hash, item := range itemMap {
 		if count <= 0 {
 			break
@@ -157,8 +205,20 @@ func (this *MemoryList) Purge(count int, callback func(hash string) error) error
 			if this.onRemove != nil {
 				this.onRemove(item)
 			}
+
+			atomic.AddInt64(&this.count, -1)
 			delete(itemMap, hash)
 			deletedHashList = append(deletedHashList, hash)
+
+			// week map
+			if item.Week > 0 {
+				wm, ok := this.weekItemMaps[item.Week]
+				if ok {
+					delete(wm, hash)
+				}
+			}
+
+			countFound++
 		}
 
 		count--
@@ -170,10 +230,85 @@ func (this *MemoryList) Purge(count int, callback func(hash string) error) error
 		if callback != nil {
 			err := callback(hash)
 			if err != nil {
+				return 0, err
+			}
+		}
+	}
+	return countFound, nil
+}
+
+func (this *MemoryList) PurgeLFU(count int, callback func(hash string) error) error {
+	if count <= 0 {
+		return nil
+	}
+
+	var week = currentWeek()
+	if this.minWeek > week {
+		this.minWeek = week
+	}
+
+	var deletedHashList = []string{}
+
+Loop:
+	for w := this.minWeek; w <= week; w++ {
+		this.minWeek = w
+
+		this.locker.Lock()
+		wm, ok := this.weekItemMaps[w]
+		if ok {
+			var wc = len(wm)
+			if wc == 0 {
+				delete(this.weekItemMaps, w)
+			} else {
+				if wc <= count {
+					delete(this.weekItemMaps, w)
+				}
+
+				// TODO 未来支持按照点击量排序
+				for hash := range wm {
+					count--
+
+					if count < 0 {
+						this.locker.Unlock()
+						break Loop
+					}
+
+					delete(wm, hash)
+
+					itemMap, ok := this.itemMaps[this.prefix(hash)]
+					if !ok {
+						continue
+					}
+					item, ok := itemMap[hash]
+					if !ok {
+						continue
+					}
+
+					if this.onRemove != nil {
+						this.onRemove(item)
+					}
+
+					atomic.AddInt64(&this.count, -1)
+					delete(itemMap, hash)
+					deletedHashList = append(deletedHashList, hash)
+				}
+			}
+		} else {
+			delete(this.weekItemMaps, w)
+		}
+		this.locker.Unlock()
+	}
+
+	// 执行外部操作
+	for _, hash := range deletedHashList {
+		if callback != nil {
+			err := callback(hash)
+			if err != nil {
 				return err
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -206,13 +341,8 @@ func (this *MemoryList) Stat(check func(hash string) bool) (*Stat, error) {
 
 // Count 总数量
 func (this *MemoryList) Count() (int64, error) {
-	this.locker.RLock()
-	var count = 0
-	for _, itemMap := range this.itemMaps {
-		count += len(itemMap)
-	}
-	this.locker.RUnlock()
-	return int64(count), nil
+	var count = atomic.LoadInt64(&this.count)
+	return count, nil
 }
 
 // OnAdd 添加事件
@@ -226,6 +356,41 @@ func (this *MemoryList) OnRemove(f func(item *Item)) {
 }
 
 func (this *MemoryList) Close() error {
+	return nil
+}
+
+// IncreaseHit 增加点击量
+func (this *MemoryList) IncreaseHit(hash string) error {
+	this.locker.Lock()
+
+	itemMap, ok := this.itemMaps[this.prefix(hash)]
+	if !ok {
+		this.locker.Unlock()
+		return nil
+	}
+
+	item, ok := itemMap[hash]
+	if ok {
+		var week = currentWeek()
+
+		// 交换位置
+		if item.Week > 0 && item.Week != week {
+			wm, ok := this.weekItemMaps[item.Week]
+			if ok {
+				delete(wm, hash)
+			}
+			wm, ok = this.weekItemMaps[week]
+			if ok {
+				wm[hash] = true
+			} else {
+				this.weekItemMaps[week] = map[string]bool{hash: true}
+			}
+		}
+
+		item.IncreaseHit(week)
+	}
+
+	this.locker.Unlock()
 	return nil
 }
 

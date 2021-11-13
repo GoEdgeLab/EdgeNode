@@ -2,15 +2,14 @@ package caches
 
 import (
 	"github.com/cespare/xxhash"
-	"sync"
 	"time"
 )
 
 type MemoryWriter struct {
+	storage *MemoryStorage
+
 	key        string
 	expiredAt  int64
-	m          map[uint64]*MemoryItem
-	locker     *sync.RWMutex
 	headerSize int64
 	bodySize   int64
 	status     int
@@ -20,12 +19,11 @@ type MemoryWriter struct {
 	endFunc func()
 }
 
-func NewMemoryWriter(m map[uint64]*MemoryItem, key string, expiredAt int64, status int, locker *sync.RWMutex, endFunc func()) *MemoryWriter {
+func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, endFunc func()) *MemoryWriter {
 	w := &MemoryWriter{
-		m:         m,
+		storage:   memoryStorage,
 		key:       key,
 		expiredAt: expiredAt,
-		locker:    locker,
 		item: &MemoryItem{
 			ExpiredAt:  expiredAt,
 			ModifiedAt: time.Now().Unix(),
@@ -72,10 +70,17 @@ func (this *MemoryWriter) Close() error {
 		return nil
 	}
 
-	this.locker.Lock()
+	this.storage.locker.Lock()
 	this.item.IsDone = true
-	this.m[this.hash] = this.item
-	this.locker.Unlock()
+	this.storage.valuesMap[this.hash] = this.item
+	if this.storage.parentStorage != nil {
+		select {
+		case this.storage.dirtyChan <- this.key:
+		default:
+
+		}
+	}
+	this.storage.locker.Unlock()
 
 	return nil
 }
@@ -85,9 +90,9 @@ func (this *MemoryWriter) Discard() error {
 	// 需要在Locker之外
 	defer this.endFunc()
 
-	this.locker.Lock()
-	delete(this.m, this.hash)
-	this.locker.Unlock()
+	this.storage.locker.Lock()
+	delete(this.storage.valuesMap, this.hash)
+	this.storage.locker.Unlock()
 	return nil
 }
 

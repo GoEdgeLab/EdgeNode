@@ -68,8 +68,8 @@ func (this *NodeStatusExecutor) update() {
 	status.ConnectionCount = sharedListenerManager.TotalActiveConnections()
 	status.CacheTotalDiskSize = caches.SharedManager.TotalDiskSize()
 	status.CacheTotalMemorySize = caches.SharedManager.TotalMemorySize()
-	status.TrafficInBytes = inTrafficBytes
-	status.TrafficOutBytes = outTrafficBytes
+	status.TrafficInBytes = teaconst.InTrafficBytes
+	status.TrafficOutBytes = teaconst.OutTrafficBytes
 
 	// 记录监控数据
 	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemConnections, maps.Map{

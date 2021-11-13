@@ -4,6 +4,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/iwind/TeaGo/maps"
@@ -12,10 +13,6 @@ import (
 	"time"
 )
 
-// 流量统计
-var inTrafficBytes = uint64(0)
-var outTrafficBytes = uint64(0)
-
 // 发送监控流量
 func init() {
 	events.On(events.EventStart, func() {
@@ -23,20 +20,20 @@ func init() {
 		go func() {
 			for range ticker.C {
 				// 加入到数据队列中
-				if inTrafficBytes > 0 {
+				if teaconst.InTrafficBytes > 0 {
 					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemTrafficIn, maps.Map{
-						"total": inTrafficBytes,
+						"total": teaconst.InTrafficBytes,
 					})
 				}
-				if outTrafficBytes > 0 {
+				if teaconst.OutTrafficBytes > 0 {
 					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemTrafficOut, maps.Map{
-						"total": outTrafficBytes,
+						"total": teaconst.OutTrafficBytes,
 					})
 				}
 
 				// 重置数据
-				atomic.StoreUint64(&inTrafficBytes, 0)
-				atomic.StoreUint64(&outTrafficBytes, 0)
+				atomic.StoreUint64(&teaconst.InTrafficBytes, 0)
+				atomic.StoreUint64(&teaconst.OutTrafficBytes, 0)
 			}
 		}()
 	})
@@ -63,7 +60,7 @@ func NewClientConn(conn net.Conn, quickClose bool) net.Conn {
 func (this *ClientConn) Read(b []byte) (n int, err error) {
 	n, err = this.rawConn.Read(b)
 	if n > 0 {
-		atomic.AddUint64(&inTrafficBytes, uint64(n))
+		atomic.AddUint64(&teaconst.InTrafficBytes, uint64(n))
 	}
 	return
 }
@@ -71,7 +68,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 func (this *ClientConn) Write(b []byte) (n int, err error) {
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
-		atomic.AddUint64(&outTrafficBytes, uint64(n))
+		atomic.AddUint64(&teaconst.OutTrafficBytes, uint64(n))
 	}
 	return
 }

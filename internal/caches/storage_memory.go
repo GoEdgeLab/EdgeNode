@@ -6,6 +6,9 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/cespare/xxhash"
+	"github.com/iwind/TeaGo/rands"
+	"github.com/iwind/TeaGo/types"
+	"math"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -26,22 +29,37 @@ func (this *MemoryItem) IsExpired() bool {
 }
 
 type MemoryStorage struct {
-	policy        *serverconfigs.HTTPCachePolicy
-	list          ListInterface
-	locker        *sync.RWMutex
-	valuesMap     map[uint64]*MemoryItem
-	ticker        *utils.Ticker
-	purgeDuration time.Duration
+	parentStorage StorageInterface
+
+	policy *serverconfigs.HTTPCachePolicy
+	list   ListInterface
+	locker *sync.RWMutex
+
+	valuesMap map[uint64]*MemoryItem // hash => item
+	dirtyChan chan string            // hash chan
+
+	purgeTicker *utils.Ticker
+
 	totalSize     int64
 	writingKeyMap map[string]bool // key => bool
 }
 
-func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy) *MemoryStorage {
+func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage StorageInterface) *MemoryStorage {
+	var dirtyChan chan string
+	if parentStorage != nil {
+		var queueSize = policy.MemoryAutoFlushQueueSize
+		if queueSize <= 0 {
+			queueSize = 2048
+		}
+		dirtyChan = make(chan string, queueSize)
+	}
 	return &MemoryStorage{
+		parentStorage: parentStorage,
 		policy:        policy,
 		list:          NewMemoryList(),
 		locker:        &sync.RWMutex{},
 		valuesMap:     map[uint64]*MemoryItem{},
+		dirtyChan:     dirtyChan,
 		writingKeyMap: map[string]bool{},
 	}
 }
@@ -57,15 +75,23 @@ func (this *MemoryStorage) Init() error {
 		atomic.AddInt64(&this.totalSize, -item.TotalSize())
 	})
 
-	if this.purgeDuration <= 0 {
-		this.purgeDuration = 10 * time.Second
+	var autoPurgeInterval = this.policy.MemoryAutoPurgeInterval
+	if autoPurgeInterval <= 0 {
+		autoPurgeInterval = 5
 	}
 
 	// 启动定时清理任务
-	this.ticker = utils.NewTicker(this.purgeDuration)
+	this.purgeTicker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
 	go func() {
-		for this.ticker.Next() {
+		for this.purgeTicker.Next() {
 			this.purgeLoop()
+		}
+	}()
+
+	// 启动定时Flush memory to disk任务
+	go func() {
+		for hash := range this.dirtyChan {
+			this.flushItem(hash)
 		}
 	}()
 
@@ -91,6 +117,18 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 			return nil, err
 		}
 		this.locker.RUnlock()
+
+		// 增加点击量
+		// 1/1000采样
+		// TODO 考虑是否在缓存策略里设置
+		if rands.Int(0, 1000) == 0 {
+			var hitErr = this.list.IncreaseHit(types.String(hash))
+			if hitErr != nil {
+				// 此错误可以忽略
+				remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
+			}
+		}
+
 		return reader, nil
 	}
 	this.locker.RUnlock()
@@ -145,7 +183,7 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (
 	}
 
 	isWriting = true
-	return NewMemoryWriter(this.valuesMap, key, expiredAt, status, this.locker, func() {
+	return NewMemoryWriter(this, key, expiredAt, status, func() {
 		this.locker.Lock()
 		delete(this.writingKeyMap, key)
 		this.locker.Unlock()
@@ -210,8 +248,12 @@ func (this *MemoryStorage) Stop() {
 	this.valuesMap = map[uint64]*MemoryItem{}
 	this.writingKeyMap = map[string]bool{}
 	_ = this.list.Reset()
-	if this.ticker != nil {
-		this.ticker.Stop()
+	if this.purgeTicker != nil {
+		this.purgeTicker.Stop()
+	}
+
+	if this.parentStorage != nil && this.dirtyChan != nil {
+		close(this.dirtyChan)
 	}
 
 	_ = this.list.Close()
@@ -228,7 +270,7 @@ func (this *MemoryStorage) Policy() *serverconfigs.HTTPCachePolicy {
 
 // AddToList 将缓存添加到列表
 func (this *MemoryStorage) AddToList(item *Item) {
-	item.MetaSize = int64(len(item.Key)) + 32 /** 32是我们评估的数据结构的长度 **/
+	item.MetaSize = int64(len(item.Key)) + 128 /** 128是我们评估的数据结构的长度 **/
 	hash := fmt.Sprintf("%d", this.hash(item.Key))
 	_ = this.list.Add(hash, item)
 }
@@ -250,7 +292,28 @@ func (this *MemoryStorage) hash(key string) uint64 {
 
 // 清理任务
 func (this *MemoryStorage) purgeLoop() {
-	_ = this.list.Purge(2048, func(hash string) error {
+	// 计算是否应该开启LFU清理
+	var capacityBytes = this.policy.CapacityBytes()
+	var startLFU = false
+	var usedPercent = float32(this.TotalMemorySize()*100) / float32(capacityBytes)
+	var lfuFreePercent = this.policy.MemoryLFUFreePercent
+	if lfuFreePercent <= 0 {
+		lfuFreePercent = 5
+	}
+	if capacityBytes > 0 {
+		if lfuFreePercent < 100 {
+			if usedPercent >= 100-lfuFreePercent {
+				startLFU = true
+			}
+		}
+	}
+
+	// 清理过期
+	var purgeCount = this.policy.MemoryAutoPurgeCount
+	if purgeCount <= 0 {
+		purgeCount = 2000
+	}
+	_, _ = this.list.Purge(purgeCount, func(hash string) error {
 		uintHash, err := strconv.ParseUint(hash, 10, 64)
 		if err == nil {
 			this.locker.Lock()
@@ -259,6 +322,92 @@ func (this *MemoryStorage) purgeLoop() {
 		}
 		return nil
 	})
+
+	// LFU
+	if startLFU {
+		var total, _ = this.list.Count()
+		if total > 0 {
+			var count = types.Int(math.Ceil(float64(total) * float64(lfuFreePercent * 2) / 100))
+			if count > 0 {
+				// 限制单次清理的条数，防止占用太多系统资源
+				if count > 2000 {
+					count = 2000
+				}
+
+				remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
+
+				err := this.list.PurgeLFU(count, func(hash string) error {
+					uintHash, err := strconv.ParseUint(hash, 10, 64)
+					if err == nil {
+						this.locker.Lock()
+						delete(this.valuesMap, uintHash)
+						this.locker.Unlock()
+					}
+					return nil
+				})
+				if err != nil {
+					remotelogs.Warn("CACHE", "purge memory storage in LFU failed: "+err.Error())
+				}
+			}
+		}
+	}
+}
+
+// Flush任务
+func (this *MemoryStorage) flushItem(key string) {
+	if this.parentStorage == nil {
+		return
+	}
+	var hash = this.hash(key)
+
+	this.locker.RLock()
+	item, ok := this.valuesMap[hash]
+	this.locker.RUnlock()
+
+	if !ok {
+		return
+	}
+	if !item.IsDone || item.IsExpired() {
+		return
+	}
+
+	writer, err := this.parentStorage.OpenWriter(key, item.ExpiredAt, item.Status)
+	if err != nil {
+		if !CanIgnoreErr(err) {
+			remotelogs.Error("CACHE", "flush items failed: open writer failed: "+err.Error())
+		}
+		return
+	}
+
+	_, err = writer.WriteHeader(item.HeaderValue)
+	if err != nil {
+		_ = writer.Discard()
+		remotelogs.Error("CACHE", "flush items failed: write header failed: "+err.Error())
+		return
+	}
+
+	_, err = writer.Write(item.BodyValue)
+	if err != nil {
+		_ = writer.Discard()
+		remotelogs.Error("CACHE", "flush items failed: writer body failed: "+err.Error())
+		return
+	}
+
+	err = writer.Close()
+	if err != nil {
+		_ = writer.Discard()
+		remotelogs.Error("CACHE", "flush items failed: close writer failed: "+err.Error())
+	}
+
+	this.parentStorage.AddToList(&Item{
+		Type:       writer.ItemType(),
+		Key:        key,
+		ExpiredAt:  item.ExpiredAt,
+		HeaderSize: writer.HeaderSize(),
+		BodySize:   writer.BodySize(),
+	})
+
+	return
 }
 
 func (this *MemoryStorage) memoryCapacityBytes() int64 {
