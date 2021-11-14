@@ -13,13 +13,14 @@ type MemoryWriter struct {
 	headerSize int64
 	bodySize   int64
 	status     int
+	isDirty    bool
 
 	hash    uint64
 	item    *MemoryItem
 	endFunc func()
 }
 
-func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, endFunc func()) *MemoryWriter {
+func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, endFunc func()) *MemoryWriter {
 	w := &MemoryWriter{
 		storage:   memoryStorage,
 		key:       key,
@@ -30,6 +31,7 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 			Status:     status,
 		},
 		status:  status,
+		isDirty: isDirty,
 		endFunc: endFunc,
 	}
 	w.hash = w.calculateHash(key)
@@ -73,11 +75,13 @@ func (this *MemoryWriter) Close() error {
 	this.storage.locker.Lock()
 	this.item.IsDone = true
 	this.storage.valuesMap[this.hash] = this.item
-	if this.storage.parentStorage != nil {
-		select {
-		case this.storage.dirtyChan <- this.key:
-		default:
+	if this.isDirty {
+		if this.storage.parentStorage != nil {
+			select {
+			case this.storage.dirtyChan <- this.key:
+			default:
 
+			}
 		}
 	}
 	this.storage.locker.Unlock()

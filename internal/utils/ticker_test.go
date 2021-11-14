@@ -6,6 +6,20 @@ import (
 	"time"
 )
 
+func TestRawTicker(t *testing.T) {
+	var ticker = time.NewTicker(2 * time.Second)
+	go func() {
+		for range ticker.C {
+			t.Log("tick")
+		}
+		t.Log("stop")
+	}()
+
+	time.Sleep(6 * time.Second)
+	ticker.Stop()
+	time.Sleep(1 * time.Second)
+}
+
 func TestTicker(t *testing.T) {
 	ticker := NewTicker(3 * time.Second)
 	go func() {

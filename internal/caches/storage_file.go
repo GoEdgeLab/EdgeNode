@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,10 @@ const (
 	SizeMeta = SizeExpiresAt + SizeStatus + SizeURLLength + SizeHeaderLength + SizeBodyLength
 )
 
+const (
+	HotItemSize = 1024
+)
+
 // FileStorage 文件缓存
 //   文件结构：
 //    [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
@@ -52,13 +57,20 @@ type FileStorage struct {
 	list          ListInterface
 	writingKeyMap map[string]bool // key => bool
 	locker        sync.RWMutex
-	ticker        *utils.Ticker
+	purgeTicker   *utils.Ticker
+
+	hotMap       map[string]*HotItem // key => count
+	hotMapLocker sync.Mutex
+	lastHotSize  int
+	hotTicker    *utils.Ticker
 }
 
 func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
 	return &FileStorage{
 		policy:        policy,
 		writingKeyMap: map[string]bool{},
+		hotMap:        map[string]*HotItem{},
+		lastHotSize:   -1,
 	}
 }
 
@@ -191,8 +203,12 @@ func (this *FileStorage) Init() error {
 }
 
 func (this *FileStorage) OpenReader(key string) (Reader, error) {
+	return this.openReader(key, true)
+}
+
+func (this *FileStorage) openReader(key string, allowMemory bool) (Reader, error) {
 	// 先尝试内存缓存
-	if this.memoryStorage != nil {
+	if allowMemory && this.memoryStorage != nil {
 		reader, err := this.memoryStorage.OpenReader(key)
 		if err == nil {
 			return reader, err
@@ -237,12 +253,40 @@ func (this *FileStorage) OpenReader(key string) (Reader, error) {
 
 	// 增加点击量
 	// 1/1000采样
-	// TODO 考虑是否在缓存策略里设置
-	if rands.Int(0, 1000) == 0 {
-		var hitErr = this.list.IncreaseHit(hash)
-		if hitErr != nil {
-			// 此错误可以忽略
-			remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
+	if allowMemory {
+		var rate = this.policy.PersistenceHitSampleRate
+		if rate <= 0 {
+			rate = 1000
+		}
+		if this.lastHotSize == 0 {
+			// 自动降低采样率来增加热点数据的缓存几率
+			rate = rate / 10
+		}
+		if rands.Int(0, rate) == 0 {
+			var hitErr = this.list.IncreaseHit(hash)
+			if hitErr != nil {
+				// 此错误可以忽略
+				remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
+			}
+
+			// 增加到热点
+			// 这里不收录缓存尺寸过大的文件
+			if this.memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*1024*1024 {
+				this.hotMapLocker.Lock()
+				hotItem, ok := this.hotMap[key]
+				if ok {
+					hotItem.Hits++
+					hotItem.ExpiresAt = reader.expiresAt
+				} else if len(this.hotMap) < HotItemSize { // 控制数量
+					this.hotMap[key] = &HotItem{
+						Key:       key,
+						ExpiresAt: reader.ExpiresAt(),
+						Status:    reader.Status(),
+						Hits:      1,
+					}
+				}
+				this.hotMapLocker.Unlock()
+			}
 		}
 	}
 
@@ -574,8 +618,11 @@ func (this *FileStorage) Stop() {
 	}
 
 	_ = this.list.Reset()
-	if this.ticker != nil {
-		this.ticker.Stop()
+	if this.purgeTicker != nil {
+		this.purgeTicker.Stop()
+	}
+	if this.hotTicker != nil {
+		this.hotTicker.Stop()
 	}
 
 	_ = this.list.Close()
@@ -645,19 +692,32 @@ func (this *FileStorage) initList() error {
 			autoPurgeInterval = 10
 		}
 	}
-	this.ticker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
+	this.purgeTicker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
 	events.On(events.EventQuit, func() {
 		remotelogs.Println("CACHE", "quit clean timer")
-		var ticker = this.ticker
+		var ticker = this.purgeTicker
 		if ticker != nil {
 			ticker.Stop()
 		}
 	})
 	go func() {
-		for this.ticker.Next() {
-			var tr = trackers.Begin("FILE_CACHE_STORAGE_PURGE_LOOP")
-			this.purgeLoop()
-			tr.End()
+		for this.purgeTicker.Next() {
+			trackers.Run("FILE_CACHE_STORAGE_PURGE_LOOP", func() {
+				this.purgeLoop()
+			})
+		}
+	}()
+
+	// 热点处理任务
+	this.hotTicker = utils.NewTicker(1 * time.Minute)
+	if Tea.IsTesting() {
+		this.hotTicker = utils.NewTicker(10 * time.Second)
+	}
+	go func() {
+		for this.hotTicker.Next() {
+			trackers.Run("FILE_CACHE_STORAGE_HOT_LOOP", func() {
+				this.hotLoop()
+			})
 		}
 	}()
 
@@ -838,6 +898,102 @@ func (this *FileStorage) purgeLoop() {
 					remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
 				}
 			}
+		}
+	}
+}
+
+// 热点数据任务
+func (this *FileStorage) hotLoop() {
+	var memoryStorage = this.memoryStorage
+	if memoryStorage == nil {
+		return
+	}
+
+	this.hotMapLocker.Lock()
+	if len(this.hotMap) == 0 {
+		this.hotMapLocker.Unlock()
+		this.lastHotSize = 0
+		return
+	}
+
+	this.lastHotSize = len(this.hotMap)
+
+	var result = []*HotItem{} // [ {key: ..., hits: ...}, ... ]
+	for _, v := range this.hotMap {
+		result = append(result, v)
+	}
+
+	this.hotMap = map[string]*HotItem{}
+	this.hotMapLocker.Unlock()
+
+	// 取Top10
+	if len(result) > 0 {
+		sort.Slice(result, func(i, j int) bool {
+			return result[i].Hits > result[j].Hits
+		})
+		var size = 1
+		if len(result) < 10 {
+			size = 1
+		} else {
+			size = len(result) / 10
+		}
+
+		var buf = make([]byte, 32*1024)
+		for _, item := range result[:size] {
+			reader, err := this.openReader(item.Key, false)
+			if err != nil {
+				continue
+			}
+			if reader == nil {
+				continue
+			}
+			if reader.ExpiresAt() <= time.Now().Unix() {
+				continue
+			}
+
+			writer, err := this.memoryStorage.openWriter(item.Key, item.ExpiresAt, item.Status, false)
+			if err != nil {
+				if !CanIgnoreErr(err) {
+					remotelogs.Error("CACHE", "transfer hot item failed: "+err.Error())
+				}
+				_ = reader.Close()
+				continue
+			}
+			if writer == nil {
+				_ = reader.Close()
+				continue
+			}
+
+			err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
+				_, err = writer.WriteHeader(buf[:n])
+				return
+			})
+			if err != nil {
+				_ = reader.Close()
+				_ = writer.Discard()
+				continue
+			}
+
+			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
+				_, err = writer.Write(buf[:n])
+				return
+			})
+			if err != nil {
+				_ = reader.Close()
+				_ = writer.Discard()
+				continue
+			}
+
+			this.memoryStorage.AddToList(&Item{
+				Type:       writer.ItemType(),
+				Key:        item.Key,
+				ExpiredAt:  item.ExpiresAt,
+				HeaderSize: writer.HeaderSize(),
+				BodySize:   writer.BodySize(),
+			})
+
+			_ = reader.Close()
+			_ = writer.Close()
 		}
 	}
 }

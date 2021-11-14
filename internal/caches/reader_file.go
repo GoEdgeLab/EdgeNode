@@ -11,6 +11,7 @@ import (
 type FileReader struct {
 	fp *os.File
 
+	expiresAt    int64
 	status       int
 	headerOffset int64
 	headerSize   int
@@ -42,6 +43,8 @@ func (this *FileReader) Init() error {
 	if !ok {
 		return ErrNotFound
 	}
+
+	this.expiresAt = int64(binary.BigEndian.Uint32(buf[:SizeExpiresAt]))
 
 	status := types.Int(string(buf[SizeExpiresAt : SizeExpiresAt+SizeStatus]))
 	if status < 100 || status > 999 {
@@ -76,6 +79,10 @@ func (this *FileReader) Init() error {
 
 func (this *FileReader) TypeName() string {
 	return "disk"
+}
+
+func (this *FileReader) ExpiresAt() int64 {
+	return this.expiresAt
 }
 
 func (this *FileReader) Status() int {

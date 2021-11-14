@@ -144,6 +144,10 @@ func (this *MemoryStorage) OpenReader(key string) (Reader, error) {
 
 // OpenWriter 打开缓存写入器等待写入
 func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
+	return this.openWriter(key, expiredAt, status, true)
+}
+
+func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, isDirty bool) (Writer, error) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
@@ -187,7 +191,7 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int) (
 	}
 
 	isWriting = true
-	return NewMemoryWriter(this, key, expiredAt, status, func() {
+	return NewMemoryWriter(this, key, expiredAt, status, isDirty, func() {
 		this.locker.Lock()
 		delete(this.writingKeyMap, key)
 		this.locker.Unlock()

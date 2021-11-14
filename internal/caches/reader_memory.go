@@ -20,6 +20,10 @@ func (this *MemoryReader) TypeName() string {
 	return "memory"
 }
 
+func (this *MemoryReader) ExpiresAt() int64 {
+	return this.item.ExpiredAt
+}
+
 func (this *MemoryReader) Status() int {
 	return this.item.Status
 }

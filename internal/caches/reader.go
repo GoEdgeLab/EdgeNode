@@ -9,6 +9,9 @@ type Reader interface {
 	// TypeName 类型名称
 	TypeName() string
 
+	// ExpiresAt 过期时间
+	ExpiresAt() int64
+
 	// Status 状态码
 	Status() int
 
