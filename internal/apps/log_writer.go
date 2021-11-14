@@ -7,9 +7,9 @@ import (
 	"github.com/iwind/TeaGo/utils/time"
 	"log"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 type LogWriter struct {
@@ -38,18 +38,20 @@ func (this *LogWriter) Init() {
 }
 
 func (this *LogWriter) Write(message string) {
-	// 文件和行号
-	var callDepth = 2
-	var file string
-	var line int
-	var ok bool
-	_, file, line, ok = runtime.Caller(callDepth)
-	if ok {
-		file = filepath.Base(file)
-	}
-
 	backgroundEnv, _ := os.LookupEnv("EdgeBackground")
 	if backgroundEnv != "on" {
+		// 文件和行号
+		var file string
+		var line int
+		if Tea.IsTesting() {
+			var callDepth = 3
+			var ok bool
+			_, file, line, ok = runtime.Caller(callDepth)
+			if ok {
+				file = this.packagePath(file)
+			}
+		}
+
 		if len(file) > 0 {
 			log.Println(message + " (" + file + ":" + strconv.Itoa(line) + ")")
 		} else {
@@ -69,4 +71,12 @@ func (this *LogWriter) Close() {
 	if this.fileAppender != nil {
 		_ = this.fileAppender.Close()
 	}
+}
+
+func (this *LogWriter) packagePath(path string) string {
+	var pieces = strings.Split(path, "/")
+	if len(pieces) >= 2 {
+		return strings.Join(pieces[len(pieces)-2:], "/")
+	}
+	return path
 }
