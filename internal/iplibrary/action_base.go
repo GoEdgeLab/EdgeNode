@@ -13,7 +13,7 @@ func (this *BaseAction) Close() error {
 	return nil
 }
 
-// 处理HTTP请求
+// DoHTTP 处理HTTP请求
 func (this *BaseAction) DoHTTP(req *http.Request, resp http.ResponseWriter) (goNext bool, err error) {
 	return true, nil
 }

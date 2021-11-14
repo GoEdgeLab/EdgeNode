@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-// 脚本命令动作
+// ScriptAction 脚本命令动作
 type ScriptAction struct {
 	BaseAction
 

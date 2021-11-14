@@ -6,19 +6,19 @@ import (
 	"net/http"
 )
 
-// HTML动作
+// HTMLAction HTML动作
 type HTMLAction struct {
 	BaseAction
 
 	config *firewallconfigs.FirewallActionHTMLConfig
 }
 
-// 获取新对象
+// NewHTMLAction 获取新对象
 func NewHTMLAction() *HTMLAction {
 	return &HTMLAction{}
 }
 
-// 初始化
+// Init 初始化
 func (this *HTMLAction) Init(config *firewallconfigs.FirewallActionConfig) error {
 	this.config = &firewallconfigs.FirewallActionHTMLConfig{}
 	err := this.convertParams(config.Params, this.config)
@@ -28,22 +28,22 @@ func (this *HTMLAction) Init(config *firewallconfigs.FirewallActionConfig) error
 	return nil
 }
 
-// 添加
+// AddItem 添加
 func (this *HTMLAction) AddItem(listType IPListType, item *pb.IPItem) error {
 	return nil
 }
 
-// 删除
+// DeleteItem 删除
 func (this *HTMLAction) DeleteItem(listType IPListType, item *pb.IPItem) error {
 	return nil
 }
 
-// 关闭
+// Close 关闭
 func (this *HTMLAction) Close() error {
 	return nil
 }
 
-// 处理HTTP请求
+// DoHTTP 处理HTTP请求
 func (this *HTMLAction) DoHTTP(req *http.Request, resp http.ResponseWriter) (goNext bool, err error) {
 	if this.config == nil {
 		goNext = true

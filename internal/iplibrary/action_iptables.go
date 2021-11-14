@@ -9,11 +9,12 @@ import (
 	"runtime"
 )
 
-// IPTables动作
+// IPTablesAction IPTables动作
 // 相关命令：
 //   iptables -A INPUT -s "192.168.2.32" -j ACCEPT
 //   iptables -A INPUT -s "192.168.2.32" -j REJECT
-//   iptables -D ...
+//   iptables -D INPUT ...
+//   iptables -F INPUT
 type IPTablesAction struct {
 	BaseAction
 

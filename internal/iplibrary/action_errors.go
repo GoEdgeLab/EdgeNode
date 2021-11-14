@@ -1,6 +1,6 @@
 package iplibrary
 
-// 是否是致命错误
+// FataError 是否是致命错误
 type FataError struct {
 	err string
 }

@@ -28,7 +28,7 @@ func (this *IPItem) Contains(ip uint64) bool {
 	case IPItemTypeIPv6:
 		return this.containsIPv6(ip)
 	case IPItemTypeAll:
-		return this.containsAll(ip)
+		return this.containsAll()
 	default:
 		return this.containsIPv4(ip)
 	}
@@ -63,7 +63,7 @@ func (this *IPItem) containsIPv6(ip uint64) bool {
 }
 
 // 检查是否包所有IP
-func (this *IPItem) containsAll(ip uint64) bool {
+func (this *IPItem) containsAll() bool {
 	if this.ExpiredAt > 0 && this.ExpiredAt < utils.UnixTime() {
 		return false
 	}
