@@ -8,6 +8,9 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/types"
+	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 )
@@ -20,6 +23,8 @@ func init() {
 		go SharedIPListManager.Start()
 	})
 }
+
+var versionCacheFile = "ip_list_version.cache"
 
 // IPListManager IP名单管理
 type IPListManager struct {
@@ -37,13 +42,16 @@ type IPListManager struct {
 func NewIPListManager() *IPListManager {
 	return &IPListManager{
 		cacheFile: Tea.Root + "/configs/ip_list.cache",
-		pageSize:  1000,
+		pageSize:  500,
 		listMap:   map[int64]*IPList{},
 	}
 }
 
 func (this *IPListManager) Start() {
 	// TODO 从缓存当中读取数据
+
+	// 从缓存中读取位置
+	this.version = this.readLocalVersion()
 
 	// 第一次读取
 	err := this.loop()
@@ -89,9 +97,8 @@ func (this *IPListManager) loop() error {
 		if !hasNext {
 			break
 		}
+		time.Sleep(1 * time.Second)
 	}
-
-	// TODO 写入到缓存当中
 
 	return nil
 }
@@ -163,6 +170,9 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 	this.locker.Unlock()
 	this.version = items[len(items)-1].Version
 
+	// 写入版本号到缓存当中
+	this.updateLocalVersion(this.version)
+
 	return true, nil
 }
 
@@ -171,4 +181,26 @@ func (this *IPListManager) FindList(listId int64) *IPList {
 	list, _ := this.listMap[listId]
 	this.locker.Unlock()
 	return list
+}
+
+func (this *IPListManager) readLocalVersion() int64 {
+	data, err := ioutil.ReadFile(Tea.ConfigFile(versionCacheFile))
+	if err != nil || len(data) == 0 {
+		return 0
+	}
+	return types.Int64(string(data))
+}
+
+func (this *IPListManager) updateLocalVersion(version int64) {
+	fp, err := os.OpenFile(Tea.ConfigFile(versionCacheFile), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	if err != nil {
+		remotelogs.Warn("IP_LIST", "write local version cache failed: "+err.Error())
+		return
+	}
+	_, err = fp.WriteString(types.String(version))
+	if err != nil {
+		remotelogs.Warn("IP_LIST", "write local version cache failed: "+err.Error())
+		return
+	}
+	_ = fp.Close()
 }
