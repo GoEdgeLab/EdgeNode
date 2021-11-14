@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	"math"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -84,7 +86,9 @@ func (this *MemoryStorage) Init() error {
 	this.purgeTicker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
 	go func() {
 		for this.purgeTicker.Next() {
+			var tr = trackers.Begin("MEMORY_CACHE_STORAGE_PURGE_LOOP")
 			this.purgeLoop()
+			tr.End()
 		}
 	}()
 
@@ -260,6 +264,9 @@ func (this *MemoryStorage) Stop() {
 
 	this.locker.Unlock()
 
+	// 回收内存
+	runtime.GC()
+
 	remotelogs.Println("CACHE", "close memory storage '"+strconv.FormatInt(this.policy.Id, 10)+"'")
 }
 
@@ -327,14 +334,14 @@ func (this *MemoryStorage) purgeLoop() {
 	if startLFU {
 		var total, _ = this.list.Count()
 		if total > 0 {
-			var count = types.Int(math.Ceil(float64(total) * float64(lfuFreePercent * 2) / 100))
+			var count = types.Int(math.Ceil(float64(total) * float64(lfuFreePercent*2) / 100))
 			if count > 0 {
 				// 限制单次清理的条数，防止占用太多系统资源
 				if count > 2000 {
 					count = 2000
 				}
 
-				remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
+				// 这里不提示LFU，因为此事件将会非常频繁
 
 				err := this.list.PurgeLFU(count, func(hash string) error {
 					uintHash, err := strconv.ParseUint(hash, 10, 64)

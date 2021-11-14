@@ -517,3 +517,16 @@ func BenchmarkFileStorage_Read(b *testing.B) {
 		_ = reader.Close()
 	}
 }
+
+func BenchmarkFileStorage_KeyPath(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var storage = &FileStorage{
+		cacheConfig: &serverconfigs.HTTPFileCacheStorage{},
+		policy:      &serverconfigs.HTTPCachePolicy{Id: 1},
+	}
+
+	for i := 0; i < b.N; i++ {
+		_, _ = storage.keyPath(strconv.Itoa(i))
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/rands"
@@ -654,7 +655,9 @@ func (this *FileStorage) initList() error {
 	})
 	go func() {
 		for this.ticker.Next() {
+			var tr = trackers.Begin("FILE_CACHE_STORAGE_PURGE_LOOP")
 			this.purgeLoop()
+			tr.End()
 		}
 	}()
 

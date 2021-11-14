@@ -11,6 +11,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"sort"
 )
 
 func main() {
@@ -59,6 +60,33 @@ func main() {
 
 		node := nodes.NewNode()
 		node.Start()
+	})
+	app.On("trackers", func() {
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{Code: "trackers"})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			labelsMap, ok := reply.Params["labels"]
+			if ok {
+				labels, ok := labelsMap.(map[string]interface{})
+				if ok {
+					if len(labels) == 0 {
+						fmt.Println("no labels yet")
+					} else {
+						var labelNames = []string{}
+						for label := range labels {
+							labelNames = append(labelNames, label)
+						}
+						sort.Strings(labelNames)
+
+						for _, labelName := range labelNames {
+							fmt.Println(labelName + ": " + fmt.Sprintf("%.6f", labels[labelName]))
+						}
+					}
+				}
+			}
+		}
 	})
 	app.Run(func() {
 		node := nodes.NewNode()

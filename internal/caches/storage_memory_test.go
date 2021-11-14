@@ -13,7 +13,7 @@ import (
 )
 
 func TestMemoryStorage_OpenWriter(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 
 	writer, err := storage.OpenWriter("abc", time.Now().Unix()+60, 200)
 	if err != nil {
@@ -88,7 +88,7 @@ func TestMemoryStorage_OpenWriter(t *testing.T) {
 }
 
 func TestMemoryStorage_OpenReaderLock(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	_ = storage.Init()
 
 	var h = storage.hash("test")
@@ -101,7 +101,7 @@ func TestMemoryStorage_OpenReaderLock(t *testing.T) {
 }
 
 func TestMemoryStorage_Delete(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	{
 		writer, err := storage.OpenWriter("abc", time.Now().Unix()+60, 200)
 		if err != nil {
@@ -123,7 +123,7 @@ func TestMemoryStorage_Delete(t *testing.T) {
 }
 
 func TestMemoryStorage_Stat(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	expiredAt := time.Now().Unix() + 60
 	{
 		writer, err := storage.OpenWriter("abc", expiredAt, 200)
@@ -160,7 +160,7 @@ func TestMemoryStorage_Stat(t *testing.T) {
 }
 
 func TestMemoryStorage_CleanAll(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	expiredAt := time.Now().Unix() + 60
 	{
 		writer, err := storage.OpenWriter("abc", expiredAt, 200)
@@ -195,7 +195,7 @@ func TestMemoryStorage_CleanAll(t *testing.T) {
 }
 
 func TestMemoryStorage_Purge(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	expiredAt := time.Now().Unix() + 60
 	{
 		writer, err := storage.OpenWriter("abc", expiredAt, 200)
@@ -232,7 +232,7 @@ func TestMemoryStorage_Purge(t *testing.T) {
 func TestMemoryStorage_Expire(t *testing.T) {
 	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{
 		MemoryAutoPurgeInterval: 5,
-	})
+	}, nil)
 	err := storage.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -256,7 +256,7 @@ func TestMemoryStorage_Expire(t *testing.T) {
 }
 
 func TestMemoryStorage_Locker(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{})
+	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	err := storage.Init()
 	if err != nil {
 		t.Fatal(err)

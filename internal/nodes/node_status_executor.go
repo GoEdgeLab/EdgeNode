@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
@@ -58,6 +59,9 @@ func (this *NodeStatusExecutor) update() {
 		return
 	}
 
+	var tr = trackers.Begin("UPLOAD_NODE_STATUS")
+	defer tr.End()
+
 	status := &nodeconfigs.NodeStatus{}
 	status.BuildVersion = teaconst.Version
 	status.BuildVersionCode = utils.VersionToLong(teaconst.Version)
@@ -79,11 +83,26 @@ func (this *NodeStatusExecutor) update() {
 	hostname, _ := os.Hostname()
 	status.Hostname = hostname
 
+	var cpuTR = tr.Begin("cpu")
 	this.updateCPU(status)
+	cpuTR.End()
+
+	var memTR = tr.Begin("memory")
 	this.updateMem(status)
+	memTR.End()
+
+	var loadTR = tr.Begin("load")
 	this.updateLoad(status)
+	loadTR.End()
+
+	var diskTR = tr.Begin("disk")
 	this.updateDisk(status)
+	diskTR.End()
+
+	var cacheSpaceTR = tr.Begin("cache space")
 	this.updateCacheSpace(status)
+	cacheSpaceTR.End()
+
 	status.UpdatedAt = time.Now().Unix()
 
 	//  发送数据

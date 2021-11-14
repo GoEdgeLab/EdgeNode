@@ -16,6 +16,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/andybalholm/brotli"
 	"github.com/go-yaml/yaml"
@@ -231,6 +232,9 @@ func (this *Node) InstallSystemService() error {
 
 // 循环
 func (this *Node) loop() error {
+	var tr = trackers.Begin("CHECK_NODE_CONFIG_CHANGES")
+	defer tr.End()
+
 	// 检查api.yaml是否存在
 	apiConfigFile := Tea.ConfigFile("api.yaml")
 	_, err := os.Stat(apiConfigFile)
@@ -554,6 +558,12 @@ func (this *Node) listenSock() error {
 						time.Sleep(1 * time.Second)
 					}
 				}()
+			case "trackers":
+				_ = cmd.Reply(&gosock.Command{
+					Params: map[string]interface{}{
+						"labels": trackers.SharedManager.Labels(),
+					},
+				})
 			}
 		})
 

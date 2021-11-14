@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/iwind/TeaGo/Tea"
 	"sync"
 	"time"
@@ -59,6 +60,9 @@ func (this *OriginStateManager) Loop() error {
 	if sharedNodeConfig == nil {
 		return nil
 	}
+
+	var tr = trackers.Begin("CHECK_ORIGIN_STATES")
+	defer tr.End()
 
 	var currentStates = []*OriginState{}
 	this.locker.Lock()

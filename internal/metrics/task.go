@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/mattn/go-sqlite3"
@@ -164,6 +165,8 @@ func (this *Task) Start() error {
 	this.statsTicker = utils.NewTicker(1 * time.Minute)
 	go func() {
 		for this.statsTicker.Next() {
+			var tr = trackers.Begin("[METRIC]DUMP_STATS_TO_LOCAL_DATABASE")
+
 			this.statsLocker.Lock()
 			var statsMap = this.statsMap
 			this.statsMap = map[string]*Stat{}
@@ -175,6 +178,8 @@ func (this *Task) Start() error {
 					remotelogs.Error("METRIC", "insert stat failed: "+err.Error())
 				}
 			}
+
+			tr.End()
 		}
 	}()
 
@@ -182,7 +187,9 @@ func (this *Task) Start() error {
 	this.cleanTicker = utils.NewTicker(24 * time.Hour)
 	go func() {
 		for this.cleanTicker.Next() {
+			var tr = trackers.Begin("[METRIC]CLEAN_EXPIRED")
 			err := this.CleanExpired()
+			tr.End()
 			if err != nil {
 				remotelogs.Error("METRIC", "clean expired stats failed: "+err.Error())
 			}
@@ -193,7 +200,9 @@ func (this *Task) Start() error {
 	this.uploadTicker = utils.NewTicker(this.item.UploadDuration())
 	go func() {
 		for this.uploadTicker.Next() {
+			var tr = trackers.Begin("[METRIC]UPLOAD_STATS")
 			err := this.Upload(1 * time.Second)
+			tr.End()
 			if err != nil {
 				remotelogs.Error("METRIC", "upload stats failed: "+err.Error())
 			}

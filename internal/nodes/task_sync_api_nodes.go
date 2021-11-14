@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"google.golang.org/grpc"
@@ -53,6 +54,9 @@ func (this *SyncAPINodesTask) Start() {
 }
 
 func (this *SyncAPINodesTask) Loop() error {
+	var tr = trackers.Begin("SYNC_API_NODES")
+	defer tr.End()
+
 	// 获取所有可用的节点
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {

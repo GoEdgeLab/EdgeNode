@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
@@ -89,7 +90,9 @@ func (this *HTTPRequestStatManager) Start() {
 		}
 		select {
 		case <-uploadTicker.C:
+			var tr = trackers.Begin("UPLOAD_REQUEST_STATS")
 			err := this.Upload()
+			tr.End()
 			if err != nil {
 				if !rpc.IsConnError(err) {
 					remotelogs.Error("HTTP_REQUEST_STAT_MANAGER", "upload failed: "+err.Error())

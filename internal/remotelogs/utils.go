@@ -5,6 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/iwind/TeaGo/logs"
 	"time"
 )
@@ -16,7 +17,9 @@ func init() {
 	ticker := time.NewTicker(60 * time.Second)
 	go func() {
 		for range ticker.C {
+			var tr = trackers.Begin("UPLOAD_REMOTE_LOGS")
 			err := uploadLogs()
+			tr.End()
 			if err != nil {
 				logs.Println("[LOG]" + err.Error())
 			}
