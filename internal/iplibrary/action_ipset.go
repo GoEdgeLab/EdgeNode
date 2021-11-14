@@ -5,9 +5,11 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/iwind/TeaGo/types"
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,14 +25,21 @@ import (
 //   - 添加Item：ipset add edge_ip_list 192.168.2.32 timeout 30
 //   - 删除Item: ipset del edge_ip_list 192.168.2.32
 //   - 创建set：ipset create edge_ip_list hash:ip timeout 0
+//   - 查看统计：ipset -t list edge_black_list
+//   - 删除set：ipset destroy edge_black_list
 type IPSetAction struct {
 	BaseAction
 
-	config *firewallconfigs.FirewallActionIPSetConfig
+	config   *firewallconfigs.FirewallActionIPSetConfig
+	errorBuf *bytes.Buffer
+
+	ipsetNotfound bool
 }
 
 func NewIPSetAction() *IPSetAction {
-	return &IPSetAction{}
+	return &IPSetAction{
+		errorBuf: &bytes.Buffer{},
+	}
 }
 
 func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) error {
@@ -54,7 +63,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			return err
 		}
 		{
-			cmd := exec.Command(path, "create", this.config.WhiteName, "hash:ip", "timeout", "0")
+			cmd := exec.Command(path, "create", this.config.WhiteName, "hash:ip", "timeout", "0", "maxelem", "1000000")
 			stderr := bytes.NewBuffer([]byte{})
 			cmd.Stderr = stderr
 			err := cmd.Run()
@@ -68,7 +77,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			}
 		}
 		{
-			cmd := exec.Command(path, "create", this.config.BlackName, "hash:ip", "timeout", "0")
+			cmd := exec.Command(path, "create", this.config.BlackName, "hash:ip", "timeout", "0", "maxelem", "1000000")
 			stderr := bytes.NewBuffer([]byte{})
 			cmd.Stderr = stderr
 			err := cmd.Run()
@@ -163,24 +172,39 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 		}
 
 		{
-			cmd := exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", this.config.WhiteName, "src", "-j", "ACCEPT")
-			stderr := bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			// 检查规则是否存在
+			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", this.config.WhiteName, "src", "-j", "ACCEPT")
 			err := cmd.Run()
-			if err != nil {
-				output := stderr.Bytes()
-				return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
+			var exists = err == nil
+
+			// 添加规则
+			if !exists {
+				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", this.config.WhiteName, "src", "-j", "ACCEPT")
+				stderr := bytes.NewBuffer([]byte{})
+				cmd.Stderr = stderr
+				err := cmd.Run()
+				if err != nil {
+					output := stderr.Bytes()
+					return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
+				}
 			}
 		}
 
 		{
-			cmd := exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", this.config.BlackName, "src", "-j", "REJECT")
-			stderr := bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			// 检查规则是否存在
+			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", this.config.BlackName, "src", "-j", "REJECT")
 			err := cmd.Run()
-			if err != nil {
-				output := stderr.Bytes()
-				return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
+			var exists = err == nil
+
+			if !exists {
+				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", this.config.BlackName, "src", "-j", "REJECT")
+				stderr := bytes.NewBuffer([]byte{})
+				cmd.Stderr = stderr
+				err := cmd.Run()
+				if err != nil {
+					output := stderr.Bytes()
+					return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
+				}
 			}
 		}
 	}
@@ -212,6 +236,16 @@ func (this *IPSetAction) runAction(action string, listType IPListType, item *pb.
 		return nil
 	}
 	for _, cidr := range cidrList {
+		index := strings.Index(cidr, "/")
+		if index <= 0 {
+			continue
+		}
+
+		// 只支持/24以下的
+		if types.Int(cidr[index+1:]) < 24 {
+			continue
+		}
+
 		item.IpFrom = cidr
 		item.IpTo = ""
 		err := this.runActionSingleIP(action, listType, item)
@@ -246,6 +280,11 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 	if len(path) == 0 {
 		path, err = exec.LookPath("ipset")
 		if err != nil {
+			// 找不到ipset命令错误只提示一次
+			if this.ipsetNotfound {
+				return nil
+			}
+			this.ipsetNotfound = true
 			return err
 		}
 	}
@@ -264,13 +303,21 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 		args = append(args, "timeout", strconv.FormatInt(item.ExpiredAt-timestamp, 10))
 	}
 
-	//logs.Println(args)
-
 	if runtime.GOOS == "darwin" {
 		// MAC OS直接返回
 		return nil
 	}
 
+	this.errorBuf.Reset()
 	cmd := exec.Command(path, args...)
-	return cmd.Run()
+	cmd.Stderr = this.errorBuf
+	err = cmd.Run()
+	if err != nil {
+		var errString = this.errorBuf.String()
+		if action == "deleteItem" && strings.Contains(errString, "not added") {
+			return nil
+		}
+		return errors.New(strings.TrimSpace(errString))
+	}
+	return nil
 }
