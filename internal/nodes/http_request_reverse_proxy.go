@@ -39,7 +39,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	origin := this.reverseProxy.NextOrigin(requestCall)
 	requestCall.CallResponseCallbacks(this.writer)
 	if origin == nil {
-		err := errors.New(this.requestPath() + ": no available backends for reverse proxy")
+		err := errors.New(this.requestFullURL() + ": no available origin sites for reverse proxy")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write50x(err, http.StatusBadGateway)
 		return
@@ -59,7 +59,7 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	// 处理Scheme
 	if origin.Addr == nil {
-		err := errors.New(this.requestPath() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
+		err := errors.New(this.requestFullURL() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write50x(err, http.StatusBadGateway)
 		return
