@@ -20,6 +20,8 @@ type FirewalldAction struct {
 	BaseAction
 
 	config *firewallconfigs.FirewallActionFirewalldConfig
+
+	firewalldNotFound bool
 }
 
 func NewFirewalldAction() *FirewalldAction {
@@ -82,6 +84,10 @@ func (this *FirewalldAction) runActionSingleIP(action string, listType IPListTyp
 	if len(path) == 0 {
 		path, err = exec.LookPath("firewall-cmd")
 		if err != nil {
+			if this.firewalldNotFound {
+				return nil
+			}
+			this.firewalldNotFound = true
 			return err
 		}
 	}

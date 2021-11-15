@@ -19,6 +19,8 @@ type IPTablesAction struct {
 	BaseAction
 
 	config *firewallconfigs.FirewallActionIPTablesConfig
+
+	iptablesNotFound bool
 }
 
 func NewIPTablesAction() *IPTablesAction {
@@ -77,6 +79,10 @@ func (this *IPTablesAction) runActionSingleIP(action string, listType IPListType
 	if len(path) == 0 {
 		path, err = exec.LookPath("iptables")
 		if err != nil {
+			if this.iptablesNotFound {
+				return nil
+			}
+			this.iptablesNotFound = true
 			return err
 		}
 	}
