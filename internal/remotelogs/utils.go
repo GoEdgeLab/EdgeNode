@@ -6,7 +6,9 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
+	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/types"
 	"time"
 )
 
@@ -159,11 +161,33 @@ func ServerSuccess(serverId int64, tag string, description string) {
 // 上传日志
 func uploadLogs() error {
 	logList := []*pb.NodeLog{}
+
+	const hashSize = 5
+	var hashList = []uint64{}
+
 Loop:
 	for {
 		select {
 		case log := <-logChan:
-			logList = append(logList, log)
+			// 是否已存在
+			var hash = xxhash.Sum64String(types.String(log.ServerId) + "_" + log.Description)
+			var found = false
+			for _, h := range hashList {
+				if h == hash {
+					found = true
+					break
+				}
+			}
+
+			// 加入
+			if !found {
+				hashList = append(hashList, hash)
+				if len(hashList) > hashSize {
+					hashList = hashList[1:]
+				}
+
+				logList = append(logList, log)
+			}
 		default:
 			break Loop
 		}
