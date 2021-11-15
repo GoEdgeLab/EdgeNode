@@ -55,7 +55,7 @@ func (this *UDPListener) Serve() error {
 				ok = false
 			}
 			if !ok {
-				originConn, err := this.connectOrigin(this.reverseProxy, addr)
+				originConn, err := this.connectOrigin(firstServer.Id, this.reverseProxy, addr)
 				if err != nil {
 					remotelogs.Error("UDP_LISTENER", "unable to connect to origin server: "+err.Error())
 					continue
@@ -101,7 +101,7 @@ func (this *UDPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.reverseProxy = firstServer.ReverseProxy
 }
 
-func (this *UDPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr net.Addr) (conn net.Conn, err error) {
+func (this *UDPListener) connectOrigin(serverId int64, reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr net.Addr) (conn net.Conn, err error) {
 	if reverseProxy == nil {
 		return nil, errors.New("no reverse proxy config")
 	}
@@ -114,7 +114,7 @@ func (this *UDPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyC
 		}
 		conn, err = OriginConnect(origin, remoteAddr.String())
 		if err != nil {
-			remotelogs.Error("UDP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
+			remotelogs.ServerError(serverId, "UDP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
 			continue
 		} else {
 			// PROXY Protocol

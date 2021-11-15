@@ -75,7 +75,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 		stats.SharedTrafficStatManager.Add(firstServer.Id, "", 0, 0, 1, 0, 0, 0, firstServer.ShouldCheckTrafficLimit(), firstServer.PlanId())
 	}
 
-	originConn, err := this.connectOrigin(firstServer.ReverseProxy, conn.RemoteAddr().String())
+	originConn, err := this.connectOrigin(firstServer.Id, firstServer.ReverseProxy, conn.RemoteAddr().String())
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (this *TCPListener) Close() error {
 	return this.Listener.Close()
 }
 
-func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr string) (conn net.Conn, err error) {
+func (this *TCPListener) connectOrigin(serverId int64, reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr string) (conn net.Conn, err error) {
 	if reverseProxy == nil {
 		return nil, errors.New("no reverse proxy config")
 	}
@@ -177,7 +177,7 @@ func (this *TCPListener) connectOrigin(reverseProxy *serverconfigs.ReverseProxyC
 		}
 		conn, err = OriginConnect(origin, remoteAddr)
 		if err != nil {
-			remotelogs.Error("TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
+			remotelogs.ServerError(serverId, "TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
 			continue
 		} else {
 			return

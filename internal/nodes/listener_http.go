@@ -152,7 +152,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 
 	server, serverName := this.findNamedServer(domain)
 	if server == nil {
-		server = this.findServerWithCname(domain)
+		server = this.findServerWithCNAME(domain)
 		if server == nil {
 			// 严格匹配域名模式下，我们拒绝用户访问
 			if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
