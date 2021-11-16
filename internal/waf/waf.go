@@ -8,7 +8,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/files"
-	"github.com/iwind/TeaGo/utils/string"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net/http"
@@ -16,7 +15,7 @@ import (
 )
 
 type WAF struct {
-	Id             string                       `yaml:"id" json:"id"`
+	Id             int64                        `yaml:"id" json:"id"`
 	IsOn           bool                         `yaml:"isOn" json:"isOn"`
 	Name           string                       `yaml:"name" json:"name"`
 	Inbound        []*RuleGroup                 `yaml:"inbound" json:"inbound"`
@@ -35,7 +34,6 @@ type WAF struct {
 
 func NewWAF() *WAF {
 	return &WAF{
-		Id:   stringutil.Rand(16),
 		IsOn: true,
 	}
 }
@@ -121,11 +119,7 @@ func (this *WAF) AddRuleGroup(ruleGroup *RuleGroup) {
 	}
 }
 
-func (this *WAF) RemoveRuleGroup(ruleGroupId string) {
-	if len(ruleGroupId) == 0 {
-		return
-	}
-
+func (this *WAF) RemoveRuleGroup(ruleGroupId int64) {
 	{
 		result := []*RuleGroup{}
 		for _, group := range this.Inbound {
@@ -149,10 +143,7 @@ func (this *WAF) RemoveRuleGroup(ruleGroupId string) {
 	}
 }
 
-func (this *WAF) FindRuleGroup(ruleGroupId string) *RuleGroup {
-	if len(ruleGroupId) == 0 {
-		return nil
-	}
+func (this *WAF) FindRuleGroup(ruleGroupId int64) *RuleGroup {
 	for _, group := range this.Inbound {
 		if group.Id == ruleGroupId {
 			return group
@@ -396,10 +387,14 @@ func (this *WAF) MergeTemplate() (changedItems []string) {
 	groups := []*RuleGroup{}
 	groups = append(groups, template.Inbound...)
 	groups = append(groups, template.Outbound...)
+
+	var newGroupId int64 = 1_000_000_000
+
 	for _, group := range groups {
 		oldGroup := this.FindRuleGroupWithCode(group.Code)
 		if oldGroup == nil {
-			group.Id = stringutil.Rand(16)
+			newGroupId++
+			group.Id = newGroupId
 			this.AddRuleGroup(group)
 			changedItems = append(changedItems, "+group "+group.Name)
 			continue

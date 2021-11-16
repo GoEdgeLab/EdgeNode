@@ -131,6 +131,7 @@ func (this *Node) Start() {
 		remotelogs.Error("NODE", "start failed: read node config failed: "+err.Error())
 		return
 	}
+	teaconst.NodeId = nodeConfig.Id
 	err = nodeConfig.Init()
 	if err != nil {
 		remotelogs.Error("NODE", "init node config failed: "+err.Error())
@@ -363,6 +364,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 	if err != nil {
 		return errors.New("decode config failed: " + err.Error())
 	}
+	teaconst.NodeId = nodeConfig.Id
 
 	// 写入到文件中
 	err = nodeConfig.Save()

@@ -3,6 +3,7 @@ package waf
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/types"
 	"net/http"
 )
 
@@ -27,7 +28,7 @@ func (this *GoGroupAction) WillChange() bool {
 }
 
 func (this *GoGroupAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
-	nextGroup := waf.FindRuleGroup(this.GroupId)
+	nextGroup := waf.FindRuleGroup(types.Int64(this.GroupId))
 	if nextGroup == nil || !nextGroup.IsOn {
 		return true
 	}

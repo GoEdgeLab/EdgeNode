@@ -6,7 +6,7 @@ import (
 
 // rule group
 type RuleGroup struct {
-	Id          string     `yaml:"id" json:"id"`
+	Id          int64      `yaml:"id" json:"id"`
 	IsOn        bool       `yaml:"isOn" json:"isOn"`
 	Name        string     `yaml:"name" json:"name"` // such as SQL Injection
 	Description string     `yaml:"description" json:"description"`
@@ -41,10 +41,7 @@ func (this *RuleGroup) AddRuleSet(ruleSet *RuleSet) {
 	this.RuleSets = append(this.RuleSets, ruleSet)
 }
 
-func (this *RuleGroup) FindRuleSet(id string) *RuleSet {
-	if len(id) == 0 {
-		return nil
-	}
+func (this *RuleGroup) FindRuleSet(id int64) *RuleSet {
 	for _, ruleSet := range this.RuleSets {
 		if ruleSet.Id == id {
 			return ruleSet
@@ -65,10 +62,7 @@ func (this *RuleGroup) FindRuleSetWithCode(code string) *RuleSet {
 	return nil
 }
 
-func (this *RuleGroup) RemoveRuleSet(id string) {
-	if len(id) == 0 {
-		return
-	}
+func (this *RuleGroup) RemoveRuleSet(id int64) {
 	result := []*RuleSet{}
 	for _, ruleSet := range this.RuleSets {
 		if ruleSet.Id == id {

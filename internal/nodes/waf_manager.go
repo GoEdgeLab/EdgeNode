@@ -61,7 +61,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 		policy.Mode = firewallconfigs.FirewallModeDefend
 	}
 	w := &waf.WAF{
-		Id:   strconv.FormatInt(policy.Id, 10),
+		Id:   policy.Id,
 		IsOn: policy.IsOn,
 		Name: policy.Name,
 		Mode: policy.Mode,
@@ -71,7 +71,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 	if policy.Inbound != nil && policy.Inbound.IsOn {
 		for _, group := range policy.Inbound.Groups {
 			g := &waf.RuleGroup{
-				Id:          strconv.FormatInt(group.Id, 10),
+				Id:          group.Id,
 				IsOn:        group.IsOn,
 				Name:        group.Name,
 				Description: group.Description,
@@ -82,7 +82,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			// rule sets
 			for _, set := range group.Sets {
 				s := &waf.RuleSet{
-					Id:          strconv.FormatInt(set.Id, 10),
+					Id:          set.Id,
 					Code:        set.Code,
 					IsOn:        set.IsOn,
 					Name:        set.Name,
@@ -126,7 +126,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 	if policy.Outbound != nil && policy.Outbound.IsOn {
 		for _, group := range policy.Outbound.Groups {
 			g := &waf.RuleGroup{
-				Id:          strconv.FormatInt(group.Id, 10),
+				Id:          group.Id,
 				IsOn:        group.IsOn,
 				Name:        group.Name,
 				Description: group.Description,
@@ -137,7 +137,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			// rule sets
 			for _, set := range group.Sets {
 				s := &waf.RuleSet{
-					Id:          strconv.FormatInt(set.Id, 10),
+					Id:          set.Id,
 					Code:        set.Code,
 					IsOn:        set.IsOn,
 					Name:        set.Name,

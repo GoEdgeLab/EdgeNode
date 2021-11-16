@@ -2,7 +2,7 @@ package waf
 
 func Template() *WAF {
 	waf := NewWAF()
-	waf.Id = "template"
+	waf.Id = 0
 	waf.IsOn = true
 
 	// xss

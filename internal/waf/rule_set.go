@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
-	"github.com/iwind/TeaGo/utils/string"
 	"net/http"
 	"sort"
 )
@@ -19,7 +18,7 @@ const (
 )
 
 type RuleSet struct {
-	Id          string          `yaml:"id" json:"id"`
+	Id          int64           `yaml:"id" json:"id"`
 	Code        string          `yaml:"code" json:"code"`
 	IsOn        bool            `yaml:"isOn" json:"isOn"`
 	Name        string          `yaml:"name" json:"name"`
@@ -36,7 +35,6 @@ type RuleSet struct {
 
 func NewRuleSet() *RuleSet {
 	return &RuleSet{
-		Id:   stringutil.Rand(16),
 		IsOn: true,
 	}
 }

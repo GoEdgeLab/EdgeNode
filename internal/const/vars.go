@@ -7,4 +7,6 @@ var (
 
 	InTrafficBytes  = uint64(0)
 	OutTrafficBytes = uint64(0)
+
+	NodeId int64 = 0
 )
