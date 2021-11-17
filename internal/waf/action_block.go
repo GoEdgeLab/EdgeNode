@@ -63,7 +63,9 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 	if timeout <= 0 {
 		timeout = 60 // 默认封锁60秒
 	}
-	SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(timeout))
+
+
+	SharedIPBlackList.RecordIP(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(timeout), waf.Id, group.Id, set.Id)
 
 	if writer != nil {
 		// close the connection

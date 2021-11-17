@@ -1,0 +1,60 @@
+// Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
+
+package iplibrary
+
+import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	_ "github.com/iwind/TeaGo/bootstrap"
+	"github.com/iwind/TeaGo/logs"
+	"testing"
+	"time"
+)
+
+func TestIPListDB_AddItem(t *testing.T) {
+	db, err := NewIPListDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.AddItem(&pb.IPItem{
+		Id:                            1,
+		IpFrom:                        "192.168.1.101",
+		IpTo:                          "",
+		Version:                       1024,
+		ExpiredAt:                     time.Now().Unix(),
+		Reason:                        "",
+		ListId:                        2,
+		IsDeleted:                     true,
+		Type:                          "ipv4",
+		EventLevel:                    "error",
+		ListType:                      "black",
+		IsGlobal:                      true,
+		CreatedAt:                     0,
+		NodeId:                        11,
+		ServerId:                      22,
+		SourceNodeId:                  0,
+		SourceServerId:                0,
+		SourceHTTPFirewallPolicyId:    0,
+		SourceHTTPFirewallRuleGroupId: 0,
+		SourceHTTPFirewallRuleSetId:   0,
+		SourceServer:                  nil,
+		SourceHTTPFirewallPolicy:      nil,
+		SourceHTTPFirewallRuleGroup:   nil,
+		SourceHTTPFirewallRuleSet:     nil,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("ok")
+}
+
+func TestIPListDB_ReadItems(t *testing.T) {
+	db, err := NewIPListDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := db.ReadItems(0, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logs.PrintAsJSON(items, t)
+}

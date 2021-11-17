@@ -26,8 +26,17 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 		}
 	}
 
+	// 是否在全局名单中
+	var remoteAddr = this.requestRemoteAddr(true)
+	if !iplibrary.AllowIP(remoteAddr, this.Server.Id) {
+		this.disableLog = true
+		if conn != nil {
+			_ = conn.(net.Conn).Close()
+		}
+		return true
+	}
+
 	// 检查是否在临时黑名单中
-	var remoteAddr = this.WAFRemoteIP()
 	if waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeService, this.Server.Id, remoteAddr) || waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteAddr) {
 		this.disableLog = true
 		if conn != nil {

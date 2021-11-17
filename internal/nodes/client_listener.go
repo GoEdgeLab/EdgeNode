@@ -4,6 +4,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"net"
 )
@@ -29,9 +30,8 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 	// 是否在WAF名单中
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err == nil {
-		if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
-			waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) {
-
+		if !iplibrary.AllowIP(ip, 0) || (!waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
+			waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)) {
 			tcpConn, ok := conn.(*net.TCPConn)
 			if ok {
 				_ = tcpConn.SetLinger(0)

@@ -63,6 +63,26 @@ func (this *IPList) Add(ipType string, scope firewallconfigs.FirewallScope, serv
 	this.locker.Unlock()
 }
 
+// RecordIP 记录IP
+func (this *IPList) RecordIP(ipType string, scope firewallconfigs.FirewallScope, serverId int64, ip string, expiresAt int64, policyId int64, groupId int64, setId int64) {
+	this.Add(ipType, scope, serverId, ip, expiresAt)
+
+	select {
+	case recordIPTaskChan <- &recordIPTask{
+		ip:                            ip,
+		listId:                        firewallconfigs.GlobalListId,
+		expiredAt:                     expiresAt,
+		level:                         firewallconfigs.DefaultEventLevel,
+		sourceServerId:                serverId,
+		sourceHTTPFirewallPolicyId:    policyId,
+		sourceHTTPFirewallRuleGroupId: groupId,
+		sourceHTTPFirewallRuleSetId:   setId,
+	}:
+	default:
+
+	}
+}
+
 // Contains 判断是否有某个IP
 func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope, serverId int64, ip string) bool {
 	switch scope {
@@ -81,10 +101,12 @@ func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope,
 }
 
 // RemoveIP 删除IP
-// 暂时没办法清除某个服务相关的IP
-func (this *IPList) RemoveIP(ip string) {
+func (this *IPList) RemoveIP(ip string, serverId int64) {
 	this.locker.Lock()
 	delete(this.ipMap, "*@"+ip+"@"+IPTypeAll)
+	if serverId > 0 {
+		delete(this.ipMap, types.String(serverId)+"@"+ip+"@"+IPTypeAll)
+	}
 	this.locker.Unlock()
 }
 

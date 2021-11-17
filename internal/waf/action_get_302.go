@@ -57,6 +57,8 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 		"timestamp": time.Now().Unix(),
 		"life":      this.Life,
 		"scope":     this.Scope,
+		"policyId":  waf.Id,
+		"groupId":   group.Id,
 		"setId":     set.Id,
 	}
 	info, err := utils.SimpleEncryptMap(m)

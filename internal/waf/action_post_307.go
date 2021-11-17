@@ -56,7 +56,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 				life = 600 // 默认10分钟
 			}
 			var setId = m.GetString("setId")
-			SharedIPWhiteList.Add("set:"+setId, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life)
+			SharedIPWhiteList.RecordIP("set:"+setId, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life, m.GetInt64("policyId"), m.GetInt64("groupId"), m.GetInt64("setId"))
 			return true
 		}
 	}
@@ -65,6 +65,8 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		"timestamp": time.Now().Unix(),
 		"life":      this.Life,
 		"scope":     this.Scope,
+		"policyId":  waf.Id,
+		"groupId":   group.Id,
 		"setId":     set.Id,
 		"remoteIP":  request.WAFRemoteIP(),
 	}

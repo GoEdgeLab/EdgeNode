@@ -2,6 +2,7 @@ package waf
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -18,6 +19,7 @@ type recordIPTask struct {
 	listId    int64
 	expiredAt int64
 	level     string
+	serverId  int64
 
 	sourceServerId                int64
 	sourceHTTPFirewallPolicyId    int64
@@ -49,6 +51,7 @@ func init() {
 					Reason:                        "触发WAF规则自动加入",
 					Type:                          ipType,
 					EventLevel:                    task.level,
+					ServerId:                      task.serverId,
 					SourceNodeId:                  teaconst.NodeId,
 					SourceServerId:                task.sourceServerId,
 					SourceHTTPFirewallPolicyId:    task.sourceHTTPFirewallPolicyId,
@@ -115,12 +118,18 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 
 	// 上报
 	if this.IPListId > 0 {
+		var serverId int64
+		if this.Scope == firewallconfigs.FirewallScopeService {
+			serverId = request.WAFServerId()
+		}
+
 		select {
 		case recordIPTaskChan <- &recordIPTask{
 			ip:                            request.WAFRemoteIP(),
 			listId:                        this.IPListId,
 			expiredAt:                     expiredAt,
 			level:                         this.Level,
+			serverId:                      serverId,
 			sourceServerId:                request.WAFServerId(),
 			sourceHTTPFirewallPolicyId:    waf.Id,
 			sourceHTTPFirewallRuleGroupId: group.Id,

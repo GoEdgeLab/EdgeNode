@@ -7,6 +7,9 @@ import (
 	"sync"
 )
 
+var GlobalBlackIPList = NewIPList()
+var GlobalWhiteIPList = NewIPList()
+
 // IPList IP名单
 // TODO IP名单可以分片关闭，这样让每一片的数据量减少，查询更快
 type IPList struct {

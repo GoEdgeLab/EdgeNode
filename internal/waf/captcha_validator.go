@@ -54,7 +54,7 @@ func (this *CaptchaValidator) Run(request requests.Request, writer http.Response
 	var originURL = m.GetString("url")
 
 	if request.WAFRaw().Method == http.MethodPost && len(request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")) > 0 {
-		this.validate(actionConfig, setId, originURL, request, writer)
+		this.validate(actionConfig, m.GetInt64("policyId"), m.GetInt64("groupId"), setId, originURL, request, writer)
 	} else {
 		this.show(actionConfig, request, writer)
 	}
@@ -132,7 +132,7 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests
 </html>`))
 }
 
-func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, setId int64, originURL string, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, request requests.Request, writer http.ResponseWriter) (allow bool) {
 	captchaId := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
 	if len(captchaId) > 0 {
 		captchaCode := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
@@ -143,7 +143,7 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, setId int64,
 			}
 
 			// 加入到白名单
-			SharedIPWhiteList.Add("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(life))
+			SharedIPWhiteList.RecordIP("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, groupId, setId)
 
 			http.Redirect(writer, request.WAFRaw(), originURL, http.StatusSeeOther)
 

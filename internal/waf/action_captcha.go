@@ -6,14 +6,11 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
-	stringutil "github.com/iwind/TeaGo/utils/string"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 )
-
-var captchaSalt = stringutil.Rand(32)
 
 const (
 	CaptchaSeconds = 600 // 10 minutes
@@ -66,6 +63,8 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		"action":    this,
 		"timestamp": time.Now().Unix(),
 		"url":       refURL,
+		"policyId":  waf.Id,
+		"groupId":   group.Id,
 		"setId":     set.Id,
 	}
 	info, err := utils.SimpleEncryptMap(captchaConfig)
