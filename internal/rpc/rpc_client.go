@@ -231,8 +231,8 @@ func (this *RPCClient) init() error {
 
 // 随机选择一个连接
 func (this *RPCClient) pickConn() *grpc.ClientConn {
-	this.locker.RLock()
-	defer this.locker.RUnlock()
+	this.locker.Lock()
+	defer this.locker.Unlock()
 
 	// 检查连接状态
 	if len(this.conns) > 0 {
