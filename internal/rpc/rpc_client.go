@@ -25,7 +25,7 @@ type RPCClient struct {
 	apiConfig *configs.APIConfig
 	conns     []*grpc.ClientConn
 
-	locker sync.Mutex
+	locker sync.RWMutex
 }
 
 func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
@@ -177,15 +177,23 @@ func (this *RPCClient) ClusterContext(clusterId string, clusterSecret string) co
 
 // Close 关闭连接
 func (this *RPCClient) Close() {
+	this.locker.Lock()
+
 	for _, conn := range this.conns {
 		_ = conn.Close()
 	}
+
+	this.locker.Unlock()
 }
 
 // UpdateConfig 修改配置
 func (this *RPCClient) UpdateConfig(config *configs.APIConfig) error {
 	this.apiConfig = config
-	return this.init()
+
+	this.locker.Lock()
+	err := this.init()
+	this.locker.Unlock()
+	return err
 }
 
 // 初始化
@@ -223,8 +231,8 @@ func (this *RPCClient) init() error {
 
 // 随机选择一个连接
 func (this *RPCClient) pickConn() *grpc.ClientConn {
-	this.locker.Lock()
-	defer this.locker.Unlock()
+	this.locker.RLock()
+	defer this.locker.RUnlock()
 
 	// 检查连接状态
 	if len(this.conns) > 0 {
