@@ -672,17 +672,12 @@ func (this *FileStorage) initList() error {
 	}
 
 	// 使用异步防止阻塞主线程
-	go func() {
+	/**go func() {
 		dir := this.dir()
 
 		// 清除tmp
-		files, err := filepath.Glob(dir + "/*/*/*.cache.tmp")
-		if err == nil && len(files) > 0 {
-			for _, path := range files {
-				_ = os.Remove(path)
-			}
-		}
-	}()
+		// TODO 需要一个更加高效的实现
+	}()**/
 
 	// 启动定时清理任务
 	var autoPurgeInterval = this.policy.PersistenceAutoPurgeInterval
