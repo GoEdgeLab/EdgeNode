@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"strconv"
 	"time"
 )
@@ -59,15 +60,16 @@ Loop:
 	for {
 		select {
 		case accessLog := <-this.queue:
-			if accessLog.Timestamp > timestamp {
-				requestId = 10_000_000
-				timestamp = accessLog.Timestamp
+			var unixTime = utils.UnixTime()
+			if unixTime > timestamp {
+				requestId = 1_000_000
+				timestamp = unixTime
 			} else {
 				requestId++
 			}
 
 			// timestamp + requestId + nodeId
-			accessLog.RequestId = strconv.FormatInt(accessLog.Timestamp, 10) + strconv.Itoa(requestId) + strconv.FormatInt(accessLog.NodeId, 10)
+			accessLog.RequestId = strconv.FormatInt(unixTime, 10) + strconv.Itoa(requestId) + strconv.FormatInt(accessLog.NodeId, 10)
 
 			accessLogs = append(accessLogs, accessLog)
 			count++
