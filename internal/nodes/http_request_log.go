@@ -3,13 +3,9 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 )
-
-var requestId int64 = 1_0000_0000_0000_0000
 
 // 日志
 func (this *HTTPRequest) log() {
@@ -85,7 +81,7 @@ func (this *HTTPRequest) log() {
 	}
 
 	accessLog := &pb.HTTPAccessLog{
-		RequestId:       strconv.FormatInt(this.requestFromTime.UnixNano(), 10) + strconv.FormatInt(atomic.AddInt64(&requestId, 1), 10) + sharedNodeConfig.PaddedId(),
+		RequestId:       "",
 		NodeId:          sharedNodeConfig.Id,
 		ServerId:        this.Server.Id,
 		RemoteAddr:      this.requestRemoteAddr(true),

@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"strconv"
 	"time"
 )
 
@@ -18,7 +19,7 @@ type HTTPAccessLogQueue struct {
 func NewHTTPAccessLogQueue() *HTTPAccessLogQueue {
 	// 队列中最大的值，超出此数量的访问日志会被丢弃
 	// TODO 需要可以在界面中设置
-	maxSize := 10000
+	maxSize := 20000
 	queue := &HTTPAccessLogQueue{
 		queue: make(chan *pb.HTTPAccessLog, maxSize),
 	}
@@ -49,17 +50,30 @@ func (this *HTTPAccessLogQueue) Push(accessLog *pb.HTTPAccessLog) {
 
 // 上传访问日志
 func (this *HTTPAccessLogQueue) loop() error {
-	accessLogs := []*pb.HTTPAccessLog{}
-	count := 0
+	var accessLogs = []*pb.HTTPAccessLog{}
+	var count = 0
+	var timestamp int64
+	var requestId = 1_000_000
+
 Loop:
 	for {
 		select {
 		case accessLog := <-this.queue:
+			if accessLog.Timestamp > timestamp {
+				requestId = 10_000_000
+				timestamp = accessLog.Timestamp
+			} else {
+				requestId++
+			}
+
+			// timestamp + requestId + nodeId
+			accessLog.RequestId = strconv.FormatInt(accessLog.Timestamp, 10) + strconv.Itoa(requestId) + strconv.FormatInt(accessLog.NodeId, 10)
+
 			accessLogs = append(accessLogs, accessLog)
 			count++
 
 			// 每次只提交 N 条访问日志，防止网络拥堵
-			if count > 1000 {
+			if count > 2000 {
 				break Loop
 			}
 		default:
