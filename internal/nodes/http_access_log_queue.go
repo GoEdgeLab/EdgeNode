@@ -14,6 +14,8 @@ var sharedHTTPAccessLogQueue = NewHTTPAccessLogQueue()
 // HTTPAccessLogQueue HTTP访问日志队列
 type HTTPAccessLogQueue struct {
 	queue chan *pb.HTTPAccessLog
+
+	rpcClient *rpc.RPCClient
 }
 
 // NewHTTPAccessLogQueue 获取新对象
@@ -88,12 +90,15 @@ Loop:
 	}
 
 	// 发送到API
-	client, err := rpc.SharedRPC()
-	if err != nil {
-		return err
+	if this.rpcClient == nil {
+		client, err := rpc.SharedRPC()
+		if err != nil {
+			return err
+		}
+		this.rpcClient = client
 	}
 
-	_, err = client.HTTPAccessLogRPC().CreateHTTPAccessLogs(client.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
+	_, err := this.rpcClient.HTTPAccessLogRPC().CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
 	if err != nil {
 		return err
 	}
