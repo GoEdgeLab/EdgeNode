@@ -297,8 +297,9 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 	case "deleteItem":
 		args = append(args, "del")
 	}
+
+	args = append(args, listName, item.IpFrom)
 	if action == "addItem" {
-		args = append(args, listName, item.IpFrom)
 		timestamp := time.Now().Unix()
 		if item.ExpiredAt > timestamp {
 			args = append(args, "timeout", strconv.FormatInt(item.ExpiredAt-timestamp, 10))
