@@ -86,13 +86,21 @@ type HTTPRequest struct {
 // 初始化
 func (this *HTTPRequest) init() {
 	this.writer = NewHTTPWriter(this, this.RawWriter)
-	this.web = &serverconfigs.HTTPWebConfig{IsOn: true}
+	this.web = &serverconfigs.HTTPWebConfig{
+		IsOn: true,
+	}
+
 	// this.uri = this.RawReq.URL.RequestURI()
 	// 之所以不使用RequestURI()，是不想让URL中的Path被Encode
+	var urlPath = this.RawReq.URL.Path
+	if this.Server.Web != nil && this.Server.Web.MergeSlashes {
+		urlPath = utils.CleanPath(urlPath)
+		this.web.MergeSlashes = true
+	}
 	if len(this.RawReq.URL.RawQuery) > 0 {
-		this.uri = this.RawReq.URL.Path + "?" + this.RawReq.URL.RawQuery
+		this.uri = urlPath + "?" + this.RawReq.URL.RawQuery
 	} else {
-		this.uri = this.RawReq.URL.Path
+		this.uri = urlPath
 	}
 
 	this.rawURI = this.uri
