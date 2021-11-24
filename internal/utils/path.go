@@ -9,6 +9,10 @@ func CleanPath(path string) string {
 	result := []byte{'/'}
 	isSlash := true
 	for i := 0; i < l; i++ {
+		if path[i] == '?' {
+			result = append(result, path[i:]...)
+			break
+		}
 		if path[i] == '\\' || path[i] == '/' {
 			if !isSlash {
 				isSlash = true
@@ -21,4 +25,3 @@ func CleanPath(path string) string {
 	}
 	return string(result)
 }
-
