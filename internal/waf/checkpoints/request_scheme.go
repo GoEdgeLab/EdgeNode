@@ -10,7 +10,7 @@ type RequestSchemeCheckpoint struct {
 }
 
 func (this *RequestSchemeCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
-	value = req.WAFRaw().URL.Scheme
+	value = req.Format("${scheme}")
 	return
 }
 
