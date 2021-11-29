@@ -42,7 +42,9 @@ func (this *TOAManager) Run(config *nodeconfigs.TOAConfig) error {
 		if err != nil {
 			remotelogs.Error("TOA", "quit error: "+err.Error())
 		}
-		_ = this.conn.Close()
+		if this.conn != nil {
+			_ = this.conn.Close()
+		}
 		this.conn = nil
 		this.pid = 0
 	}
