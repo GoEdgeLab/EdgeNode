@@ -14,7 +14,7 @@ func (this *HTTPRequest) doHealthCheck(key string) (stop bool) {
 
 	this.RawReq.Header.Del(serverconfigs.HealthCheckHeaderName)
 
-	data, err := nodeutils.DecryptData(sharedNodeConfig.NodeId, sharedNodeConfig.Secret, key)
+	data, err := nodeutils.Base64DecodeMap(key)
 	if err != nil {
 		remotelogs.Error("HTTP_REQUEST_HEALTH_CHECK", "decode key failed: "+err.Error())
 		return
