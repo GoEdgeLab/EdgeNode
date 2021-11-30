@@ -114,7 +114,7 @@ func (this *UDPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 		}
 		conn, err = OriginConnect(origin, remoteAddr.String())
 		if err != nil {
-			remotelogs.ServerError(serverId, "UDP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
+			remotelogs.ServerError(serverId, "UDP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error(), "", nil)
 			continue
 		} else {
 			// PROXY Protocol

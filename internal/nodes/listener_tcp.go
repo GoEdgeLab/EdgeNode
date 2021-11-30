@@ -177,7 +177,7 @@ func (this *TCPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 		}
 		conn, err = OriginConnect(origin, remoteAddr)
 		if err != nil {
-			remotelogs.ServerError(serverId, "TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error())
+			remotelogs.ServerError(serverId, "TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error(), "", nil)
 			continue
 		} else {
 			return

@@ -1,6 +1,7 @@
 package remotelogs
 
 import (
+	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -8,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"time"
 )
@@ -33,18 +35,13 @@ func init() {
 func Println(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
-	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
-	if nodeConfig == nil {
-		return
-	}
-
 	select {
 	case logChan <- &pb.NodeLog{
 		Role:        teaconst.Role,
 		Tag:         tag,
 		Description: description,
 		Level:       "info",
-		NodeId:      nodeConfig.Id,
+		NodeId:      teaconst.NodeId,
 		CreatedAt:   time.Now().Unix(),
 	}:
 	default:
@@ -56,18 +53,13 @@ func Println(tag string, description string) {
 func Warn(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
-	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
-	if nodeConfig == nil {
-		return
-	}
-
 	select {
 	case logChan <- &pb.NodeLog{
 		Role:        teaconst.Role,
 		Tag:         tag,
 		Description: description,
 		Level:       "warning",
-		NodeId:      nodeConfig.Id,
+		NodeId:      teaconst.NodeId,
 		CreatedAt:   time.Now().Unix(),
 	}:
 	default:
@@ -79,18 +71,13 @@ func Warn(tag string, description string) {
 func Error(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
-	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
-	if nodeConfig == nil {
-		return
-	}
-
 	select {
 	case logChan <- &pb.NodeLog{
 		Role:        teaconst.Role,
 		Tag:         tag,
 		Description: description,
 		Level:       "error",
-		NodeId:      nodeConfig.Id,
+		NodeId:      teaconst.NodeId,
 		CreatedAt:   time.Now().Unix(),
 	}:
 	default:
@@ -111,12 +98,18 @@ func ErrorObject(tag string, err error) {
 }
 
 // ServerError 打印服务相关错误信息
-func ServerError(serverId int64, tag string, description string) {
+func ServerError(serverId int64, tag string, description string, logType nodeconfigs.NodeLogType, params maps.Map) {
 	logs.Println("[" + tag + "]" + description)
 
-	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
-	if nodeConfig == nil {
-		return
+	// 参数
+	var paramsJSON []byte
+	if len(params) > 0 {
+		p, err := json.Marshal(params)
+		if err != nil {
+			logs.Println("[LOG]" + err.Error())
+		} else {
+			paramsJSON = p
+		}
 	}
 
 	select {
@@ -125,9 +118,11 @@ func ServerError(serverId int64, tag string, description string) {
 		Tag:         tag,
 		Description: description,
 		Level:       "error",
-		NodeId:      nodeConfig.Id,
+		NodeId:      teaconst.NodeId,
 		ServerId:    serverId,
 		CreatedAt:   time.Now().Unix(),
+		Type:        logType,
+		ParamsJSON:  paramsJSON,
 	}:
 	default:
 
@@ -135,12 +130,18 @@ func ServerError(serverId int64, tag string, description string) {
 }
 
 // ServerSuccess 打印服务相关成功信息
-func ServerSuccess(serverId int64, tag string, description string) {
+func ServerSuccess(serverId int64, tag string, description string, logType nodeconfigs.NodeLogType, params maps.Map) {
 	logs.Println("[" + tag + "]" + description)
 
-	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
-	if nodeConfig == nil {
-		return
+	// 参数
+	var paramsJSON []byte
+	if len(params) > 0 {
+		p, err := json.Marshal(params)
+		if err != nil {
+			logs.Println("[LOG]" + err.Error())
+		} else {
+			paramsJSON = p
+		}
 	}
 
 	select {
@@ -149,9 +150,11 @@ func ServerSuccess(serverId int64, tag string, description string) {
 		Tag:         tag,
 		Description: description,
 		Level:       "success",
-		NodeId:      nodeConfig.Id,
+		NodeId:      teaconst.NodeId,
 		ServerId:    serverId,
 		CreatedAt:   time.Now().Unix(),
+		Type:        logType,
+		ParamsJSON:  paramsJSON,
 	}:
 	default:
 

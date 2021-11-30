@@ -40,7 +40,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	requestCall.CallResponseCallbacks(this.writer)
 	if origin == nil {
 		err := errors.New(this.requestFullURL() + ": no available origin sites for reverse proxy")
-		remotelogs.ServerError(this.Server.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.ServerError(this.Server.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error(), "", nil)
 		this.write50x(err, http.StatusBadGateway)
 		return
 	}

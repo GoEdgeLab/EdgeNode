@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/maps"
 	"net/url"
 	"os/exec"
 	"regexp"
@@ -123,20 +124,19 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 						portIndex := strings.LastIndex(addr, ":")
 						if portIndex > 0 {
 							var port = addr[portIndex+1:]
-							var processName = this.findProcessNameWithPort(port)
+							var processName = this.findProcessNameWithPort(group.IsUDP(), port)
 							if len(processName) > 0 {
 								err = errors.New(err.Error() + " (the process using port: '" + processName + "')")
 							}
 						}
 					}
 
-					remotelogs.ServerError(firstServer.Id, "LISTENER_MANAGER", err.Error())
+					remotelogs.ServerError(firstServer.Id, "LISTENER_MANAGER", "listen '"+addr+"' failed: "+err.Error(), nodeconfigs.NodeLogTypeListenAddressFailed, maps.Map{"address": addr})
 				}
 
 				continue
 			} else {
 				// TODO 是否是从错误中恢复
-
 			}
 			this.listenersMap[addr] = listener
 		}
@@ -179,14 +179,12 @@ func (this *ListenerManager) retryListeners() {
 		if err == nil {
 			delete(this.retryListenerMap, addr)
 			this.listenersMap[addr] = listener
-			remotelogs.ServerSuccess(listener.group.FirstServer().Id, "LISTENER_MANAGER", "retry to listen '"+addr+"' successfully")
-
-			// TODO 删除失败记录
+			remotelogs.ServerSuccess(listener.group.FirstServer().Id, "LISTENER_MANAGER", "retry to listen '"+addr+"' successfully", nodeconfigs.NodeLogTypeListenAddressFailed, maps.Map{"address": addr})
 		}
 	}
 }
 
-func (this *ListenerManager) findProcessNameWithPort(port string) string {
+func (this *ListenerManager) findProcessNameWithPort(isUdp bool, port string) string {
 	if runtime.GOOS != "linux" {
 		return ""
 	}
@@ -196,7 +194,12 @@ func (this *ListenerManager) findProcessNameWithPort(port string) string {
 		return ""
 	}
 
-	var cmd = exec.Command(path, "-tlpn", "sport = :"+port)
+	var option = "t"
+	if isUdp {
+		option = "u"
+	}
+
+	var cmd = exec.Command(path, "-"+option+"lpn", "sport = :"+port)
 	var output = &bytes.Buffer{}
 	cmd.Stdout = output
 	err = cmd.Run()
