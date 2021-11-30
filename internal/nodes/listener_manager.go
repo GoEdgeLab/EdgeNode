@@ -1,13 +1,18 @@
 package nodes
 
 import (
+	"bytes"
+	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
 	"net/url"
+	"os/exec"
 	"regexp"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -113,10 +118,25 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 				if firstServer == nil {
 					remotelogs.Error("LISTENER_MANAGER", err.Error())
 				} else {
+					// 当前占用的进程名
+					if strings.Contains(err.Error(), "in use") {
+						portIndex := strings.LastIndex(addr, ":")
+						if portIndex > 0 {
+							var port = addr[portIndex+1:]
+							var processName = this.findProcessNameWithPort(port)
+							if len(processName) > 0 {
+								err = errors.New(err.Error() + " (the process using port: '" + processName + "')")
+							}
+						}
+					}
+
 					remotelogs.ServerError(firstServer.Id, "LISTENER_MANAGER", err.Error())
 				}
 
 				continue
+			} else {
+				// TODO 是否是从错误中恢复
+
 			}
 			this.listenersMap[addr] = listener
 		}
@@ -160,6 +180,33 @@ func (this *ListenerManager) retryListeners() {
 			delete(this.retryListenerMap, addr)
 			this.listenersMap[addr] = listener
 			remotelogs.ServerSuccess(listener.group.FirstServer().Id, "LISTENER_MANAGER", "retry to listen '"+addr+"' successfully")
+
+			// TODO 删除失败记录
 		}
 	}
+}
+
+func (this *ListenerManager) findProcessNameWithPort(port string) string {
+	if runtime.GOOS != "linux" {
+		return ""
+	}
+
+	path, err := exec.LookPath("ss")
+	if err != nil {
+		return ""
+	}
+
+	var cmd = exec.Command(path, "-tlpn", "sport = :"+port)
+	var output = &bytes.Buffer{}
+	cmd.Stdout = output
+	err = cmd.Run()
+	if err != nil {
+		return ""
+	}
+
+	var matches = regexp.MustCompile(`(?U)\(\("(.+)",pid=\d+,fd=\d+\)\)`).FindStringSubmatch(output.String())
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
 }
