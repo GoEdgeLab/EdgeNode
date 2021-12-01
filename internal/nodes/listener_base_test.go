@@ -13,7 +13,7 @@ import (
 func TestBaseListener_FindServer(t *testing.T) {
 	sharedNodeConfig = &nodeconfigs.NodeConfig{}
 
-	var listener = &BaseListener{namedServers: map[string]*NamedServer{}}
+	var listener = &BaseListener{}
 	listener.Group = &serverconfigs.ServerAddressGroup{}
 	for i := 0; i < 1_000_000; i++ {
 		var server = &serverconfigs.ServerConfig{
@@ -24,7 +24,7 @@ func TestBaseListener_FindServer(t *testing.T) {
 			},
 		}
 		_ = server.Init()
-		listener.Group.Servers = append(listener.Group.Servers, server)
+		listener.Group.Add(server)
 	}
 
 	var before = time.Now()

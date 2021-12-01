@@ -15,7 +15,6 @@ require (
 	github.com/dop251/goja v0.0.0-20210804101310-32956a348b49
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-yaml/yaml v2.1.0+incompatible
-	github.com/golang/protobuf v1.5.2
 	github.com/iwind/TeaGo v0.0.0-20211026123858-7de7a21cad24
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20210722083328-12b2d66abec3

@@ -5,7 +5,9 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -100,8 +102,30 @@ Loop:
 
 	_, err := this.rpcClient.HTTPAccessLogRPC().CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
 	if err != nil {
+		// 是否包含了invalid UTF-8
+		if strings.Contains(err.Error(), "string field contains invalid UTF-8") {
+			for _, accessLog := range accessLogs {
+				this.toValidUTF8(accessLog)
+			}
+
+			// 重新提交
+			_, err = this.rpcClient.HTTPAccessLogRPC().CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
+			return err
+		}
+
 		return err
 	}
 
 	return nil
+}
+
+func (this *HTTPAccessLogQueue) toValidUTF8(accessLog *pb.HTTPAccessLog) {
+	var v = reflect.Indirect(reflect.ValueOf(accessLog))
+	var countFields = v.NumField()
+	for i := 0; i < countFields; i++ {
+		var field = v.Field(i)
+		if field.Kind() == reflect.String {
+			field.SetString(strings.ToValidUTF8(field.String(), ""))
+		}
+	}
 }
