@@ -29,6 +29,9 @@ type Request interface {
 	// WAFClose 关闭当前请求所在的连接
 	WAFClose()
 
+	// WAFOnAction 动作回调
+	WAFOnAction(action interface{}) (goNext bool)
+
 	// Format 格式化变量
 	Format(string) string
 }

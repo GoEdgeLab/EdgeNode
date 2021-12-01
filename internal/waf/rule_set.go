@@ -139,11 +139,9 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 	// 先执行allow
 	for _, instance := range this.actionInstances {
 		if !instance.WillChange() {
-			if waf.onActionCallback != nil {
-				goNext := waf.onActionCallback(instance)
-				if !goNext {
-					return false
-				}
+			goNext := req.WAFOnAction(instance)
+			if !goNext {
+				return false
 			}
 			instance.Perform(waf, group, this, req, writer)
 		}
@@ -153,11 +151,9 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 	for _, instance := range this.actionInstances {
 		// 只执行第一个可能改变请求的动作，其余的都会被忽略
 		if instance.WillChange() {
-			if waf.onActionCallback != nil {
-				goNext := waf.onActionCallback(instance)
-				if !goNext {
-					return false
-				}
+			goNext := req.WAFOnAction(instance)
+			if !goNext {
+				return false
 			}
 			return instance.Perform(waf, group, this, req, writer)
 		}

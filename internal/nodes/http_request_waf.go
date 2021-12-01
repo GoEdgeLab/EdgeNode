@@ -190,14 +190,6 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		return
 	}
 
-	w.OnAction(func(action waf.ActionInterface) (goNext bool) {
-		switch action.Code() {
-		case waf.ActionTag:
-			this.tags = action.(*waf.TagAction).Tags
-		}
-		return true
-	})
-
 	goNext, ruleGroup, ruleSet, err := w.MatchRequest(this, this.writer)
 	if err != nil {
 		remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
@@ -253,14 +245,6 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 	if w == nil {
 		return
 	}
-
-	w.OnAction(func(action waf.ActionInterface) (goNext bool) {
-		switch action.Code() {
-		case waf.ActionTag:
-			this.tags = action.(*waf.TagAction).Tags
-		}
-		return true
-	})
 
 	goNext, ruleGroup, ruleSet, err := w.MatchResponse(this, resp, this.writer)
 	if err != nil {
@@ -343,4 +327,21 @@ func (this *HTTPRequest) WAFClose() {
 		return
 	}
 	return
+}
+
+func (this *HTTPRequest) WAFOnAction(action interface{}) (goNext bool) {
+	if action == nil {
+		return true
+	}
+
+	instance, ok := action.(waf.ActionInterface)
+	if !ok {
+		return true
+	}
+
+	switch instance.Code() {
+	case waf.ActionTag:
+		this.tags = append(this.tags, action.(*waf.TagAction).Tags...)
+	}
+	return true
 }

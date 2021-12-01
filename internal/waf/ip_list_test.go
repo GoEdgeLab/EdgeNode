@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewIPList(t *testing.T) {
-	list := NewIPList()
+	list := NewIPList(IPListTypeDeny)
 	list.Add(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.1", time.Now().Unix())
 	list.Add(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.2", time.Now().Unix()+1)
 	list.Add(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.1", time.Now().Unix()+2)
@@ -34,7 +34,7 @@ func TestNewIPList(t *testing.T) {
 func TestIPList_Contains(t *testing.T) {
 	a := assert.NewAssertion(t)
 
-	list := NewIPList()
+	list := NewIPList(IPListTypeDeny)
 
 	for i := 0; i < 1_0000; i++ {
 		list.Add(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "192.168.1."+strconv.Itoa(i), time.Now().Unix()+3600)
@@ -47,7 +47,7 @@ func TestIPList_Contains(t *testing.T) {
 func BenchmarkIPList_Add(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	list := NewIPList()
+	list := NewIPList(IPListTypeDeny)
 	for i := 0; i < b.N; i++ {
 		list.Add(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "192.168.1."+strconv.Itoa(i), time.Now().Unix()+3600)
 	}
@@ -57,7 +57,7 @@ func BenchmarkIPList_Add(b *testing.B) {
 func BenchmarkIPList_Has(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	list := NewIPList()
+	list := NewIPList(IPListTypeDeny)
 
 	for i := 0; i < 1_0000; i++ {
 		list.Add(IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "192.168.1."+strconv.Itoa(i), time.Now().Unix()+3600)

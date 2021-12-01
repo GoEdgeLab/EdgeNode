@@ -23,10 +23,6 @@ func Test_Template(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	template.OnAction(func(action ActionInterface) (goNext bool) {
-		return action.Code() != ActionBlock
-	})
-
 	testTemplate1001(a, t, template)
 	testTemplate1002(a, t, template)
 	testTemplate1003(a, t, template)

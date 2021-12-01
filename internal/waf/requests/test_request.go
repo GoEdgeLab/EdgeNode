@@ -73,3 +73,7 @@ func (this *TestRequest) WAFClose() {
 func (this *TestRequest) Format(s string) string {
 	return s
 }
+
+func (this *TestRequest) WAFOnAction(action interface{}) bool {
+	return true
+}

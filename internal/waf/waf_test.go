@@ -38,10 +38,6 @@ func TestWAF_MatchRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	waf.OnAction(func(action ActionInterface) (goNext bool) {
-		return action.Code() != ActionBlock
-	})
-
 	req, err := http.NewRequest(http.MethodGet, "http://teaos.cn/hello?name=lu&age=20", nil)
 	if err != nil {
 		t.Fatal(err)

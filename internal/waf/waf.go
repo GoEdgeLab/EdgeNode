@@ -27,7 +27,6 @@ type WAF struct {
 
 	hasInboundRules  bool
 	hasOutboundRules bool
-	onActionCallback func(action ActionInterface) (goNext bool)
 
 	checkpointsMap map[string]checkpoints.CheckpointInterface // prefix => checkpoint
 }
@@ -345,10 +344,6 @@ func (this *WAF) CountOutboundRuleSets() int {
 		count += len(group.RuleSets)
 	}
 	return count
-}
-
-func (this *WAF) OnAction(onActionCallback func(action ActionInterface) (goNext bool)) {
-	this.onActionCallback = onActionCallback
 }
 
 func (this *WAF) FindCheckpointInstance(prefix string) checkpoints.CheckpointInterface {
