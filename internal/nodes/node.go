@@ -132,10 +132,15 @@ func (this *Node) Start() {
 		return
 	}
 	teaconst.NodeId = nodeConfig.Id
-	err = nodeConfig.Init()
+	err, serverErrors := nodeConfig.Init()
 	if err != nil {
 		remotelogs.Error("NODE", "init node config failed: "+err.Error())
 		return
+	}
+	if len(serverErrors) > 0 {
+		for _, serverErr := range serverErrors {
+			remotelogs.ServerError(serverErr.Id, "NODE", serverErr.Message, nodeconfigs.NodeLogTypeServerConfigInitFailed, maps.Map{})
+		}
 	}
 	sharedNodeConfig = nodeConfig
 
@@ -372,9 +377,14 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		return err
 	}
 
-	err = nodeConfig.Init()
+	err, serverErrors := nodeConfig.Init()
 	if err != nil {
 		return err
+	}
+	if len(serverErrors) > 0 {
+		for _, serverErr := range serverErrors {
+			remotelogs.ServerError(serverErr.Id, "NODE", serverErr.Message, nodeconfigs.NodeLogTypeServerConfigInitFailed, maps.Map{})
+		}
 	}
 
 	// max cpu

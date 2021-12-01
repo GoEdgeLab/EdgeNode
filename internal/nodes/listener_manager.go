@@ -67,7 +67,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	this.lastConfig = node
 
 	// 初始化
-	err := node.Init()
+	err, _ := node.Init()
 	if err != nil {
 		return err
 	}

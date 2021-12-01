@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/cespare/xxhash"
+	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -19,6 +20,9 @@ var logChan = make(chan *pb.NodeLog, 1024)
 func init() {
 	// 定期上传日志
 	ticker := time.NewTicker(60 * time.Second)
+	if Tea.IsTesting() {
+		ticker = time.NewTicker(10 * time.Second)
+	}
 	go func() {
 		for range ticker.C {
 			var tr = trackers.Begin("UPLOAD_REMOTE_LOGS")
