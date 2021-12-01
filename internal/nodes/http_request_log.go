@@ -32,6 +32,11 @@ func (this *HTTPRequest) log() {
 		return
 	}
 
+	// 是否记录499
+	if !ref.EnableClientClosed && this.writer.StatusCode() == 499 {
+		return
+	}
+
 	addr := this.RawReq.RemoteAddr
 	index := strings.LastIndex(addr, ":")
 	if index > 0 {
