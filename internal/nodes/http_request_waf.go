@@ -11,37 +11,29 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 )
 
 // 调用WAF
 func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	// 当前连接是否已关闭
-	var conn = this.RawReq.Context().Value(HTTPConnContextKey)
-	if conn != nil {
-		if isClientConnClosed(conn.(net.Conn)) {
-			this.disableLog = true
-			return true
-		}
+	if this.isConnClosed() {
+		this.disableLog = true
+		return true
 	}
 
 	// 是否在全局名单中
 	var remoteAddr = this.requestRemoteAddr(true)
 	if !iplibrary.AllowIP(remoteAddr, this.Server.Id) {
 		this.disableLog = true
-		if conn != nil {
-			_ = conn.(net.Conn).Close()
-		}
+		this.closeConn()
 		return true
 	}
 
 	// 检查是否在临时黑名单中
 	if waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeService, this.Server.Id, remoteAddr) || waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteAddr) {
 		this.disableLog = true
-		if conn != nil {
-			_ = conn.(net.Conn).Close()
-		}
+		this.closeConn()
 
 		return true
 	}
@@ -317,16 +309,7 @@ func (this *HTTPRequest) WAFServerId() int64 {
 
 // WAFClose 关闭连接
 func (this *HTTPRequest) WAFClose() {
-	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
-	if requestConn == nil {
-		return
-	}
-	conn, ok := requestConn.(net.Conn)
-	if ok {
-		_ = conn.Close()
-		return
-	}
-	return
+	this.closeConn()
 }
 
 func (this *HTTPRequest) WAFOnAction(action interface{}) (goNext bool) {

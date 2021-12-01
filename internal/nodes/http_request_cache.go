@@ -327,6 +327,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				return true, nil
 			})
 			if err != nil {
+				this.varMapping["cache.status"] = "MISS"
+
 				if err == caches.ErrInvalidRange {
 					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
@@ -387,6 +389,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 
 			_, err = this.writer.WriteString("\r\n--" + boundary + "--\r\n")
 			if err != nil {
+				this.varMapping["cache.status"] = "MISS"
+
 				// 不提示写入客户端错误
 				return true
 			}
@@ -402,6 +406,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 				return true, nil
 			})
 			if err != nil {
+				this.varMapping["cache.status"] = "MISS"
+
 				if !this.canIgnore(err) {
 					remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
 				}

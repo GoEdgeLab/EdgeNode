@@ -1279,3 +1279,34 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 
 	return false
 }
+
+// 关闭当前连接
+func (this *HTTPRequest) closeConn() {
+	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
+	if requestConn == nil {
+		return
+	}
+
+	conn, ok := requestConn.(net.Conn)
+	if ok {
+		_ = conn.Close()
+		return
+	}
+
+	return
+}
+
+// 检查连接是否已关闭
+func (this *HTTPRequest) isConnClosed() bool {
+	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
+	if requestConn == nil {
+		return true
+	}
+
+	conn, ok := requestConn.(net.Conn)
+	if ok {
+		return isClientConnClosed(conn)
+	}
+
+	return true
+}

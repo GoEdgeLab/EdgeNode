@@ -186,6 +186,12 @@ func (this *HTTPRequest) doReverseProxy() {
 			isClientError := false
 			if ok {
 				if httpErr.Err == context.Canceled {
+					// 如果是服务器端主动关闭，则无需提示
+					if this.isConnClosed() {
+						this.disableLog = true
+						return
+					}
+
 					isClientError = true
 					this.addError(errors.New(httpErr.Op + " " + httpErr.URL + ": client closed the connection"))
 					this.writer.WriteHeader(499) // 仿照nginx

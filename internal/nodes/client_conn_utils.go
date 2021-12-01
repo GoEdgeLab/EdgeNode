@@ -11,12 +11,10 @@ func isClientConnClosed(conn net.Conn) bool {
 	if conn == nil {
 		return true
 	}
-	clientConn, ok := conn.(*ClientConn)
+	clientConn, ok := conn.(ClientConnCloser)
 	if ok {
 		return clientConn.IsClosed()
 	}
 
-	// TODO 解决tls.Conn无法获取底层连接对象的问题
-
-	return false
+	return true
 }

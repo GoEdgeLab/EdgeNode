@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"context"
+	"crypto/tls"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"golang.org/x/net/http2"
@@ -68,6 +69,10 @@ func (this *HTTPListener) Serve() error {
 			}
 		},
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+			tlsConn, ok := c.(*tls.Conn)
+			if ok {
+				c = NewClientTLSConn(tlsConn)
+			}
 			return context.WithValue(ctx, HTTPConnContextKey, c)
 		},
 	}
