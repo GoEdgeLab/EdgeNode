@@ -5,6 +5,7 @@ function build() {
 	NAME="edge-node"
 	VERSION=$(lookup-version $ROOT/../internal/const/const.go)
 	DIST=$ROOT/"../dist/${NAME}"
+	MUSL_DIR="/usr/local/opt/musl-cross/bin"
 	OS=${1}
 	ARCH=${2}
 	TAG=${3}
@@ -53,7 +54,6 @@ function build() {
 
 	echo "building ..."
 
-	MUSL_DIR="/usr/local/opt/musl-cross/bin"
 	CC_PATH=""
 	CXX_PATH=""
 	if [[ `uname -a` == *"Darwin"* && "${OS}" == "linux" ]]; then
