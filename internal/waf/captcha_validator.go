@@ -87,20 +87,24 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests
 	var msgTitle = ""
 	var msgPrompt = ""
 	var msgButtonTitle = ""
+	var msgRequestId = ""
 
 	switch lang {
 	case "en-US":
 		msgTitle = "Verify Yourself"
 		msgPrompt = "Input verify code above:"
 		msgButtonTitle = "Verify Yourself"
+		msgRequestId = "Request ID"
 	case "zh-CN":
 		msgTitle = "身份验证"
 		msgPrompt = "请输入上面的验证码"
 		msgButtonTitle = "提交验证"
+		msgRequestId = "请求ID"
 	default:
 		msgTitle = "Verify Yourself"
 		msgPrompt = "Input verify code above:"
 		msgButtonTitle = "Verify Yourself"
+		msgRequestId = "Request ID"
 	}
 
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -115,6 +119,11 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests
 		})
 	}
 	</script>
+	<style type="text/css">
+	form { width: 20em; margin: 0 auto; text-align: center; }
+	.input { font-size:16px;line-height:24px; letter-spacing: 15px; padding-left: 10px; width: 140px; }
+	address { margin-top: 1em; padding-top: 0.5em; border-top: 1px #ccc solid; text-align: center; }
+	</style>
 </head>
 <body>
 <form method="POST">
@@ -122,12 +131,13 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests
 	<img src="data:image/png;base64, ` + base64.StdEncoding.EncodeToString(buf.Bytes()) + `"/>` + `
 	<div>
 		<p>` + msgPrompt + `</p>
-		<input type="text" name="GOEDGE_WAF_CAPTCHA_CODE" id="GOEDGE_WAF_CAPTCHA_CODE" maxlength="6" autocomplete="off" z-index="1" style="font-size:16px;line-height:24px; letter-spacing: 15px; padding-left: 4px; width: 160px"/>
+		<input type="text" name="GOEDGE_WAF_CAPTCHA_CODE" id="GOEDGE_WAF_CAPTCHA_CODE" maxlength="6" autocomplete="off" z-index="1" class="input"/>
 	</div>
 	<div>
 		<button type="submit" style="line-height:24px;margin-top:10px">` + msgButtonTitle + `</button>
 	</div>
 </form>
+<address>` + msgRequestId + `: ` + request.Format("${requestId}") + `</address>
 </body>
 </html>`))
 }
