@@ -638,9 +638,26 @@ func (this *HTTPWriter) prepareCache(size int64) {
 
 	this.cacheStorage = storage
 	life := cacheRef.LifeSeconds()
-	if life <= 60 { // 最小不能少于1分钟
+
+	if life <= 0 {
 		life = 60
 	}
+
+	// 支持源站设置的max-age
+	if this.req.web.Cache != nil && this.req.web.Cache.EnableCacheControlMaxAge {
+		var cacheControl = this.Header().Get("Cache-Control")
+		var pieces = strings.Split(cacheControl, ";")
+		for _, piece := range pieces {
+			var eqIndex = strings.Index(piece, "=")
+			if eqIndex > 0 && piece[:eqIndex] == "max-age" {
+				var maxAge = types.Int64(piece[eqIndex+1:])
+				if maxAge > 0 {
+					life = maxAge
+				}
+			}
+		}
+	}
+
 	expiredAt := utils.UnixTime() + life
 	var cacheKey = this.req.cacheKey
 	if this.webpIsEncoding {
