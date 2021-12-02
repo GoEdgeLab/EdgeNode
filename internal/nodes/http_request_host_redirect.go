@@ -27,6 +27,12 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				if u.KeepRequestURI {
 					afterURL += this.RawReq.URL.RequestURI()
 				}
+
+				// 前后是否一致
+				if fullURL == afterURL {
+					return false
+				}
+
 				if u.Status <= 0 {
 					http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
 				} else {
@@ -60,6 +66,11 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				}
 			}
 
+			// 前后是否一致
+			if fullURL == afterURL {
+				return false
+			}
+
 			if u.Status <= 0 {
 				http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
 			} else {
@@ -68,6 +79,11 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 			return true
 		} else { // 精准匹配
 			if fullURL == u.RealBeforeURL() {
+				// 前后是否一致
+				if fullURL == u.AfterURL {
+					return false
+				}
+
 				if u.Status <= 0 {
 					http.Redirect(this.RawWriter, this.RawReq, u.AfterURL, http.StatusTemporaryRedirect)
 				} else {
