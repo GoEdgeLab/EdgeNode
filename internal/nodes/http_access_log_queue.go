@@ -4,9 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -57,24 +55,11 @@ func (this *HTTPAccessLogQueue) Push(accessLog *pb.HTTPAccessLog) {
 func (this *HTTPAccessLogQueue) loop() error {
 	var accessLogs = []*pb.HTTPAccessLog{}
 	var count = 0
-	var timestamp int64
-	var requestId = 1_000_000
 
 Loop:
 	for {
 		select {
 		case accessLog := <-this.queue:
-			var unixTime = utils.UnixTime()
-			if unixTime > timestamp {
-				requestId = 1_000_000
-				timestamp = unixTime
-			} else {
-				requestId++
-			}
-
-			// timestamp + requestId + nodeId
-			accessLog.RequestId = strconv.FormatInt(unixTime, 10) + strconv.Itoa(requestId) + strconv.FormatInt(accessLog.NodeId, 10)
-
 			accessLogs = append(accessLogs, accessLog)
 			count++
 

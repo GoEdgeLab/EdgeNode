@@ -24,6 +24,7 @@ import (
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
+	"github.com/iwind/TeaGo/types"
 	"github.com/iwind/gosock/pkg/gosock"
 	"io/ioutil"
 	"log"
@@ -132,6 +133,7 @@ func (this *Node) Start() {
 		return
 	}
 	teaconst.NodeId = nodeConfig.Id
+	teaconst.NodeIdString = types.String(teaconst.NodeId)
 	err, serverErrors := nodeConfig.Init()
 	if err != nil {
 		remotelogs.Error("NODE", "init node config failed: "+err.Error())
@@ -370,6 +372,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		return errors.New("decode config failed: " + err.Error())
 	}
 	teaconst.NodeId = nodeConfig.Id
+	teaconst.NodeIdString = types.String(teaconst.NodeId)
 
 	// 写入到文件中
 	err = nodeConfig.Save()

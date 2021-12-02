@@ -36,6 +36,8 @@ var errWritingToClient = errors.New("writing to client error")
 
 // HTTPRequest HTTP请求
 type HTTPRequest struct {
+	requestId string
+
 	// 外部参数
 	RawReq     *http.Request
 	RawWriter  http.ResponseWriter
@@ -107,12 +109,14 @@ func (this *HTTPRequest) init() {
 	this.varMapping = map[string]string{
 		// 缓存相关初始化
 		"cache.status":      "BYPASS",
+		"cache.age":         "0",
 		"cache.policy.name": "",
 		"cache.policy.id":   "0",
 		"cache.policy.type": "",
 	}
 	this.logAttrs = map[string]string{}
 	this.requestFromTime = time.Now()
+	this.requestId = httpRequestNextId()
 }
 
 // Do 执行请求
@@ -556,6 +560,8 @@ func (this *HTTPRequest) Format(source string) string {
 			return strconv.Itoa(this.requestRemotePort())
 		case "remoteUser":
 			return this.requestRemoteUser()
+		case "requestId":
+			return this.requestId
 		case "requestURI", "requestUri":
 			return this.rawURI
 		case "requestURL":

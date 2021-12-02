@@ -3,9 +3,12 @@ package nodes
 import (
 	"crypto/rand"
 	"fmt"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 // 分解Range
@@ -124,4 +127,19 @@ func httpRequestGenBoundary() string {
 		panic(err)
 	}
 	return fmt.Sprintf("%x", buf[:])
+}
+
+// 生成请求ID
+var httpRequestTimestamp int64
+var httpRequestId int32 = 1_000_000
+
+func httpRequestNextId() string {
+	var unixTime = utils.UnixTimeMilli()
+	if unixTime > httpRequestTimestamp {
+		atomic.StoreInt32(&httpRequestId, 1_000_000)
+		httpRequestTimestamp = unixTime
+	}
+
+	// timestamp + requestId + nodeId
+	return strconv.FormatInt(unixTime, 10) + strconv.Itoa(int(atomic.AddInt32(&httpRequestId, 1))) + teaconst.NodeIdString
 }

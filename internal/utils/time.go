@@ -5,22 +5,24 @@ import (
 )
 
 var unixTime = time.Now().Unix()
-var unixTimerIsReady = false
+var unixTimeMilli = time.Now().UnixMilli()
 
 func init() {
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(200 * time.Millisecond)
 	go func() {
 		for range ticker.C {
-			unixTimerIsReady = true
 			unixTime = time.Now().Unix()
+			unixTimeMilli = time.Now().UnixMilli()
 		}
 	}()
 }
 
-// 最快获取时间戳的方式，通常用在不需要特别精确时间戳的场景
+// UnixTime 最快获取时间戳的方式，通常用在不需要特别精确时间戳的场景
 func UnixTime() int64 {
-	if unixTimerIsReady {
-		return unixTime
-	}
-	return time.Now().Unix()
+	return unixTime
+}
+
+// UnixTimeMilli 获取时间戳，精确到毫秒
+func UnixTimeMilli() int64 {
+	return unixTimeMilli
 }
