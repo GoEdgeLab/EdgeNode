@@ -3,6 +3,7 @@ package waf
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
@@ -26,6 +27,7 @@ type RuleSet struct {
 	Rules       []*Rule         `yaml:"rules" json:"rules"`
 	Connector   RuleConnector   `yaml:"connector" json:"connector"` // rules connector
 	Actions     []*ActionConfig `yaml:"actions" json:"actions"`
+	IgnoreLocal bool            `yaml:"ignoreLocal" json:"ignoreLocal"`
 
 	actionCodes     []string
 	actionInstances []ActionInterface
@@ -163,6 +165,11 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 }
 
 func (this *RuleSet) MatchRequest(req requests.Request) (b bool, err error) {
+	// 是否忽略局域网IP
+	if this.IgnoreLocal && utils.IsLocalIP(req.WAFRemoteIP()) {
+		return false, nil
+	}
+
 	if !this.hasRules {
 		return false, nil
 	}

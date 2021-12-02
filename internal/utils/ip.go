@@ -24,3 +24,33 @@ func IP2Long(ip string) uint64 {
 	}
 	return uint64(binary.BigEndian.Uint32(s.To4()))
 }
+
+// IsLocalIP 判断是否为本地IP
+func IsLocalIP(ipString string) bool {
+	var ip = net.ParseIP(ipString)
+	if ip == nil {
+		return false
+	}
+
+	// IPv6
+	if strings.Contains(ipString, ":") {
+		if ip.String() == "::1" {
+			return true
+		}
+		return false
+	}
+
+	// IPv4
+	ip = ip.To4()
+	if ip == nil {
+		return false
+	}
+	if ip[0] == 127 ||
+		ip[0] == 10 ||
+		(ip[0] == 172 && ip[1]&0xf0 == 16) ||
+		(ip[0] == 192 && ip[1] == 168) {
+		return true
+	}
+
+	return false
+}

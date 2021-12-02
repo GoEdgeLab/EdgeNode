@@ -88,6 +88,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 					Name:        set.Name,
 					Description: set.Description,
 					Connector:   set.Connector,
+					IgnoreLocal: set.IgnoreLocal,
 				}
 				for _, a := range set.Actions {
 					s.AddAction(a.Code, a.Options)
@@ -143,6 +144,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 					Name:        set.Name,
 					Description: set.Description,
 					Connector:   set.Connector,
+					IgnoreLocal: set.IgnoreLocal,
 				}
 
 				for _, a := range set.Actions {
