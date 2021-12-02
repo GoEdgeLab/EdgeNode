@@ -224,8 +224,6 @@ func (this *HTTPRequest) doReverseProxy() {
 		}
 	}
 
-	// TODO 清除源站错误次数
-
 	// 特殊页面
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()

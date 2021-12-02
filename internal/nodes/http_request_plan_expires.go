@@ -15,5 +15,5 @@ func (this *HTTPRequest) doPlanExpires() {
 	this.processResponseHeaders(statusCode)
 
 	this.writer.WriteHeader(statusCode)
-	_, _ = this.writer.WriteString(serverconfigs.DefaultPlanExpireNoticePageBody)
+	_, _ = this.writer.WriteString(this.Format(serverconfigs.DefaultPlanExpireNoticePageBody))
 }

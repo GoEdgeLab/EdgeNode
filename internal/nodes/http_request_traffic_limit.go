@@ -17,8 +17,8 @@ func (this *HTTPRequest) doTrafficLimit() {
 
 	this.writer.WriteHeader(statusCode)
 	if len(config.NoticePageBody) != 0 {
-		_, _ = this.writer.WriteString(config.NoticePageBody)
+		_, _ = this.writer.WriteString(this.Format(config.NoticePageBody))
 	} else {
-		_, _ = this.writer.WriteString(serverconfigs.DefaultTrafficLimitNoticePageBody)
+		_, _ = this.writer.WriteString(this.Format(serverconfigs.DefaultTrafficLimitNoticePageBody))
 	}
 }

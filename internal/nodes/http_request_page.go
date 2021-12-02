@@ -88,6 +88,12 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 
 				return true
 			} else if page.BodyType == shared.BodyTypeHTML {
+				// 这里需要实现设置Status，因为在Format()中可以获取${status}等变量
+				if page.NewStatus > 0 {
+					this.writer.statusCode = page.NewStatus
+				} else {
+					this.writer.statusCode = status
+				}
 				var content = this.Format(page.Body)
 
 				// 修改状态码

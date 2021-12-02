@@ -11,11 +11,8 @@ func (this *HTTPRequest) write404() {
 	}
 
 	this.processResponseHeaders(http.StatusNotFound)
-
-	msg := "404 page not found: '" + this.RawURI() + "'"
-
 	this.writer.WriteHeader(http.StatusNotFound)
-	_, _ = this.writer.Write([]byte(msg))
+	_, _ = this.writer.Write([]byte("404 page not found: '" + this.requestFullURL() + "'" + " (Request Id: " + this.requestId + ")"))
 }
 
 func (this *HTTPRequest) write50x(err error, statusCode int) {
@@ -28,5 +25,5 @@ func (this *HTTPRequest) write50x(err error, statusCode int) {
 	}
 	this.processResponseHeaders(statusCode)
 	this.writer.WriteHeader(statusCode)
-	_, _ = this.writer.Write([]byte(types.String(statusCode) + " " + http.StatusText(statusCode)))
+	_, _ = this.writer.Write([]byte(types.String(statusCode) + " " + http.StatusText(statusCode) + " (Request Id: " + this.requestId + ")"))
 }
