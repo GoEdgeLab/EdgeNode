@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -113,6 +114,8 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 
 	// 判断是否在Purge
 	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey {
+		this.varMapping["cache.status"] = "PURGE"
+
 		err := storage.Delete(key)
 		if err != nil {
 			remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
@@ -203,6 +206,9 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		}
 		return
 	}
+
+	// 设置cache.age变量
+	this.varMapping["cache.age"] = strconv.FormatInt(reader.ExpiresAt()-utils.UnixTime(), 10)
 
 	if addStatusHeader {
 		this.writer.Header().Set("X-Cache", "HIT, "+refType+", "+reader.TypeName())
