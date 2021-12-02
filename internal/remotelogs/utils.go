@@ -12,6 +12,7 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
+	"strings"
 	"time"
 )
 
@@ -75,12 +76,18 @@ func Warn(tag string, description string) {
 func Error(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
 
+	// 忽略RPC连接错误
+	var level = "error"
+	if strings.Contains(description, "code = Unavailable desc = connection closed") {
+		level = "warning"
+	}
+
 	select {
 	case logChan <- &pb.NodeLog{
 		Role:        teaconst.Role,
 		Tag:         tag,
 		Description: description,
-		Level:       "error",
+		Level:       level,
 		NodeId:      teaconst.NodeId,
 		CreatedAt:   time.Now().Unix(),
 	}:
