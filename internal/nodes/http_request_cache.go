@@ -208,10 +208,14 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	// 设置cache.age变量
-	this.varMapping["cache.age"] = strconv.FormatInt(reader.ExpiresAt()-utils.UnixTime(), 10)
+	var age = strconv.FormatInt(reader.ExpiresAt()-utils.UnixTime(), 10)
+	this.varMapping["cache.age"] = age
 
 	if addStatusHeader {
 		this.writer.Header().Set("X-Cache", "HIT, "+refType+", "+reader.TypeName())
+	}
+	if this.web.Cache.AddAgeHeader {
+		this.writer.Header().Set("Age", age)
 	}
 
 	// ETag
