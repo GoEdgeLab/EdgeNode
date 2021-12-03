@@ -8,8 +8,8 @@ import (
 // Cache TTL缓存
 // 最大的缓存时间为30 * 86400
 // Piece数据结构：
-//      Piece1          |  Piece2 | Piece3 | ...
-//  [ Item1, Item2, ... |   ...
+//      Piece1            |  Piece2 | Piece3 | ...
+//  [ Item1, Item2, ... ] |   ...
 // KeyMap列表数据结构
 // { timestamp1 => [key1, key2, ...] }, ...
 type Cache struct {
@@ -26,7 +26,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 	countPieces := 128
 	maxItems := 2_000_000
 
-	var delta = systemMemoryGB() / 4
+	var delta = systemMemoryGB() / 8
 	if delta > 0 {
 		maxItems *= delta
 	}
