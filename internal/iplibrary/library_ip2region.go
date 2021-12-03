@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/lionsoul2014/ip2region/binding/golang/ip2region"
 	"net"
 	"strings"
 )
 
 type IP2RegionLibrary struct {
-	db *ip2region.Ip2Region
+	db *IP2Region
 }
 
 func (this *IP2RegionLibrary) Load(dbPath string) error {
-	db, err := ip2region.New(dbPath)
+	db, err := NewIP2Region(dbPath)
 	if err != nil {
 		return err
 	}
@@ -49,6 +48,10 @@ func (this *IP2RegionLibrary) Lookup(ip string) (*Result, error) {
 		return nil, err
 	}
 
+	if info == nil {
+		return nil, nil
+	}
+
 	if info.Country == "0" {
 		info.Country = ""
 	}
@@ -76,7 +79,5 @@ func (this *IP2RegionLibrary) Lookup(ip string) (*Result, error) {
 }
 
 func (this *IP2RegionLibrary) Close() {
-	if this.db != nil {
-		this.db.Close()
-	}
+
 }
