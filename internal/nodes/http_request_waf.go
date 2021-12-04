@@ -184,7 +184,9 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 	goNext, ruleGroup, ruleSet, err := w.MatchRequest(this, this.writer)
 	if err != nil {
-		remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
+		if !this.canIgnore(err) {
+			remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
+		}
 		return
 	}
 
@@ -240,7 +242,9 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 
 	goNext, ruleGroup, ruleSet, err := w.MatchResponse(this, resp, this.writer)
 	if err != nil {
-		remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
+		if !this.canIgnore(err) {
+			remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
+		}
 		return
 	}
 
@@ -289,6 +293,7 @@ func (this *HTTPRequest) WAFReadBody(max int64) (data []byte, err error) {
 	if this.RawReq.ContentLength > 0 {
 		data, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, max))
 	}
+
 	return
 }
 
