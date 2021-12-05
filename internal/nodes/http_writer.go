@@ -566,6 +566,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 
 	// 不支持Range
 	if len(this.Header().Get("Content-Range")) > 0 {
+		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, not supported Content-Range")
 		}
@@ -574,6 +575,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 
 	// 如果允许 ChunkedEncoding，就无需尺寸的判断，因为此时的 size 为 -1
 	if !cacheRef.AllowChunkedEncoding && size < 0 {
+		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, ChunkedEncoding")
 		}
@@ -581,6 +583,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	}
 	if size >= 0 && ((cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
 		(cachePolicy.MaxSizeBytes() > 0 && size > cachePolicy.MaxSizeBytes()) || (cacheRef.MinSizeBytes() > size)) {
+		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Content-Length")
 		}
@@ -589,6 +592,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 
 	// 检查状态
 	if len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
+		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Status: "+types.String(this.StatusCode()))
 		}
@@ -602,6 +606,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 			values := strings.Split(cacheControl, ",")
 			for _, value := range values {
 				if cacheRef.ContainsCacheControl(strings.TrimSpace(value)) {
+					this.req.varMapping["cache.status"] = "BYPASS"
 					if addStatusHeader {
 						this.Header().Set("X-Cache", "BYPASS, Cache-Control: "+cacheControl)
 					}
@@ -613,6 +618,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 
 	// Set-Cookie
 	if cacheRef.SkipResponseSetCookie && len(this.writer.Header().Get("Set-Cookie")) > 0 {
+		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Set-Cookie")
 		}
@@ -621,6 +627,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 
 	// 校验其他条件
 	if cacheRef.Conds != nil && cacheRef.Conds.HasResponseConds() && !cacheRef.Conds.MatchResponse(this.req.Format) {
+		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, ResponseConds")
 		}
@@ -630,10 +637,16 @@ func (this *HTTPWriter) prepareCache(size int64) {
 	// 打开缓存写入
 	storage := caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
 	if storage == nil {
+		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Storage")
 		}
 		return
+	}
+
+	this.req.varMapping["cache.status"] = "UPDATING"
+	if addStatusHeader {
+		this.Header().Set("X-Cache", "UPDATING")
 	}
 
 	this.cacheStorage = storage
