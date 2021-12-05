@@ -306,7 +306,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 是否成功结束
-	if err == nil && closeErr == nil {
+	if (err == nil || err == io.EOF) && (closeErr == nil || closeErr == io.EOF) {
 		this.writer.SetOk()
 	}
 }
