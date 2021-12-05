@@ -117,7 +117,15 @@ func (this *HTTPRequest) doReverseProxy() {
 		}
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeOrigin {
-		this.RawReq.Host = originAddr
+		// 源站主机名
+		var hostname = originAddr
+		if origin.Addr.Protocol.IsHTTPFamily() {
+			hostname = strings.TrimSuffix(hostname, ":80")
+		} else if origin.Addr.Protocol.IsHTTPSFamily() {
+			hostname = strings.TrimSuffix(hostname, ":443")
+		}
+
+		this.RawReq.Host = hostname
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else {
 		this.RawReq.URL.Host = this.Host
