@@ -1,6 +1,8 @@
 package nodes
 
-import "github.com/TeaOSLab/EdgeNode/internal/stats"
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/stats"
+)
 
 // 统计
 func (this *HTTPRequest) doStat() {
@@ -9,6 +11,6 @@ func (this *HTTPRequest) doStat() {
 	}
 
 	// 内置的统计
-	stats.SharedHTTPRequestStatManager.AddRemoteAddr(this.Server.Id, this.requestRemoteAddr(true))
+	stats.SharedHTTPRequestStatManager.AddRemoteAddr(this.Server.Id, this.requestRemoteAddr(true), this.writer.SentBodyBytes(), this.isAttack)
 	stats.SharedHTTPRequestStatManager.AddUserAgent(this.Server.Id, this.requestHeader("User-Agent"))
 }

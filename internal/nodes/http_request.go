@@ -212,11 +212,6 @@ func (this *HTTPRequest) doBegin() {
 		}
 	}
 
-	// 统计
-	if this.web.StatRef != nil && this.web.StatRef.IsOn {
-		this.doStat()
-	}
-
 	// 跳转
 	if len(this.web.HostRedirects) > 0 {
 		if this.doHostRedirect() {
@@ -297,6 +292,12 @@ func (this *HTTPRequest) doEnd() {
 	// 指标
 	if metrics.SharedManager.HasHTTPMetrics() {
 		this.doMetricsResponse()
+	}
+
+	// 统计
+	if this.web.StatRef != nil && this.web.StatRef.IsOn {
+		// 放到最后执行
+		this.doStat()
 	}
 }
 

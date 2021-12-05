@@ -20,6 +20,13 @@ import (
 	"time"
 )
 
+type StatItem struct {
+	Bytes               int64
+	CountRequests       int64
+	CountAttackRequests int64
+	AttackBytes         int64
+}
+
 var SharedHTTPRequestStatManager = NewHTTPRequestStatManager()
 
 // HTTPRequestStatManager HTTP请求相关的统计
@@ -29,10 +36,10 @@ type HTTPRequestStatManager struct {
 	userAgentChan         chan string
 	firewallRuleGroupChan chan string
 
-	cityMap     map[string]int64 // serverId@country@province@city => count ，不需要加锁，因为我们是使用channel依次执行的
-	providerMap map[string]int64 // serverId@provider => count
-	systemMap   map[string]int64 // serverId@system@version => count
-	browserMap  map[string]int64 // serverId@browser@version => count
+	cityMap     map[string]*StatItem // serverId@country@province@city => *StatItem ，不需要加锁，因为我们是使用channel依次执行的
+	providerMap map[string]int64     // serverId@provider => count
+	systemMap   map[string]int64     // serverId@system@version => count
+	browserMap  map[string]int64     // serverId@browser@version => count
 
 	dailyFirewallRuleGroupMap map[string]int64 // serverId@firewallRuleGroupId@action => count
 
@@ -45,7 +52,7 @@ func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 		ipChan:                    make(chan string, 10_000), // TODO 将来可以配置容量
 		userAgentChan:             make(chan string, 10_000), // TODO 将来可以配置容量
 		firewallRuleGroupChan:     make(chan string, 10_000), // TODO 将来可以配置容量
-		cityMap:                   map[string]int64{},
+		cityMap:                   map[string]*StatItem{},
 		providerMap:               map[string]int64{},
 		systemMap:                 map[string]int64{},
 		browserMap:                map[string]int64{},
@@ -107,7 +114,7 @@ func (this *HTTPRequestStatManager) Start() {
 }
 
 // AddRemoteAddr 添加客户端地址
-func (this *HTTPRequestStatManager) AddRemoteAddr(serverId int64, remoteAddr string) {
+func (this *HTTPRequestStatManager) AddRemoteAddr(serverId int64, remoteAddr string, bytes int64, isAttack bool) {
 	if len(remoteAddr) == 0 {
 		return
 	}
@@ -122,8 +129,14 @@ func (this *HTTPRequestStatManager) AddRemoteAddr(serverId int64, remoteAddr str
 		ip = remoteAddr[:index]
 	}
 	if len(ip) > 0 {
+		var s string
+		if isAttack {
+			s = strconv.FormatInt(serverId, 10) + "@" + ip + "@" + types.String(bytes) + "@1"
+		} else {
+			s = strconv.FormatInt(serverId, 10) + "@" + ip + "@" + types.String(bytes) + "@0"
+		}
 		select {
-		case this.ipChan <- strconv.FormatInt(serverId, 10) + "@" + ip:
+		case this.ipChan <- s:
 		default:
 			// 超出容量我们就丢弃
 		}
@@ -168,16 +181,29 @@ Loop:
 	for {
 		select {
 		case ipString := <-this.ipChan:
-			atIndex := strings.Index(ipString, "@")
-			if atIndex < 0 {
+			// serverId@ip@bytes@isAttack
+			pieces := strings.Split(ipString, "@")
+			if len(pieces) < 4 {
 				continue
 			}
-			serverId := ipString[:atIndex]
-			ip := ipString[atIndex+1:]
+			serverId := pieces[0]
+			ip := pieces[1]
+
 			if iplibrary.SharedLibrary != nil {
 				result, err := iplibrary.SharedLibrary.Lookup(ip)
 				if err == nil && result != nil {
-					this.cityMap[serverId+"@"+result.Country+"@"+result.Province+"@"+result.City]++
+					var key = serverId + "@" + result.Country + "@" + result.Province + "@" + result.City
+					stat, ok := this.cityMap[key]
+					if !ok {
+						stat = &StatItem{}
+						this.cityMap[key] = stat
+					}
+					stat.Bytes += types.Int64(pieces[2])
+					stat.CountRequests++
+					if types.Int8(pieces[3]) == 1 {
+						stat.AttackBytes += types.Int64(pieces[2])
+						stat.CountAttackRequests++
+					}
 
 					if len(result.ISP) > 0 {
 						this.providerMap[serverId+"@"+result.ISP]++
@@ -237,14 +263,17 @@ func (this *HTTPRequestStatManager) Upload() error {
 	pbProviders := []*pb.UploadServerHTTPRequestStatRequest_RegionProvider{}
 	pbSystems := []*pb.UploadServerHTTPRequestStatRequest_System{}
 	pbBrowsers := []*pb.UploadServerHTTPRequestStatRequest_Browser{}
-	for k, count := range this.cityMap {
+	for k, stat := range this.cityMap {
 		pieces := strings.SplitN(k, "@", 4)
 		pbCities = append(pbCities, &pb.UploadServerHTTPRequestStatRequest_RegionCity{
-			ServerId:     types.Int64(pieces[0]),
-			CountryName:  pieces[1],
-			ProvinceName: pieces[2],
-			CityName:     pieces[3],
-			Count:        count,
+			ServerId:            types.Int64(pieces[0]),
+			CountryName:         pieces[1],
+			ProvinceName:        pieces[2],
+			CityName:            pieces[3],
+			CountRequests:       stat.CountRequests,
+			CountAttackRequests: stat.CountAttackRequests,
+			Bytes:               stat.Bytes,
+			AttackBytes:         stat.AttackBytes,
 		})
 	}
 	for k, count := range this.providerMap {
@@ -300,7 +329,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 	}
 
 	// 重置数据
-	this.cityMap = map[string]int64{}
+	this.cityMap = map[string]*StatItem{}
 	this.providerMap = map[string]int64{}
 	this.systemMap = map[string]int64{}
 	this.browserMap = map[string]int64{}
