@@ -192,6 +192,10 @@ Loop:
 			if iplibrary.SharedLibrary != nil {
 				result, err := iplibrary.SharedLibrary.Lookup(ip)
 				if err == nil && result != nil {
+					if len(result.Country) == 0 {
+						continue
+					}
+
 					var key = serverId + "@" + result.Country + "@" + result.Province + "@" + result.City
 					stat, ok := this.cityMap[key]
 					if !ok {
