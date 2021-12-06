@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -187,6 +188,11 @@ func (this *AppCmd) runStart() {
 	_ = os.Setenv("EdgeBackground", "on")
 
 	cmd := exec.Command(os.Args[0])
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Foreground: false,
+		Setsid:     true,
+	}
+
 	err := cmd.Start()
 	if err != nil {
 		fmt.Println(this.product+"  start failed:", err.Error())
