@@ -634,6 +634,11 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.requestString()
 		case "cookies":
 			return this.requestCookiesString()
+		case "isArgs":
+			if strings.Contains(this.uri, "?") {
+				return "?"
+			}
+			return ""
 		case "args", "queryString":
 			return this.requestQueryString()
 		case "headers":
