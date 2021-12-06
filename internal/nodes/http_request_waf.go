@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
+	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -16,6 +17,13 @@ import (
 
 // 调用WAF
 func (this *HTTPRequest) doWAFRequest() (blocked bool) {
+	var remoteAddr = this.requestRemoteAddr(true)
+
+	// 检查是否为白名单直连
+	if !Tea.IsTesting() && sharedNodeConfig.IPIsAutoAllowed(remoteAddr) {
+		return
+	}
+
 	// 当前连接是否已关闭
 	if this.isConnClosed() {
 		this.disableLog = true
@@ -23,7 +31,6 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	}
 
 	// 是否在全局名单中
-	var remoteAddr = this.requestRemoteAddr(true)
 	if !iplibrary.AllowIP(remoteAddr, this.Server.Id) {
 		this.disableLog = true
 		this.closeConn()
