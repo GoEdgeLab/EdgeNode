@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/iwind/TeaGo/Tea"
 	"golang.org/x/net/http2"
 	"io"
 	"log"
@@ -47,7 +48,6 @@ func (this *HTTPListener) Serve() error {
 		Handler:           this,
 		ReadHeaderTimeout: 2 * time.Second, // TODO 改成可以配置
 		IdleTimeout:       2 * time.Minute, // TODO 改成可以配置
-		ErrorLog:          httpErrorLogger,
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:
@@ -76,6 +76,11 @@ func (this *HTTPListener) Serve() error {
 			return context.WithValue(ctx, HTTPConnContextKey, c)
 		},
 	}
+
+	if !Tea.IsTesting() {
+		this.httpServer.ErrorLog = httpErrorLogger
+	}
+
 	this.httpServer.SetKeepAlivesEnabled(true)
 
 	// HTTP协议
