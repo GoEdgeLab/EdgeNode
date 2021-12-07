@@ -110,6 +110,7 @@ func (this *HTTPRequest) init() {
 		// 缓存相关初始化
 		"cache.status":      "BYPASS",
 		"cache.age":         "0",
+		"cache.key":         "",
 		"cache.policy.name": "",
 		"cache.policy.id":   "0",
 		"cache.policy.type": "",

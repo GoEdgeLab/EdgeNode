@@ -81,6 +81,12 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		}
 	}
 
+	// 校验请求
+	if !this.cacheRef.MatchRequest(this.RawReq) {
+		this.cacheRef = nil
+		return
+	}
+
 	// 相关变量
 	this.varMapping["cache.policy.name"] = cachePolicy.Name
 	this.varMapping["cache.policy.id"] = strconv.FormatInt(cachePolicy.Id, 10)
