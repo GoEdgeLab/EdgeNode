@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+const (
+	// AccessLogMaxRequestBodySize 访问日志存储的请求内容最大尺寸 TODO 此值应该可以在访问日志页设置
+	AccessLogMaxRequestBodySize = 2 * 1024 * 1024
+)
+
 // 日志
 func (this *HTTPRequest) log() {
 	if this.disableLog {
@@ -138,6 +143,15 @@ func (this *HTTPRequest) log() {
 	if this.origin != nil {
 		accessLog.OriginId = this.origin.Id
 		accessLog.OriginAddress = this.originAddr
+	}
+
+	// 请求Body
+	if ref.ContainsField(serverconfigs.HTTPAccessLogFieldRequestBody) {
+		accessLog.RequestBody = this.requestBodyData
+
+		if len(accessLog.RequestBody) > AccessLogMaxRequestBodySize {
+			accessLog.RequestBody = accessLog.RequestBody[:AccessLogMaxRequestBodySize]
+		}
 	}
 
 	// TODO 记录匹配的 locationId和rewriteId

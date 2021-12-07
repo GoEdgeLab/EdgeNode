@@ -287,12 +287,12 @@ func (this *HTTPRequest) WAFRemoteIP() string {
 
 // WAFGetCacheBody 获取缓存中的Body
 func (this *HTTPRequest) WAFGetCacheBody() []byte {
-	return this.bodyData
+	return this.requestBodyData
 }
 
 // WAFSetCacheBody 设置Body
 func (this *HTTPRequest) WAFSetCacheBody(body []byte) {
-	this.bodyData = body
+	this.requestBodyData = body
 }
 
 // WAFReadBody 读取Body
@@ -307,10 +307,7 @@ func (this *HTTPRequest) WAFReadBody(max int64) (data []byte, err error) {
 // WAFRestoreBody 恢复Body
 func (this *HTTPRequest) WAFRestoreBody(data []byte) {
 	if len(data) > 0 {
-		rawReader := bytes.NewBuffer(data)
-		buf := make([]byte, 1024)
-		_, _ = io.CopyBuffer(rawReader, this.RawReq.Body, buf)
-		this.RawReq.Body = ioutil.NopCloser(rawReader)
+		this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(data), this.RawReq.Body))
 	}
 }
 

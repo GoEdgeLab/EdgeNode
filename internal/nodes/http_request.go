@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/types"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -70,7 +72,7 @@ type HTTPRequest struct {
 	cacheKey             string                            // 缓存使用的Key
 	isCached             bool                              // 是否已经被缓存
 	isAttack             bool                              // 是否是攻击请求
-	bodyData             []byte                            // 读取的Body内容
+	requestBodyData      []byte                            // 读取的Body内容
 
 	// WAF相关
 	firewallPolicyId    int64
@@ -205,6 +207,20 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
+	// 处理requestBody
+	if this.RawReq.ContentLength > 0 &&
+		this.web.AccessLogRef != nil &&
+		this.web.AccessLogRef.IsOn &&
+		this.web.AccessLogRef.ContainsField(serverconfigs.HTTPAccessLogFieldRequestBody) {
+		var err error
+		this.requestBodyData, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, AccessLogMaxRequestBodySize))
+		if err != nil {
+			this.write50x(err, http.StatusBadGateway)
+			return
+		}
+		this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))
+	}
+
 	// 处理健康检查
 	var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
 	if len(healthCheckKey) > 0 {
