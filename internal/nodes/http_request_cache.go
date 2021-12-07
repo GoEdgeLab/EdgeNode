@@ -104,6 +104,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	this.cacheKey = key
+	this.varMapping["cache.key"] = key
 
 	// 读取缓存
 	storage := caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
