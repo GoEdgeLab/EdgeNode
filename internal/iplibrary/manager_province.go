@@ -67,7 +67,7 @@ func (this *ProvinceManager) Start() {
 	events.On(events.EventQuit, func() {
 		ticker.Stop()
 	})
-	for range ticker.C {
+	for ticker.Next() {
 		err := this.loop()
 		if err != nil {
 			remotelogs.ErrorObject("PROVINCE_MANAGER", err)

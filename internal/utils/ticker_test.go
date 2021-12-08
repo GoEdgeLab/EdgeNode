@@ -41,9 +41,9 @@ func TestTicker2(t *testing.T) {
 	for {
 		t.Log("loop")
 		select {
-		case <-ticker.C:
+		case <-ticker.raw.C:
 			t.Log("tick")
-		case <-ticker.S:
+		case <-ticker.done:
 			return
 		}
 	}
@@ -62,4 +62,18 @@ func TestTickerEvery(t *testing.T) {
 		}
 	})
 	wg.Wait()
+}
+
+
+func TestTicker_StopTwice(t *testing.T) {
+	ticker := NewTicker(3 * time.Second)
+	go func() {
+		time.Sleep(10 * time.Second)
+		ticker.Stop()
+		ticker.Stop()
+	}()
+	for ticker.Next() {
+		t.Log("tick")
+	}
+	t.Log("finished")
 }

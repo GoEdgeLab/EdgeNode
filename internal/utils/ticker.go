@@ -1,47 +1,43 @@
 package utils
 
 import (
+	"sync"
 	"time"
 )
 
-// 类似于time.Ticker，但能够真正地停止
+// Ticker 类似于time.Ticker，但能够真正地停止
 type Ticker struct {
-	raw *time.Ticker
+	raw  *time.Ticker
+	done chan bool
+	once sync.Once
 
-	S chan bool
 	C <-chan time.Time
-
-	isStopped bool
 }
 
-// 创建新Ticker
+// NewTicker 创建新Ticker
 func NewTicker(duration time.Duration) *Ticker {
 	raw := time.NewTicker(duration)
 	return &Ticker{
-		raw: raw,
-		C:   raw.C,
-		S:   make(chan bool, 1),
+		raw:  raw,
+		C:    raw.C,
+		done: make(chan bool, 1),
 	}
 }
 
-// 查找下一个Tick
+// Next 查找下一个Tick
 func (this *Ticker) Next() bool {
 	select {
 	case <-this.raw.C:
 		return true
-	case <-this.S:
+	case <-this.done:
 		return false
 	}
 }
 
-// 停止
+// Stop 停止
 func (this *Ticker) Stop() {
-	if this.isStopped {
-		return
-	}
-
-	this.isStopped = true
-
-	this.raw.Stop()
-	this.S <- true
+	this.once.Do(func() {
+		this.raw.Stop()
+		this.done <- true
+	})
 }

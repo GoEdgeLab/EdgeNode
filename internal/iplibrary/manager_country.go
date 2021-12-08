@@ -63,7 +63,7 @@ func (this *CountryManager) Start() {
 	events.On(events.EventQuit, func() {
 		ticker.Stop()
 	})
-	for range ticker.C {
+	for ticker.Next() {
 		err := this.loop()
 		if err != nil {
 			remotelogs.ErrorObject("COUNTRY_MANAGER", err)
