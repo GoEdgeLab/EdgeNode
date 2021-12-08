@@ -11,3 +11,11 @@ func TestUnixTime(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 }
+
+func TestGMTUnixTime(t *testing.T) {
+	t.Log(GMTUnixTime(time.Now().Unix()))
+}
+
+func TestGMTTime(t *testing.T) {
+	t.Log(GMTTime(time.Now()))
+}

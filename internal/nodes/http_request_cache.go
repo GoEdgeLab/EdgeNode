@@ -241,7 +241,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	// 这里强制设置Last-Modified，如果先前源站设置了Last-Modified，将会被覆盖，避免因为源站的Last-Modified导致源站返回304 Not Modified
 	var modifiedTime = ""
 	if lastModifiedAt > 0 {
-		modifiedTime = time.Unix(lastModifiedAt, 0).Format("Mon, 02 Jan 2006 15:04:05 GMT")
+		modifiedTime = time.Unix(utils.GMTUnixTime(lastModifiedAt), 0).Format("Mon, 02 Jan 2006 15:04:05") + " GMT"
 		respHeader.Set("Last-Modified", modifiedTime)
 	}
 
@@ -268,6 +268,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	}
 
 	this.processResponseHeaders(reader.Status())
+	this.addExpiresHeader(reader.ExpiresAt())
 
 	// 输出Body
 	if this.RawReq.Method == http.MethodHead {
@@ -440,4 +441,20 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 	this.writer.SetOk()
 
 	return true
+}
+
+// 设置Expires Header
+func (this *HTTPRequest) addExpiresHeader(expiresAt int64) {
+	if this.cacheRef.ExpiresTime != nil && this.cacheRef.ExpiresTime.IsPrior && this.cacheRef.ExpiresTime.IsOn {
+		if this.cacheRef.ExpiresTime.Overwrite || len(this.writer.Header().Get("Expires")) == 0 {
+			if this.cacheRef.ExpiresTime.AutoCalculate {
+				this.writer.Header().Set("Expires", time.Unix(utils.GMTUnixTime(expiresAt), 0).Format("Mon, 2 Jan 2006 15:04:05")+" GMT")
+			} else if this.cacheRef.ExpiresTime.Duration != nil {
+				var duration = this.cacheRef.ExpiresTime.Duration.Duration()
+				if duration > 0 {
+					this.writer.Header().Set("Expires", utils.GMTTime(time.Now().Add(duration)).Format("Mon, 2 Jan 2006 15:04:05")+" GMT")
+				}
+			}
+		}
+	}
 }
