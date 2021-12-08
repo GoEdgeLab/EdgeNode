@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/iwind/TeaGo/maps"
 	"net"
@@ -17,7 +18,7 @@ import (
 func init() {
 	events.On(events.EventStart, func() {
 		ticker := time.NewTicker(1 * time.Minute)
-		go func() {
+		goman.New(func() {
 			for range ticker.C {
 				// 加入到数据队列中
 				if teaconst.InTrafficBytes > 0 {
@@ -35,7 +36,7 @@ func init() {
 				atomic.StoreUint64(&teaconst.InTrafficBytes, 0)
 				atomic.StoreUint64(&teaconst.OutTrafficBytes, 0)
 			}
-		}()
+		})
 	})
 }
 

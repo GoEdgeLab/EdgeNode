@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -128,7 +129,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 			remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
 		}
 
-		go func() {
+		goman.New(func() {
 			rpcClient, err := rpc.SharedRPC()
 			if err == nil {
 				for _, rpcServerService := range rpcClient.ServerRPCList() {
@@ -142,7 +143,7 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 					}
 				}
 			}
-		}()
+		})
 
 		return true
 	}

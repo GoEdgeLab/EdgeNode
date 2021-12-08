@@ -3,6 +3,7 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"net"
@@ -67,7 +68,9 @@ func (this *TOAManager) Run(config *nodeconfigs.TOAConfig) error {
 	}
 	this.pid = cmd.Process.Pid
 
-	go func() { _ = cmd.Wait() }()
+	goman.New(func() {
+		_ = cmd.Wait()
+	})
 
 	return nil
 }

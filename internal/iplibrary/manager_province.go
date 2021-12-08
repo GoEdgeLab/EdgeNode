@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -25,7 +26,9 @@ var SharedProvinceManager = NewProvinceManager()
 
 func init() {
 	events.On(events.EventLoaded, func() {
-		go SharedProvinceManager.Start()
+		goman.New(func() {
+			SharedProvinceManager.Start()
+		})
 	})
 }
 

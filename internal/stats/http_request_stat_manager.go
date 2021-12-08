@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -63,17 +64,17 @@ func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 // Start 启动
 func (this *HTTPRequestStatManager) Start() {
 	// 上传请求总数
-	go func() {
+	goman.New(func() {
 		ticker := time.NewTicker(1 * time.Minute)
-		go func() {
+		goman.New(func() {
 			for range ticker.C {
 				if this.totalAttackRequests > 0 {
 					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemAttackRequests, maps.Map{"total": this.totalAttackRequests})
 					this.totalAttackRequests = 0
 				}
 			}
-		}()
-	}()
+		})
+	})
 
 	loopTicker := time.NewTicker(1 * time.Second)
 	uploadTicker := time.NewTicker(30 * time.Minute)

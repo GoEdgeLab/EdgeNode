@@ -3,6 +3,7 @@
 package caches
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
@@ -127,7 +128,7 @@ func TestFileList_Exist_Many_DB(t *testing.T) {
 	}()
 
 	for i := 0; i < threads; i++ {
-		go func() {
+		goman.New(func() {
 			defer wg.Done()
 
 			for {
@@ -143,7 +144,7 @@ func TestFileList_Exist_Many_DB(t *testing.T) {
 					return
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	t.Log("left:", count)

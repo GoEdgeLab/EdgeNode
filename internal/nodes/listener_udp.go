@@ -3,6 +3,7 @@ package nodes
 import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -37,11 +38,11 @@ func (this *UDPListener) Serve() error {
 
 	this.connMap = map[string]*UDPConn{}
 	this.connTicker = utils.NewTicker(1 * time.Minute)
-	go func() {
+	goman.New(func() {
 		for this.connTicker.Next() {
 			this.gcConns()
 		}
-	}()
+	})
 
 	var buffer = make([]byte, 4*1024)
 	for {
@@ -188,7 +189,7 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyConn *ne
 		stats.SharedTrafficStatManager.Add(server.Id, "", 0, 0, 1, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
 	}
 
-	go func() {
+	goman.New(func() {
 		buffer := bytePool32k.Get()
 		defer func() {
 			bytePool32k.Put(buffer)
@@ -214,7 +215,7 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyConn *ne
 				break
 			}
 		}
-	}()
+	})
 	return conn
 }
 

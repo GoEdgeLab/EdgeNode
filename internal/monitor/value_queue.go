@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/maps"
@@ -16,7 +17,9 @@ var SharedValueQueue = NewValueQueue()
 
 func init() {
 	events.On(events.EventLoaded, func() {
-		go SharedValueQueue.Start()
+		goman.New(func() {
+			SharedValueQueue.Start()
+		})
 	})
 }
 

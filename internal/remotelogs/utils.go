@@ -5,6 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/cespare/xxhash"
@@ -24,7 +25,7 @@ func init() {
 	if Tea.IsTesting() {
 		ticker = time.NewTicker(10 * time.Second)
 	}
-	go func() {
+	goman.New(func() {
 		for range ticker.C {
 			var tr = trackers.Begin("UPLOAD_REMOTE_LOGS")
 			err := uploadLogs()
@@ -33,7 +34,7 @@ func init() {
 				logs.Println("[LOG]" + err.Error())
 			}
 		}
-	}()
+	})
 }
 
 // Println 打印普通信息

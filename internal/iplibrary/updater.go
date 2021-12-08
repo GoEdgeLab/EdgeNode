@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/Tea"
@@ -34,14 +35,14 @@ func NewUpdater() *Updater {
 func (this *Updater) Start() {
 	// 这里不需要太频繁检查更新，因为通常不需要更新IP库
 	ticker := time.NewTicker(1 * time.Hour)
-	go func() {
+	goman.New(func() {
 		for range ticker.C {
 			err := this.loop()
 			if err != nil {
 				remotelogs.ErrorObject("IP_LIBRARY", err)
 			}
 		}
-	}()
+	})
 }
 
 // 单次任务

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"errors"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"io"
 	"net/http"
 	"net/url"
@@ -64,7 +65,7 @@ func (this *HTTPRequest) doWebsocket() {
 		_ = clientConn.Close()
 	}()
 
-	go func() {
+	goman.New(func() {
 		buf := make([]byte, 4*1024) // TODO 使用内存池
 		for {
 			n, err := originConn.Read(buf)
@@ -81,6 +82,6 @@ func (this *HTTPRequest) doWebsocket() {
 		}
 		_ = clientConn.Close()
 		_ = originConn.Close()
-	}()
+	})
 	_, _ = io.Copy(originConn, clientConn)
 }

@@ -1,15 +1,18 @@
 package utils
 
-import "time"
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"time"
+)
 
-// 定时运行某个函数
+// Every 定时运行某个函数
 func Every(duration time.Duration, f func(ticker *Ticker)) *Ticker {
 	ticker := NewTicker(duration)
-	go func() {
+	goman.New(func() {
 		for ticker.Next() {
 			f(ticker)
 		}
-	}()
+	})
 
 	return ticker
 }

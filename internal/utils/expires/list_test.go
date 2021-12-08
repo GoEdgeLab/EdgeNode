@@ -63,11 +63,13 @@ func TestList_Start_GC(t *testing.T) {
 	list.Add(7, time.Now().Unix()+6)
 	list.Add(8, time.Now().Unix()+6)
 
+	list.OnGC(func(itemId int64) {
+		t.Log("gc:", itemId, timeutil.Format("H:i:s"))
+		time.Sleep(2 * time.Second)
+	})
+
 	go func() {
-		list.StartGC(func(itemId int64) {
-			t.Log("gc:", itemId, timeutil.Format("H:i:s"))
-			time.Sleep(2 * time.Second)
-		})
+		SharedManager.Add(list)
 	}()
 
 	time.Sleep(20 * time.Second)

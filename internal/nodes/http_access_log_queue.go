@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"reflect"
@@ -26,7 +27,9 @@ func NewHTTPAccessLogQueue() *HTTPAccessLogQueue {
 	queue := &HTTPAccessLogQueue{
 		queue: make(chan *pb.HTTPAccessLog, maxSize),
 	}
-	go queue.Start()
+	goman.New(func() {
+		queue.Start()
+	})
 
 	return queue
 }

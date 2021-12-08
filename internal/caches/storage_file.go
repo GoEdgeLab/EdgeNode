@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -562,12 +563,12 @@ func (this *FileStorage) CleanAll() error {
 	}
 
 	// 重新遍历待删除
-	go func() {
+	goman.New(func() {
 		err = this.cleanDeletedDirs(dir)
 		if err != nil {
 			remotelogs.Warn("CACHE", "delete '*-deleted' dirs failed: "+err.Error())
 		}
-	}()
+	})
 
 	return nil
 }
@@ -672,12 +673,12 @@ func (this *FileStorage) initList() error {
 	}
 
 	// 使用异步防止阻塞主线程
-	/**go func() {
+	/**goman.New(func() {
 		dir := this.dir()
 
 		// 清除tmp
 		// TODO 需要一个更加高效的实现
-	}()**/
+	})**/
 
 	// 启动定时清理任务
 	var autoPurgeInterval = this.policy.PersistenceAutoPurgeInterval
@@ -695,26 +696,26 @@ func (this *FileStorage) initList() error {
 			ticker.Stop()
 		}
 	})
-	go func() {
+	goman.New(func() {
 		for this.purgeTicker.Next() {
 			trackers.Run("FILE_CACHE_STORAGE_PURGE_LOOP", func() {
 				this.purgeLoop()
 			})
 		}
-	}()
+	})
 
 	// 热点处理任务
 	this.hotTicker = utils.NewTicker(1 * time.Minute)
 	if Tea.IsTesting() {
 		this.hotTicker = utils.NewTicker(10 * time.Second)
 	}
-	go func() {
+	goman.New(func() {
 		for this.hotTicker.Next() {
 			trackers.Run("FILE_CACHE_STORAGE_HOT_LOOP", func() {
 				this.hotLoop()
 			})
 		}
-	}()
+	})
 
 	return nil
 }

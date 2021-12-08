@@ -3,6 +3,7 @@ package caches
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -84,20 +85,20 @@ func (this *MemoryStorage) Init() error {
 
 	// 启动定时清理任务
 	this.purgeTicker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
-	go func() {
+	goman.New(func() {
 		for this.purgeTicker.Next() {
 			var tr = trackers.Begin("MEMORY_CACHE_STORAGE_PURGE_LOOP")
 			this.purgeLoop()
 			tr.End()
 		}
-	}()
+	})
 
 	// 启动定时Flush memory to disk任务
-	go func() {
+	goman.New(func() {
 		for hash := range this.dirtyChan {
 			this.flushItem(hash)
 		}
-	}()
+	})
 
 	return nil
 }

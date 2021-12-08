@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -60,12 +61,12 @@ func (this *UpgradeManager) Start() {
 
 	remotelogs.Println("UPGRADE_MANAGER", "upgrade successfully")
 
-	go func() {
+	goman.New(func() {
 		err = this.restart()
 		if err != nil {
 			logs.Println("UPGRADE_MANAGER", err.Error())
 		}
-	}()
+	})
 }
 
 func (this *UpgradeManager) install() error {

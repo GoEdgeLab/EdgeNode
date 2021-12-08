@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
@@ -23,7 +24,9 @@ import (
 func init() {
 	events.On(events.EventStart, func() {
 		task := NewSyncAPINodesTask()
-		go task.Start()
+		goman.New(func() {
+			task.Start()
+		})
 	})
 }
 

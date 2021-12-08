@@ -13,6 +13,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -607,7 +608,7 @@ func (this *APIStream) handleChangeAPINode(message *pb.NodeStreamMessage) error 
 
 	this.replyOk(message.RequestId, "")
 
-	go func() {
+	goman.New(func() {
 		// 延后生效，防止变更前的API无法读取到状态
 		time.Sleep(1 * time.Second)
 
@@ -629,7 +630,7 @@ func (this *APIStream) handleChangeAPINode(message *pb.NodeStreamMessage) error 
 
 		remotelogs.Println("API_STREAM", "change rpc endpoint to '"+
 			messageData.Addr+"' successfully")
-	}()
+	})
 
 	return nil
 }

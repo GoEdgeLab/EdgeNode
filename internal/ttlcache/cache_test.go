@@ -123,13 +123,18 @@ func TestCache_GC(t *testing.T) {
 func TestCache_GC2(t *testing.T) {
 	runtime.GOMAXPROCS(1)
 
-	cache := NewCache()
+	cache1 := NewCache(NewPiecesOption(32))
 	for i := 0; i < 1_000_000; i++ {
-		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 100)))
+		cache1.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 10)))
+	}
+
+	cache2 := NewCache(NewPiecesOption(5))
+	for i := 0; i < 1_000_000; i++ {
+		cache2.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 10)))
 	}
 
 	for i := 0; i < 100; i++ {
-		t.Log(cache.Count(), "items")
+		t.Log(cache1.Count(), "items", cache2.Count(), "items")
 		time.Sleep(1 * time.Second)
 	}
 }

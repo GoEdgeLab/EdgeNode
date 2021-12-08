@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -31,6 +32,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 )
@@ -124,7 +126,9 @@ func (this *Node) Start() {
 	this.startSyncTimer()
 
 	// 状态变更计时器
-	go NewNodeStatusExecutor().Listen()
+	goman.New(func() {
+		NewNodeStatusExecutor().Listen()
+	})
 
 	// 读取配置
 	nodeConfig, err := nodeconfigs.SharedNodeConfig()
@@ -153,13 +157,17 @@ func (this *Node) Start() {
 	_ = utils.SetRLimit(1024 * 1024)
 
 	// 连接API
-	go NewAPIStream().Start()
+	goman.New(func() {
+		NewAPIStream().Start()
+	})
 
 	// 统计
 	go stats.SharedTrafficStatManager.Start(func() *nodeconfigs.NodeConfig {
 		return sharedNodeConfig
 	})
-	go stats.SharedHTTPRequestStatManager.Start()
+	goman.New(func() {
+		stats.SharedHTTPRequestStatManager.Start()
+	})
 
 	// 启动端口
 	err = sharedListenerManager.Start(nodeConfig)
@@ -297,7 +305,9 @@ func (this *Node) loop() error {
 				return err
 			}
 		case "nodeVersionChanged":
-			go sharedUpgradeManager.Start()
+			goman.New(func() {
+				sharedUpgradeManager.Start()
+			})
 		}
 	}
 
@@ -439,7 +449,7 @@ func (this *Node) startSyncTimer() {
 		remotelogs.Println("NODE", "quit sync timer")
 		ticker.Stop()
 	})
-	go func() {
+	goman.New(func() {
 		for {
 			select {
 			case <-ticker.C:
@@ -462,7 +472,7 @@ func (this *Node) startSyncTimer() {
 				}
 			}
 		}
-	}()
+	})
 }
 
 // 检查集群设置
@@ -530,7 +540,7 @@ func (this *Node) listenSock() error {
 	}
 
 	// 启动监听
-	go func() {
+	goman.New(func() {
 		this.sock.OnCommand(func(cmd *gosock.Command) {
 			switch cmd.Code {
 			case "pid":
@@ -563,7 +573,7 @@ func (this *Node) listenSock() error {
 				events.Notify(events.EventQuit)
 
 				// 监控连接数，如果连接数为0，则退出进程
-				go func() {
+				goman.New(func() {
 					for {
 						countActiveConnections := sharedListenerManager.TotalActiveConnections()
 						if countActiveConnections <= 0 {
@@ -572,11 +582,41 @@ func (this *Node) listenSock() error {
 						}
 						time.Sleep(1 * time.Second)
 					}
-				}()
+				})
 			case "trackers":
 				_ = cmd.Reply(&gosock.Command{
 					Params: map[string]interface{}{
 						"labels": trackers.SharedManager.Labels(),
+					},
+				})
+			case "goman":
+				var posMap = map[string]maps.Map{} // file#line => Map
+				for _, instance := range goman.List() {
+					var pos = instance.File + "#" + types.String(instance.Line)
+					m, ok := posMap[pos]
+					if ok {
+						m["count"] = m["count"].(int) + 1
+					} else {
+						m = maps.Map{
+							"pos":   pos,
+							"count": 1,
+						}
+						posMap[pos] = m
+					}
+				}
+
+				var result = []maps.Map{}
+				for _, m := range posMap {
+					result = append(result, m)
+				}
+
+				sort.Slice(result, func(i, j int) bool {
+					return result[i]["count"].(int) > result[j]["count"].(int)
+				})
+
+				_ = cmd.Reply(&gosock.Command{
+					Params: map[string]interface{}{
+						"result": result,
 					},
 				})
 			}
@@ -586,7 +626,7 @@ func (this *Node) listenSock() error {
 		if err != nil {
 			logs.Println("NODE", err.Error())
 		}
-	}()
+	})
 
 	events.On(events.EventQuit, func() {
 		logs.Println("NODE", "quit unix sock")

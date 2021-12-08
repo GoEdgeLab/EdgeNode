@@ -3,6 +3,7 @@ package iplibrary
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -17,7 +18,9 @@ var IPListUpdateNotify = make(chan bool, 1)
 
 func init() {
 	events.On(events.EventLoaded, func() {
-		go SharedIPListManager.Start()
+		goman.New(func() {
+			SharedIPListManager.Start()
+		})
 	})
 }
 

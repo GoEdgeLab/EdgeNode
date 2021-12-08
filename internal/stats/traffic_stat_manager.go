@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
@@ -55,17 +56,17 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 	this.configFunc = configFunc
 
 	// 上传请求总数
-	go func() {
+	goman.New(func() {
 		ticker := time.NewTicker(1 * time.Minute)
-		go func() {
+		goman.New(func() {
 			for range ticker.C {
 				if this.totalRequests > 0 {
 					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemRequests, maps.Map{"total": this.totalRequests})
 					this.totalRequests = 0
 				}
 			}
-		}()
-	}()
+		})
+	})
 
 	// 上传统计数据
 	duration := 5 * time.Minute

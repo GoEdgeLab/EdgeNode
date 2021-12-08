@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
@@ -43,11 +44,11 @@ func NewListenerManager() *ListenerManager {
 		manager.ticker = time.NewTicker(5 * time.Second)
 	}
 
-	go func() {
+	goman.New(func() {
 		for range manager.ticker.C {
 			manager.retryListeners()
 		}
-	}()
+	})
 
 	return manager
 }

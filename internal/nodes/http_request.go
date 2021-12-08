@@ -952,7 +952,7 @@ func (this *HTTPRequest) requestRemotePort() int {
 	return 0
 }
 
-// 情趣的URI中的参数部分
+// 获取的URI中的参数部分
 func (this *HTTPRequest) requestQueryString() string {
 	uri, err := url.ParseRequestURI(this.uri)
 	if err != nil {

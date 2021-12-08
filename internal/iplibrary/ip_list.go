@@ -29,11 +29,9 @@ func NewIPList() *IPList {
 	}
 
 	expireList := expires.NewList()
-	go func() {
-		expireList.StartGC(func(itemId int64) {
-			list.Delete(itemId)
-		})
-	}()
+	expireList.OnGC(func(itemId int64) {
+		list.Delete(itemId)
+	})
 	list.expireList = expireList
 	return list
 }

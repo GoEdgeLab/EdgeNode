@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/maps"
@@ -96,10 +97,10 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 		}
 
 		// 启动Service
-		go func() {
+		goman.New(func() {
 			time.Sleep(5 * time.Second)
 			_ = exec.Command(systemctl, "start", teaconst.SystemdServiceName).Start()
-		}()
+		})
 
 		if output == "enabled" {
 			// 检查文件路径是否变化

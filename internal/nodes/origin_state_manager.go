@@ -5,6 +5,7 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/iwind/TeaGo/Tea"
@@ -16,7 +17,9 @@ var SharedOriginStateManager = NewOriginStateManager()
 
 func init() {
 	events.On(events.EventLoaded, func() {
-		go SharedOriginStateManager.Start()
+		goman.New(func() {
+			SharedOriginStateManager.Start()
+		})
 	})
 }
 

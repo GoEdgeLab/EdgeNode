@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"net"
 	"sync"
@@ -97,7 +98,7 @@ func (this *Listener) listenTCP() error {
 
 	this.listener.Init()
 
-	go func() {
+	goman.New(func() {
 		err := this.listener.Serve()
 		if err != nil {
 			// 在这里屏蔽accept错误，防止在优雅关闭的时候有多余的提示
@@ -109,7 +110,7 @@ func (this *Listener) listenTCP() error {
 			// 打印其他错误
 			remotelogs.Error("LISTENER", err.Error())
 		}
-	}()
+	})
 
 	return nil
 }
@@ -129,12 +130,12 @@ func (this *Listener) listenUDP() error {
 		Listener:     listener,
 	}
 
-	go func() {
+	goman.New(func() {
 		err := this.listener.Serve()
 		if err != nil {
 			remotelogs.Error("LISTENER", err.Error())
 		}
-	}()
+	})
 
 	return nil
 }

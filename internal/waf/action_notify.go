@@ -5,6 +5,7 @@ package waf
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
@@ -25,7 +26,7 @@ var notifyChan = make(chan *notifyTask, 128)
 
 func init() {
 	events.On(events.EventLoaded, func() {
-		go func() {
+		goman.New(func() {
 			rpcClient, err := rpc.SharedRPC()
 			if err != nil {
 				remotelogs.Error("WAF_NOTIFY_ACTION", "create rpc client failed: "+err.Error())
@@ -44,7 +45,7 @@ func init() {
 					remotelogs.Error("WAF_NOTIFY_ACTION", "notify failed: "+err.Error())
 				}
 			}
-		}()
+		})
 	})
 }
 

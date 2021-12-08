@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
@@ -163,7 +164,7 @@ ON "` + this.statTableName + `" (
 func (this *Task) Start() error {
 	// 读取数据
 	this.statsTicker = utils.NewTicker(1 * time.Minute)
-	go func() {
+	goman.New(func() {
 		for this.statsTicker.Next() {
 			var tr = trackers.Begin("[METRIC]DUMP_STATS_TO_LOCAL_DATABASE")
 
@@ -181,11 +182,11 @@ func (this *Task) Start() error {
 
 			tr.End()
 		}
-	}()
+	})
 
 	// 清理
 	this.cleanTicker = utils.NewTicker(24 * time.Hour)
-	go func() {
+	goman.New(func() {
 		for this.cleanTicker.Next() {
 			var tr = trackers.Begin("[METRIC]CLEAN_EXPIRED")
 			err := this.CleanExpired()
@@ -194,11 +195,11 @@ func (this *Task) Start() error {
 				remotelogs.Error("METRIC", "clean expired stats failed: "+err.Error())
 			}
 		}
-	}()
+	})
 
 	// 上传
 	this.uploadTicker = utils.NewTicker(this.item.UploadDuration())
-	go func() {
+	goman.New(func() {
 		for this.uploadTicker.Next() {
 			var tr = trackers.Begin("[METRIC]UPLOAD_STATS")
 			err := this.Upload(1 * time.Second)
@@ -207,7 +208,7 @@ func (this *Task) Start() error {
 				remotelogs.Error("METRIC", "upload stats failed: "+err.Error())
 			}
 		}
-	}()
+	})
 
 	return nil
 }

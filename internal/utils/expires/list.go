@@ -2,7 +2,6 @@ package expires
 
 import (
 	"sync"
-	"time"
 )
 
 type ItemMap = map[int64]bool
@@ -12,14 +11,19 @@ type List struct {
 	itemsMap  map[int64]int64   // itemId => timestamp
 
 	locker sync.Mutex
-	ticker *time.Ticker
+
+	gcCallback func(itemId int64)
 }
 
 func NewList() *List {
-	return &List{
+	var list = &List{
 		expireMap: map[int64]ItemMap{},
 		itemsMap:  map[int64]int64{},
 	}
+
+	SharedManager.Add(list)
+
+	return list
 }
 
 func (this *List) Add(itemId int64, expiresAt int64) {
@@ -56,33 +60,15 @@ func (this *List) GC(timestamp int64, callback func(itemId int64)) {
 	itemMap := this.gcItems(timestamp)
 	this.locker.Unlock()
 
-	for itemId := range itemMap {
-		callback(itemId)
+	if callback != nil {
+		for itemId := range itemMap {
+			callback(itemId)
+		}
 	}
 }
 
-func (this *List) StartGC(callback func(itemId int64)) {
-	this.ticker = time.NewTicker(1 * time.Second)
-	lastTimestamp := int64(0)
-	for range this.ticker.C {
-		timestamp := time.Now().Unix()
-		if lastTimestamp == 0 {
-			lastTimestamp = timestamp - 3600
-		}
-
-		if timestamp >= lastTimestamp {
-			for i := lastTimestamp; i <= timestamp; i++ {
-				this.GC(i, callback)
-			}
-		} else {
-			for i := timestamp; i <= lastTimestamp; i++ {
-				this.GC(i, callback)
-			}
-		}
-
-		// 这样做是为了防止系统时钟突变
-		lastTimestamp = timestamp
-	}
+func (this *List) OnGC(callback func(itemId int64)) {
+	this.gcCallback = callback
 }
 
 func (this *List) removeItem(itemId int64) {

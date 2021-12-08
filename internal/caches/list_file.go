@@ -4,6 +4,7 @@ package caches
 
 import (
 	"database/sql"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -568,11 +569,11 @@ func (this *FileList) removeOldTables() error {
 		}
 		if lists.ContainsString(this.oldTables, name) {
 			// 异步执行
-			go func() {
+			goman.New(func() {
 				remotelogs.Println("CACHE", "remove old table '"+name+"' ...")
 				_, _ = this.db.Exec(`DROP TABLE "` + name + `"`)
 				remotelogs.Println("CACHE", "remove old table '"+name+"' done")
-			}()
+			})
 		}
 
 	}

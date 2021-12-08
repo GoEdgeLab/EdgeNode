@@ -6,7 +6,9 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
 	"runtime"
+	"runtime/debug"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -279,6 +281,22 @@ func TestGC(t *testing.T) {
 	t.Log("===AFTER GC===")
 	logs.PrintAsJSON(list.itemsMap, t)
 	logs.PrintAsJSON(list.sortedItems, t)
+}
+
+func TestTooManyLists(t *testing.T) {
+	debug.SetMaxThreads(20)
+
+	var lists = []*IPList{}
+	var locker = &sync.Mutex{}
+	for i := 0; i < 1000; i++ {
+		locker.Lock()
+		lists = append(lists, NewIPList())
+		locker.Unlock()
+	}
+
+	time.Sleep(1 * time.Second)
+	t.Log(runtime.NumGoroutine())
+	t.Log(len(lists), "lists")
 }
 
 func BenchmarkIPList_Contains(b *testing.B) {

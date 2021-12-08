@@ -1,7 +1,6 @@
 package ttlcache
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"time"
 )
 
@@ -19,7 +18,6 @@ type Cache struct {
 	maxItems    int
 
 	gcPieceIndex int
-	ticker       *utils.Ticker
 }
 
 func NewCache(opt ...OptionInterface) *Cache {
@@ -56,13 +54,8 @@ func NewCache(opt ...OptionInterface) *Cache {
 		cache.pieces = append(cache.pieces, NewPiece(maxItems/countPieces))
 	}
 
-	// start timer
-	go func() {
-		cache.ticker = utils.NewTicker(5 * time.Second)
-		for cache.ticker.Next() {
-			cache.GC()
-		}
-	}()
+	// Add to manager
+	SharedManager.Add(cache)
 
 	return cache
 }
@@ -149,12 +142,10 @@ func (this *Cache) Clean() {
 }
 
 func (this *Cache) Destroy() {
+	SharedManager.Remove(this)
+
 	this.isDestroyed = true
 
-	if this.ticker != nil {
-		this.ticker.Stop()
-		this.ticker = nil
-	}
 	for _, piece := range this.pieces {
 		piece.Destroy()
 	}

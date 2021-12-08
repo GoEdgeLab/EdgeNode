@@ -5,6 +5,7 @@ package utils
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -15,7 +16,9 @@ var SharedFreeHoursManager = NewFreeHoursManager()
 
 func init() {
 	events.On(events.EventLoaded, func() {
-		go SharedFreeHoursManager.Start()
+		goman.New(func() {
+			SharedFreeHoursManager.Start()
+		})
 	})
 }
 

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"time"
 )
 
@@ -9,12 +10,12 @@ var unixTimeMilli = time.Now().UnixMilli()
 
 func init() {
 	ticker := time.NewTicker(200 * time.Millisecond)
-	go func() {
+	goman.New(func() {
 		for range ticker.C {
 			unixTime = time.Now().Unix()
 			unixTimeMilli = time.Now().UnixMilli()
 		}
-	}()
+	})
 }
 
 // UnixTime 最快获取时间戳的方式，通常用在不需要特别精确时间戳的场景

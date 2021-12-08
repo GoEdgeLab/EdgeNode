@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/pires/go-proxyproto"
 	"net"
@@ -33,7 +34,9 @@ func NewHTTPClientPool() *HTTPClientPool {
 		clientsMap:            map[string]*HTTPClient{},
 	}
 
-	go pool.cleanClients()
+	goman.New(func() {
+		pool.cleanClients()
+	})
 
 	return pool
 }

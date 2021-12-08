@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/pires/go-proxyproto"
@@ -110,7 +111,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	}
 
 	// 从源站读取
-	go func() {
+	goman.New(func() {
 		originBuffer := bytePool32k.Get()
 		defer func() {
 			bytePool32k.Put(originBuffer)
@@ -134,7 +135,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 				break
 			}
 		}
-	}()
+	})
 
 	// 从客户端读取
 	clientBuffer := bytePool32k.Get()

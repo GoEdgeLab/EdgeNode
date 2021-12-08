@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -85,6 +86,25 @@ func main() {
 						}
 					}
 				}
+			}
+		}
+	})
+	app.On("goman", func() {
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{Code: "goman"})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			instances, ok := reply.Params["result"]
+			if ok {
+				instancesJSON, err := json.MarshalIndent(instances, "", "  ")
+				if err != nil {
+					fmt.Println("[ERROR]" + err.Error())
+				} else {
+					fmt.Println(string(instancesJSON))
+				}
+			} else {
+				fmt.Println("no instances yet.")
 			}
 		}
 	})
