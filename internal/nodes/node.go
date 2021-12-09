@@ -32,6 +32,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
@@ -49,6 +50,8 @@ type Node struct {
 	isLoaded bool
 	sock     *gosock.Sock
 	locker   sync.Mutex
+
+	timezone string
 }
 
 func NewNode() *Node {
@@ -149,6 +152,7 @@ func (this *Node) Start() {
 		}
 	}
 	sharedNodeConfig = nodeConfig
+	this.onReload(nodeConfig)
 
 	// 发送事件
 	events.Notify(events.EventLoaded)
@@ -400,13 +404,6 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		}
 	}
 
-	// max cpu
-	if nodeConfig.MaxCPU > 0 && nodeConfig.MaxCPU < int32(runtime.NumCPU()) {
-		runtime.GOMAXPROCS(int(nodeConfig.MaxCPU))
-	} else {
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
-
 	// 刷新配置
 	if this.isLoaded {
 		remotelogs.Println("NODE", "reloading config ...")
@@ -426,6 +423,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 	sharedWAFManager.UpdatePolicies(nodeConfig.FindAllFirewallPolicies())
 	iplibrary.SharedActionManager.UpdateActions(nodeConfig.FirewallActions)
 	sharedNodeConfig = nodeConfig
+	this.onReload(nodeConfig)
 
 	metrics.SharedManager.Update(nodeConfig.MetricItems)
 
@@ -634,4 +632,40 @@ func (this *Node) listenSock() error {
 	})
 
 	return nil
+}
+
+// 重载配置调用
+func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
+	// max cpu
+	if config.MaxCPU > 0 && config.MaxCPU < int32(runtime.NumCPU()) {
+		runtime.GOMAXPROCS(int(config.MaxCPU))
+	} else {
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+
+	// max threads
+	if config.MaxThreads > 0 {
+		debug.SetMaxThreads(config.MaxThreads)
+		remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(config.MaxThreads)+"'")
+	} else {
+		debug.SetMaxThreads(nodeconfigs.DefaultMaxThreads)
+	}
+
+	// timezone
+	var timeZone = config.TimeZone
+	if len(timeZone) == 0 {
+		timeZone = "Asia/Shanghai"
+	}
+
+	if this.timezone != timeZone {
+		location, err := time.LoadLocation(timeZone)
+		if err != nil {
+			remotelogs.Error("NODE", "[TIMEZONE]change time zone failed: "+err.Error())
+			return
+		}
+
+		remotelogs.Println("NODE", "[TIMEZONE]change time zone to '"+timeZone+"'")
+		time.Local = location
+		this.timezone = timeZone
+	}
 }
