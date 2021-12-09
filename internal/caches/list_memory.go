@@ -1,6 +1,7 @@
 package caches
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/logs"
 	"strconv"
 	"strings"
@@ -15,7 +16,7 @@ type MemoryList struct {
 
 	itemMaps map[string]map[string]*Item // prefix => { hash => item }
 
-	weekItemMaps map[int32]map[string]bool // week => { hash => true }
+	weekItemMaps map[int32]map[string]zero.Zero // week => { hash => Zero }
 	minWeek      int32
 
 	prefixes []string
@@ -29,7 +30,7 @@ type MemoryList struct {
 func NewMemoryList() ListInterface {
 	return &MemoryList{
 		itemMaps:     map[string]map[string]*Item{},
-		weekItemMaps: map[int32]map[string]bool{},
+		weekItemMaps: map[int32]map[string]zero.Zero{},
 		minWeek:      currentWeek(),
 	}
 }
@@ -52,7 +53,7 @@ func (this *MemoryList) Reset() error {
 	for key := range this.itemMaps {
 		this.itemMaps[key] = map[string]*Item{}
 	}
-	this.weekItemMaps = map[int32]map[string]bool{}
+	this.weekItemMaps = map[int32]map[string]zero.Zero{}
 	this.locker.Unlock()
 
 	atomic.StoreInt64(&this.count, 0)
@@ -103,9 +104,9 @@ func (this *MemoryList) Add(hash string, item *Item) error {
 	// week map
 	wm, ok := this.weekItemMaps[item.Week]
 	if ok {
-		wm[hash] = true
+		wm[hash] = zero.New()
 	} else {
-		this.weekItemMaps[item.Week] = map[string]bool{hash: true}
+		this.weekItemMaps[item.Week] = map[string]zero.Zero{hash: zero.New()}
 	}
 
 	this.locker.Unlock()
@@ -381,9 +382,9 @@ func (this *MemoryList) IncreaseHit(hash string) error {
 			}
 			wm, ok = this.weekItemMaps[week]
 			if ok {
-				wm[hash] = true
+				wm[hash] = zero.New()
 			} else {
-				this.weekItemMaps[week] = map[string]bool{hash: true}
+				this.weekItemMaps[week] = map[string]zero.Zero{hash: zero.New()}
 			}
 		}
 

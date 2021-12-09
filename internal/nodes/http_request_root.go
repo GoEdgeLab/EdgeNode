@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
@@ -17,23 +18,23 @@ import (
 )
 
 // 文本mime-type列表
-var textMimeMap = map[string]bool{
-	"application/atom+xml":                true,
-	"application/javascript":              true,
-	"application/x-javascript":            true,
-	"application/json":                    true,
-	"application/rss+xml":                 true,
-	"application/x-web-app-manifest+json": true,
-	"application/xhtml+xml":               true,
-	"application/xml":                     true,
-	"image/svg+xml":                       true,
-	"text/css":                            true,
-	"text/plain":                          true,
-	"text/javascript":                     true,
-	"text/xml":                            true,
-	"text/html":                           true,
-	"text/xhtml":                          true,
-	"text/sgml":                           true,
+var textMimeMap = map[string]zero.Zero{
+	"application/atom+xml":                {},
+	"application/javascript":              {},
+	"application/x-javascript":            {},
+	"application/json":                    {},
+	"application/rss+xml":                 {},
+	"application/x-web-app-manifest+json": {},
+	"application/xhtml+xml":               {},
+	"application/xml":                     {},
+	"image/svg+xml":                       {},
+	"text/css":                            {},
+	"text/plain":                          {},
+	"text/javascript":                     {},
+	"text/xml":                            {},
+	"text/html":                           {},
+	"text/xhtml":                          {},
+	"text/sgml":                           {},
 }
 
 // 调用本地静态资源

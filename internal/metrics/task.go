@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
@@ -52,8 +53,8 @@ type Task struct {
 	selectTopStmt           *sql.Stmt
 	sumStmt                 *sql.Stmt
 
-	serverIdMap       map[int64]bool  // 所有的服务Ids
-	timeMap           map[string]bool // time => bool
+	serverIdMap       map[int64]zero.Zero  // 所有的服务Ids
+	timeMap           map[string]zero.Zero // time => bool
 	serverIdMapLocker sync.Mutex
 
 	statsMap    map[string]*Stat
@@ -65,8 +66,8 @@ type Task struct {
 func NewTask(item *serverconfigs.MetricItemConfig) *Task {
 	return &Task{
 		item:        item,
-		serverIdMap: map[int64]bool{},
-		timeMap:     map[string]bool{},
+		serverIdMap: map[int64]zero.Zero{},
+		timeMap:     map[string]zero.Zero{},
 		statsMap:    map[string]*Stat{},
 	}
 }
@@ -294,8 +295,8 @@ func (this *Task) InsertStat(stat *Stat) error {
 	}
 
 	this.serverIdMapLocker.Lock()
-	this.serverIdMap[stat.ServerId] = true
-	this.timeMap[stat.Time] = true
+	this.serverIdMap[stat.ServerId] = zero.New()
+	this.timeMap[stat.Time] = zero.New()
 	this.serverIdMapLocker.Unlock()
 
 	keyData, err := json.Marshal(stat.Keys)
@@ -347,14 +348,14 @@ func (this *Task) Upload(pauseDuration time.Duration) error {
 	for serverId := range this.serverIdMap {
 		serverIds = append(serverIds, serverId)
 	}
-	this.serverIdMap = map[int64]bool{} // 清空数据
+	this.serverIdMap = map[int64]zero.Zero{} // 清空数据
 
 	// 时间
 	var times = []string{}
 	for t := range this.timeMap {
 		times = append(times, t)
 	}
-	this.timeMap = map[string]bool{} // 清空数据
+	this.timeMap = map[string]zero.Zero{} // 清空数据
 
 	this.serverIdMapLocker.Unlock()
 
@@ -471,7 +472,7 @@ func (this *Task) loadServerIdMap() error {
 				return err
 			}
 			this.serverIdMapLocker.Lock()
-			this.serverIdMap[serverId] = true
+			this.serverIdMap[serverId] = zero.New()
 			this.serverIdMapLocker.Unlock()
 		}
 	}
@@ -492,7 +493,7 @@ func (this *Task) loadServerIdMap() error {
 				return err
 			}
 			this.serverIdMapLocker.Lock()
-			this.timeMap[timeString] = true
+			this.timeMap[timeString] = zero.New()
 			this.serverIdMapLocker.Unlock()
 		}
 	}

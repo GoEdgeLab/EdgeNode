@@ -1,13 +1,14 @@
 package expires
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"sync"
 )
 
-type ItemMap = map[int64]bool
+type ItemMap = map[int64]zero.Zero
 
 type List struct {
-	expireMap map[int64]ItemMap // expires timestamp => map[id]bool
+	expireMap map[int64]ItemMap // expires timestamp => map[id]ItemMap
 	itemsMap  map[int64]int64   // itemId => timestamp
 
 	locker sync.Mutex
@@ -38,10 +39,10 @@ func (this *List) Add(itemId int64, expiresAt int64) {
 
 	expireItemMap, ok := this.expireMap[expiresAt]
 	if ok {
-		expireItemMap[itemId] = true
+		expireItemMap[itemId] = zero.New()
 	} else {
 		expireItemMap = ItemMap{
-			itemId: true,
+			itemId: zero.New(),
 		}
 		this.expireMap[expiresAt] = expireItemMap
 	}

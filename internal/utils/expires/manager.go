@@ -4,6 +4,7 @@ package expires
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"sync"
 	"time"
 )
@@ -11,14 +12,14 @@ import (
 var SharedManager = NewManager()
 
 type Manager struct {
-	listMap map[*List]bool
+	listMap map[*List]zero.Zero
 	locker  sync.Mutex
 	ticker  *time.Ticker
 }
 
 func NewManager() *Manager {
 	var manager = &Manager{
-		listMap: map[*List]bool{},
+		listMap: map[*List]zero.Zero{},
 		ticker:  time.NewTicker(1 * time.Second),
 	}
 	goman.New(func() {
@@ -60,7 +61,7 @@ func (this *Manager) init() {
 
 func (this *Manager) Add(list *List) {
 	this.locker.Lock()
-	this.listMap[list] = true
+	this.listMap[list] = zero.New()
 	this.locker.Unlock()
 }
 

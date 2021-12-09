@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"sync"
 	"time"
 )
@@ -8,7 +9,7 @@ import (
 // Ticker 类似于time.Ticker，但能够真正地停止
 type Ticker struct {
 	raw  *time.Ticker
-	done chan bool
+	done chan zero.Zero
 	once sync.Once
 
 	C <-chan time.Time
@@ -20,7 +21,7 @@ func NewTicker(duration time.Duration) *Ticker {
 	return &Ticker{
 		raw:  raw,
 		C:    raw.C,
-		done: make(chan bool, 1),
+		done: make(chan zero.Zero, 1),
 	}
 }
 
@@ -38,6 +39,6 @@ func (this *Ticker) Next() bool {
 func (this *Ticker) Stop() {
 	this.once.Do(func() {
 		this.raw.Stop()
-		this.done <- true
+		this.done <- zero.New()
 	})
 }

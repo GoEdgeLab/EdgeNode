@@ -2,6 +2,7 @@ package nodes
 
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/assert"
 	"runtime"
 	"sync"
@@ -72,7 +73,7 @@ func TestHTTPRequest_httpRequestNextId(t *testing.T) {
 }
 
 func TestHTTPRequest_httpRequestNextId_Concurrent(t *testing.T) {
-	var m = map[string]bool{}
+	var m = map[string]zero.Zero{}
 	var locker = sync.Mutex{}
 
 	var count = 4000
@@ -94,7 +95,7 @@ func TestHTTPRequest_httpRequestNextId_Concurrent(t *testing.T) {
 				countDuplicated++
 			}
 
-			m[requestId] = true
+			m[requestId] = zero.New()
 			locker.Unlock()
 		}()
 	}

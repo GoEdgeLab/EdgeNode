@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
@@ -44,7 +45,7 @@ type MemoryStorage struct {
 	purgeTicker *utils.Ticker
 
 	totalSize     int64
-	writingKeyMap map[string]bool // key => bool
+	writingKeyMap map[string]zero.Zero // key => bool
 }
 
 func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage StorageInterface) *MemoryStorage {
@@ -63,7 +64,7 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage Stora
 		locker:        &sync.RWMutex{},
 		valuesMap:     map[uint64]*MemoryItem{},
 		dirtyChan:     dirtyChan,
-		writingKeyMap: map[string]bool{},
+		writingKeyMap: map[string]zero.Zero{},
 	}
 }
 
@@ -158,7 +159,7 @@ func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, i
 	if ok {
 		return nil, ErrFileIsWriting
 	}
-	this.writingKeyMap[key] = true
+	this.writingKeyMap[key] = zero.New()
 	defer func() {
 		if !isWriting {
 			delete(this.writingKeyMap, key)
@@ -255,7 +256,7 @@ func (this *MemoryStorage) Stop() {
 	this.locker.Lock()
 
 	this.valuesMap = map[uint64]*MemoryItem{}
-	this.writingKeyMap = map[string]bool{}
+	this.writingKeyMap = map[string]zero.Zero{}
 	_ = this.list.Reset()
 	if this.purgeTicker != nil {
 		this.purgeTicker.Stop()

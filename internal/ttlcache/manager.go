@@ -4,6 +4,7 @@ package ttlcache
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"sync"
 	"time"
 )
@@ -14,13 +15,13 @@ type Manager struct {
 	ticker *time.Ticker
 	locker sync.Mutex
 
-	cacheMap map[*Cache]bool
+	cacheMap map[*Cache]zero.Zero
 }
 
 func NewManager() *Manager {
 	var manager = &Manager{
 		ticker:   time.NewTicker(3 * time.Second),
-		cacheMap: map[*Cache]bool{},
+		cacheMap: map[*Cache]zero.Zero{},
 	}
 
 	goman.New(func() {
@@ -42,7 +43,7 @@ func (this *Manager) init() {
 
 func (this *Manager) Add(cache *Cache) {
 	this.locker.Lock()
-	this.cacheMap[cache] = true
+	this.cacheMap[cache] = zero.New()
 	this.locker.Unlock()
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"sync"
 	"time"
@@ -164,7 +165,7 @@ func (this *IPListManager) FindList(listId int64) *IPList {
 
 func (this *IPListManager) processItems(items []*pb.IPItem, shouldExecute bool) {
 	this.locker.Lock()
-	var changedLists = map[*IPList]bool{}
+	var changedLists = map[*IPList]zero.Zero{}
 	for _, item := range items {
 		var list *IPList
 		// TODO 实现节点专有List
@@ -190,7 +191,7 @@ func (this *IPListManager) processItems(items []*pb.IPItem, shouldExecute bool) 
 			this.listMap[item.ListId] = list
 		}
 
-		changedLists[list] = true
+		changedLists[list] = zero.New()
 
 		if item.IsDeleted {
 			list.Delete(item.Id)

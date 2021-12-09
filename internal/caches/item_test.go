@@ -3,6 +3,7 @@
 package caches
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	"runtime"
@@ -59,15 +60,15 @@ func TestItems_Memory2(t *testing.T) {
 	runtime.ReadMemStats(stat)
 	var memory1 = stat.HeapInuse
 
-	var items = map[int32]map[string]bool{}
+	var items = map[int32]map[string]zero.Zero{}
 	for i := 0; i < 10_000_000; i++ {
 		var week = int32((time.Now().Unix() - int64(86400*rands.Int(0, 300))) / (86400 * 7))
 		m, ok := items[week]
 		if !ok {
-			m = map[string]bool{}
+			m = map[string]zero.Zero{}
 			items[week] = m
 		}
-		m[types.String(int64(i)*1_000_000)] = true
+		m[types.String(int64(i)*1_000_000)] = zero.New()
 	}
 
 	runtime.ReadMemStats(stat)

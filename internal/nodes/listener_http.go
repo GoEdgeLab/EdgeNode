@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"golang.org/x/net/http2"
 	"io"
@@ -18,7 +19,7 @@ import (
 )
 
 var httpErrorLogger = log.New(io.Discard, "", 0)
-var metricNewConnMap = map[string]bool{} // remoteAddr => bool
+var metricNewConnMap = map[string]zero.Zero{} // remoteAddr => bool
 var metricNewConnMapLocker = &sync.Mutex{}
 
 type contextKey struct {
@@ -56,7 +57,7 @@ func (this *HTTPListener) Serve() error {
 				// 为指标存储连接信息
 				if sharedNodeConfig.HasHTTPConnectionMetrics() {
 					metricNewConnMapLocker.Lock()
-					metricNewConnMap[conn.RemoteAddr().String()] = true
+					metricNewConnMap[conn.RemoteAddr().String()] = zero.New()
 					metricNewConnMapLocker.Unlock()
 				}
 			case http.StateClosed:

@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
@@ -56,7 +57,7 @@ type FileStorage struct {
 	totalSize     int64
 
 	list          ListInterface
-	writingKeyMap map[string]bool // key => bool
+	writingKeyMap map[string]zero.Zero // key => bool
 	locker        sync.RWMutex
 	purgeTicker   *utils.Ticker
 
@@ -69,7 +70,7 @@ type FileStorage struct {
 func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
 	return &FileStorage{
 		policy:        policy,
-		writingKeyMap: map[string]bool{},
+		writingKeyMap: map[string]zero.Zero{},
 		hotMap:        map[string]*HotItem{},
 		lastHotSize:   -1,
 	}
@@ -314,7 +315,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 		return nil, ErrFileIsWriting
 	}
 	this.locker.Lock()
-	this.writingKeyMap[key] = true
+	this.writingKeyMap[key] = zero.New()
 	this.locker.Unlock()
 	defer func() {
 		if !isWriting {
