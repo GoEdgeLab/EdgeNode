@@ -8,8 +8,10 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
+	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
 	"github.com/iwind/TeaGo/maps"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -44,18 +46,22 @@ func init() {
 type ClientConn struct {
 	rawConn  net.Conn
 	isClosed bool
+
+	once    sync.Once
+	limiter *ratelimit.Counter
 }
 
-func NewClientConn(conn net.Conn, quickClose bool) net.Conn {
+func NewClientConn(conn net.Conn, quickClose bool, limiter *ratelimit.Counter) net.Conn {
 	if quickClose {
+		// TCP
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
 			// TODO 可以设置此值
-			_ = tcpConn.SetLinger(3)
+			_ = tcpConn.SetLinger(nodeconfigs.DefaultTCPLinger)
 		}
 	}
 
-	return &ClientConn{rawConn: conn}
+	return &ClientConn{rawConn: conn, limiter: limiter}
 }
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
@@ -76,6 +82,11 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 func (this *ClientConn) Close() error {
 	this.isClosed = true
+	this.once.Do(func() {
+		if this.limiter != nil {
+			this.limiter.Release()
+		}
+	})
 	return this.rawConn.Close()
 }
 

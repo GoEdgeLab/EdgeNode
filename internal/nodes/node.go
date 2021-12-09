@@ -14,6 +14,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
+	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
@@ -51,12 +52,15 @@ type Node struct {
 	sock     *gosock.Sock
 	locker   sync.Mutex
 
-	timezone string
+	maxCPU     int32
+	maxThreads int
+	timezone   string
 }
 
 func NewNode() *Node {
 	return &Node{
-		sock: gosock.NewTmpSock(teaconst.ProcessName),
+		sock:       gosock.NewTmpSock(teaconst.ProcessName),
+		maxThreads: -1,
 	}
 }
 
@@ -637,18 +641,39 @@ func (this *Node) listenSock() error {
 // 重载配置调用
 func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 	// max cpu
-	if config.MaxCPU > 0 && config.MaxCPU < int32(runtime.NumCPU()) {
-		runtime.GOMAXPROCS(int(config.MaxCPU))
-	} else {
-		runtime.GOMAXPROCS(runtime.NumCPU())
+	if config.MaxCPU != this.maxCPU {
+		if config.MaxCPU > 0 && config.MaxCPU < int32(runtime.NumCPU()) {
+			runtime.GOMAXPROCS(int(config.MaxCPU))
+			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(config.MaxCPU)+"'")
+		} else {
+			runtime.GOMAXPROCS(runtime.NumCPU())
+			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(runtime.NumCPU())+"'")
+		}
+
+		this.maxCPU = config.MaxCPU
 	}
 
 	// max threads
-	if config.MaxThreads > 0 {
-		debug.SetMaxThreads(config.MaxThreads)
-		remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(config.MaxThreads)+"'")
-	} else {
-		debug.SetMaxThreads(nodeconfigs.DefaultMaxThreads)
+	if config.MaxThreads != this.maxThreads {
+		if config.MaxThreads > 0 {
+			debug.SetMaxThreads(config.MaxThreads)
+			remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(config.MaxThreads)+"'")
+		} else {
+			debug.SetMaxThreads(nodeconfigs.DefaultMaxThreads)
+			remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(nodeconfigs.DefaultMaxThreads)+"'")
+		}
+		this.maxThreads = config.MaxThreads
+	}
+
+	// max tcp connections
+	if config.TCPMaxConnections <= 0 {
+		config.TCPMaxConnections = nodeconfigs.DefaultTCPMaxConnections
+	}
+	if config.TCPMaxConnections != sharedConnectionsLimiter.Count() {
+		remotelogs.Println("NODE", "[TCP]changed tcp max connections to '"+types.String(config.TCPMaxConnections)+"'")
+
+		sharedConnectionsLimiter.Close()
+		sharedConnectionsLimiter = ratelimit.NewCounter(config.TCPMaxConnections)
 	}
 
 	// timezone

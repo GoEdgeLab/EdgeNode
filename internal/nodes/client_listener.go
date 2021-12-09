@@ -3,11 +3,15 @@
 package nodes
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
+	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"net"
 )
+
+var sharedConnectionsLimiter = ratelimit.NewCounter(nodeconfigs.DefaultTCPMaxConnections)
 
 // ClientListener 客户端网络监听
 type ClientListener struct {
@@ -23,10 +27,21 @@ func NewClientListener(listener net.Listener, quickClose bool) net.Listener {
 }
 
 func (this *ClientListener) Accept() (net.Conn, error) {
+	// 限制并发连接数
+	var isOk = false
+	var limiter = sharedConnectionsLimiter
+	limiter.Ack()
+	defer func() {
+		if !isOk {
+			limiter.Release()
+		}
+	}()
+
 	conn, err := this.rawListener.Accept()
 	if err != nil {
 		return nil, err
 	}
+
 	// 是否在WAF名单中
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err == nil {
@@ -42,7 +57,8 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 		}
 	}
 
-	return NewClientConn(conn, this.quickClose), nil
+	isOk = true
+	return NewClientConn(conn, this.quickClose, limiter), nil
 }
 
 func (this *ClientListener) Close() error {

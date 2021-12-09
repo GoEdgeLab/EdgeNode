@@ -19,12 +19,9 @@ require (
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20210722083328-12b2d66abec3
 	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/lionsoul2014/ip2region v2.2.0-release+incompatible
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/miekg/dns v1.1.43
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/mssola/user_agent v0.5.2
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/shirou/gopsutil v3.21.5+incompatible
