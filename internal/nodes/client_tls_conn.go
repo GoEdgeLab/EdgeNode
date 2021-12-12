@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
+// ClientTLSConn TLS连接封装
 type ClientTLSConn struct {
-	rawConn  *tls.Conn
-	isClosed bool
+	BaseClientConn
 }
 
 func NewClientTLSConn(conn *tls.Conn) net.Conn {
-	return &ClientTLSConn{rawConn: conn}
+	return &ClientTLSConn{BaseClientConn{rawConn: conn}}
 }
 
 func (this *ClientTLSConn) Read(b []byte) (n int, err error) {
@@ -29,6 +29,10 @@ func (this *ClientTLSConn) Write(b []byte) (n int, err error) {
 
 func (this *ClientTLSConn) Close() error {
 	this.isClosed = true
+
+	// 单个服务并发数限制
+	sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
+
 	return this.rawConn.Close()
 }
 
@@ -50,8 +54,4 @@ func (this *ClientTLSConn) SetReadDeadline(t time.Time) error {
 
 func (this *ClientTLSConn) SetWriteDeadline(t time.Time) error {
 	return this.rawConn.SetWriteDeadline(t)
-}
-
-func (this *ClientTLSConn) IsClosed() bool {
-	return this.isClosed
 }

@@ -5,63 +5,32 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
-	"github.com/iwind/TeaGo/maps"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// 发送监控流量
-func init() {
-	events.On(events.EventStart, func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		goman.New(func() {
-			for range ticker.C {
-				// 加入到数据队列中
-				if teaconst.InTrafficBytes > 0 {
-					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemTrafficIn, maps.Map{
-						"total": teaconst.InTrafficBytes,
-					})
-				}
-				if teaconst.OutTrafficBytes > 0 {
-					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemTrafficOut, maps.Map{
-						"total": teaconst.OutTrafficBytes,
-					})
-				}
-
-				// 重置数据
-				atomic.StoreUint64(&teaconst.InTrafficBytes, 0)
-				atomic.StoreUint64(&teaconst.OutTrafficBytes, 0)
-			}
-		})
-	})
-}
-
 // ClientConn 客户端连接
 type ClientConn struct {
-	rawConn  net.Conn
-	isClosed bool
+	once          sync.Once
+	globalLimiter *ratelimit.Counter
 
-	once    sync.Once
-	limiter *ratelimit.Counter
+	BaseClientConn
 }
 
-func NewClientConn(conn net.Conn, quickClose bool, limiter *ratelimit.Counter) net.Conn {
+func NewClientConn(conn net.Conn, quickClose bool, globalLimiter *ratelimit.Counter) net.Conn {
 	if quickClose {
 		// TCP
 		tcpConn, ok := conn.(*net.TCPConn)
 		if ok {
-			// TODO 可以设置此值
+			// TODO 可以在配置中设置此值
 			_ = tcpConn.SetLinger(nodeconfigs.DefaultTCPLinger)
 		}
 	}
 
-	return &ClientConn{rawConn: conn, limiter: limiter}
+	return &ClientConn{BaseClientConn: BaseClientConn{rawConn: conn}, globalLimiter: globalLimiter}
 }
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
@@ -82,11 +51,17 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 func (this *ClientConn) Close() error {
 	this.isClosed = true
+
+	// 全局并发数限制
 	this.once.Do(func() {
-		if this.limiter != nil {
-			this.limiter.Release()
+		if this.globalLimiter != nil {
+			this.globalLimiter.Release()
 		}
 	})
+
+	// 单个服务并发数限制
+	sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
+
 	return this.rawConn.Close()
 }
 
@@ -108,8 +83,4 @@ func (this *ClientConn) SetReadDeadline(t time.Time) error {
 
 func (this *ClientConn) SetWriteDeadline(t time.Time) error {
 	return this.rawConn.SetWriteDeadline(t)
-}
-
-func (this *ClientConn) IsClosed() bool {
-	return this.isClosed
 }

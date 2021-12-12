@@ -621,6 +621,15 @@ func (this *Node) listenSock() error {
 						"result": result,
 					},
 				})
+			case "conns":
+				ipConns, serverConns := sharedClientConnLimiter.Conns()
+
+				_ = cmd.Reply(&gosock.Command{
+					Params: map[string]interface{}{
+						"ipConns":     ipConns,
+						"serverConns": serverConns,
+					},
+				})
 			}
 		})
 

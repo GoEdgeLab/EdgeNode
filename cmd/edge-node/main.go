@@ -108,6 +108,20 @@ func main() {
 			}
 		}
 	})
+	app.On("conns", func() {
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{Code: "conns"})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			resultJSON, err := json.MarshalIndent(reply.Params, "", "  ")
+			if err != nil {
+				fmt.Println("[ERROR]" + err.Error())
+			} else {
+				fmt.Println(string(resultJSON))
+			}
+		}
+	})
 	app.Run(func() {
 		node := nodes.NewNode()
 		node.Start()

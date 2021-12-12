@@ -11,7 +11,7 @@ func isClientConnClosed(conn net.Conn) bool {
 	if conn == nil {
 		return true
 	}
-	clientConn, ok := conn.(ClientConnCloser)
+	clientConn, ok := conn.(ClientConnInterface)
 	if ok {
 		return clientConn.IsClosed()
 	}

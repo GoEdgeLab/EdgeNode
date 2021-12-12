@@ -76,22 +76,6 @@ func NewHTTPWriter(req *HTTPRequest, httpResponseWriter http.ResponseWriter) *HT
 	}
 }
 
-// Reset 重置
-func (this *HTTPWriter) Reset(httpResponseWriter http.ResponseWriter) {
-	this.writer = httpResponseWriter
-
-	this.compressionConfig = nil
-	this.compressionWriter = nil
-
-	this.statusCode = 0
-	this.sentBodyBytes = 0
-
-	this.bodyCopying = false
-	this.body = nil
-	this.compressionBodyBuffer = nil
-	this.compressionBodyWriter = nil
-}
-
 // SetCompression 设置内容压缩配置
 func (this *HTTPWriter) SetCompression(config *serverconfigs.HTTPCompressionConfig) {
 	this.compressionConfig = config
@@ -116,6 +100,14 @@ func (this *HTTPWriter) Prepare(size int64, status int) (delayHeaders bool) {
 	// 在WebP模式下，压缩暂不可用
 	if !this.webpIsEncoding {
 		this.PrepareCompression(size)
+	}
+
+	// 是否限速写入
+	if this.req.web != nil &&
+		this.req.web.RequestLimit != nil &&
+		this.req.web.RequestLimit.IsOn &&
+		this.req.web.RequestLimit.OutBandwidthPerConnBytes() > 0 {
+		this.writer = NewHTTPRateWriter(this.writer, this.req.web.RequestLimit.OutBandwidthPerConnBytes())
 	}
 
 	return

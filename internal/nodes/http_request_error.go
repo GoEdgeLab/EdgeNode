@@ -15,6 +15,16 @@ func (this *HTTPRequest) write404() {
 	_, _ = this.writer.Write([]byte("404 page not found: '" + this.requestFullURL() + "'" + " (Request Id: " + this.requestId + ")"))
 }
 
+func (this *HTTPRequest) writeCode(code int) {
+	if this.doPage(code) {
+		return
+	}
+
+	this.processResponseHeaders(code)
+	this.writer.WriteHeader(code)
+	_, _ = this.writer.Write([]byte(types.String(code) + " " + http.StatusText(code) + ": '" + this.requestFullURL() + "'" + " (Request Id: " + this.requestId + ")"))
+}
+
 func (this *HTTPRequest) write50x(err error, statusCode int) {
 	if err != nil {
 		this.addError(err)

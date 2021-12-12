@@ -207,6 +207,14 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
+	// 处理request limit
+	if this.web.RequestLimit != nil &&
+		this.web.RequestLimit.IsOn {
+		if this.doRequestLimit() {
+			return
+		}
+	}
+
 	// 处理requestBody
 	if this.RawReq.ContentLength > 0 &&
 		this.web.AccessLogRef != nil &&
@@ -439,6 +447,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// auth
 	if web.Auth != nil && (web.Auth.IsPrior || isTop) {
 		this.web.Auth = web.Auth
+	}
+
+	// request limit
+	if web.RequestLimit != nil && (web.RequestLimit.IsPrior || isTop) {
+		this.web.RequestLimit = web.RequestLimit
 	}
 
 	// 重写规则

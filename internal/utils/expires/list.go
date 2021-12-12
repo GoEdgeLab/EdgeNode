@@ -27,14 +27,19 @@ func NewList() *List {
 	return list
 }
 
+// Add 添加条目
+// 如果条目已经存在，则覆盖
 func (this *List) Add(itemId int64, expiresAt int64) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
 	// 是否已经存在
-	_, ok := this.itemsMap[itemId]
+	oldExpiresAt, ok := this.itemsMap[itemId]
 	if ok {
-		this.removeItem(itemId)
+		if oldExpiresAt == expiresAt {
+			return
+		}
+		delete(this.expireMap, oldExpiresAt)
 	}
 
 	expireItemMap, ok := this.expireMap[expiresAt]
@@ -68,8 +73,9 @@ func (this *List) GC(timestamp int64, callback func(itemId int64)) {
 	}
 }
 
-func (this *List) OnGC(callback func(itemId int64)) {
+func (this *List) OnGC(callback func(itemId int64)) *List {
 	this.gcCallback = callback
+	return this
 }
 
 func (this *List) removeItem(itemId int64) {
