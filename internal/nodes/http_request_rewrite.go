@@ -30,8 +30,10 @@ func (this *HTTPRequest) doRewrite() (shouldShop bool) {
 	// 跳转
 	if this.rewriteRule.Mode == serverconfigs.HTTPRewriteModeRedirect {
 		if this.rewriteRule.RedirectStatus > 0 {
+			this.processResponseHeaders(this.rewriteRule.RedirectStatus)
 			http.Redirect(this.writer, this.RawReq, this.rewriteReplace, this.rewriteRule.RedirectStatus)
 		} else {
+			this.processResponseHeaders(http.StatusTemporaryRedirect)
 			http.Redirect(this.writer, this.RawReq, this.rewriteReplace, http.StatusTemporaryRedirect)
 		}
 		return true
