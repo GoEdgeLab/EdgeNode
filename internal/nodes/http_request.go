@@ -522,6 +522,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 				continue
 			}
 			if varMapping, isMatched := location.Match(rawPath, this.Format); isMatched {
+				// 检查专属域名
+				if len(location.Domains) > 0 && !configutils.MatchDomains(location.Domains, this.Host) {
+					continue
+				}
+
 				if len(varMapping) > 0 {
 					this.addVarMapping(varMapping)
 				}
