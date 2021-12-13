@@ -79,7 +79,7 @@ func Error(tag string, description string) {
 
 	// 忽略RPC连接错误
 	var level = "error"
-	if strings.Contains(description, "code = Unavailable desc = connection closed") {
+	if strings.Contains(description, "code = Unavailable desc") {
 		level = "warning"
 	}
 
