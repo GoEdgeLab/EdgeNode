@@ -8,7 +8,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
-	"golang.org/x/net/http2"
 )
 
 type BaseListener struct {
@@ -35,48 +34,21 @@ func (this *BaseListener) CountActiveListeners() int {
 func (this *BaseListener) buildTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: nil,
-		GetConfigForClient: func(info *tls.ClientHelloInfo) (config *tls.Config, e error) {
-			ssl, _, err := this.matchSSL(info.ServerName)
+		GetConfigForClient: func(configInfo *tls.ClientHelloInfo) (config *tls.Config, e error) {
+			ssl, _, err := this.matchSSL(configInfo.ServerName)
 			if err != nil {
 				return nil, err
 			}
 
-			cipherSuites := ssl.TLSCipherSuites()
-			if !ssl.CipherSuitesIsOn || len(cipherSuites) == 0 {
-				cipherSuites = nil
-			}
-
-			nextProto := []string{}
-			if ssl.HTTP2Enabled {
-				nextProto = []string{http2.NextProtoTLS}
-			}
-			return &tls.Config{
-				Certificates: nil,
-				MinVersion:   ssl.TLSMinVersion(),
-				CipherSuites: cipherSuites,
-				GetCertificate: func(info *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-					_, cert, err := this.matchSSL(info.ServerName)
-					if err != nil {
-						return nil, err
-					}
-					if cert == nil {
-						return nil, errors.New("no ssl certs found for '" + info.ServerName + "'")
-					}
-					return cert, nil
-				},
-				ClientAuth: sslconfigs.GoSSLClientAuthType(ssl.ClientAuthType),
-				ClientCAs:  ssl.CAPool(),
-
-				NextProtos: nextProto,
-			}, nil
+			return ssl.TLSConfig(), nil
 		},
-		GetCertificate: func(info *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-			_, cert, err := this.matchSSL(info.ServerName)
+		GetCertificate: func(certInfo *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
+			_, cert, err := this.matchSSL(certInfo.ServerName)
 			if err != nil {
 				return nil, err
 			}
 			if cert == nil {
-				return nil, errors.New("no ssl certs found for '" + info.ServerName + "'")
+				return nil, errors.New("no ssl certs found for '" + certInfo.ServerName + "'")
 			}
 			return cert, nil
 		},
