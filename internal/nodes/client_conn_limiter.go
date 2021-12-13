@@ -35,7 +35,7 @@ func NewClientConnLimiter() *ClientConnLimiter {
 // Add 添加新连接
 // 返回值为true的时候表示允许添加；否则表示不允许添加
 func (this *ClientConnLimiter) Add(rawRemoteAddr string, serverId int64, remoteAddr string, maxConnsPerServer int, maxConnsPerIP int) bool {
-	if maxConnsPerServer <= 0 || maxConnsPerIP <= 0 || len(remoteAddr) == 0 || serverId <= 0 {
+	if (maxConnsPerServer <= 0 && maxConnsPerIP <= 0) || len(remoteAddr) == 0 || serverId <= 0 {
 		return true
 	}
 
