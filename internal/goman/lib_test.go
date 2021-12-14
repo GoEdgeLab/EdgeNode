@@ -19,3 +19,10 @@ func TestNew(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 }
+
+func TestNewWithArgs(t *testing.T) {
+	NewWithArgs(func(args ...interface{}) {
+		t.Log(args[0], args[1])
+	}, 1, 2)
+	time.Sleep(1 * time.Second)
+}
