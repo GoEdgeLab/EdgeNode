@@ -6,6 +6,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -127,6 +128,15 @@ func httpRequestGenBoundary() string {
 		panic(err)
 	}
 	return fmt.Sprintf("%x", buf[:])
+}
+
+// 判断状态是否为跳转
+func httpStatusIsRedirect(statusCode int) bool {
+	return statusCode == http.StatusPermanentRedirect ||
+		statusCode == http.StatusTemporaryRedirect ||
+		statusCode == http.StatusMovedPermanently ||
+		statusCode == http.StatusSeeOther ||
+		statusCode == http.StatusFound
 }
 
 // 生成请求ID

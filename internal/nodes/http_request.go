@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"io/ioutil"
@@ -1144,44 +1145,53 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 			}
 		}
 
-		// Add
-		for _, header := range this.web.RequestHeaderPolicy.AddHeaders {
-			if !header.IsOn {
-				continue
-			}
-			oldValues, _ := this.RawReq.Header[header.Name]
-			newHeaderValue := header.Value // 因为我们不能修改header，所以在这里使用新变量
-			if header.HasVariables() {
-				newHeaderValue = this.Format(header.Value)
-			}
-			oldValues = append(oldValues, newHeaderValue)
-			reqHeader[header.Name] = oldValues
-
-			// 支持修改Host
-			if header.Name == "Host" && len(header.Value) > 0 {
-				this.RawReq.Host = newHeaderValue
-			}
-		}
-
 		// Set
 		for _, header := range this.web.RequestHeaderPolicy.SetHeaders {
 			if !header.IsOn {
 				continue
 			}
-			newHeaderValue := header.Value // 因为我们不能修改header，所以在这里使用新变量
-			if header.HasVariables() {
-				newHeaderValue = this.Format(header.Value)
+
+			// 是否已删除
+			if this.web.ResponseHeaderPolicy.ContainsDeletedHeader(header.Name) {
+				continue
 			}
-			reqHeader[header.Name] = []string{newHeaderValue}
+
+			// 请求方法
+			if len(header.Methods) > 0 && !lists.ContainsString(header.Methods, this.RawReq.Method) {
+				continue
+			}
+
+			// 域名
+			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.Host) {
+				continue
+			}
+
+			var headerValue = header.Value
+			if header.ShouldReplace {
+				if len(headerValue) == 0 {
+					headerValue = reqHeader.Get(header.Name) // 原有值
+				} else if header.HasVariables() {
+					headerValue = this.Format(header.Value)
+				}
+
+				for _, v := range header.ReplaceValues {
+					headerValue = v.Replace(headerValue)
+				}
+			} else if header.HasVariables() {
+				headerValue = this.Format(header.Value)
+			}
 
 			// 支持修改Host
 			if header.Name == "Host" && len(header.Value) > 0 {
-				this.RawReq.Host = newHeaderValue
+				this.RawReq.Host = headerValue
+			} else {
+				if header.ShouldAppend {
+					reqHeader[header.Name] = append(reqHeader[header.Name], headerValue)
+				} else {
+					reqHeader[header.Name] = []string{headerValue}
+				}
 			}
 		}
-
-		// Replace
-		// TODO 需要实现
 	}
 }
 
@@ -1206,7 +1216,6 @@ func (this *HTTPRequest) processResponseHeaders(statusCode int) {
 
 	// 删除/添加/替换Header
 	// TODO 实现AddTrailers
-	// TODO 实现ReplaceHeaders
 	if this.web.ResponseHeaderPolicy != nil && this.web.ResponseHeaderPolicy.IsOn {
 		// 删除某些Header
 		for name := range responseHeader {
@@ -1215,44 +1224,58 @@ func (this *HTTPRequest) processResponseHeaders(statusCode int) {
 			}
 		}
 
-		// Add
-		for _, header := range this.web.ResponseHeaderPolicy.AddHeaders {
-			if !header.IsOn {
-				continue
-			}
-			if header.Match(statusCode) {
-				if this.web.ResponseHeaderPolicy.ContainsDeletedHeader(header.Name) {
-					continue
-				}
-				oldValues, _ := responseHeader[header.Name]
-				if header.HasVariables() {
-					oldValues = append(oldValues, this.Format(header.Value))
-				} else {
-					oldValues = append(oldValues, header.Value)
-				}
-				responseHeader[header.Name] = oldValues
-			}
-		}
-
 		// Set
 		for _, header := range this.web.ResponseHeaderPolicy.SetHeaders {
 			if !header.IsOn {
 				continue
 			}
-			if header.Match(statusCode) {
-				if this.web.ResponseHeaderPolicy.ContainsDeletedHeader(header.Name) {
-					continue
+
+			// 是否已删除
+			if this.web.ResponseHeaderPolicy.ContainsDeletedHeader(header.Name) {
+				continue
+			}
+
+			// 状态码
+			if header.Status != nil && !header.Status.Match(statusCode) {
+				continue
+			}
+
+			// 请求方法
+			if len(header.Methods) > 0 && !lists.ContainsString(header.Methods, this.RawReq.Method) {
+				continue
+			}
+
+			// 域名
+			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.Host) {
+				continue
+			}
+
+			// 是否为跳转
+			if header.DisableRedirect && httpStatusIsRedirect(statusCode) {
+				continue
+			}
+
+			var headerValue = header.Value
+			if header.ShouldReplace {
+				if len(headerValue) == 0 {
+					headerValue = responseHeader.Get(header.Name) // 原有值
+				} else if header.HasVariables() {
+					headerValue = this.Format(header.Value)
 				}
-				if header.HasVariables() {
-					responseHeader[header.Name] = []string{this.Format(header.Value)}
-				} else {
-					responseHeader[header.Name] = []string{header.Value}
+
+				for _, v := range header.ReplaceValues {
+					headerValue = v.Replace(headerValue)
 				}
+			} else if header.HasVariables() {
+				headerValue = this.Format(header.Value)
+			}
+
+			if header.ShouldAppend {
+				responseHeader[header.Name] = append(responseHeader[header.Name], headerValue)
+			} else {
+				responseHeader[header.Name] = []string{headerValue}
 			}
 		}
-
-		// Replace
-		// TODO
 	}
 
 	// HSTS
