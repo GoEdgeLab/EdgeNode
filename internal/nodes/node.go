@@ -170,8 +170,10 @@ func (this *Node) Start() {
 	})
 
 	// 统计
-	go stats.SharedTrafficStatManager.Start(func() *nodeconfigs.NodeConfig {
-		return sharedNodeConfig
+	goman.New(func() {
+		stats.SharedTrafficStatManager.Start(func() *nodeconfigs.NodeConfig {
+			return sharedNodeConfig
+		})
 	})
 	goman.New(func() {
 		stats.SharedHTTPRequestStatManager.Start()
@@ -618,6 +620,7 @@ func (this *Node) listenSock() error {
 
 				_ = cmd.Reply(&gosock.Command{
 					Params: map[string]interface{}{
+						"total":  runtime.NumGoroutine(),
 						"result": result,
 					},
 				})

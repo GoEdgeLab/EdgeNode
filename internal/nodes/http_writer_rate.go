@@ -88,3 +88,15 @@ func (this *HTTPRateWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err 
 	}
 	return
 }
+
+// Flush Flush
+func (this *HTTPRateWriter) Flush() {
+	if this.parentWriter == nil {
+		return
+	}
+	flusher, ok := this.parentWriter.(http.Flusher)
+	if ok {
+		flusher.Flush()
+		return
+	}
+}

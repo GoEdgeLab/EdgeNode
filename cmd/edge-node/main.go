@@ -95,16 +95,11 @@ func main() {
 		if err != nil {
 			fmt.Println("[ERROR]" + err.Error())
 		} else {
-			instances, ok := reply.Params["result"]
-			if ok {
-				instancesJSON, err := json.MarshalIndent(instances, "", "  ")
-				if err != nil {
-					fmt.Println("[ERROR]" + err.Error())
-				} else {
-					fmt.Println(string(instancesJSON))
-				}
+			instancesJSON, err := json.MarshalIndent(reply.Params, "", "  ")
+			if err != nil {
+				fmt.Println("[ERROR]" + err.Error())
 			} else {
-				fmt.Println("no instances yet.")
+				fmt.Println(string(instancesJSON))
 			}
 		}
 	})
