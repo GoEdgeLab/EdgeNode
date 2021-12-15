@@ -32,17 +32,28 @@ func TestHTTPAccessLogQueue_Push(t *testing.T) {
 
 	//bytes = []byte("真不错")
 
+	var accessLog = &pb.HTTPAccessLog{
+		ServerId:    23,
+		RequestId:   strconv.FormatInt(time.Now().Unix(), 10) + strconv.Itoa(requestId) + strconv.FormatInt(1, 10),
+		NodeId:      48,
+		Host:        "www.hello.com",
+		RequestURI:  string(utf8Bytes),
+		RequestPath: string(utf8Bytes),
+		Timestamp:   time.Now().Unix(),
+		Cookie:      map[string]string{"test": string(utf8Bytes)},
+
+		Header: map[string]*pb.Strings{
+			"test": {Values: []string{string(utf8Bytes)}},
+		},
+	}
+
+	new(HTTPAccessLogQueue).toValidUTF8(accessLog)
+
+	//	logs.PrintAsJSON(accessLog)
+
 	//t.Log(strings.ToValidUTF8(string(utf8Bytes), ""))
 	_, err = client.HTTPAccessLogRPC().CreateHTTPAccessLogs(client.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: []*pb.HTTPAccessLog{
-		{
-			ServerId:    23,
-			RequestId:   strconv.FormatInt(time.Now().Unix(), 10) + strconv.Itoa(requestId) + strconv.FormatInt(1, 10),
-			NodeId:      48,
-			Host:        "www.hello.com",
-			RequestURI:  string(utf8Bytes),
-			RequestPath: string(utf8Bytes),
-			Timestamp:   time.Now().Unix(),
-		},
+		accessLog,
 	}})
 	if err != nil {
 		// 这里只是为了重现错误

@@ -1,11 +1,11 @@
 package nodes
 
 import (
+	"bytes"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -108,12 +108,37 @@ Loop:
 }
 
 func (this *HTTPAccessLogQueue) toValidUTF8(accessLog *pb.HTTPAccessLog) {
-	var v = reflect.Indirect(reflect.ValueOf(accessLog))
-	var countFields = v.NumField()
-	for i := 0; i < countFields; i++ {
-		var field = v.Field(i)
-		if field.Kind() == reflect.String {
-			field.SetString(strings.ToValidUTF8(field.String(), ""))
+	accessLog.RemoteUser = this.toValidUTF8string(accessLog.RemoteUser)
+	accessLog.RequestURI = this.toValidUTF8string(accessLog.RequestURI)
+	accessLog.RequestPath = this.toValidUTF8string(accessLog.RequestPath)
+	accessLog.RequestFilename = this.toValidUTF8string(accessLog.RequestFilename)
+	accessLog.RequestBody = bytes.ToValidUTF8(accessLog.RequestBody, []byte{})
+
+	for _, v := range accessLog.SentHeader {
+		for index, s := range v.Values {
+			v.Values[index] = this.toValidUTF8string(s)
 		}
 	}
+
+	accessLog.Referer = this.toValidUTF8string(accessLog.Referer)
+	accessLog.UserAgent = this.toValidUTF8string(accessLog.UserAgent)
+	accessLog.Request = this.toValidUTF8string(accessLog.Request)
+	accessLog.ContentType = this.toValidUTF8string(accessLog.ContentType)
+
+	for k, c := range accessLog.Cookie {
+		accessLog.Cookie[k] = this.toValidUTF8string(c)
+	}
+
+	accessLog.Args = this.toValidUTF8string(accessLog.Args)
+	accessLog.QueryString = this.toValidUTF8string(accessLog.QueryString)
+
+	for _, v := range accessLog.Header {
+		for index, s := range v.Values {
+			v.Values[index] = this.toValidUTF8string(s)
+		}
+	}
+}
+
+func (this *HTTPAccessLogQueue) toValidUTF8string(v string) string {
+	return strings.ToValidUTF8(v, "")
 }
