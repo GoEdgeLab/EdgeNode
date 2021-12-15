@@ -140,15 +140,11 @@ func (this *APIStream) handleConnectedAPINode(message *pb.NodeStreamMessage) err
 		return errors.Wrap(err)
 	}
 
-	rpcClient, err := rpc.SharedRPC()
+	_, err = rpc.SharedRPC()
 	if err != nil {
 		return errors.Wrap(err)
 	}
 
-	_, err = rpcClient.NodeRPC().UpdateNodeConnectedAPINodes(rpcClient.Context(), &pb.UpdateNodeConnectedAPINodesRequest{ApiNodeIds: []int64{msg.APINodeId}})
-	if err != nil {
-		return errors.Wrap(err)
-	}
 	remotelogs.Println("API_STREAM", "connected to api node '"+strconv.FormatInt(msg.APINodeId, 10)+"'")
 
 	// 重新读取配置
