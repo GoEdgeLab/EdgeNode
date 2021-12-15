@@ -208,6 +208,9 @@ func (this *FileStorage) OpenReader(key string) (Reader, error) {
 	return this.openReader(key, true)
 }
 
+var cacheMap = map[string][]*os.File{}
+var cacheMapLocker = ysnc.
+
 func (this *FileStorage) openReader(key string, allowMemory bool) (Reader, error) {
 	// 先尝试内存缓存
 	if allowMemory && this.memoryStorage != nil {
