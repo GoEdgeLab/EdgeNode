@@ -18,6 +18,8 @@ import (
 
 // 读取缓存
 func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
+	this.cacheCanTryStale = false
+	
 	cachePolicy := this.Server.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
@@ -167,7 +169,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				// cache相关变量
 				this.varMapping["cache.status"] = "MISS"
 
-				if this.web.Cache.Stale != nil && this.web.Cache.Stale.IsOn {
+				if !useStale && this.web.Cache.Stale != nil && this.web.Cache.Stale.IsOn {
 					this.cacheCanTryStale = true
 				}
 				return

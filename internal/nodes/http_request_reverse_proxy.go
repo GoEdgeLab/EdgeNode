@@ -61,7 +61,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if origin.Addr == nil {
 		err := errors.New(this.requestFullURL() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
-		this.write50x(err, http.StatusBadGateway, false)
+		this.write50x(err, http.StatusBadGateway, true)
 		return
 	}
 	this.RawReq.URL.Scheme = origin.Addr.Protocol.Primary().Scheme()
