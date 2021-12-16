@@ -236,7 +236,7 @@ func (this *APIStream) handleReadCache(message *pb.NodeStreamMessage) error {
 		}()
 	}
 
-	reader, err := storage.OpenReader(msg.Key)
+	reader, err := storage.OpenReader(msg.Key, false)
 	if err != nil {
 		if err == caches.ErrNotFound {
 			this.replyFail(message.RequestId, "key not found")

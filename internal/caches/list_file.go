@@ -13,6 +13,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -104,6 +105,12 @@ func (this *FileList) Init() error {
 		return err
 	}
 
+	// 检查staleAt字段
+	err = this.checkStaleAtField()
+	if err != nil {
+		return err
+	}
+
 	// 读取总数量
 	row := this.db.QueryRow(`SELECT COUNT(*) FROM "` + this.itemsTableName + `"`)
 	if row.Err() != nil {
@@ -122,7 +129,7 @@ func (this *FileList) Init() error {
 		return err
 	}
 
-	this.insertStmt, err = this.db.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	this.insertStmt, err = this.db.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -142,7 +149,7 @@ func (this *FileList) Init() error {
 		return err
 	}
 
-	this.purgeStmt, err = this.db.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" WHERE expiredAt<=? LIMIT ?`)
+	this.purgeStmt, err = this.db.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" WHERE staleAt<=? LIMIT ?`)
 	if err != nil {
 		return err
 	}
@@ -182,7 +189,11 @@ func (this *FileList) Add(hash string, item *Item) error {
 		return nil
 	}
 
-	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.Host, item.ServerId, utils.UnixTime())
+	if item.StaleAt == 0 {
+		item.StaleAt = item.ExpiredAt
+	}
+
+	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime())
 	if err != nil {
 		return err
 	}
@@ -474,6 +485,8 @@ func (this *FileList) Close() error {
 // 初始化
 func (this *FileList) initTables(db *sql.DB, times int) error {
 	{
+		// expiredAt - 过期时间，用来判断有无过期
+		// staleAt - 陈旧最大时间，用来清理缓存
 		_, err := db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
@@ -482,6 +495,7 @@ func (this *FileList) initTables(db *sql.DB, times int) error {
   "bodySize" integer DEFAULT 0,
   "metaSize" integer DEFAULT 0,
   "expiredAt" integer DEFAULT 0,
+  "staleAt" integer DEFAULT 0,
   "createdAt" integer DEFAULT 0,
   "host" varchar(128),
   "serverId" integer
@@ -495,6 +509,11 @@ ON "` + this.itemsTableName + `" (
 CREATE INDEX IF NOT EXISTS "expiredAt"
 ON "` + this.itemsTableName + `" (
   "expiredAt" ASC
+);
+
+CREATE INDEX IF NOT EXISTS "staleAt"
+ON "` + this.itemsTableName + `" (
+  "staleAt" ASC
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "hash"
@@ -577,5 +596,28 @@ func (this *FileList) removeOldTables() error {
 		}
 
 	}
+	return nil
+}
+
+func (this *FileList) checkStaleAtField() error {
+	rows, err := this.db.Query(`SELECT staleAt FROM "` + this.itemsTableName + `"`)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such column: staleAt") { // 暂时没有更好的判断方法
+			_, err = this.db.Exec(`ALTER TABLE "` + this.itemsTableName + `" ADD COLUMN staleAt integer DEFAULT 0`)
+			if err != nil {
+				return err
+			}
+
+			_, err = this.db.Exec(`UPDATE "` + this.itemsTableName + `" SET staleAt=expiredAt`)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		_ = rows.Close()
+	}
+
 	return nil
 }

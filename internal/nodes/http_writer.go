@@ -1,3 +1,5 @@
+// Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
+
 package nodes
 
 import (
@@ -413,10 +415,12 @@ func (this *HTTPWriter) Close() {
 			if this.isOk {
 				err := this.cacheWriter.Close()
 				if err == nil {
+					var expiredAt = this.cacheWriter.ExpiredAt()
 					this.cacheStorage.AddToList(&caches.Item{
 						Type:       this.cacheWriter.ItemType(),
 						Key:        this.cacheWriter.Key(),
-						ExpiredAt:  this.cacheWriter.ExpiredAt(),
+						ExpiredAt:  expiredAt,
+						StaleAt:    expiredAt + int64(this.calculateStaleLife()),
 						HeaderSize: this.cacheWriter.HeaderSize(),
 						BodySize:   this.cacheWriter.BodySize(),
 						Host:       this.req.Host,
@@ -689,4 +693,33 @@ func (this *HTTPWriter) prepareCache(size int64) {
 			}
 		}
 	}
+}
+
+// 计算stale时长
+func (this *HTTPWriter) calculateStaleLife() int {
+	var staleLife = 600 // TODO 可以在缓存策略里设置此时间
+	var staleConfig = this.req.web.Cache.Stale
+	if staleConfig != nil && staleConfig.IsOn {
+		// 从Header中读取stale-if-error
+		var isDefinedInHeader = false
+		if staleConfig.SupportStaleIfErrorHeader {
+			var cacheControl = this.Header().Get("Cache-Control")
+			var pieces = strings.Split(cacheControl, ",")
+			for _, piece := range pieces {
+				var eqIndex = strings.Index(piece, "=")
+				if eqIndex > 0 && strings.TrimSpace(piece[:eqIndex]) == "stale-if-error" {
+					// 这里预示着如果stale-if-error=0，可以关闭stale功能
+					staleLife = types.Int(strings.TrimSpace(piece[eqIndex+1:]))
+					isDefinedInHeader = true
+					break
+				}
+			}
+		}
+
+		// 自定义
+		if !isDefinedInHeader && staleConfig.Life != nil {
+			staleLife = types.Int(staleConfig.Life.Duration().Seconds())
+		}
+	}
+	return staleLife
 }

@@ -69,11 +69,14 @@ type HTTPRequest struct {
 	rewriteRule          *serverconfigs.HTTPRewriteRule    // 匹配到的重写规则
 	rewriteReplace       string                            // 重写规则的目标
 	rewriteIsExternalURL bool                              // 重写目标是否为外部URL
-	cacheRef             *serverconfigs.HTTPCacheRef       // 缓存设置
-	cacheKey             string                            // 缓存使用的Key
-	isCached             bool                              // 是否已经被缓存
-	isAttack             bool                              // 是否是攻击请求
-	requestBodyData      []byte                            // 读取的Body内容
+
+	cacheRef         *serverconfigs.HTTPCacheRef // 缓存设置
+	cacheKey         string                      // 缓存使用的Key
+	isCached         bool                        // 是否已经被缓存
+	cacheCanTryStale bool                        // 是否可以尝试使用Stale缓存
+
+	isAttack        bool   // 是否是攻击请求
+	requestBodyData []byte // 读取的Body内容
 
 	// WAF相关
 	firewallPolicyId    int64
@@ -137,7 +140,7 @@ func (this *HTTPRequest) Do() {
 	// Web配置
 	err := this.configureWeb(this.Server.Web, true, 0)
 	if err != nil {
-		this.write50x(err, http.StatusInternalServerError)
+		this.write50x(err, http.StatusInternalServerError, false)
 		this.doEnd()
 		return
 	}
@@ -224,7 +227,7 @@ func (this *HTTPRequest) doBegin() {
 		var err error
 		this.requestBodyData, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, AccessLogMaxRequestBodySize))
 		if err != nil {
-			this.write50x(err, http.StatusBadGateway)
+			this.write50x(err, http.StatusBadGateway, false)
 			return
 		}
 		this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))
@@ -253,7 +256,7 @@ func (this *HTTPRequest) doBegin() {
 
 	// 缓存
 	if this.web.Cache != nil && this.web.Cache.IsOn {
-		if this.doCacheRead() {
+		if this.doCacheRead(false) {
 			return
 		}
 	}

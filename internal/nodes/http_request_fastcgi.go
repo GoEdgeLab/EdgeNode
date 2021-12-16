@@ -81,7 +81,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 
 	client, err := fcgi.SharedPool(fastcgi.Network(), fastcgi.RealAddress(), uint(poolSize)).Client()
 	if err != nil {
-		this.write50x(err, http.StatusInternalServerError)
+		this.write50x(err, http.StatusInternalServerError, false)
 		return
 	}
 
@@ -159,13 +159,13 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 
 	resp, stderr, err := client.Call(fcgiReq)
 	if err != nil {
-		this.write50x(err, http.StatusInternalServerError)
+		this.write50x(err, http.StatusInternalServerError, false)
 		return
 	}
 
 	if len(stderr) > 0 {
 		err := errors.New("Fastcgi Error: " + strings.TrimSpace(string(stderr)) + " script: " + maps.NewMap(params).GetString("SCRIPT_FILENAME"))
-		this.write50x(err, http.StatusInternalServerError)
+		this.write50x(err, http.StatusInternalServerError, false)
 		return
 	}
 

@@ -10,7 +10,7 @@ type StorageInterface interface {
 	Init() error
 
 	// OpenReader 读取缓存
-	OpenReader(key string) (Reader, error)
+	OpenReader(key string, useStale bool) (reader Reader, err error)
 
 	// OpenWriter 打开缓存写入器等待写入
 	OpenWriter(key string, expiredAt int64, status int) (Writer, error)

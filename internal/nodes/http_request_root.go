@@ -110,7 +110,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			}
 			return
 		} else {
-			this.write50x(err, http.StatusInternalServerError)
+			this.write50x(err, http.StatusInternalServerError, true)
 			logs.Error(err)
 			return true
 		}
@@ -139,7 +139,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 					}
 					return
 				} else {
-					this.write50x(err, http.StatusInternalServerError)
+					this.write50x(err, http.StatusInternalServerError, true)
 					logs.Error(err)
 					return true
 				}
@@ -284,7 +284,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 
 	reader, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
 	if err != nil {
-		this.write50x(err, http.StatusInternalServerError)
+		this.write50x(err, http.StatusInternalServerError, true)
 		return true
 	}
 

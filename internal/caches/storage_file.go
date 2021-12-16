@@ -204,20 +204,36 @@ func (this *FileStorage) Init() error {
 	return nil
 }
 
-func (this *FileStorage) OpenReader(key string) (Reader, error) {
-	return this.openReader(key, true)
+func (this *FileStorage) OpenReader(key string, useStale bool) (Reader, error) {
+	return this.openReader(key, true, useStale)
 }
 
-func (this *FileStorage) openReader(key string, allowMemory bool) (Reader, error) {
+func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool) (Reader, error) {
+	// 使用陈旧缓存的时候，我们认为是短暂的，只需要从文件里检查即可
+	if useStale {
+		allowMemory = false
+	}
+
 	// 先尝试内存缓存
 	if allowMemory && this.memoryStorage != nil {
-		reader, err := this.memoryStorage.OpenReader(key)
+		reader, err := this.memoryStorage.OpenReader(key, useStale)
 		if err == nil {
 			return reader, err
 		}
 	}
 
 	hash, path := this.keyPath(key)
+
+	// 检查文件记录是否已过期
+	if !useStale {
+		exists, err := this.list.Exist(hash)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, ErrNotFound
+		}
+	}
 
 	// TODO 尝试使用mmap加快读取速度
 	var isOk = false
@@ -234,15 +250,6 @@ func (this *FileStorage) openReader(key string, allowMemory bool) (Reader, error
 			_ = os.Remove(path)
 		}
 	}()
-
-	// 检查文件记录是否已过期
-	exists, err := this.list.Exist(hash)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrNotFound
-	}
 
 	reader := NewFileReader(fp)
 	if err != nil {
@@ -923,7 +930,7 @@ func (this *FileStorage) hotLoop() {
 	this.hotMap = map[string]*HotItem{}
 	this.hotMapLocker.Unlock()
 
-	// 取Top10
+	// 取Top10写入内存
 	if len(result) > 0 {
 		sort.Slice(result, func(i, j int) bool {
 			return result[i].Hits > result[j].Hits
@@ -937,7 +944,7 @@ func (this *FileStorage) hotLoop() {
 
 		var buf = make([]byte, 32*1024)
 		for _, item := range result[:size] {
-			reader, err := this.openReader(item.Key, false)
+			reader, err := this.openReader(item.Key, false, false)
 			if err != nil {
 				continue
 			}

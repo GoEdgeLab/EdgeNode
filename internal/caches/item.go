@@ -22,6 +22,7 @@ type Item struct {
 	Type       ItemType `json:"type"`
 	Key        string   `json:"key"`
 	ExpiredAt  int64    `json:"expiredAt"`
+	StaleAt    int64    `json:"staleAt"`
 	HeaderSize int64    `json:"headerSize"`
 	BodySize   int64    `json:"bodySize"`
 	MetaSize   int64    `json:"metaSize"`

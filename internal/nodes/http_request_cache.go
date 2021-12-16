@@ -17,7 +17,7 @@ import (
 )
 
 // 读取缓存
-func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
+func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	cachePolicy := this.Server.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
@@ -148,11 +148,6 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		return true
 	}
 
-	buf := bytePool32k.Get()
-	defer func() {
-		bytePool32k.Put(buf)
-	}()
-
 	var reader caches.Reader
 	var err error
 
@@ -161,16 +156,20 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 		this.web.WebP.IsOn &&
 		this.web.WebP.MatchRequest(filepath.Ext(this.requestPath()), this.Format) &&
 		this.web.WebP.MatchAccept(this.requestHeader("Accept")) {
-		reader, _ = storage.OpenReader(key + webpSuffix)
+		reader, _ = storage.OpenReader(key+webpSuffix, useStale)
 	}
 
 	// 检查正常的文件
 	if reader == nil {
-		reader, err = storage.OpenReader(key)
+		reader, err = storage.OpenReader(key, useStale)
 		if err != nil {
 			if err == caches.ErrNotFound {
 				// cache相关变量
 				this.varMapping["cache.status"] = "MISS"
+
+				if this.web.Cache.Stale != nil && this.web.Cache.Stale.IsOn {
+					this.cacheCanTryStale = true
+				}
 				return
 			}
 
@@ -186,6 +185,12 @@ func (this *HTTPRequest) doCacheRead() (shouldStop bool) {
 
 	this.varMapping["cache.status"] = "HIT"
 	this.logAttrs["cache.status"] = "HIT"
+
+	// 准备Buffer
+	buf := bytePool32k.Get()
+	defer func() {
+		bytePool32k.Put(buf)
+	}()
 
 	// 读取Header
 	headerBuf := []byte{}

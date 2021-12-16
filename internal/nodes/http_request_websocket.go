@@ -43,7 +43,7 @@ func (this *HTTPRequest) doWebsocket() {
 	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
 	originConn, err := OriginConnect(this.origin, this.RawReq.RemoteAddr)
 	if err != nil {
-		this.write50x(err, http.StatusBadGateway)
+		this.write50x(err, http.StatusBadGateway, false)
 		return
 	}
 	defer func() {
@@ -52,13 +52,13 @@ func (this *HTTPRequest) doWebsocket() {
 
 	err = this.RawReq.Write(originConn)
 	if err != nil {
-		this.write50x(err, http.StatusBadGateway)
+		this.write50x(err, http.StatusBadGateway, false)
 		return
 	}
 
 	clientConn, _, err := this.writer.Hijack()
 	if err != nil || clientConn == nil {
-		this.write50x(err, http.StatusInternalServerError)
+		this.write50x(err, http.StatusInternalServerError, false)
 		return
 	}
 	defer func() {
