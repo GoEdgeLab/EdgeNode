@@ -19,7 +19,7 @@ import (
 // 读取缓存
 func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	this.cacheCanTryStale = false
-	
+
 	cachePolicy := this.Server.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
@@ -185,8 +185,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		_ = reader.Close()
 	}()
 
-	this.varMapping["cache.status"] = "HIT"
-	this.logAttrs["cache.status"] = "HIT"
+	if useStale {
+		this.varMapping["cache.status"] = "STALE"
+		this.logAttrs["cache.status"] = "STALE"
+	} else {
+		this.varMapping["cache.status"] = "HIT"
+		this.logAttrs["cache.status"] = "HIT"
+	}
 
 	// 准备Buffer
 	buf := bytePool32k.Get()
@@ -227,7 +232,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	this.varMapping["cache.age"] = age
 
 	if addStatusHeader {
-		this.writer.Header().Set("X-Cache", "HIT, "+refType+", "+reader.TypeName())
+		if useStale {
+			this.writer.Header().Set("X-Cache", "STALE, "+refType+", "+reader.TypeName())
+		} else {
+			this.writer.Header().Set("X-Cache", "HIT, "+refType+", "+reader.TypeName())
+		}
 	}
 	if this.web.Cache.AddAgeHeader {
 		this.writer.Header().Set("Age", age)
