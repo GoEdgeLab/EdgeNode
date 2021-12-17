@@ -76,6 +76,9 @@ func (this *APIStream) loop() error {
 
 	nodeStream, err := rpcClient.NodeRPC().NodeStream(ctx)
 	if err != nil {
+		if this.isQuiting {
+			return nil
+		}
 		return errors.Wrap(err)
 	}
 	this.stream = nodeStream
