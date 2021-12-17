@@ -9,10 +9,10 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -255,8 +255,9 @@ func (this *FileList) CleanPrefix(prefix string) error {
 	}()
 
 	var count = int64(10000)
+	var staleLife = 600 // TODO 需要可以设置
 	for {
-		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0 WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+strconv.FormatInt(count, 10)+`)`, utils.UnixTime(), prefix)
+		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, utils.UnixTime()+int64(staleLife), utils.UnixTime(), prefix)
 		if err != nil {
 			return err
 		}
