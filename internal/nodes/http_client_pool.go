@@ -174,7 +174,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 		MaxConnsPerHost:       maxConnections,
 		IdleConnTimeout:       idleTimeout,
 		ExpectContinueTimeout: 1 * time.Second,
-		TLSHandshakeTimeout:   0, // 不限
+		TLSHandshakeTimeout:   10 * time.Second,
 		TLSClientConfig:       tlsConfig,
 		Proxy:                 nil,
 	}

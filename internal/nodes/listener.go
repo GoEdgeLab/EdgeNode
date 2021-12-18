@@ -56,11 +56,11 @@ func (this *Listener) listenTCP() error {
 	}
 	protocol := this.group.Protocol()
 
-	netListener, err := this.createTCPListener()
+	tcpListener, err := this.createTCPListener()
 	if err != nil {
 		return err
 	}
-	netListener = NewClientListener(netListener, protocol.IsHTTPFamily() || protocol.IsHTTPSFamily())
+	var netListener = NewClientListener1(tcpListener, protocol.IsHTTPFamily() || protocol.IsHTTPSFamily())
 	events.On(events.EventQuit, func() {
 		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
 		_ = netListener.Close()
@@ -73,6 +73,7 @@ func (this *Listener) listenTCP() error {
 			Listener:     netListener,
 		}
 	case serverconfigs.ProtocolHTTPS, serverconfigs.ProtocolHTTPS4, serverconfigs.ProtocolHTTPS6:
+		netListener.SetIsTLS(true)
 		this.listener = &HTTPListener{
 			BaseListener: BaseListener{Group: this.group},
 			Listener:     netListener,
@@ -83,6 +84,7 @@ func (this *Listener) listenTCP() error {
 			Listener:     netListener,
 		}
 	case serverconfigs.ProtocolTLS, serverconfigs.ProtocolTLS4, serverconfigs.ProtocolTLS6:
+		netListener.SetIsTLS(true)
 		this.listener = &TCPListener{
 			BaseListener: BaseListener{Group: this.group},
 			Listener:     netListener,

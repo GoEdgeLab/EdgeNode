@@ -13,7 +13,7 @@ import (
 var timeoutClientMap = map[time.Duration]*http.Client{} // timeout => Client
 var timeoutClientLocker = sync.Mutex{}
 
-// 导出响应
+// DumpResponse 导出响应
 func DumpResponse(resp *http.Response) (header []byte, body []byte, err error) {
 	header, err = httputil.DumpResponse(resp, false)
 	if err != nil {
@@ -23,7 +23,7 @@ func DumpResponse(resp *http.Response) (header []byte, body []byte, err error) {
 	return
 }
 
-// 获取一个新的Client
+// NewHTTPClient 获取一个新的Client
 func NewHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: timeout,
@@ -33,7 +33,7 @@ func NewHTTPClient(timeout time.Duration) *http.Client {
 			MaxConnsPerHost:       32,
 			IdleConnTimeout:       2 * time.Minute,
 			ExpectContinueTimeout: 1 * time.Second,
-			TLSHandshakeTimeout:   0,
+			TLSHandshakeTimeout:   10 * time.Second,
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
@@ -41,7 +41,7 @@ func NewHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
-// 获取一个公用的Client
+// SharedHttpClient 获取一个公用的Client
 func SharedHttpClient(timeout time.Duration) *http.Client {
 	timeoutClientLocker.Lock()
 	defer timeoutClientLocker.Unlock()

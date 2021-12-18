@@ -16,14 +16,23 @@ var sharedConnectionsLimiter = ratelimit.NewCounter(nodeconfigs.DefaultTCPMaxCon
 // ClientListener 客户端网络监听
 type ClientListener struct {
 	rawListener net.Listener
+	isTLS       bool
 	quickClose  bool
 }
 
-func NewClientListener(listener net.Listener, quickClose bool) net.Listener {
+func NewClientListener1(listener net.Listener, quickClose bool) *ClientListener {
 	return &ClientListener{
 		rawListener: listener,
 		quickClose:  quickClose,
 	}
+}
+
+func (this *ClientListener) SetIsTLS(isTLS bool) {
+	this.isTLS = isTLS
+}
+
+func (this *ClientListener) IsTLS() bool {
+	return this.isTLS
 }
 
 func (this *ClientListener) Accept() (net.Conn, error) {
@@ -58,7 +67,7 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 	}
 
 	isOk = true
-	return NewClientConn(conn, this.quickClose, limiter), nil
+	return NewClientConn(conn, this.isTLS, this.quickClose, limiter), nil
 }
 
 func (this *ClientListener) Close() error {

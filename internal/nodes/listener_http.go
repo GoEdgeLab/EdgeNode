@@ -47,7 +47,9 @@ func (this *HTTPListener) Serve() error {
 	this.httpServer = &http.Server{
 		Addr:              this.addr,
 		Handler:           this,
+		ReadTimeout:       1 * time.Hour,    // TODO 改成可以配置
 		ReadHeaderTimeout: 3 * time.Second,  // TODO 改成可以配置
+		WriteTimeout:      1 * time.Hour,    // TODO 改成可以配置
 		IdleTimeout:       75 * time.Second, // TODO 改成可以配置
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
@@ -60,21 +62,26 @@ func (this *HTTPListener) Serve() error {
 					metricNewConnMap[conn.RemoteAddr().String()] = zero.New()
 					metricNewConnMapLocker.Unlock()
 				}
+			case http.StateActive, http.StateIdle, http.StateHijacked:
+				// Nothing to do
 			case http.StateClosed:
 				atomic.AddInt64(&this.countActiveConnections, -1)
 
 				// 移除指标存储连接信息
+				// 因为中途配置可能有改变，所以暂时不添加条件
 				metricNewConnMapLocker.Lock()
 				delete(metricNewConnMap, conn.RemoteAddr().String())
 				metricNewConnMapLocker.Unlock()
 			}
 		},
-		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			tlsConn, ok := c.(*tls.Conn)
+		ConnContext: func(ctx context.Context, conn net.Conn) context.Context {
+			tlsConn, ok := conn.(*tls.Conn)
+
 			if ok {
-				c = NewClientTLSConn(tlsConn)
+				conn = NewClientTLSConn(tlsConn)
 			}
-			return context.WithValue(ctx, HTTPConnContextKey, c)
+
+			return context.WithValue(ctx, HTTPConnContextKey, conn)
 		},
 	}
 

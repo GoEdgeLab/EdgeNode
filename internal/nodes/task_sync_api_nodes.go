@@ -134,9 +134,9 @@ func (this *SyncAPINodesTask) testEndpoints(endpoints []string) bool {
 				return
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
 			defer func() {
-				cancel()
+				cancelFunc()
 			}()
 			var conn *grpc.ClientConn
 			if u.Scheme == "http" {
