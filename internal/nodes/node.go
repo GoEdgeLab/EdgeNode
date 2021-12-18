@@ -631,6 +631,7 @@ func (this *Node) listenSock() error {
 					Params: map[string]interface{}{
 						"ipConns":     ipConns,
 						"serverConns": serverConns,
+						"total":       sharedListenerManager.TotalActiveConnections(),
 					},
 				})
 			}
