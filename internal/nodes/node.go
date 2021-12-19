@@ -632,6 +632,7 @@ func (this *Node) listenSock() error {
 						"ipConns":     ipConns,
 						"serverConns": serverConns,
 						"total":       sharedListenerManager.TotalActiveConnections(),
+						"limiter":     sharedConnectionsLimiter.Len(),
 					},
 				})
 			}

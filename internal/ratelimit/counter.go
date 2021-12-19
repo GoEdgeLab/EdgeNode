@@ -27,7 +27,6 @@ func (this *Counter) Count() int {
 }
 
 // Len 已占用数量
-// 注意：非线程安全
 func (this *Counter) Len() int {
 	return len(this.sem)
 }
