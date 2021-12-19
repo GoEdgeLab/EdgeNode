@@ -190,9 +190,9 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyConn *ne
 	}
 
 	goman.New(func() {
-		buffer := bytePool32k.Get()
+		buffer := utils.BytePool4k.Get()
 		defer func() {
-			bytePool32k.Put(buffer)
+			utils.BytePool4k.Put(buffer)
 		}()
 
 		for {

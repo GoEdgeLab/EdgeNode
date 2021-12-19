@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/pires/go-proxyproto"
 	"net"
 	"strings"
@@ -112,9 +113,9 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 
 	// 从源站读取
 	goman.New(func() {
-		originBuffer := bytePool32k.Get()
+		originBuffer := utils.BytePool16k.Get()
 		defer func() {
-			bytePool32k.Put(originBuffer)
+			utils.BytePool16k.Put(originBuffer)
 		}()
 		for {
 			n, err := originConn.Read(originBuffer)
@@ -138,9 +139,9 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	})
 
 	// 从客户端读取
-	clientBuffer := bytePool32k.Get()
+	clientBuffer := utils.BytePool16k.Get()
 	defer func() {
-		bytePool32k.Put(clientBuffer)
+		utils.BytePool16k.Put(clientBuffer)
 	}()
 	for {
 		n, err := conn.Read(clientBuffer)

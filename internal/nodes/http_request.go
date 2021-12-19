@@ -28,12 +28,6 @@ import (
 // 环境变量
 var HOSTNAME, _ = os.Hostname()
 
-// byte pool
-var bytePool256b = utils.NewBytePool(20480, 256)
-var bytePool1k = utils.NewBytePool(20480, 1024)
-var bytePool32k = utils.NewBytePool(20480, 32*1024)
-var bytePool128k = utils.NewBytePool(20480, 128*1024)
-
 // errors
 var errWritingToClient = errors.New("writing to client error")
 
@@ -1303,19 +1297,16 @@ func (this *HTTPRequest) addError(err error) {
 
 // 计算合适的buffer size
 func (this *HTTPRequest) bytePool(contentLength int64) *utils.BytePool {
-	if contentLength <= 0 {
-		return bytePool1k
-	}
-	if contentLength < 1024 { // 1K
-		return bytePool256b
+	if contentLength < 8192 { // 8K
+		return utils.BytePool1k
 	}
 	if contentLength < 32768 { // 32K
-		return bytePool1k
+		return utils.BytePool4k
 	}
-	if contentLength < 1048576 { // 1M
-		return bytePool32k
+	if contentLength < 131072 { // 128K
+		return utils.BytePool16k
 	}
-	return bytePool128k
+	return utils.BytePool32k
 }
 
 // 检查是否可以忽略错误

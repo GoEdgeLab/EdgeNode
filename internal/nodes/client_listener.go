@@ -37,17 +37,12 @@ func (this *ClientListener) IsTLS() bool {
 
 func (this *ClientListener) Accept() (net.Conn, error) {
 	// 限制并发连接数
-	var isOk = false
 	var limiter = sharedConnectionsLimiter
 	limiter.Ack()
-	defer func() {
-		if !isOk {
-			limiter.Release()
-		}
-	}()
 
 	conn, err := this.rawListener.Accept()
 	if err != nil {
+		limiter.Release()
 		return nil, err
 	}
 
@@ -62,11 +57,11 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 			}
 
 			_ = conn.Close()
+			limiter.Release()
 			return this.Accept()
 		}
 	}
 
-	isOk = true
 	return NewClientConn(conn, this.isTLS, this.quickClose, limiter), nil
 }
 

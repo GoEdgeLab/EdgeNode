@@ -2,12 +2,10 @@ package nodes
 
 import (
 	"crypto/rand"
-	"crypto/tls"
 	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -153,14 +151,5 @@ func httpRequestNextId() string {
 	}
 
 	// timestamp + requestId + nodeId
-	return strconv.FormatInt(unixTime, 10) + strconv.Itoa(int(atomic.AddInt32(&httpRequestId, 1))) + teaconst.NodeIdString
-}
-
-// 检查连接是否为TLS连接
-func httpIsTLSConn(conn net.Conn) bool {
-	if conn == nil {
-		return false
-	}
-	_, ok := conn.(*tls.Conn)
-	return ok
+	return strconv.FormatInt(unixTime, 10) + teaconst.NodeIdString + strconv.Itoa(int(atomic.AddInt32(&httpRequestId, 1)))
 }

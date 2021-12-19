@@ -68,11 +68,11 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 						this.writer.Prepare(stat.Size(), status)
 						this.writer.WriteHeader(status)
 					}
-					buf := bytePool1k.Get()
+					buf := utils.BytePool1k.Get()
 					_, err = utils.CopyWithFilter(this.writer, fp, buf, func(p []byte) []byte {
 						return []byte(this.Format(string(p)))
 					})
-					bytePool1k.Put(buf)
+					utils.BytePool1k.Put(buf)
 					if err != nil {
 						if !this.canIgnore(err) {
 							remotelogs.Warn("HTTP_REQUEST_PAGE", "write to client failed: "+err.Error())

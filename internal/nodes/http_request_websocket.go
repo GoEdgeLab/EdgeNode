@@ -3,6 +3,7 @@ package nodes
 import (
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
 	"net/http"
 	"net/url"
@@ -66,7 +67,8 @@ func (this *HTTPRequest) doWebsocket() {
 	}()
 
 	goman.New(func() {
-		buf := make([]byte, 4*1024) // TODO 使用内存池
+		var buf = utils.BytePool4k.Get()
+		defer utils.BytePool4k.Put(buf)
 		for {
 			n, err := originConn.Read(buf)
 			if n > 0 {

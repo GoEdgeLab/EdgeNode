@@ -194,13 +194,14 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 准备Buffer
-	buf := bytePool32k.Get()
+	var pool = this.bytePool(reader.BodySize())
+	var buf = pool.Get()
 	defer func() {
-		bytePool32k.Put(buf)
+		pool.Put(buf)
 	}()
 
 	// 读取Header
-	headerBuf := []byte{}
+	var headerBuf = []byte{}
 	err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
 		headerBuf = append(headerBuf, buf[:n]...)
 		for {

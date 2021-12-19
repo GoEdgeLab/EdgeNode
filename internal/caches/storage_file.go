@@ -803,9 +803,9 @@ func (this *FileStorage) decodeFile(path string) (*Item, error) {
 
 	// URL
 	if urlSize > 0 {
-		data := utils.BytePool1024.Get()
+		data := utils.BytePool1k.Get()
 		result, ok, err := this.readN(fp, data, int(urlSize))
-		utils.BytePool1024.Put(data)
+		utils.BytePool1k.Put(data)
 		if err != nil {
 			return nil, err
 		}
@@ -942,7 +942,8 @@ func (this *FileStorage) hotLoop() {
 			size = len(result) / 10
 		}
 
-		var buf = make([]byte, 32*1024)
+		var buf = utils.BytePool16k.Get()
+		defer utils.BytePool16k.Put(buf)
 		for _, item := range result[:size] {
 			reader, err := this.openReader(item.Key, false, false)
 			if err != nil {

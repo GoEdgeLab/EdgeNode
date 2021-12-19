@@ -27,6 +27,26 @@ func TestNewBytePool(t *testing.T) {
 	a.IsTrue(len(pool.c) == 5)
 }
 
+func TestBytePool_Memory(t *testing.T) {
+	var stat1 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat1)
+
+	var pool = NewBytePool(20480, 32*1024)
+	for i := 0; i < 20480; i++ {
+		pool.Put(make([]byte, 32*1024))
+	}
+
+	//pool.Purge()
+
+	//time.Sleep(60 * time.Second)
+
+	runtime.GC()
+
+	var stat2 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat2)
+	t.Log((stat2.HeapInuse-stat1.HeapInuse)/1024/1024, "MB,", pool.Size(), "slices")
+}
+
 func BenchmarkBytePool_Get(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
