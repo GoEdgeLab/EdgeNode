@@ -90,5 +90,5 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		_ = this.CloseConn(writer)
 	}
 
-	return true
+	return false
 }
