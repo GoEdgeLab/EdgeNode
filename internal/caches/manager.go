@@ -3,14 +3,23 @@ package caches
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"strconv"
 	"sync"
 )
 
 var SharedManager = NewManager()
+
+func init() {
+	events.On(events.EventQuit, func() {
+		logs.Println("CACHE", "quiting cache manager")
+		SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
+	})
+}
 
 // Manager 缓存策略管理器
 type Manager struct {
@@ -25,10 +34,12 @@ type Manager struct {
 
 // NewManager 获取管理器对象
 func NewManager() *Manager {
-	return &Manager{
+	var m = &Manager{
 		policyMap:  map[int64]*serverconfigs.HTTPCachePolicy{},
 		storageMap: map[int64]StorageInterface{},
 	}
+
+	return m
 }
 
 // UpdatePolicies 重新设置策略

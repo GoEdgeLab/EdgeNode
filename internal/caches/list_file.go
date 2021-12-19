@@ -47,6 +47,7 @@ type FileList struct {
 	hitsTableName  string
 
 	isClosed bool
+	isReady  bool
 
 	memoryCache *ttlcache.Cache
 }
@@ -77,11 +78,30 @@ func (this *FileList) Init() error {
 		// 防止sqlite提示authority错误
 		dir = ""
 	}
-	db, err := sql.Open("sqlite3", "file:"+dir+"/index.db?cache=shared&mode=rwc&_journal_mode=WAL")
+	var dbPath = dir + "/index.db"
+	remotelogs.Println("CACHE", "loading database '"+dbPath+"'")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=shared&mode=rwc&_journal_mode=WAL")
 	if err != nil {
 		return err
 	}
+
+	// 检查数据库
+	_, err = db.Exec(`SELECT * FROM "` + this.itemsTableName + `" LIMIT 1`)
+	if err != nil {
+		// 删除重建
+		remotelogs.Println("CACHE", "rebuilding database '"+dbPath+"'")
+		_ = db.Close()
+		this.isClosed = false
+
+		_ = os.Remove(dbPath)
+		db, err = sql.Open("sqlite3", "file:"+dbPath+"?cache=shared&mode=rwc&_journal_mode=WAL")
+		if err != nil {
+			return err
+		}
+	}
+
 	db.SetMaxOpenConns(1)
+
 	this.db = db
 
 	// 清除旧表
@@ -176,6 +196,8 @@ func (this *FileList) Init() error {
 		return err
 	}
 
+	this.isReady = true
+
 	return nil
 }
 
@@ -185,7 +207,7 @@ func (this *FileList) Reset() error {
 }
 
 func (this *FileList) Add(hash string, item *Item) error {
-	if this.isClosed {
+	if !this.isReady {
 		return nil
 	}
 
@@ -212,7 +234,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 }
 
 func (this *FileList) Exist(hash string) (bool, error) {
-	if this.isClosed {
+	if !this.isReady {
 		return false, nil
 	}
 
@@ -242,7 +264,7 @@ func (this *FileList) Exist(hash string) (bool, error) {
 
 // CleanPrefix 清理某个前缀的缓存数据
 func (this *FileList) CleanPrefix(prefix string) error {
-	if this.isClosed {
+	if !this.isReady {
 		return nil
 	}
 
@@ -272,7 +294,7 @@ func (this *FileList) CleanPrefix(prefix string) error {
 }
 
 func (this *FileList) Remove(hash string) error {
-	if this.isClosed {
+	if !this.isReady {
 		return nil
 	}
 
@@ -316,7 +338,7 @@ func (this *FileList) Remove(hash string) error {
 // count 每次遍历的最大数量，控制此数字可以保证每次清理的时候不用花太多时间
 // callback 每次发现过期key的调用
 func (this *FileList) Purge(count int, callback func(hash string) error) (int, error) {
-	if this.isClosed {
+	if !this.isReady {
 		return 0, nil
 	}
 
@@ -360,7 +382,7 @@ func (this *FileList) Purge(count int, callback func(hash string) error) (int, e
 }
 
 func (this *FileList) PurgeLFU(count int, callback func(hash string) error) error {
-	if this.isClosed {
+	if !this.isReady {
 		return nil
 	}
 
@@ -403,7 +425,7 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 }
 
 func (this *FileList) CleanAll() error {
-	if this.isClosed {
+	if !this.isReady {
 		return nil
 	}
 
@@ -418,7 +440,7 @@ func (this *FileList) CleanAll() error {
 }
 
 func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
-	if this.isClosed {
+	if !this.isReady {
 		return &Stat{}, nil
 	}
 
@@ -461,6 +483,7 @@ func (this *FileList) OnRemove(f func(item *Item)) {
 
 func (this *FileList) Close() error {
 	this.isClosed = true
+	this.isReady = false
 
 	this.memoryCache.Destroy()
 
