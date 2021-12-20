@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 type FileWriter struct {
@@ -15,6 +16,7 @@ type FileWriter struct {
 	bodySize   int64
 	expiredAt  int64
 	endFunc    func()
+	once       sync.Once
 }
 
 func NewFileWriter(rawWriter *os.File, key string, expiredAt int64, endFunc func()) *FileWriter {
@@ -82,18 +84,25 @@ func (this *FileWriter) WriteBodyLength(bodyLength int64) error {
 
 // Close 关闭
 func (this *FileWriter) Close() error {
-	defer this.endFunc()
+	defer this.once.Do(func() {
+		this.endFunc()
+	})
+
+	path := this.rawWriter.Name()
 
 	err := this.WriteHeaderLength(types.Int(this.headerSize))
 	if err != nil {
+		_ = this.rawWriter.Close()
+		_ = os.Remove(path)
 		return err
 	}
 	err = this.WriteBodyLength(this.bodySize)
 	if err != nil {
+		_ = this.rawWriter.Close()
+		_ = os.Remove(path)
 		return err
 	}
 
-	path := this.rawWriter.Name()
 	err = this.rawWriter.Close()
 	if err != nil {
 		_ = os.Remove(path)
@@ -109,7 +118,9 @@ func (this *FileWriter) Close() error {
 
 // Discard 丢弃
 func (this *FileWriter) Discard() error {
-	defer this.endFunc()
+	defer this.once.Do(func() {
+		this.endFunc()
+	})
 
 	_ = this.rawWriter.Close()
 

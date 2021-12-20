@@ -47,6 +47,9 @@ const (
 	HotItemSize = 1024
 )
 
+var sharedWritingKeyMap = map[string]zero.Zero{} // key => bool
+var sharedWritingKeyLocker = sync.Mutex{}
+
 // FileStorage 文件缓存
 //   文件结构：
 //    [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
@@ -56,10 +59,9 @@ type FileStorage struct {
 	memoryStorage *MemoryStorage                      // 一级缓存
 	totalSize     int64
 
-	list          ListInterface
-	writingKeyMap map[string]zero.Zero // key => bool
-	locker        sync.RWMutex
-	purgeTicker   *utils.Ticker
+	list        ListInterface
+	locker      sync.RWMutex
+	purgeTicker *utils.Ticker
 
 	hotMap       map[string]*HotItem // key => count
 	hotMapLocker sync.Mutex
@@ -69,10 +71,9 @@ type FileStorage struct {
 
 func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
 	return &FileStorage{
-		policy:        policy,
-		writingKeyMap: map[string]zero.Zero{},
-		hotMap:        map[string]*HotItem{},
-		lastHotSize:   -1,
+		policy:      policy,
+		hotMap:      map[string]*HotItem{},
+		lastHotSize: -1,
 	}
 }
 
@@ -314,21 +315,20 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 	}
 
 	// 是否正在写入
-	var isWriting = false
-	this.locker.Lock()
-	_, ok := this.writingKeyMap[key]
-	this.locker.Unlock()
+	var isOk = false
+	sharedWritingKeyLocker.Lock()
+	_, ok := sharedWritingKeyMap[key]
 	if ok {
+		sharedWritingKeyLocker.Unlock()
 		return nil, ErrFileIsWriting
 	}
-	this.locker.Lock()
-	this.writingKeyMap[key] = zero.New()
-	this.locker.Unlock()
+	sharedWritingKeyMap[key] = zero.New()
+	sharedWritingKeyLocker.Unlock()
 	defer func() {
-		if !isWriting {
-			this.locker.Lock()
-			delete(this.writingKeyMap, key)
-			this.locker.Unlock()
+		if !isOk {
+			sharedWritingKeyLocker.Lock()
+			delete(sharedWritingKeyMap, key)
+			sharedWritingKeyLocker.Unlock()
 		}
 	}()
 
@@ -358,21 +358,27 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 		}
 	}
 
+	// 检查缓存是否已经生成
+	var cachePath = dir + "/" + hash + ".cache"
+	stat, err := os.Stat(cachePath)
+	if err == nil && time.Now().Sub(stat.ModTime()) <= 1*time.Second {
+		// 防止并发连续写入
+		return nil, ErrFileIsWriting
+	}
+	var tmpPath = cachePath + ".tmp"
+
 	// 先删除
 	err = this.list.Remove(hash)
 	if err != nil {
 		return nil, err
 	}
 
-	path := dir + "/" + hash + ".cache.tmp"
-	writer, err := os.OpenFile(path, os.O_CREATE|os.O_SYNC|os.O_WRONLY, 0666)
+	writer, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_SYNC|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, err
 	}
-	isWriting = true
 
-	isOk := false
-	removeOnFailure := true
+	var removeOnFailure = true
 	defer func() {
 		if err != nil {
 			isOk = false
@@ -382,7 +388,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 		if !isOk {
 			_ = writer.Close()
 			if removeOnFailure {
-				_ = os.Remove(path)
+				_ = os.Remove(tmpPath)
 			}
 		}
 	}()
@@ -453,11 +459,10 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 	}
 
 	isOk = true
-
 	return NewFileWriter(writer, key, expiredAt, func() {
-		this.locker.Lock()
-		delete(this.writingKeyMap, key)
-		this.locker.Unlock()
+		sharedWritingKeyLocker.Lock()
+		delete(sharedWritingKeyMap, key)
+		sharedWritingKeyLocker.Unlock()
 	}), nil
 }
 
