@@ -2,6 +2,7 @@ package caches
 
 import (
 	"github.com/cespare/xxhash"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ type MemoryWriter struct {
 	hash    uint64
 	item    *MemoryItem
 	endFunc func()
+	once    sync.Once
 }
 
 func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, endFunc func()) *MemoryWriter {
@@ -66,7 +68,9 @@ func (this *MemoryWriter) BodySize() int64 {
 // Close 关闭
 func (this *MemoryWriter) Close() error {
 	// 需要在Locker之外
-	defer this.endFunc()
+	defer this.once.Do(func() {
+		this.endFunc()
+	})
 
 	if this.item == nil {
 		return nil
@@ -92,7 +96,9 @@ func (this *MemoryWriter) Close() error {
 // Discard 丢弃
 func (this *MemoryWriter) Discard() error {
 	// 需要在Locker之外
-	defer this.endFunc()
+	defer this.once.Do(func() {
+		this.endFunc()
+	})
 
 	this.storage.locker.Lock()
 	delete(this.storage.valuesMap, this.hash)

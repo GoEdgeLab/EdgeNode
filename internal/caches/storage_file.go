@@ -47,8 +47,8 @@ const (
 	HotItemSize = 1024
 )
 
-var sharedWritingKeyMap = map[string]zero.Zero{} // key => bool
-var sharedWritingKeyLocker = sync.Mutex{}
+var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
+var sharedWritingFileKeyLocker = sync.Mutex{}
 
 // FileStorage 文件缓存
 //   文件结构：
@@ -316,19 +316,19 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 
 	// 是否正在写入
 	var isOk = false
-	sharedWritingKeyLocker.Lock()
-	_, ok := sharedWritingKeyMap[key]
+	sharedWritingFileKeyLocker.Lock()
+	_, ok := sharedWritingFileKeyMap[key]
 	if ok {
-		sharedWritingKeyLocker.Unlock()
+		sharedWritingFileKeyLocker.Unlock()
 		return nil, ErrFileIsWriting
 	}
-	sharedWritingKeyMap[key] = zero.New()
-	sharedWritingKeyLocker.Unlock()
+	sharedWritingFileKeyMap[key] = zero.New()
+	sharedWritingFileKeyLocker.Unlock()
 	defer func() {
 		if !isOk {
-			sharedWritingKeyLocker.Lock()
-			delete(sharedWritingKeyMap, key)
-			sharedWritingKeyLocker.Unlock()
+			sharedWritingFileKeyLocker.Lock()
+			delete(sharedWritingFileKeyMap, key)
+			sharedWritingFileKeyLocker.Unlock()
 		}
 	}()
 
@@ -460,9 +460,9 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Wr
 
 	isOk = true
 	return NewFileWriter(writer, key, expiredAt, func() {
-		sharedWritingKeyLocker.Lock()
-		delete(sharedWritingKeyMap, key)
-		sharedWritingKeyLocker.Unlock()
+		sharedWritingFileKeyLocker.Lock()
+		delete(sharedWritingFileKeyMap, key)
+		sharedWritingFileKeyLocker.Unlock()
 	}), nil
 }
 
