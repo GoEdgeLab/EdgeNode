@@ -20,8 +20,14 @@ func NewPiece(maxItems int) *Piece {
 func (this *Piece) Add(key uint64, item *Item) (ok bool) {
 	this.locker.Lock()
 	if len(this.m) >= this.maxItems {
-		this.locker.Unlock()
-		return
+		// 尝试先删除过期的
+		this.gcWithoutLocker()
+
+		// 仍然是满的就跳过
+		if len(this.m) >= this.maxItems {
+			this.locker.Unlock()
+			return
+		}
 	}
 	this.m[key] = item
 	this.locker.Unlock()
@@ -74,12 +80,7 @@ func (this *Piece) Count() (count int) {
 
 func (this *Piece) GC() {
 	this.locker.Lock()
-	timestamp := time.Now().Unix()
-	for k, item := range this.m {
-		if item.expiredAt <= timestamp {
-			delete(this.m, k)
-		}
-	}
+	this.gcWithoutLocker()
 	this.locker.Unlock()
 }
 
@@ -93,4 +94,14 @@ func (this *Piece) Destroy() {
 	this.locker.Lock()
 	this.m = nil
 	this.locker.Unlock()
+}
+
+// 不加锁的gc
+func (this *Piece) gcWithoutLocker() {
+	timestamp := time.Now().Unix()
+	for k, item := range this.m {
+		if item.expiredAt <= timestamp {
+			delete(this.m, k)
+		}
+	}
 }

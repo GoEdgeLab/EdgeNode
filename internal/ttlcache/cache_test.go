@@ -29,12 +29,19 @@ func TestNewCache(t *testing.T) {
 }
 
 func TestCache_Memory(t *testing.T) {
+	var stat1 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat1)
+
 	cache := NewCache()
-	for i := 0; i < 20_000_000; i++ {
+	for i := 0; i < 10_000_000; i++ {
 		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+3600)
 	}
 	t.Log("waiting ...")
-	time.Sleep(10 * time.Second)
+
+	var stat2 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat2)
+
+	t.Log((stat2.HeapInuse-stat1.HeapInuse)/1024/1024, "MB")
 }
 
 func BenchmarkCache_Add(b *testing.B) {

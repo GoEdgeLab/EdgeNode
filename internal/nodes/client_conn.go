@@ -39,7 +39,7 @@ func NewClientConn(conn net.Conn, isTLS bool, quickClose bool, globalLimiter *ra
 func (this *ClientConn) Read(b []byte) (n int, err error) {
 	if this.isTLS {
 		if !this.hasRead {
-			_ = this.rawConn.SetReadDeadline(time.Now().Add(5 * time.Second)) // TODO 握手超时时间可以设置
+			_ = this.rawConn.SetReadDeadline(time.Now().Add(time.Duration(nodeconfigs.DefaultTLSHandshakeTimeout) * time.Second)) // TODO 握手超时时间可以设置
 			this.hasRead = true
 			defer func() {
 				_ = this.rawConn.SetReadDeadline(time.Time{})
@@ -48,7 +48,6 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	n, err = this.rawConn.Read(b)
-
 	if n > 0 {
 		atomic.AddUint64(&teaconst.InTrafficBytes, uint64(n))
 	}
@@ -66,6 +65,8 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 func (this *ClientConn) Close() error {
 	this.isClosed = true
 
+	err := this.rawConn.Close()
+
 	// 全局并发数限制
 	this.once.Do(func() {
 		if this.globalLimiter != nil {
@@ -76,7 +77,7 @@ func (this *ClientConn) Close() error {
 	// 单个服务并发数限制
 	sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
 
-	return this.rawConn.Close()
+	return err
 }
 
 func (this *ClientConn) LocalAddr() net.Addr {

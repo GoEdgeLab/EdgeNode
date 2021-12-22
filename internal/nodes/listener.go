@@ -60,7 +60,7 @@ func (this *Listener) listenTCP() error {
 	if err != nil {
 		return err
 	}
-	var netListener = NewClientListener1(tcpListener, protocol.IsHTTPFamily() || protocol.IsHTTPSFamily())
+	var netListener = NewClientListener(tcpListener, protocol.IsHTTPFamily() || protocol.IsHTTPSFamily())
 	events.On(events.EventQuit, func() {
 		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
 		_ = netListener.Close()

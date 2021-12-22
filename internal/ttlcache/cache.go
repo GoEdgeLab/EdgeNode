@@ -21,12 +21,18 @@ type Cache struct {
 }
 
 func NewCache(opt ...OptionInterface) *Cache {
-	countPieces := 128
-	maxItems := 2_000_000
+	var countPieces = 128
+	var maxItems = 2_000_000
 
-	var delta = systemMemoryGB() / 8
-	if delta > 0 {
-		maxItems *= delta
+	var totalMemory = systemMemoryGB()
+	if totalMemory < 2 {
+		// 我们限制内存过小的服务能够使用的数量
+		maxItems = 1_000_000
+	} else {
+		var delta = totalMemory / 8
+		if delta > 0 {
+			maxItems *= delta
+		}
 	}
 
 	for _, option := range opt {

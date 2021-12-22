@@ -20,7 +20,7 @@ type ClientListener struct {
 	quickClose  bool
 }
 
-func NewClientListener1(listener net.Listener, quickClose bool) *ClientListener {
+func NewClientListener(listener net.Listener, quickClose bool) *ClientListener {
 	return &ClientListener{
 		rawListener: listener,
 		quickClose:  quickClose,
