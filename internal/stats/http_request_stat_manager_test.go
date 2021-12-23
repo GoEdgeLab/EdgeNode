@@ -14,9 +14,9 @@ func TestHTTPRequestStatManager_Loop_Region(t *testing.T) {
 	iplibrary.SharedLibrary = library
 
 	manager := NewHTTPRequestStatManager()
-	manager.AddRemoteAddr(11, "202.196.0.20")
-	manager.AddRemoteAddr(11, "202.196.0.20") // 重复添加一个测试相加
-	manager.AddRemoteAddr(11, "8.8.8.8")
+	manager.AddRemoteAddr(11, "202.196.0.20", 0, false)
+	manager.AddRemoteAddr(11, "202.196.0.20", 0, false) // 重复添加一个测试相加
+	manager.AddRemoteAddr(11, "8.8.8.8", 0, false)
 
 	/**for i := 0; i < 100; i++ {
 		manager.AddRemoteAddr(11, strconv.Itoa(rands.Int(10, 250))+"."+strconv.Itoa(rands.Int(10, 250))+"."+strconv.Itoa(rands.Int(10, 250))+".8")
