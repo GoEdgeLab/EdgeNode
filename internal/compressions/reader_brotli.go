@@ -5,6 +5,7 @@ package compressions
 import (
 	"github.com/andybalholm/brotli"
 	"io"
+	"strings"
 )
 
 type BrotliReader struct {
@@ -16,7 +17,11 @@ func NewBrotliReader(reader io.Reader) (Reader, error) {
 }
 
 func (this *BrotliReader) Read(p []byte) (n int, err error) {
-	return this.reader.Read(p)
+	n, err = this.reader.Read(p)
+	if err != nil && strings.Contains(err.Error(), "excessive") {
+		err = io.EOF
+	}
+	return
 }
 
 func (this *BrotliReader) Close() error {

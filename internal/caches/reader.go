@@ -24,6 +24,9 @@ type Reader interface {
 	// ReadBody 读取Body
 	ReadBody(buf []byte, callback ReaderFunc) error
 
+	// Read 实现io.Reader接口
+	Read(buf []byte) (int, error)
+
 	// ReadBodyRange 读取某个范围内的Body
 	ReadBodyRange(buf []byte, start int64, end int64, callback ReaderFunc) error
 

@@ -153,3 +153,19 @@ func httpRequestNextId() string {
 	// timestamp + requestId + nodeId
 	return strconv.FormatInt(unixTime, 10) + teaconst.NodeIdString + strconv.Itoa(int(atomic.AddInt32(&httpRequestId, 1)))
 }
+
+// 检查是否可以接受某个编码
+func httpAcceptEncoding(acceptEncodings string, encoding string) bool {
+	var pieces = strings.Split(acceptEncodings, ",")
+	for _, piece := range pieces {
+		var qualityIndex = strings.Index(piece, ";")
+		if qualityIndex >= 0 {
+			piece = piece[:qualityIndex]
+		}
+
+		if strings.TrimSpace(piece) == encoding {
+			return true
+		}
+	}
+	return false
+}

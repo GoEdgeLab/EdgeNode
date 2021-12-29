@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
@@ -249,6 +250,24 @@ func (this *HTTPRequest) doReverseProxy() {
 			contentType := contentTypes[0]
 			if _, found := textMimeMap[contentType]; found {
 				resp.Header["Content-Type"][0] = contentType + "; charset=" + this.web.Charset.Charset
+			}
+		}
+	}
+
+	// 解压
+	if !resp.Uncompressed {
+		var contentEncoding = resp.Header.Get("Content-Encoding")
+		if len(contentEncoding) > 0 && !httpAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"), contentEncoding) {
+			reader, err := compressions.NewReader(resp.Body, contentEncoding)
+			if err == nil {
+				var body = resp.Body
+				defer func() {
+					_ = body.Close()
+				}()
+
+				resp.Body = reader
+				resp.Header.Del("Content-Encoding")
+				resp.Header.Del("Content-Length")
 			}
 		}
 	}

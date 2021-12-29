@@ -222,6 +222,37 @@ func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
 	return nil
 }
 
+func (this *FileReader) Read(buf []byte) (n int, err error) {
+	var isOk = false
+
+	defer func() {
+		if !isOk {
+			_ = this.discard()
+		}
+	}()
+
+	// 直接返回从Header中剩余的
+	if this.bodyBufLen > 0 && len(buf) >= this.bodyBufLen {
+		copy(buf, this.bodyBuf)
+		isOk = true
+		n = this.bodyBufLen
+
+		if this.bodySize <= int64(this.bodyBufLen) {
+			err = io.EOF
+			return
+		}
+
+		this.bodyBufLen = 0
+		return
+	}
+
+	n, err = this.fp.Read(buf)
+	if err == nil || err == io.EOF {
+		isOk = true
+	}
+	return
+}
+
 func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callback ReaderFunc) error {
 	isOk := false
 

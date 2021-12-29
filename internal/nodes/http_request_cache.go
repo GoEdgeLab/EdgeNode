@@ -5,10 +5,12 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -431,16 +433,28 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				return true
 			}
 		} else { // 没有Range
+			var body io.Reader = reader
+			var contentEncoding = this.writer.Header().Get("Content-Encoding")
+			if len(contentEncoding) > 0 && !httpAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"), contentEncoding) {
+				decompressReader, err := compressions.NewReader(body, contentEncoding)
+				if err == nil {
+					body = decompressReader
+					defer func() {
+						_ = decompressReader.Close()
+					}()
+
+					this.writer.Header().Del("Content-Encoding")
+					this.writer.Header().Del("Content-Length")
+				}
+			}
+
 			this.writer.PrepareCompression(reader.BodySize())
 			this.writer.WriteHeader(reader.Status())
 
-			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
-				_, err = this.writer.Write(buf[:n])
-				if err != nil {
-					return false, errWritingToClient
-				}
-				return true, nil
-			})
+			_, err = io.CopyBuffer(this.writer, body, buf)
+			if err == io.EOF {
+				err = nil
+			}
 			if err != nil {
 				this.varMapping["cache.status"] = "MISS"
 
