@@ -1,6 +1,7 @@
 package ttlcache
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"time"
 )
 
@@ -24,7 +25,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 	var countPieces = 128
 	var maxItems = 2_000_000
 
-	var totalMemory = systemMemoryGB()
+	var totalMemory = utils.SystemMemoryGB()
 	if totalMemory < 2 {
 		// 我们限制内存过小的服务能够使用的数量
 		maxItems = 1_000_000

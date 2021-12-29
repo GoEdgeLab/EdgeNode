@@ -1,6 +1,6 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package ttlcache
+package utils
 
 import (
 	"github.com/shirou/gopsutil/mem"
@@ -8,7 +8,11 @@ import (
 
 var systemTotalMemory = -1
 
-func systemMemoryGB() int {
+func init() {
+	_ = SystemMemoryGB()
+}
+
+func SystemMemoryGB() int {
 	if systemTotalMemory > 0 {
 		return systemTotalMemory
 	}
