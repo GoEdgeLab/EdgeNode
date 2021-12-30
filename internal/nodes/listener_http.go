@@ -209,7 +209,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		RawReq:     rawReq,
 		RawWriter:  rawWriter,
 		Server:     server,
-		Host:       reqHost,
+		host:       reqHost,
 		ServerName: serverName,
 		ServerAddr: this.addr,
 		IsHTTP:     this.isHTTP,

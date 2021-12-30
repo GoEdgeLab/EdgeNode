@@ -39,7 +39,7 @@ type HTTPRequest struct {
 	RawReq     *http.Request
 	RawWriter  http.ResponseWriter
 	Server     *serverconfigs.ServerConfig
-	Host       string // 请求的Host
+	host       string // 请求的Host
 	ServerName string // 实际匹配到的Host
 	ServerAddr string // 实际启动的服务器监听地址
 	IsHTTP     bool
@@ -83,6 +83,9 @@ type HTTPRequest struct {
 	logAttrs map[string]string
 
 	disableLog bool // 此请求中关闭Log
+
+	// script相关操作
+	isDone bool
 }
 
 // 初始化
@@ -135,6 +138,13 @@ func (this *HTTPRequest) Do() {
 	err := this.configureWeb(this.Server.Web, true, 0)
 	if err != nil {
 		this.write50x(err, http.StatusInternalServerError, false)
+		this.doEnd()
+		return
+	}
+
+	// 回调事件
+	this.onInit()
+	if this.writer.isFinished {
 		this.doEnd()
 		return
 	}
@@ -302,12 +312,12 @@ func (this *HTTPRequest) doEnd() {
 	// TODO 增加Header统计，考虑从Conn中读取
 	if this.Server != nil {
 		if this.isCached {
-			stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1, 0, 0, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
+			stats.SharedTrafficStatManager.Add(this.Server.Id, this.host, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1, 0, 0, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
 		} else {
 			if this.isAttack {
-				stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, 0, 1, 0, 1, this.writer.sentBodyBytes, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
+				stats.SharedTrafficStatManager.Add(this.Server.Id, this.host, this.writer.sentBodyBytes, 0, 1, 0, 1, this.writer.sentBodyBytes, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
 			} else {
-				stats.SharedTrafficStatManager.Add(this.Server.Id, this.Host, this.writer.sentBodyBytes, 0, 1, 0, 0, 0, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
+				stats.SharedTrafficStatManager.Add(this.Server.Id, this.host, this.writer.sentBodyBytes, 0, 1, 0, 0, 0, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
 			}
 		}
 	}
@@ -452,6 +462,20 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.RequestLimit = web.RequestLimit
 	}
 
+	// request scripts
+	if web.RequestScripts != nil {
+		if this.web.RequestScripts == nil {
+			this.web.RequestScripts = web.RequestScripts
+		} else {
+			if web.RequestScripts.OnInitScript != nil && (web.RequestScripts.OnInitScript.IsPrior || isTop) {
+				this.web.RequestScripts.OnInitScript = web.RequestScripts.OnInitScript
+			}
+			if web.RequestScripts.OnRequestScript != nil && (web.RequestScripts.OnRequestScript.IsPrior || isTop) {
+				this.web.RequestScripts.OnRequestScript = web.RequestScripts.OnRequestScript
+			}
+		}
+	}
+
 	// 重写规则
 	if len(web.RewriteRefs) > 0 {
 		for index, ref := range web.RewriteRefs {
@@ -521,7 +545,7 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 			}
 			if varMapping, isMatched := location.Match(rawPath, this.Format); isMatched {
 				// 检查专属域名
-				if len(location.Domains) > 0 && !configutils.MatchDomains(location.Domains, this.Host) {
+				if len(location.Domains) > 0 && !configutils.MatchDomains(location.Domains, this.host) {
 					continue
 				}
 
@@ -603,11 +627,11 @@ func (this *HTTPRequest) Format(source string) string {
 			if this.IsHTTPS {
 				scheme = "https"
 			}
-			return scheme + "://" + this.Host + this.rawURI
+			return scheme + "://" + this.host + this.rawURI
 		case "requestPath":
-			return this.requestPath()
+			return this.Path()
 		case "requestPathExtension":
-			return filepath.Ext(this.requestPath())
+			return filepath.Ext(this.Path())
 		case "requestLength":
 			return strconv.FormatInt(this.requestLength(), 10)
 		case "requestTime":
@@ -621,7 +645,7 @@ func (this *HTTPRequest) Format(source string) string {
 			}
 
 			if this.web.Root != nil && this.web.Root.IsOn {
-				return filepath.Clean(this.web.Root.Dir + this.requestPath())
+				return filepath.Clean(this.web.Root.Dir + this.Path())
 			}
 
 			return ""
@@ -650,7 +674,7 @@ func (this *HTTPRequest) Format(source string) string {
 		case "timestamp":
 			return strconv.FormatInt(this.requestFromTime.Unix(), 10)
 		case "host":
-			return this.Host
+			return this.host
 		case "referer":
 			return this.RawReq.Referer()
 		case "referer.host":
@@ -768,7 +792,7 @@ func (this *HTTPRequest) Format(source string) string {
 
 		// host
 		if prefix == "host" {
-			pieces := strings.Split(this.Host, ".")
+			pieces := strings.Split(this.host, ".")
 			switch suffix {
 			case "first":
 				if len(pieces) > 0 {
@@ -950,8 +974,8 @@ func (this *HTTPRequest) requestRemoteUser() string {
 	return username
 }
 
-// 请求的URL中路径部分
-func (this *HTTPRequest) requestPath() string {
+// Path 请求的URL中路径部分
+func (this *HTTPRequest) Path() string {
 	uri, err := url.ParseRequestURI(this.rawURI)
 	if err != nil {
 		return ""
@@ -1061,9 +1085,105 @@ func (this *HTTPRequest) requestServerPort() int {
 	return 0
 }
 
-// 获取完整的URL
-func (this *HTTPRequest) requestFullURL() string {
-	return this.requestScheme() + "://" + this.Host + this.uri
+func (this *HTTPRequest) Id() string {
+	return this.requestId
+}
+
+// URL 获取完整的URL
+func (this *HTTPRequest) URL() string {
+	return this.requestScheme() + "://" + this.host + this.uri
+}
+
+// Host 获取Host
+func (this *HTTPRequest) Host() string {
+	return this.host
+}
+
+func (this *HTTPRequest) Proto() string {
+	return this.RawReq.Proto
+}
+
+func (this *HTTPRequest) ProtoMajor() int {
+	return this.RawReq.ProtoMajor
+}
+
+func (this *HTTPRequest) ProtoMinor() int {
+	return this.RawReq.ProtoMinor
+}
+
+func (this *HTTPRequest) RemoteAddr() string {
+	return this.requestRemoteAddr(true)
+}
+
+func (this *HTTPRequest) RawRemoteAddr() string {
+	addr := this.RawReq.RemoteAddr
+	host, _, err := net.SplitHostPort(addr)
+	if err == nil {
+		addr = host
+	}
+	return addr
+}
+
+func (this *HTTPRequest) RemotePort() int {
+	addr := this.RawReq.RemoteAddr
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return 0
+	}
+	return types.Int(port)
+}
+
+func (this *HTTPRequest) SetAttr(name string, value string) {
+	this.logAttrs[name] = value
+}
+
+func (this *HTTPRequest) SetVar(name string, value string) {
+	this.varMapping[name] = value
+}
+
+// ContentLength 请求内容长度
+func (this *HTTPRequest) ContentLength() int64 {
+	return this.RawReq.ContentLength
+}
+
+// Method 请求方法
+func (this *HTTPRequest) Method() string {
+	return this.RawReq.Method
+}
+
+func (this *HTTPRequest) TransferEncoding() string {
+	if len(this.RawReq.TransferEncoding) > 0 {
+		return this.RawReq.TransferEncoding[0]
+	}
+	return ""
+}
+
+// DeleteHeader 删除Header
+func (this *HTTPRequest) DeleteHeader(name string) {
+	this.RawReq.Header.Del(name)
+}
+
+// SetHeader 设置Header
+func (this *HTTPRequest) SetHeader(name string, values []string) {
+	this.RawReq.Header[name] = values
+}
+
+// Header 读取Header
+func (this *HTTPRequest) Header() http.Header {
+	return this.RawReq.Header
+}
+
+func (this *HTTPRequest) URI() string {
+	return this.uri
+}
+
+func (this *HTTPRequest) SetURI(uri string) {
+	this.uri = uri
+}
+
+// Done 设置已完成
+func (this *HTTPRequest) Done() {
+	this.isDone = true
 }
 
 // 设置代理相关头部信息
@@ -1119,7 +1239,7 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 
 	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXForwardedHostHeader() {
 		if _, ok := header["X-Forwarded-Host"]; !ok {
-			this.RawReq.Header.Set("X-Forwarded-Host", this.Host)
+			this.RawReq.Header.Set("X-Forwarded-Host", this.host)
 		}
 	}
 
@@ -1159,7 +1279,7 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 			}
 
 			// 域名
-			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.Host) {
+			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.host) {
 				continue
 			}
 
@@ -1243,7 +1363,7 @@ func (this *HTTPRequest) processResponseHeaders(statusCode int) {
 			}
 
 			// 域名
-			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.Host) {
+			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.host) {
 				continue
 			}
 
@@ -1282,7 +1402,7 @@ func (this *HTTPRequest) processResponseHeaders(statusCode int) {
 		this.Server.HTTPS.SSLPolicy.IsOn &&
 		this.Server.HTTPS.SSLPolicy.HSTS != nil &&
 		this.Server.HTTPS.SSLPolicy.HSTS.IsOn &&
-		this.Server.HTTPS.SSLPolicy.HSTS.Match(this.Host) {
+		this.Server.HTTPS.SSLPolicy.HSTS.Match(this.host) {
 		responseHeader.Set(this.Server.HTTPS.SSLPolicy.HSTS.HeaderKey(), this.Server.HTTPS.SSLPolicy.HSTS.HeaderValue())
 	}
 }

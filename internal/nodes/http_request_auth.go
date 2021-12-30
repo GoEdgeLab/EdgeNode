@@ -27,7 +27,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 			subReq.ProtoMinor = this.RawReq.ProtoMinor
 			subReq.ProtoMajor = this.RawReq.ProtoMajor
 			subReq.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
-			subReq.Header.Set("Referer", this.requestFullURL())
+			subReq.Header.Set("Referer", this.URL())
 			var writer = NewEmptyResponseWriter(this.writer)
 			this.doSubRequest(writer, subReq)
 			return writer.StatusCode(), nil
@@ -45,7 +45,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 				if len(method.Realm) > 0 {
 					headerValue += method.Realm
 				} else {
-					headerValue += this.Host
+					headerValue += this.host
 				}
 				headerValue += "\""
 				if len(method.Charset) > 0 {

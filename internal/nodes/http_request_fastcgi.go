@@ -52,13 +52,13 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 		}
 	}
 	if !env.Has("SERVER_NAME") {
-		env["SERVER_NAME"] = this.Host
+		env["SERVER_NAME"] = this.host
 	}
 	if !env.Has("REQUEST_URI") {
 		env["REQUEST_URI"] = this.uri
 	}
 	if !env.Has("HOST") {
-		env["HOST"] = this.Host
+		env["HOST"] = this.host
 	}
 
 	if len(this.ServerAddr) > 0 {
@@ -149,7 +149,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 
 	host, found := params["HTTP_HOST"]
 	if !found || len(host) == 0 {
-		params["HTTP_HOST"] = this.Host
+		params["HTTP_HOST"] = this.host
 	}
 
 	fcgiReq := fcgi.NewRequest()

@@ -13,7 +13,7 @@ func (this *HTTPRequest) write404() {
 
 	this.processResponseHeaders(http.StatusNotFound)
 	this.writer.WriteHeader(http.StatusNotFound)
-	_, _ = this.writer.Write([]byte("404 page not found: '" + this.requestFullURL() + "'" + " (Request Id: " + this.requestId + ")"))
+	_, _ = this.writer.Write([]byte("404 page not found: '" + this.URL() + "'" + " (Request Id: " + this.requestId + ")"))
 }
 
 func (this *HTTPRequest) writeCode(code int) {
@@ -23,7 +23,7 @@ func (this *HTTPRequest) writeCode(code int) {
 
 	this.processResponseHeaders(code)
 	this.writer.WriteHeader(code)
-	_, _ = this.writer.Write([]byte(types.String(code) + " " + http.StatusText(code) + ": '" + this.requestFullURL() + "'" + " (Request Id: " + this.requestId + ")"))
+	_, _ = this.writer.Write([]byte(types.String(code) + " " + http.StatusText(code) + ": '" + this.URL() + "'" + " (Request Id: " + this.requestId + ")"))
 }
 
 func (this *HTTPRequest) write50x(err error, statusCode int, canTryStale bool) {

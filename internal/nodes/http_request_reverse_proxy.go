@@ -36,11 +36,11 @@ func (this *HTTPRequest) doReverseProxy() {
 	requestCall := shared.NewRequestCall()
 	requestCall.Request = this.RawReq
 	requestCall.Formatter = this.Format
-	requestCall.Domain = this.Host
+	requestCall.Domain = this.host
 	origin := this.reverseProxy.NextOrigin(requestCall)
 	requestCall.CallResponseCallbacks(this.writer)
 	if origin == nil {
-		err := errors.New(this.requestFullURL() + ": no available origin sites for reverse proxy")
+		err := errors.New(this.URL() + ": no available origin sites for reverse proxy")
 		remotelogs.ServerError(this.Server.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error(), "", nil)
 		this.write50x(err, http.StatusBadGateway, true)
 		return
@@ -60,7 +60,7 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	// 处理Scheme
 	if origin.Addr == nil {
-		err := errors.New(this.requestFullURL() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
+		err := errors.New(this.URL() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write50x(err, http.StatusBadGateway, true)
 		return
@@ -129,7 +129,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		this.RawReq.Host = hostname
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else {
-		this.RawReq.URL.Host = this.Host
+		this.RawReq.URL.Host = this.host
 	}
 
 	// 重组请求URL
@@ -146,6 +146,12 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 处理Header
 	this.setForwardHeaders(this.RawReq.Header)
 	this.processRequestHeaders(this.RawReq.Header)
+
+	// 调用回调
+	this.onRequest()
+	if this.writer.isFinished {
+		return
+	}
 
 	// 判断是否为Websocket请求
 	if this.RawReq.Header.Get("Upgrade") == "websocket" {

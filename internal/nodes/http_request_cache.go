@@ -138,7 +138,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			if err == nil {
 				for _, rpcServerService := range rpcClient.ServerRPCList() {
 					_, err = rpcServerService.PurgeServerCache(rpcClient.Context(), &pb.PurgeServerCacheRequest{
-						Domains:  []string{this.Host},
+						Domains:  []string{this.host},
 						Keys:     []string{key},
 						Prefixes: nil,
 					})
@@ -152,13 +152,19 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		return true
 	}
 
+	// 调用回调
+	this.onRequest()
+	if this.writer.isFinished {
+		return
+	}
+
 	var reader caches.Reader
 	var err error
 
 	// 是否优先检查WebP
 	if this.web.WebP != nil &&
 		this.web.WebP.IsOn &&
-		this.web.WebP.MatchRequest(filepath.Ext(this.requestPath()), this.Format) &&
+		this.web.WebP.MatchRequest(filepath.Ext(this.Path()), this.Format) &&
 		this.web.WebP.MatchAccept(this.requestHeader("Accept")) {
 		reader, _ = storage.OpenReader(key+webpSuffix, useStale)
 	}

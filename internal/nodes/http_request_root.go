@@ -200,6 +200,12 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		respHeader.Set("ETag", eTag)
 	}
 
+	// 调用回调
+	this.onRequest()
+	if this.writer.isFinished {
+		return
+	}
+
 	// 支持 If-None-Match
 	if this.requestHeader("If-None-Match") == eTag {
 		// 自定义Header

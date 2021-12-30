@@ -11,7 +11,7 @@ func (this *HTTPRequest) doSubRequest(writer http.ResponseWriter, rawReq *http.R
 		RawReq:     rawReq,
 		RawWriter:  writer,
 		Server:     this.Server,
-		Host:       this.Host,
+		host:       this.host,
 		ServerName: this.ServerName,
 		ServerAddr: this.ServerAddr,
 		IsHTTP:     this.IsHTTP,

@@ -67,7 +67,8 @@ type HTTPWriter struct {
 	cacheWriter  caches.Writer // 缓存写入
 	cacheStorage caches.StorageInterface
 
-	isOk bool // 是否完全成功
+	isOk       bool // 是否完全成功
+	isFinished bool // 是否已完成
 }
 
 // NewHTTPWriter 包装对象
@@ -126,6 +127,16 @@ func (this *HTTPWriter) Header() http.Header {
 		return http.Header{}
 	}
 	return this.writer.Header()
+}
+
+// DeleteHeader 删除Header
+func (this *HTTPWriter) DeleteHeader(name string) {
+	this.writer.Header().Del(name)
+}
+
+// SetHeader 设置Header
+func (this *HTTPWriter) SetHeader(name string, values []string) {
+	this.writer.Header()[name] = values
 }
 
 // AddHeaders 添加一组Header
@@ -204,6 +215,13 @@ func (this *HTTPWriter) WriteHeader(statusCode int) {
 		this.writer.WriteHeader(statusCode)
 	}
 	this.statusCode = statusCode
+}
+
+// Send 发送响应
+func (this *HTTPWriter) Send(status int, body string) {
+	this.WriteHeader(status)
+	_, _ = this.WriteString(body)
+	this.isFinished = true
 }
 
 // StatusCode 读取状态码
@@ -423,7 +441,7 @@ func (this *HTTPWriter) Close() {
 						StaleAt:    expiredAt + int64(this.calculateStaleLife()),
 						HeaderSize: this.cacheWriter.HeaderSize(),
 						BodySize:   this.cacheWriter.BodySize(),
-						Host:       this.req.Host,
+						Host:       this.req.host,
 						ServerId:   this.req.Server.Id,
 					})
 				}
@@ -456,7 +474,7 @@ func (this *HTTPWriter) prepareWebP(size int64) {
 	if this.req.web != nil &&
 		this.req.web.WebP != nil &&
 		this.req.web.WebP.IsOn &&
-		this.req.web.WebP.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.requestPath()), this.req.Format) &&
+		this.req.web.WebP.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.Path()), this.req.Format) &&
 		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) &&
 		atomic.LoadInt64(&webpTotalBufferSize) < webpMaxBufferSize {
 
@@ -493,7 +511,7 @@ func (this *HTTPWriter) PrepareCompression(size int64) {
 	}
 
 	// 尺寸和类型
-	if !this.compressionConfig.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.requestPath()), this.req.Format) {
+	if !this.compressionConfig.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.Path()), this.req.Format) {
 		return
 	}
 
