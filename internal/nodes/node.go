@@ -635,6 +635,9 @@ func (this *Node) listenSock() error {
 						"limiter":     sharedConnectionsLimiter.Len(),
 					},
 				})
+			case "gc":
+				runtime.GC()
+				debug.FreeOSMemory()
 			}
 		})
 
@@ -660,7 +663,7 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 			runtime.GOMAXPROCS(int(config.MaxCPU))
 			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(config.MaxCPU)+"'")
 		} else {
-			runtime.GOMAXPROCS(runtime.NumCPU())
+			runtime.GOMAXPROCS(runtime.NumCPU() * 4)
 			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(runtime.NumCPU())+"'")
 		}
 
