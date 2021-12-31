@@ -61,6 +61,7 @@ func NewNode() *Node {
 	return &Node{
 		sock:       gosock.NewTmpSock(teaconst.ProcessName),
 		maxThreads: -1,
+		maxCPU:     -1,
 	}
 }
 
