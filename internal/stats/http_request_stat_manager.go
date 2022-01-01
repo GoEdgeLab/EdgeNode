@@ -15,7 +15,6 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
-	"github.com/mssola/user_agent"
 	"strconv"
 	"strings"
 	"time"
@@ -177,7 +176,7 @@ func (this *HTTPRequestStatManager) AddFirewallRuleGroupId(serverId int64, firew
 // Loop 单个循环
 func (this *HTTPRequestStatManager) Loop() error {
 	timeout := time.NewTimer(10 * time.Minute) // 执行的最大时间
-	userAgentParser := &user_agent.UserAgent{}
+	userAgentParser := NewUserAgentParser()
 Loop:
 	for {
 		select {
@@ -223,8 +222,8 @@ Loop:
 			serverId := userAgentString[:atIndex]
 			userAgent := userAgentString[atIndex+1:]
 
-			userAgentParser.Parse(userAgent)
-			osInfo := userAgentParser.OSInfo()
+			var result = userAgentParser.Parse(userAgent)
+			var osInfo = result.os
 			if len(osInfo.Name) > 0 {
 				dotIndex := strings.Index(osInfo.Version, ".")
 				if dotIndex > -1 {
@@ -233,7 +232,7 @@ Loop:
 				this.systemMap[serverId+"@"+osInfo.Name+"@"+osInfo.Version]++
 			}
 
-			browser, browserVersion := userAgentParser.Browser()
+			var browser, browserVersion = result.browserName, result.browserVersion
 			if len(browser) > 0 {
 				dotIndex := strings.Index(browserVersion, ".")
 				if dotIndex > -1 {
