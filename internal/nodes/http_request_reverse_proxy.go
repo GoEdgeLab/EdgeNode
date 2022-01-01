@@ -36,12 +36,12 @@ func (this *HTTPRequest) doReverseProxy() {
 	requestCall := shared.NewRequestCall()
 	requestCall.Request = this.RawReq
 	requestCall.Formatter = this.Format
-	requestCall.Domain = this.host
+	requestCall.Domain = this.ReqHost
 	origin := this.reverseProxy.NextOrigin(requestCall)
 	requestCall.CallResponseCallbacks(this.writer)
 	if origin == nil {
 		err := errors.New(this.URL() + ": no available origin sites for reverse proxy")
-		remotelogs.ServerError(this.Server.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error(), "", nil)
+		remotelogs.ServerError(this.ReqServer.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error(), "", nil)
 		this.write50x(err, http.StatusBadGateway, true)
 		return
 	}
@@ -129,7 +129,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		this.RawReq.Host = hostname
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else {
-		this.RawReq.URL.Host = this.host
+		this.RawReq.URL.Host = this.ReqHost
 	}
 
 	// 重组请求URL

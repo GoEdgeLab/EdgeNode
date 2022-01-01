@@ -19,9 +19,9 @@ func (this *HTTPRequest) doRequestLimit() (shouldStop bool) {
 		if requestConn != nil {
 			clientConn, ok := requestConn.(ClientConnInterface)
 			if ok && !clientConn.IsBound() {
-				if !clientConn.Bind(this.Server.Id, this.requestRemoteAddr(true), this.web.RequestLimit.MaxConns, this.web.RequestLimit.MaxConnsPerIP) {
+				if !clientConn.Bind(this.ReqServer.Id, this.requestRemoteAddr(true), this.web.RequestLimit.MaxConns, this.web.RequestLimit.MaxConnsPerIP) {
 					this.writeCode(http.StatusTooManyRequests)
-					this.closeConn()
+					this.Close()
 					return true
 				}
 			}

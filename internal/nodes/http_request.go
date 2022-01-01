@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"io/ioutil"
@@ -38,8 +39,8 @@ type HTTPRequest struct {
 	// 外部参数
 	RawReq     *http.Request
 	RawWriter  http.ResponseWriter
-	Server     *serverconfigs.ServerConfig
-	host       string // 请求的Host
+	ReqServer  *serverconfigs.ServerConfig
+	ReqHost    string // 请求的Host
 	ServerName string // 实际匹配到的Host
 	ServerAddr string // 实际启动的服务器监听地址
 	IsHTTP     bool
@@ -98,7 +99,7 @@ func (this *HTTPRequest) init() {
 	// this.uri = this.RawReq.URL.RequestURI()
 	// 之所以不使用RequestURI()，是不想让URL中的Path被Encode
 	var urlPath = this.RawReq.URL.Path
-	if this.Server.Web != nil && this.Server.Web.MergeSlashes {
+	if this.ReqServer.Web != nil && this.ReqServer.Web.MergeSlashes {
 		urlPath = utils.CleanPath(urlPath)
 		this.web.MergeSlashes = true
 	}
@@ -129,13 +130,13 @@ func (this *HTTPRequest) Do() {
 	this.init()
 
 	// 当前服务的反向代理配置
-	if this.Server.ReverseProxyRef != nil && this.Server.ReverseProxy != nil {
-		this.reverseProxyRef = this.Server.ReverseProxyRef
-		this.reverseProxy = this.Server.ReverseProxy
+	if this.ReqServer.ReverseProxyRef != nil && this.ReqServer.ReverseProxy != nil {
+		this.reverseProxyRef = this.ReqServer.ReverseProxyRef
+		this.reverseProxy = this.ReqServer.ReverseProxy
 	}
 
 	// Web配置
-	err := this.configureWeb(this.Server.Web, true, 0)
+	err := this.configureWeb(this.ReqServer.Web, true, 0)
 	if err != nil {
 		this.write50x(err, http.StatusInternalServerError, false)
 		this.doEnd()
@@ -161,14 +162,14 @@ func (this *HTTPRequest) Do() {
 	}
 
 	// 套餐
-	if this.Server.UserPlan != nil && !this.Server.UserPlan.IsAvailable() {
+	if this.ReqServer.UserPlan != nil && !this.ReqServer.UserPlan.IsAvailable() {
 		this.doPlanExpires()
 		this.doEnd()
 		return
 	}
 
 	// 流量限制
-	if this.Server.TrafficLimit != nil && this.Server.TrafficLimit.IsOn && !this.Server.TrafficLimit.IsEmpty() && this.Server.TrafficLimitStatus != nil && this.Server.TrafficLimitStatus.IsValid() {
+	if this.ReqServer.TrafficLimit != nil && this.ReqServer.TrafficLimit.IsOn && !this.ReqServer.TrafficLimit.IsEmpty() && this.ReqServer.TrafficLimitStatus != nil && this.ReqServer.TrafficLimitStatus.IsValid() {
 		this.doTrafficLimit()
 		this.doEnd()
 		return
@@ -310,14 +311,14 @@ func (this *HTTPRequest) doEnd() {
 	// 流量统计
 	// TODO 增加是否开启开关
 	// TODO 增加Header统计，考虑从Conn中读取
-	if this.Server != nil {
+	if this.ReqServer != nil {
 		if this.isCached {
-			stats.SharedTrafficStatManager.Add(this.Server.Id, this.host, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1, 0, 0, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
+			stats.SharedTrafficStatManager.Add(this.ReqServer.Id, this.ReqHost, this.writer.sentBodyBytes, this.writer.sentBodyBytes, 1, 1, 0, 0, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
 		} else {
 			if this.isAttack {
-				stats.SharedTrafficStatManager.Add(this.Server.Id, this.host, this.writer.sentBodyBytes, 0, 1, 0, 1, this.writer.sentBodyBytes, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
+				stats.SharedTrafficStatManager.Add(this.ReqServer.Id, this.ReqHost, this.writer.sentBodyBytes, 0, 1, 0, 1, this.writer.sentBodyBytes, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
 			} else {
-				stats.SharedTrafficStatManager.Add(this.Server.Id, this.host, this.writer.sentBodyBytes, 0, 1, 0, 0, 0, this.Server.ShouldCheckTrafficLimit(), this.Server.PlanId())
+				stats.SharedTrafficStatManager.Add(this.ReqServer.Id, this.ReqHost, this.writer.sentBodyBytes, 0, 1, 0, 0, 0, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
 			}
 		}
 	}
@@ -545,7 +546,7 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 			}
 			if varMapping, isMatched := location.Match(rawPath, this.Format); isMatched {
 				// 检查专属域名
-				if len(location.Domains) > 0 && !configutils.MatchDomains(location.Domains, this.host) {
+				if len(location.Domains) > 0 && !configutils.MatchDomains(location.Domains, this.ReqHost) {
 					continue
 				}
 
@@ -627,7 +628,7 @@ func (this *HTTPRequest) Format(source string) string {
 			if this.IsHTTPS {
 				scheme = "https"
 			}
-			return scheme + "://" + this.host + this.rawURI
+			return scheme + "://" + this.ReqHost + this.rawURI
 		case "requestPath":
 			return this.Path()
 		case "requestPathExtension":
@@ -674,7 +675,7 @@ func (this *HTTPRequest) Format(source string) string {
 		case "timestamp":
 			return strconv.FormatInt(this.requestFromTime.Unix(), 10)
 		case "host":
-			return this.host
+			return this.ReqHost
 		case "referer":
 			return this.RawReq.Referer()
 		case "referer.host":
@@ -792,7 +793,7 @@ func (this *HTTPRequest) Format(source string) string {
 
 		// host
 		if prefix == "host" {
-			pieces := strings.Split(this.host, ".")
+			pieces := strings.Split(this.ReqHost, ".")
 			switch suffix {
 			case "first":
 				if len(pieces) > 0 {
@@ -1089,14 +1090,22 @@ func (this *HTTPRequest) Id() string {
 	return this.requestId
 }
 
+func (this *HTTPRequest) Server() maps.Map {
+	return maps.Map{"id": this.ReqServer.Id}
+}
+
+func (this *HTTPRequest) Node() maps.Map {
+	return maps.Map{"id": teaconst.NodeId}
+}
+
 // URL 获取完整的URL
 func (this *HTTPRequest) URL() string {
-	return this.requestScheme() + "://" + this.host + this.uri
+	return this.requestScheme() + "://" + this.ReqHost + this.uri
 }
 
 // Host 获取Host
 func (this *HTTPRequest) Host() string {
-	return this.host
+	return this.ReqHost
 }
 
 func (this *HTTPRequest) Proto() string {
@@ -1186,6 +1195,24 @@ func (this *HTTPRequest) Done() {
 	this.isDone = true
 }
 
+// Close 关闭连接
+func (this *HTTPRequest) Close() {
+	this.Done()
+
+	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
+	if requestConn == nil {
+		return
+	}
+
+	conn, ok := requestConn.(net.Conn)
+	if ok {
+		_ = conn.Close()
+		return
+	}
+
+	return
+}
+
 // 设置代理相关头部信息
 // 参考：https://tools.ietf.org/html/rfc7239
 func (this *HTTPRequest) setForwardHeaders(header http.Header) {
@@ -1226,9 +1253,9 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 	/**{
 		forwarded, ok := header["Forwarded"]
 		if ok {
-			header["Forwarded"] = []string{strings.Join(forwarded, ", ") + ", by=" + this.serverAddr + "; for=" + remoteAddr + "; host=" + this.host + "; proto=" + this.rawScheme}
+			header["Forwarded"] = []string{strings.Join(forwarded, ", ") + ", by=" + this.serverAddr + "; for=" + remoteAddr + "; host=" + this.ReqHost + "; proto=" + this.rawScheme}
 		} else {
-			header["Forwarded"] = []string{"by=" + this.serverAddr + "; for=" + remoteAddr + "; host=" + this.host + "; proto=" + this.rawScheme}
+			header["Forwarded"] = []string{"by=" + this.serverAddr + "; for=" + remoteAddr + "; host=" + this.ReqHost + "; proto=" + this.rawScheme}
 		}
 	}**/
 
@@ -1239,7 +1266,7 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 
 	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXForwardedHostHeader() {
 		if _, ok := header["X-Forwarded-Host"]; !ok {
-			this.RawReq.Header.Set("X-Forwarded-Host", this.host)
+			this.RawReq.Header.Set("X-Forwarded-Host", this.ReqHost)
 		}
 	}
 
@@ -1279,7 +1306,7 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 			}
 
 			// 域名
-			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.host) {
+			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.ReqHost) {
 				continue
 			}
 
@@ -1363,7 +1390,7 @@ func (this *HTTPRequest) processResponseHeaders(statusCode int) {
 			}
 
 			// 域名
-			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.host) {
+			if len(header.Domains) > 0 && !configutils.MatchDomains(header.Domains, this.ReqHost) {
 				continue
 			}
 
@@ -1397,13 +1424,13 @@ func (this *HTTPRequest) processResponseHeaders(statusCode int) {
 
 	// HSTS
 	if this.IsHTTPS &&
-		this.Server.HTTPS != nil &&
-		this.Server.HTTPS.SSLPolicy != nil &&
-		this.Server.HTTPS.SSLPolicy.IsOn &&
-		this.Server.HTTPS.SSLPolicy.HSTS != nil &&
-		this.Server.HTTPS.SSLPolicy.HSTS.IsOn &&
-		this.Server.HTTPS.SSLPolicy.HSTS.Match(this.host) {
-		responseHeader.Set(this.Server.HTTPS.SSLPolicy.HSTS.HeaderKey(), this.Server.HTTPS.SSLPolicy.HSTS.HeaderValue())
+		this.ReqServer.HTTPS != nil &&
+		this.ReqServer.HTTPS.SSLPolicy != nil &&
+		this.ReqServer.HTTPS.SSLPolicy.IsOn &&
+		this.ReqServer.HTTPS.SSLPolicy.HSTS != nil &&
+		this.ReqServer.HTTPS.SSLPolicy.HSTS.IsOn &&
+		this.ReqServer.HTTPS.SSLPolicy.HSTS.Match(this.ReqHost) {
+		responseHeader.Set(this.ReqServer.HTTPS.SSLPolicy.HSTS.HeaderKey(), this.ReqServer.HTTPS.SSLPolicy.HSTS.HeaderValue())
 	}
 }
 
@@ -1462,22 +1489,6 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	return false
-}
-
-// 关闭当前连接
-func (this *HTTPRequest) closeConn() {
-	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
-	if requestConn == nil {
-		return
-	}
-
-	conn, ok := requestConn.(net.Conn)
-	if ok {
-		_ = conn.Close()
-		return
-	}
-
-	return
 }
 
 // 检查连接是否已关闭

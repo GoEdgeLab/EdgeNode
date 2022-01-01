@@ -8,7 +8,7 @@ import (
 
 // 流量限制
 func (this *HTTPRequest) doTrafficLimit() {
-	var config = this.Server.TrafficLimit
+	var config = this.ReqServer.TrafficLimit
 
 	this.tags = append(this.tags, "bandwidth")
 

@@ -22,7 +22,7 @@ import (
 func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	this.cacheCanTryStale = false
 
-	cachePolicy := this.Server.HTTPCachePolicy
+	cachePolicy := this.ReqServer.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
 	}
@@ -138,7 +138,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			if err == nil {
 				for _, rpcServerService := range rpcClient.ServerRPCList() {
 					_, err = rpcServerService.PurgeServerCache(rpcClient.Context(), &pb.PurgeServerCacheRequest{
-						Domains:  []string{this.host},
+						Domains:  []string{this.ReqHost},
 						Keys:     []string{key},
 						Prefixes: nil,
 					})

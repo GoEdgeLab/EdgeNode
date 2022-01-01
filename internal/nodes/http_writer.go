@@ -441,8 +441,8 @@ func (this *HTTPWriter) Close() {
 						StaleAt:    expiredAt + int64(this.calculateStaleLife()),
 						HeaderSize: this.cacheWriter.HeaderSize(),
 						BodySize:   this.cacheWriter.BodySize(),
-						Host:       this.req.host,
-						ServerId:   this.req.Server.Id,
+						Host:       this.req.ReqHost,
+						ServerId:   this.req.ReqServer.Id,
 					})
 				}
 			}
@@ -566,7 +566,7 @@ func (this *HTTPWriter) prepareCache(size int64) {
 		return
 	}
 
-	cachePolicy := this.req.Server.HTTPCachePolicy
+	cachePolicy := this.req.ReqServer.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
 	}

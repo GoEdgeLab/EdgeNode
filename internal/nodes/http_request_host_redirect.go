@@ -13,7 +13,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 	if this.web.MergeSlashes {
 		urlPath = utils.CleanPath(urlPath)
 	}
-	fullURL := this.requestScheme() + "://" + this.host + urlPath
+	fullURL := this.requestScheme() + "://" + this.ReqHost + urlPath
 	for _, u := range this.web.HostRedirects {
 		if !u.IsOn {
 			continue

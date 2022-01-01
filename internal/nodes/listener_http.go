@@ -208,8 +208,8 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 	req := &HTTPRequest{
 		RawReq:     rawReq,
 		RawWriter:  rawWriter,
-		Server:     server,
-		host:       reqHost,
+		ReqServer:  server,
+		ReqHost:    reqHost,
 		ServerName: serverName,
 		ServerAddr: this.addr,
 		IsHTTP:     this.isHTTP,

@@ -93,7 +93,7 @@ func (this *HTTPRequest) log() {
 	accessLog := &pb.HTTPAccessLog{
 		RequestId:       this.requestId,
 		NodeId:          sharedNodeConfig.Id,
-		ServerId:        this.Server.Id,
+		ServerId:        this.ReqServer.Id,
 		RemoteAddr:      this.requestRemoteAddr(true),
 		RawRemoteAddr:   addr,
 		RemotePort:      int32(this.requestRemotePort()),
@@ -114,7 +114,7 @@ func (this *HTTPRequest) log() {
 		TimeLocal:       this.requestFromTime.Format("2/Jan/2006:15:04:05 -0700"),
 		Msec:            float64(this.requestFromTime.Unix()) + float64(this.requestFromTime.Nanosecond())/1000000000,
 		Timestamp:       this.requestFromTime.Unix(),
-		Host:            this.host,
+		Host:            this.ReqHost,
 		Referer:         referer,
 		UserAgent:       userAgent,
 		Request:         this.requestString(),

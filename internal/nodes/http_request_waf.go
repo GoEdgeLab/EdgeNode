@@ -31,16 +31,16 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	}
 
 	// 是否在全局名单中
-	if !iplibrary.AllowIP(remoteAddr, this.Server.Id) {
+	if !iplibrary.AllowIP(remoteAddr, this.ReqServer.Id) {
 		this.disableLog = true
-		this.closeConn()
+		this.Close()
 		return true
 	}
 
 	// 检查是否在临时黑名单中
-	if waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeService, this.Server.Id, remoteAddr) || waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteAddr) {
+	if waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeService, this.ReqServer.Id, remoteAddr) || waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteAddr) {
 		this.disableLog = true
-		this.closeConn()
+		this.Close()
 
 		return true
 	}
@@ -57,8 +57,8 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	}
 
 	// 公用的防火墙设置
-	if this.Server.HTTPFirewallPolicy != nil && this.Server.HTTPFirewallPolicy.IsOn {
-		blocked, breakChecking := this.checkWAFRequest(this.Server.HTTPFirewallPolicy)
+	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
+		blocked, breakChecking := this.checkWAFRequest(this.ReqServer.HTTPFirewallPolicy)
 		if blocked {
 			return true
 		}
@@ -208,7 +208,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 			}
 
 			// 添加统计
-			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Actions)
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.ReqServer.Id, this.firewallRuleGroupId, ruleSet.Actions)
 		}
 
 		this.firewallActions = append(ruleSet.ActionCodes(), firewallPolicy.Mode)
@@ -228,8 +228,8 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 	}
 
 	// 公用的防火墙设置
-	if this.Server.HTTPFirewallPolicy != nil && this.Server.HTTPFirewallPolicy.IsOn {
-		blocked := this.checkWAFResponse(this.Server.HTTPFirewallPolicy, resp)
+	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
+		blocked := this.checkWAFResponse(this.ReqServer.HTTPFirewallPolicy, resp)
 		if blocked {
 			return true
 		}
@@ -266,7 +266,7 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 			}
 
 			// 添加统计
-			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.Server.Id, this.firewallRuleGroupId, ruleSet.Actions)
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.ReqServer.Id, this.firewallRuleGroupId, ruleSet.Actions)
 		}
 
 		this.firewallActions = append(ruleSet.ActionCodes(), firewallPolicy.Mode)
@@ -313,12 +313,12 @@ func (this *HTTPRequest) WAFRestoreBody(data []byte) {
 
 // WAFServerId 服务ID
 func (this *HTTPRequest) WAFServerId() int64 {
-	return this.Server.Id
+	return this.ReqServer.Id
 }
 
 // WAFClose 关闭连接
 func (this *HTTPRequest) WAFClose() {
-	this.closeConn()
+	this.Close()
 }
 
 func (this *HTTPRequest) WAFOnAction(action interface{}) (goNext bool) {

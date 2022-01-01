@@ -45,7 +45,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 				if len(method.Realm) > 0 {
 					headerValue += method.Realm
 				} else {
-					headerValue += this.host
+					headerValue += this.ReqHost
 				}
 				headerValue += "\""
 				if len(method.Charset) > 0 {

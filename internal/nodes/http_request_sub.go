@@ -10,8 +10,8 @@ func (this *HTTPRequest) doSubRequest(writer http.ResponseWriter, rawReq *http.R
 	req := &HTTPRequest{
 		RawReq:     rawReq,
 		RawWriter:  writer,
-		Server:     this.Server,
-		host:       this.host,
+		ReqServer:  this.ReqServer,
+		ReqHost:    this.ReqHost,
 		ServerName: this.ServerName,
 		ServerAddr: this.ServerAddr,
 		IsHTTP:     this.IsHTTP,

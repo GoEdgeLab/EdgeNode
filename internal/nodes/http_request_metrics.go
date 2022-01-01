@@ -50,7 +50,7 @@ func (this *HTTPRequest) MetricValue(value string) (result int64, ok bool) {
 }
 
 func (this *HTTPRequest) MetricServerId() int64 {
-	return this.Server.Id
+	return this.ReqServer.Id
 }
 
 func (this *HTTPRequest) MetricCategory() string {

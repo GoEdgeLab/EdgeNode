@@ -15,7 +15,7 @@ func (this *HTTPRequest) doRewrite() (shouldShop bool) {
 	if this.rewriteRule.Mode == serverconfigs.HTTPRewriteModeProxy {
 		// 外部URL
 		if this.rewriteIsExternalURL {
-			host := this.host
+			host := this.ReqHost
 			if len(this.rewriteRule.ProxyHost) > 0 {
 				host = this.rewriteRule.ProxyHost
 			}
