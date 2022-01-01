@@ -28,6 +28,7 @@ type StatItem struct {
 }
 
 var SharedHTTPRequestStatManager = NewHTTPRequestStatManager()
+var sharedUserAgentParser = NewUserAgentParser()
 
 // HTTPRequestStatManager HTTP请求相关的统计
 // 这里的统计是一个辅助统计，注意不要因为统计而影响服务工作性能
@@ -176,7 +177,6 @@ func (this *HTTPRequestStatManager) AddFirewallRuleGroupId(serverId int64, firew
 // Loop 单个循环
 func (this *HTTPRequestStatManager) Loop() error {
 	timeout := time.NewTimer(10 * time.Minute) // 执行的最大时间
-	userAgentParser := NewUserAgentParser()
 Loop:
 	for {
 		select {
@@ -222,7 +222,7 @@ Loop:
 			serverId := userAgentString[:atIndex]
 			userAgent := userAgentString[atIndex+1:]
 
-			var result = userAgentParser.Parse(userAgent)
+			var result = sharedUserAgentParser.Parse(userAgent)
 			var osInfo = result.os
 			if len(osInfo.Name) > 0 {
 				dotIndex := strings.Index(osInfo.Version, ".")
