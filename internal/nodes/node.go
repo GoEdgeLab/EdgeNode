@@ -639,6 +639,7 @@ func (this *Node) listenSock() error {
 			case "gc":
 				runtime.GC()
 				debug.FreeOSMemory()
+				_ = cmd.ReplyOk()
 			}
 		})
 

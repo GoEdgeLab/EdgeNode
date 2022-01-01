@@ -117,6 +117,15 @@ func main() {
 			}
 		}
 	})
+	app.On("gc", func() {
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		_, err := sock.Send(&gosock.Command{Code: "gc"})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			fmt.Println("ok")
+		}
+	})
 	app.Run(func() {
 		node := nodes.NewNode()
 		node.Start()
