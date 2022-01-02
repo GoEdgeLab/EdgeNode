@@ -17,6 +17,10 @@ import (
 
 // 调用WAF
 func (this *HTTPRequest) doWAFRequest() (blocked bool) {
+	if this.web.FirewallRef == nil || !this.web.FirewallRef.IsOn {
+		return
+	}
+
 	var remoteAddr = this.requestRemoteAddr(true)
 
 	// 检查是否为白名单直连
@@ -219,6 +223,10 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 // call response waf
 func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
+	if this.web.FirewallRef == nil || !this.web.FirewallRef.IsOn {
+		return
+	}
+
 	// 当前服务的独立设置
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
 		blocked := this.checkWAFResponse(this.web.FirewallPolicy, resp)

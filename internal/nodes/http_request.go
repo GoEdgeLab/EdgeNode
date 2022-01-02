@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
+	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -1160,11 +1161,21 @@ func (this *HTTPRequest) Method() string {
 	return this.RawReq.Method
 }
 
+// TransferEncoding 获取传输编码
 func (this *HTTPRequest) TransferEncoding() string {
 	if len(this.RawReq.TransferEncoding) > 0 {
 		return this.RawReq.TransferEncoding[0]
 	}
 	return ""
+}
+
+// Cookie 获取Cookie
+func (this *HTTPRequest) Cookie(name string) string {
+	c, err := this.RawReq.Cookie(name)
+	if err != nil {
+		return ""
+	}
+	return c.Value
 }
 
 // DeleteHeader 删除Header
@@ -1182,10 +1193,12 @@ func (this *HTTPRequest) Header() http.Header {
 	return this.RawReq.Header
 }
 
+// URI 获取当前请求的URI
 func (this *HTTPRequest) URI() string {
 	return this.uri
 }
 
+// SetURI 设置当前请求的URI
 func (this *HTTPRequest) SetURI(uri string) {
 	this.uri = uri
 }
@@ -1211,6 +1224,12 @@ func (this *HTTPRequest) Close() {
 	}
 
 	return
+}
+
+// Allow 放行
+func (this *HTTPRequest) Allow() {
+	logs.Println("allow") // TODO
+	this.web.FirewallRef = nil
 }
 
 // 设置代理相关头部信息

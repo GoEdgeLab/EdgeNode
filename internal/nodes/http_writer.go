@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"compress/gzip"
+	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
@@ -27,6 +28,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -217,11 +219,44 @@ func (this *HTTPWriter) WriteHeader(statusCode int) {
 	this.statusCode = statusCode
 }
 
-// Send 发送响应
+// Send 直接发送内容，并终止请求
 func (this *HTTPWriter) Send(status int, body string) {
 	this.WriteHeader(status)
 	_, _ = this.WriteString(body)
 	this.isFinished = true
+}
+
+// SendFile 发送文件内容，并终止请求
+func (this *HTTPWriter) SendFile(status int, path string) (int64, error) {
+	this.WriteHeader(status)
+	this.isFinished = true
+
+	fp, err := os.OpenFile(path, os.O_RDONLY, 0444)
+	if err != nil {
+		return 0, errors.New("open file '" + path + "' failed: " + err.Error())
+	}
+	defer func() {
+		_ = fp.Close()
+	}()
+
+	stat, err := fp.Stat()
+	if err != nil {
+		return 0, err
+	}
+	if stat.IsDir() {
+		return 0, errors.New("open file '" + path + "' failed: it is a directory")
+	}
+
+	var bufPool = this.req.bytePool(stat.Size())
+	var buf = bufPool.Get()
+	defer bufPool.Put(buf)
+
+	written, err := io.CopyBuffer(this, fp, buf)
+	if err != nil {
+		return written, err
+	}
+
+	return written, nil
 }
 
 // StatusCode 读取状态码
