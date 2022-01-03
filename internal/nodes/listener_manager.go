@@ -143,6 +143,9 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 		}
 	}
 
+	// 加入到firewalld
+	this.addToFirewalld(groupAddrs)
+
 	return nil
 }
 
@@ -213,4 +216,56 @@ func (this *ListenerManager) findProcessNameWithPort(isUdp bool, port string) st
 		return matches[1]
 	}
 	return ""
+}
+
+func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
+	if !sharedNodeConfig.AutoOpenPorts {
+		return
+	}
+
+	remotelogs.Println("FIREWALLD", "open ports automatically")
+
+	var ports = []string{}
+	for _, addr := range groupAddrs {
+		var protocol = "tcp"
+		if strings.HasPrefix(addr, "udp") {
+			protocol = "udp"
+		}
+
+		var lastIndex = strings.LastIndex(addr, ":")
+		if lastIndex > 0 {
+			var portString = addr[lastIndex+1:]
+			ports = append(ports, portString+"/"+protocol)
+		}
+	}
+	if len(ports) == 0 {
+		return
+	}
+
+	firewallCmd, err := exec.LookPath("firewall-cmd")
+	if err != nil || len(firewallCmd) == 0 {
+		return
+	}
+
+	for _, port := range ports {
+		{
+			// TODO 需要支持sudo
+			var cmd = exec.Command(firewallCmd, "--add-port="+port, "--permanent")
+			err = cmd.Run()
+			if err != nil {
+				remotelogs.Warn("FIREWALLD", "'"+cmd.String()+"': "+err.Error())
+				return
+			}
+		}
+
+		{
+			// TODO 需要支持sudo
+			var cmd = exec.Command(firewallCmd, "--add-port="+port)
+			err = cmd.Run()
+			if err != nil {
+				remotelogs.Warn("FIREWALLD", "'"+cmd.String()+"': "+err.Error())
+				return
+			}
+		}
+	}
 }
