@@ -173,6 +173,39 @@ func ServerSuccess(serverId int64, tag string, description string, logType nodec
 	}
 }
 
+
+// ServerLog 打印服务相关日志信息
+func ServerLog(serverId int64, tag string, description string, logType nodeconfigs.NodeLogType, params maps.Map) {
+	logs.Println("[" + tag + "]" + description)
+
+	// 参数
+	var paramsJSON []byte
+	if len(params) > 0 {
+		p, err := json.Marshal(params)
+		if err != nil {
+			logs.Println("[LOG]" + err.Error())
+		} else {
+			paramsJSON = p
+		}
+	}
+
+	select {
+	case logChan <- &pb.NodeLog{
+		Role:        teaconst.Role,
+		Tag:         tag,
+		Description: description,
+		Level:       "info",
+		NodeId:      teaconst.NodeId,
+		ServerId:    serverId,
+		CreatedAt:   time.Now().Unix(),
+		Type:        logType,
+		ParamsJSON:  paramsJSON,
+	}:
+	default:
+
+	}
+}
+
 // 上传日志
 func uploadLogs() error {
 	logList := []*pb.NodeLog{}
