@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -29,6 +30,8 @@ type ListenerManager struct {
 
 	retryListenerMap map[string]*Listener // 需要重试的监听器 addr => Listener
 	ticker           *time.Ticker
+
+	lastPortStrings string
 }
 
 // NewListenerManager 获取新对象
@@ -223,8 +226,7 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 		return
 	}
 
-	remotelogs.Println("FIREWALLD", "open ports automatically")
-
+	// 组合端口号
 	var ports = []string{}
 	for _, addr := range groupAddrs {
 		var protocol = "tcp"
@@ -242,11 +244,20 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 		return
 	}
 
+	// 检查是否有变化
+	sort.Strings(ports)
+	var newPortStrings = strings.Join(ports, ",")
+	if newPortStrings == this.lastPortStrings {
+		return
+	}
+	this.lastPortStrings = newPortStrings
+
 	firewallCmd, err := exec.LookPath("firewall-cmd")
 	if err != nil || len(firewallCmd) == 0 {
 		return
 	}
 
+	remotelogs.Println("FIREWALLD", "open ports automatically")
 	for _, port := range ports {
 		{
 			// TODO 需要支持sudo

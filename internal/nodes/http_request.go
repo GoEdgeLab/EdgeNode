@@ -469,11 +469,17 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		if this.web.RequestScripts == nil {
 			this.web.RequestScripts = web.RequestScripts
 		} else {
-			if web.RequestScripts.OnInitScript != nil && (web.RequestScripts.OnInitScript.IsPrior || isTop) {
-				this.web.RequestScripts.OnInitScript = web.RequestScripts.OnInitScript
+			if web.RequestScripts.InitGroup != nil && (web.RequestScripts.InitGroup.IsPrior || isTop) {
+				if this.web.RequestScripts == nil {
+					this.web.RequestScripts = &serverconfigs.HTTPRequestScriptsConfig{}
+				}
+				this.web.RequestScripts.InitGroup = web.RequestScripts.InitGroup
 			}
-			if web.RequestScripts.OnRequestScript != nil && (web.RequestScripts.OnRequestScript.IsPrior || isTop) {
-				this.web.RequestScripts.OnRequestScript = web.RequestScripts.OnRequestScript
+			if web.RequestScripts.RequestGroup != nil && (web.RequestScripts.RequestGroup.IsPrior || isTop) {
+				if this.web.RequestScripts == nil {
+					this.web.RequestScripts = &serverconfigs.HTTPRequestScriptsConfig{}
+				}
+				this.web.RequestScripts.RequestGroup = web.RequestScripts.RequestGroup
 			}
 		}
 	}
