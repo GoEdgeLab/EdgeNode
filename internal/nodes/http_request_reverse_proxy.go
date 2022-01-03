@@ -293,6 +293,13 @@ func (this *HTTPRequest) doReverseProxy() {
 		this.writer.WriteHeader(resp.StatusCode)
 	}
 
+	// 是否有内容
+	if resp.ContentLength == 0 && len(resp.TransferEncoding) == 0 {
+		_ = resp.Body.Close()
+		this.writer.SetOk()
+		return
+	}
+
 	// 输出到客户端
 	pool := this.bytePool(resp.ContentLength)
 	buf := pool.Get()

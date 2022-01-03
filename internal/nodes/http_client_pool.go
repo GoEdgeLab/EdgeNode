@@ -84,7 +84,6 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 	if idleConns <= 0 {
 		idleConns = numberCPU * 8
 	}
-	//logs.Println("[ORIGIN]max connections:", maxConnections)
 
 	// TLS通讯
 	tlsConfig := &tls.Config{
@@ -101,7 +100,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 		}
 	}
 
-	transport := &http.Transport{
+	var transport = &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			// 支持TOA的连接
 			toaConfig := sharedTOAManager.Config()
