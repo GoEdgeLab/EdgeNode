@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"strings"
 	"time"
 )
@@ -108,37 +109,33 @@ Loop:
 }
 
 func (this *HTTPAccessLogQueue) toValidUTF8(accessLog *pb.HTTPAccessLog) {
-	accessLog.RemoteUser = this.toValidUTF8string(accessLog.RemoteUser)
-	accessLog.RequestURI = this.toValidUTF8string(accessLog.RequestURI)
-	accessLog.RequestPath = this.toValidUTF8string(accessLog.RequestPath)
-	accessLog.RequestFilename = this.toValidUTF8string(accessLog.RequestFilename)
+	accessLog.RemoteUser = utils.ToValidUTF8string(accessLog.RemoteUser)
+	accessLog.RequestURI = utils.ToValidUTF8string(accessLog.RequestURI)
+	accessLog.RequestPath = utils.ToValidUTF8string(accessLog.RequestPath)
+	accessLog.RequestFilename = utils.ToValidUTF8string(accessLog.RequestFilename)
 	accessLog.RequestBody = bytes.ToValidUTF8(accessLog.RequestBody, []byte{})
 
 	for _, v := range accessLog.SentHeader {
 		for index, s := range v.Values {
-			v.Values[index] = this.toValidUTF8string(s)
+			v.Values[index] = utils.ToValidUTF8string(s)
 		}
 	}
 
-	accessLog.Referer = this.toValidUTF8string(accessLog.Referer)
-	accessLog.UserAgent = this.toValidUTF8string(accessLog.UserAgent)
-	accessLog.Request = this.toValidUTF8string(accessLog.Request)
-	accessLog.ContentType = this.toValidUTF8string(accessLog.ContentType)
+	accessLog.Referer = utils.ToValidUTF8string(accessLog.Referer)
+	accessLog.UserAgent = utils.ToValidUTF8string(accessLog.UserAgent)
+	accessLog.Request = utils.ToValidUTF8string(accessLog.Request)
+	accessLog.ContentType = utils.ToValidUTF8string(accessLog.ContentType)
 
 	for k, c := range accessLog.Cookie {
-		accessLog.Cookie[k] = this.toValidUTF8string(c)
+		accessLog.Cookie[k] = utils.ToValidUTF8string(c)
 	}
 
-	accessLog.Args = this.toValidUTF8string(accessLog.Args)
-	accessLog.QueryString = this.toValidUTF8string(accessLog.QueryString)
+	accessLog.Args = utils.ToValidUTF8string(accessLog.Args)
+	accessLog.QueryString = utils.ToValidUTF8string(accessLog.QueryString)
 
 	for _, v := range accessLog.Header {
 		for index, s := range v.Values {
-			v.Values[index] = this.toValidUTF8string(s)
+			v.Values[index] = utils.ToValidUTF8string(s)
 		}
 	}
-}
-
-func (this *HTTPAccessLogQueue) toValidUTF8string(v string) string {
-	return strings.ToValidUTF8(v, "")
 }

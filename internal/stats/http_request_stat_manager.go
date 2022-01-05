@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
@@ -319,6 +320,15 @@ func (this *HTTPRequestStatManager) Upload() error {
 		})
 	}
 
+	// 重置数据
+	// 这里需要放到上传数据之前，防止因上传失败而导致统计数据堆积
+	this.cityMap = map[string]*StatItem{}
+	this.providerMap = map[string]int64{}
+	this.systemMap = map[string]int64{}
+	this.browserMap = map[string]int64{}
+	this.dailyFirewallRuleGroupMap = map[string]int64{}
+
+	// 上传数据
 	_, err = rpcClient.ServerRPC().UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
 		Month:                  timeutil.Format("Ym"),
 		Day:                    timeutil.Format("Ymd"),
@@ -329,14 +339,30 @@ func (this *HTTPRequestStatManager) Upload() error {
 		HttpFirewallRuleGroups: pbFirewallRuleGroups,
 	})
 	if err != nil {
-		return err
+		// 是否包含了invalid UTF-8
+		if strings.Contains(err.Error(), "string field contains invalid UTF-8") {
+			for _, system := range pbSystems {
+				system.Name = utils.ToValidUTF8string(system.Name)
+			}
+			for _, browser := range pbBrowsers {
+				browser.Name = utils.ToValidUTF8string(browser.Name)
+			}
+
+			// 再次尝试
+			_, err = rpcClient.ServerRPC().UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
+				Month:                  timeutil.Format("Ym"),
+				Day:                    timeutil.Format("Ymd"),
+				RegionCities:           pbCities,
+				RegionProviders:        pbProviders,
+				Systems:                pbSystems,
+				Browsers:               pbBrowsers,
+				HttpFirewallRuleGroups: pbFirewallRuleGroups,
+			})
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	// 重置数据
-	this.cityMap = map[string]*StatItem{}
-	this.providerMap = map[string]int64{}
-	this.systemMap = map[string]int64{}
-	this.browserMap = map[string]int64{}
-	this.dailyFirewallRuleGroupMap = map[string]int64{}
 	return nil
 }

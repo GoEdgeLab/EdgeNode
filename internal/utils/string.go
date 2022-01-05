@@ -5,17 +5,17 @@ import (
 	"unsafe"
 )
 
-// convert bytes to string
+// UnsafeBytesToString convert bytes to string
 func UnsafeBytesToString(bs []byte) string {
 	return *(*string)(unsafe.Pointer(&bs))
 }
 
-// convert string to bytes
+// UnsafeStringToBytes convert string to bytes
 func UnsafeStringToBytes(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&s))
 }
 
-// format address
+// FormatAddress format address
 func FormatAddress(addr string) string {
 	if strings.HasSuffix(addr, "unix:") {
 		return addr
@@ -27,11 +27,15 @@ func FormatAddress(addr string) string {
 	return addr
 }
 
-// format address list
+// FormatAddressList format address list
 func FormatAddressList(addrList []string) []string {
 	result := []string{}
 	for _, addr := range addrList {
 		result = append(result, FormatAddress(addr))
 	}
 	return result
+}
+
+func ToValidUTF8string(v string) string {
+	return strings.ToValidUTF8(v, "")
 }
