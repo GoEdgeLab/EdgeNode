@@ -32,14 +32,13 @@ func (this *WAFManager) UpdatePolicies(policies []*firewallconfigs.HTTPFirewallP
 	m := map[int64]*waf.WAF{}
 	for _, p := range policies {
 		w, err := this.convertWAF(p)
+		if w != nil {
+			m[p.Id] = w
+		}
 		if err != nil {
 			remotelogs.Error("WAF", "initialize policy '"+strconv.FormatInt(p.Id, 10)+"' failed: "+err.Error())
 			continue
 		}
-		if w == nil {
-			continue
-		}
-		m[p.Id] = w
 	}
 	this.mapping = m
 }
@@ -181,9 +180,9 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 		}
 	}
 
-	err := w.Init()
-	if err != nil {
-		return nil, err
+	errorList := w.Init()
+	if len(errorList) > 0 {
+		return w, errorList[0]
 	}
 
 	return w, nil

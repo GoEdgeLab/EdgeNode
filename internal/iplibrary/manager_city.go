@@ -12,52 +12,53 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
+	"github.com/iwind/TeaGo/types"
 	"io/ioutil"
 	"os"
 	"sync"
 	"time"
 )
 
-var SharedCountryManager = NewCountryManager()
+var SharedCityManager = NewCityManager()
 
 func init() {
 	events.On(events.EventLoaded, func() {
 		goman.New(func() {
-			SharedCountryManager.Start()
+			SharedCityManager.Start()
 		})
 	})
 }
 
-// CountryManager 国家/地区信息管理
-type CountryManager struct {
+// CityManager 中国省份信息管理
+type CityManager struct {
 	cacheFile string
 
-	countryMap map[string]int64 // countryName => countryId
-	dataHash   string           // 国家JSON的md5
+	cityMap  map[string]int64 // provinceName_cityName => cityName
+	dataHash string           // 国家JSON的md5
 
 	locker sync.RWMutex
 
 	isUpdated bool
 }
 
-func NewCountryManager() *CountryManager {
-	return &CountryManager{
-		cacheFile:  Tea.Root + "/configs/region_country.json.cache",
-		countryMap: map[string]int64{},
+func NewCityManager() *CityManager {
+	return &CityManager{
+		cacheFile: Tea.Root + "/configs/region_city.json.cache",
+		cityMap:   map[string]int64{},
 	}
 }
 
-func (this *CountryManager) Start() {
+func (this *CityManager) Start() {
 	// 从缓存中读取
 	err := this.load()
 	if err != nil {
-		remotelogs.ErrorObject("COUNTRY_MANAGER", err)
+		remotelogs.ErrorObject("CITY_MANAGER", err)
 	}
 
 	// 第一次更新
 	err = this.loop()
 	if err != nil {
-		remotelogs.ErrorObject("COUNTRY_MANAGER", err)
+		remotelogs.ErrorObject("City_MANAGER", err)
 	}
 
 	// 定时更新
@@ -68,20 +69,20 @@ func (this *CountryManager) Start() {
 	for ticker.Next() {
 		err := this.loop()
 		if err != nil {
-			remotelogs.ErrorObject("COUNTRY_MANAGER", err)
+			remotelogs.ErrorObject("CITY_MANAGER", err)
 		}
 	}
 }
 
-func (this *CountryManager) Lookup(countryName string) (countryId int64) {
+func (this *CityManager) Lookup(provinceId int64, cityName string) (cityId int64) {
 	this.locker.RLock()
-	countryId, _ = this.countryMap[countryName]
+	cityId, _ = this.cityMap[types.String(provinceId)+"_"+cityName]
 	this.locker.RUnlock()
-	return countryId
+	return
 }
 
 // 从缓存中读取
-func (this *CountryManager) load() error {
+func (this *CityManager) load() error {
 	data, err := ioutil.ReadFile(this.cacheFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -95,14 +96,14 @@ func (this *CountryManager) load() error {
 		return err
 	}
 	if m != nil && len(m) > 0 {
-		this.countryMap = m
+		this.cityMap = m
 	}
 
 	return nil
 }
 
-// 更新国家信息
-func (this *CountryManager) loop() error {
+// 更新城市信息
+func (this *CityManager) loop() error {
 	if this.isUpdated {
 		return nil
 	}
@@ -111,15 +112,15 @@ func (this *CountryManager) loop() error {
 	if err != nil {
 		return err
 	}
-	resp, err := rpcClient.RegionCountryRPC().FindAllEnabledRegionCountries(rpcClient.Context(), &pb.FindAllEnabledRegionCountriesRequest{})
+	resp, err := rpcClient.RegionCityRPC().FindAllEnabledRegionCities(rpcClient.Context(), &pb.FindAllEnabledRegionCitiesRequest{})
 	if err != nil {
 		return err
 	}
 
 	m := map[string]int64{}
-	for _, country := range resp.RegionCountries {
-		for _, code := range country.Codes {
-			m[code] = country.Id
+	for _, city := range resp.RegionCities {
+		for _, code := range city.Codes {
+			m[types.String(city.RegionProvinceId)+"_"+code] = city.Id
 		}
 	}
 
@@ -137,11 +138,12 @@ func (this *CountryManager) loop() error {
 	this.dataHash = dataHash
 
 	this.locker.Lock()
-	this.countryMap = m
+	this.cityMap = m
 	this.isUpdated = true
 	this.locker.Unlock()
 
 	// 保存到本地缓存
+
 	err = ioutil.WriteFile(this.cacheFile, data, 0666)
 	return err
 }

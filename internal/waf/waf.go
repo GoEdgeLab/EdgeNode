@@ -62,7 +62,7 @@ func NewWAFFromFile(path string) (waf *WAF, err error) {
 	return waf, nil
 }
 
-func (this *WAF) Init() error {
+func (this *WAF) Init() (resultErrors []error) {
 	// checkpoint
 	this.checkpointsMap = map[string]checkpoints.CheckpointInterface{}
 	for _, def := range checkpoints.AllCheckpoints {
@@ -86,7 +86,8 @@ func (this *WAF) Init() error {
 
 			err := group.Init(this)
 			if err != nil {
-				return err
+				// 这里我们不阻止其他规则正常加入
+				resultErrors = append(resultErrors, err)
 			}
 		}
 	}
@@ -102,7 +103,8 @@ func (this *WAF) Init() error {
 
 			err := group.Init(this)
 			if err != nil {
-				return err
+				// 这里我们不阻止其他规则正常加入
+				resultErrors = append(resultErrors, err)
 			}
 		}
 	}

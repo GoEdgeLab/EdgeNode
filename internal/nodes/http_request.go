@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -65,6 +66,7 @@ type HTTPRequest struct {
 	rewriteRule          *serverconfigs.HTTPRewriteRule    // 匹配到的重写规则
 	rewriteReplace       string                            // 重写规则的目标
 	rewriteIsExternalURL bool                              // 重写目标是否为外部URL
+	remoteAddr           string                            // 计算后的RemoteAddr
 
 	cacheRef         *serverconfigs.HTTPCacheRef // 缓存设置
 	cacheKey         string                      // 缓存使用的Key
@@ -865,6 +867,73 @@ func (this *HTTPRequest) Format(source string) string {
 			}
 		}
 
+		// geo
+		if prefix == "geo" {
+			result, _ := iplibrary.SharedLibrary.Lookup(this.requestRemoteAddr(true))
+
+			switch suffix {
+			case "country.name":
+				if result != nil {
+					return result.Country
+				}
+				return ""
+			case "country.id":
+				if result != nil {
+					return types.String(iplibrary.SharedCountryManager.Lookup(result.Country))
+				}
+				return "0"
+			case "province.name":
+				if result != nil {
+					return result.Province
+				}
+				return ""
+			case "province.id":
+				if result != nil {
+					return types.String(iplibrary.SharedProvinceManager.Lookup(result.Province))
+				}
+				return "0"
+			case "city.name":
+				if result != nil {
+					return result.City
+				}
+				return ""
+			case "city.id":
+				if result != nil {
+					var provinceId = iplibrary.SharedProvinceManager.Lookup(result.Province)
+					if provinceId > 0 {
+						return types.String(iplibrary.SharedCityManager.Lookup(provinceId, result.City))
+					} else {
+						return "0"
+					}
+				}
+				return "0"
+			}
+		}
+
+		// ips
+		if prefix == "isp" {
+			result, _ := iplibrary.SharedLibrary.Lookup(this.requestRemoteAddr(true))
+
+			switch suffix {
+			case "name":
+				if result != nil {
+					return result.ISP
+				}
+			case "id":
+				if result != nil {
+					return types.String(iplibrary.SharedProviderManager.Lookup(result.ISP))
+				}
+				return "0"
+			}
+			return ""
+		}
+
+		// os
+		// TODO
+
+		// browser
+		// TODO
+
 		return "${" + varName + "}"
 	})
 }
@@ -878,12 +947,17 @@ func (this *HTTPRequest) addVarMapping(varMapping map[string]string) {
 
 // 获取请求的客户端地址
 func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
+	if supportVar && len(this.remoteAddr) > 0 {
+		return this.remoteAddr
+	}
+
 	if supportVar &&
 		this.web.RemoteAddr != nil &&
 		this.web.RemoteAddr.IsOn &&
 		!this.web.RemoteAddr.IsEmpty() {
 		var remoteAddr = this.Format(this.web.RemoteAddr.Value)
 		if net.ParseIP(remoteAddr) != nil {
+			this.remoteAddr = remoteAddr
 			return remoteAddr
 		}
 	}
@@ -896,6 +970,9 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 			forwardedFor = forwardedFor[:commaIndex]
 		}
 		if net.ParseIP(forwardedFor) != nil {
+			if supportVar {
+				this.remoteAddr = forwardedFor
+			}
 			return forwardedFor
 		}
 	}
@@ -905,6 +982,9 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 		realIP, ok := this.RawReq.Header["X-Real-IP"]
 		if ok && len(realIP) > 0 {
 			if net.ParseIP(realIP[0]) != nil {
+				if supportVar {
+					this.remoteAddr = realIP[0]
+				}
 				return realIP[0]
 			}
 		}
@@ -915,6 +995,9 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 		realIP, ok := this.RawReq.Header["X-Real-Ip"]
 		if ok && len(realIP) > 0 {
 			if net.ParseIP(realIP[0]) != nil {
+				if supportVar {
+					this.remoteAddr = realIP[0]
+				}
 				return realIP[0]
 			}
 		}
@@ -924,6 +1007,9 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 	remoteAddr := this.RawReq.RemoteAddr
 	host, _, err := net.SplitHostPort(remoteAddr)
 	if err == nil {
+		if supportVar {
+			this.remoteAddr = host
+		}
 		return host
 	} else {
 		return remoteAddr

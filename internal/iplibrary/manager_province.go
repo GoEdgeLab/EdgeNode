@@ -40,6 +40,8 @@ type ProvinceManager struct {
 	dataHash    string           // 国家JSON的md5
 
 	locker sync.RWMutex
+
+	isUpdated bool
 }
 
 func NewProvinceManager() *ProvinceManager {
@@ -63,7 +65,7 @@ func (this *ProvinceManager) Start() {
 	}
 
 	// 定时更新
-	ticker := utils.NewTicker(1 * time.Hour)
+	ticker := utils.NewTicker(4 * time.Hour)
 	events.On(events.EventQuit, func() {
 		ticker.Stop()
 	})
@@ -103,21 +105,25 @@ func (this *ProvinceManager) load() error {
 	return nil
 }
 
-// 更新国家信息
+// 更新省份信息
 func (this *ProvinceManager) loop() error {
+	if this.isUpdated {
+		return nil
+	}
+
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
 		return err
 	}
 	resp, err := rpcClient.RegionProvinceRPC().FindAllEnabledRegionProvincesWithCountryId(rpcClient.Context(), &pb.FindAllEnabledRegionProvincesWithCountryIdRequest{
-		CountryId: ChinaCountryId,
+		RegionCountryId: ChinaCountryId,
 	})
 	if err != nil {
 		return err
 	}
 
 	m := map[string]int64{}
-	for _, province := range resp.Provinces {
+	for _, province := range resp.RegionProvinces {
 		for _, code := range province.Codes {
 			m[code] = province.Id
 		}
@@ -138,6 +144,7 @@ func (this *ProvinceManager) loop() error {
 
 	this.locker.Lock()
 	this.provinceMap = m
+	this.isUpdated = true
 	this.locker.Unlock()
 
 	// 保存到本地缓存

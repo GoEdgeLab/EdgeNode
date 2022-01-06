@@ -81,6 +81,14 @@ func (this *RPCClient) RegionProvinceRPC() pb.RegionProvinceServiceClient {
 	return pb.NewRegionProvinceServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) RegionCityRPC() pb.RegionCityServiceClient {
+	return pb.NewRegionCityServiceClient(this.pickConn())
+}
+
+func (this *RPCClient) RegionProviderRPC() pb.RegionProviderServiceClient {
+	return pb.NewRegionProviderServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) IPListRPC() pb.IPListServiceClient {
 	return pb.NewIPListServiceClient(this.pickConn())
 }

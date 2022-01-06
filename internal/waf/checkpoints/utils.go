@@ -173,7 +173,7 @@ var AllCheckpoints = []*CheckpointDefinition{
 	{
 		Name:        "所有Header信息",
 		Prefix:      "headers",
-		Description: "使用\n隔开的Header信息字符串",
+		Description: "使用\\n隔开的Header信息字符串",
 		HasParams:   false,
 		Instance:    new(RequestHeadersCheckpoint),
 	},
@@ -183,6 +183,34 @@ var AllCheckpoints = []*CheckpointDefinition{
 		Description: "单个Header值",
 		HasParams:   true,
 		Instance:    new(RequestHeaderCheckpoint),
+	},
+	{
+		Name:        "国家/地区名称",
+		Prefix:      "geoCountryName",
+		Description: "国家/地区名称",
+		HasParams:   false,
+		Instance:    new(RequestGeoCountryNameCheckpoint),
+	},
+	{
+		Name:        "省份名称",
+		Prefix:      "geoProvinceName",
+		Description: "中国省份名称",
+		HasParams:   false,
+		Instance:    new(RequestGeoProvinceNameCheckpoint),
+	},
+	{
+		Name:        "城市名称",
+		Prefix:      "geoCityName",
+		Description: "中国城市名称",
+		HasParams:   false,
+		Instance:    new(RequestGeoCityNameCheckpoint),
+	},
+	{
+		Name:        "ISP名称",
+		Prefix:      "ispName",
+		Description: "ISP名称",
+		HasParams:   false,
+		Instance:    new(RequestISPNameCheckpoint),
 	},
 	{
 		Name:        "CC统计（旧）",
@@ -242,7 +270,7 @@ var AllCheckpoints = []*CheckpointDefinition{
 	},
 }
 
-// find a check point
+// FindCheckpoint find a check point
 func FindCheckpoint(prefix string) CheckpointInterface {
 	for _, def := range AllCheckpoints {
 		if def.Prefix == prefix {
@@ -252,7 +280,7 @@ func FindCheckpoint(prefix string) CheckpointInterface {
 	return nil
 }
 
-// find a check point definition
+// FindCheckpointDefinition find a check point definition
 func FindCheckpointDefinition(prefix string) *CheckpointDefinition {
 	for _, def := range AllCheckpoints {
 		if def.Prefix == prefix {
