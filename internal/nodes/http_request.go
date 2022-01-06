@@ -928,11 +928,26 @@ func (this *HTTPRequest) Format(source string) string {
 			return ""
 		}
 
-		// os
-		// TODO
-
 		// browser
-		// TODO
+		if prefix == "browser" {
+			var result = stats.SharedUserAgentParser.Parse(this.RawReq.UserAgent())
+			switch suffix {
+			case "os.name":
+				return result.OS.Name
+			case "os.version":
+				return result.OS.Version
+			case "name":
+				return result.BrowserName
+			case "version":
+				return result.BrowserVersion
+			case "isMobile":
+				if result.IsMobile {
+					return "1"
+				} else {
+					return "0"
+				}
+			}
+		}
 
 		return "${" + varName + "}"
 	})

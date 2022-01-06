@@ -5,10 +5,12 @@ package stats
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/mssola/user_agent"
+	"sync"
 )
 
+var SharedUserAgentParser = NewUserAgentParser()
+
 // UserAgentParser UserAgent解析器
-// 只支持单线程
 type UserAgentParser struct {
 	parser *user_agent.UserAgent
 
@@ -17,6 +19,7 @@ type UserAgentParser struct {
 	maxCacheItems int
 
 	cacheCursor int
+	locker      sync.RWMutex
 }
 
 func NewUserAgentParser() *UserAgentParser {
@@ -50,19 +53,25 @@ func (this *UserAgentParser) Parse(userAgent string) (result UserAgentParserResu
 		return
 	}
 
+	this.locker.RLock()
 	cacheResult, ok := this.cacheMap1[userAgent]
 	if ok {
+		this.locker.RUnlock()
 		return cacheResult
 	}
 
 	cacheResult, ok = this.cacheMap2[userAgent]
 	if ok {
+		this.locker.RUnlock()
 		return cacheResult
 	}
+	this.locker.RUnlock()
 
+	this.locker.Lock()
 	this.parser.Parse(userAgent)
-	result.os = this.parser.OSInfo()
-	result.browserName, result.browserVersion = this.parser.Browser()
+	result.OS = this.parser.OSInfo()
+	result.BrowserName, result.BrowserVersion = this.parser.Browser()
+	result.IsMobile = this.parser.Mobile()
 
 	if this.cacheCursor == 0 {
 		this.cacheMap1[userAgent] = result
@@ -77,6 +86,7 @@ func (this *UserAgentParser) Parse(userAgent string) (result UserAgentParserResu
 			this.cacheMap1 = map[string]UserAgentParserResult{}
 		}
 	}
+	this.locker.Unlock()
 
 	return
 }

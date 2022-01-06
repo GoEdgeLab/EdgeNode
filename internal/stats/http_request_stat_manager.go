@@ -29,7 +29,6 @@ type StatItem struct {
 }
 
 var SharedHTTPRequestStatManager = NewHTTPRequestStatManager()
-var sharedUserAgentParser = NewUserAgentParser()
 
 // HTTPRequestStatManager HTTP请求相关的统计
 // 这里的统计是一个辅助统计，注意不要因为统计而影响服务工作性能
@@ -223,8 +222,8 @@ Loop:
 			serverId := userAgentString[:atIndex]
 			userAgent := userAgentString[atIndex+1:]
 
-			var result = sharedUserAgentParser.Parse(userAgent)
-			var osInfo = result.os
+			var result = SharedUserAgentParser.Parse(userAgent)
+			var osInfo = result.OS
 			if len(osInfo.Name) > 0 {
 				dotIndex := strings.Index(osInfo.Version, ".")
 				if dotIndex > -1 {
@@ -233,7 +232,7 @@ Loop:
 				this.systemMap[serverId+"@"+osInfo.Name+"@"+osInfo.Version]++
 			}
 
-			var browser, browserVersion = result.browserName, result.browserVersion
+			var browser, browserVersion = result.BrowserName, result.BrowserVersion
 			if len(browser) > 0 {
 				dotIndex := strings.Index(browserVersion, ".")
 				if dotIndex > -1 {
