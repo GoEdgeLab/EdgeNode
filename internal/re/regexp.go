@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var prefixReg = regexp.MustCompile(`^\(\?(\w+)\)`)     // (?x)
+var prefixReg = regexp.MustCompile(`^\(\?([\w\s]+)\)`) // (?x)
 var prefixReg2 = regexp.MustCompile(`^\(\?([\w\s]*:)`) // (?x: ...
 var braceZero = regexp.MustCompile(`^{\s*0*\s*}`)      // {0}
 var braceZero2 = regexp.MustCompile(`^{\s*0*\s*,`)     // {0, x}
@@ -18,6 +18,7 @@ type Regexp struct {
 
 	isStrict          bool
 	isCaseInsensitive bool
+	keywords          []string
 	keywordsMap       RuneMap
 }
 
@@ -67,9 +68,22 @@ func (this *Regexp) init() {
 	}
 
 	var keywords = this.ParseKeywords(exp)
+	this.keywords = keywords
 	if len(keywords) > 0 {
 		this.keywordsMap = NewRuneTree(keywords)
 	}
+}
+
+func (this *Regexp) Keywords() []string {
+	return this.keywords
+}
+
+func (this *Regexp) Raw() *regexp.Regexp {
+	return this.rawRegexp
+}
+
+func (this *Regexp) IsCaseInsensitive() bool {
+	return this.isCaseInsensitive
 }
 
 func (this *Regexp) MatchString(s string) bool {

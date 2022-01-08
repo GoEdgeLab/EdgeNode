@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/re"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -11,14 +12,14 @@ import (
 )
 
 func TestMatchStringCache(t *testing.T) {
-	regex := regexp.MustCompile(`\d+`)
+	regex := re.MustCompile(`\d+`)
 	t.Log(MatchStringCache(regex, "123"))
 	t.Log(MatchStringCache(regex, "123"))
 	t.Log(MatchStringCache(regex, "123"))
 }
 
 func TestMatchBytesCache(t *testing.T) {
-	regex := regexp.MustCompile(`\d+`)
+	regex := re.MustCompile(`\d+`)
 	t.Log(MatchBytesCache(regex, []byte("123")))
 	t.Log(MatchBytesCache(regex, []byte("123")))
 	t.Log(MatchBytesCache(regex, []byte("123")))
@@ -52,7 +53,7 @@ func BenchmarkMatchStringCache(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
 	data := strings.Repeat("HELLO", 512)
-	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+	regex := re.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
 	_ = MatchStringCache(regex, data)
 
 	for i := 0; i < b.N; i++ {
@@ -63,9 +64,18 @@ func BenchmarkMatchStringCache(b *testing.B) {
 func BenchmarkMatchStringCache_WithoutCache(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	data := strings.Repeat("HELLO", 512)
-	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+	data := strings.Repeat("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36", 8)
+	regex := re.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+	for i := 0; i < b.N; i++ {
+		_ = regex.MatchString(data)
+	}
+}
 
+func BenchmarkMatchStringCache_WithoutCache2(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	data := strings.Repeat("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36", 8)
+	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
 	for i := 0; i < b.N; i++ {
 		_ = regex.MatchString(data)
 	}
@@ -74,8 +84,8 @@ func BenchmarkMatchStringCache_WithoutCache(b *testing.B) {
 func BenchmarkMatchBytesCache_WithoutCache(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	data := []byte(strings.Repeat("HELLO", 512))
-	regex := regexp.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+	data := []byte(strings.Repeat("HELLO", 128))
+	regex := re.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
 
 	for i := 0; i < b.N; i++ {
 		_ = regex.Match(data)
