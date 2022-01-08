@@ -2,19 +2,18 @@ package utils
 
 import (
 	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/re"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/types"
-	"regexp"
 	"strconv"
 	"time"
 )
 
-//var grid = grids.NewGrid(32, grids.NewLimitCountOpt(1000_0000))
 var cache = ttlcache.NewCache()
 
-// 正则表达式匹配字符串，并缓存结果
-func MatchStringCache(regex *regexp.Regexp, s string) bool {
+// MatchStringCache 正则表达式匹配字符串，并缓存结果
+func MatchStringCache(regex *re.Regexp, s string) bool {
 	// 如果长度超过4096，大概率是不能重用的
 	if len(s) > 4096 {
 		return regex.MatchString(s)
@@ -35,8 +34,8 @@ func MatchStringCache(regex *regexp.Regexp, s string) bool {
 	return b
 }
 
-// 正则表达式匹配字节slice，并缓存结果
-func MatchBytesCache(regex *regexp.Regexp, byteSlice []byte) bool {
+// MatchBytesCache 正则表达式匹配字节slice，并缓存结果
+func MatchBytesCache(regex *re.Regexp, byteSlice []byte) bool {
 	// 如果长度超过4096，大概率是不能重用的
 	if len(byteSlice) > 4096 {
 		return regex.Match(byteSlice)

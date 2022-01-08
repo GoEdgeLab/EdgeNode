@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/filterconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/re"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
@@ -44,7 +45,7 @@ type Rule struct {
 	ipValue net.IP
 
 	floatValue float64
-	reg        *regexp.Regexp
+	reg        *re.Regexp
 }
 
 func NewRule() *Rule {
@@ -74,7 +75,7 @@ func (this *Rule) Init() error {
 
 		v = this.unescape(v)
 
-		reg, err := regexp.Compile(v)
+		reg, err := re.Compile(v)
 		if err != nil {
 			return err
 		}
@@ -87,7 +88,7 @@ func (this *Rule) Init() error {
 
 		v = this.unescape(v)
 
-		reg, err := regexp.Compile(v)
+		reg, err := re.Compile(v)
 		if err != nil {
 			return err
 		}
