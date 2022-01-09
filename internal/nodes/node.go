@@ -713,4 +713,9 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 		time.Local = location
 		this.timezone = timeZone
 	}
+
+	// product information
+	if config.ProductConfig != nil {
+		teaconst.GlobalProductName = config.ProductConfig.Name
+	}
 }

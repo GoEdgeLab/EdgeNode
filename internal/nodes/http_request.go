@@ -949,6 +949,22 @@ func (this *HTTPRequest) Format(source string) string {
 			}
 		}
 
+		// product
+		if prefix == "product" {
+			switch suffix {
+			case "name":
+				if sharedNodeConfig.ProductConfig != nil && len(sharedNodeConfig.ProductConfig.Name) > 0 {
+					return sharedNodeConfig.ProductConfig.Name
+				}
+				return teaconst.GlobalProductName
+			case "version":
+				if sharedNodeConfig.ProductConfig != nil && len(sharedNodeConfig.ProductConfig.Version) > 0 {
+					return sharedNodeConfig.ProductConfig.Version
+				}
+				return teaconst.Version
+			}
+		}
+
 		return "${" + varName + "}"
 	})
 }

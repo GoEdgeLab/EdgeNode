@@ -71,7 +71,7 @@ func (this *HTTPAPIAction) runAction(action string, listType IPListType, item *p
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "GoEdge-Node/"+teaconst.Version)
+	req.Header.Set("User-Agent", teaconst.GlobalProductName+"-Node/"+teaconst.Version)
 	resp, err := httpAPIClient.Do(req)
 	if err != nil {
 		return err

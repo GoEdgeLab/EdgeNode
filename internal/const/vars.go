@@ -2,6 +2,8 @@
 
 package teaconst
 
+import "github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+
 var (
 	// 流量统计
 
@@ -10,4 +12,6 @@ var (
 
 	NodeId       int64 = 0
 	NodeIdString       = ""
+
+	GlobalProductName = nodeconfigs.DefaultProductName
 )
