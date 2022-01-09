@@ -6,6 +6,9 @@ function build() {
 	VERSION=$(lookup-version $ROOT/../internal/const/const.go)
 	DIST=$ROOT/"../dist/${NAME}"
 	MUSL_DIR="/usr/local/opt/musl-cross/bin"
+	GCC_X86_64_DIR="/usr/local/Cellar/x86_64-unknown-linux-gnu/10.3.0/bin"
+	GCC_ARM64_DIR="/usr/local/Cellar/aarch64-unknown-linux-gnu/10.3.0/bin"
+
 	OS=${1}
 	ARCH=${2}
 	TAG=${3}
@@ -56,19 +59,39 @@ function build() {
 
 	CC_PATH=""
 	CXX_PATH=""
+	BUILD_TAG=$TAG
 	if [[ `uname -a` == *"Darwin"* && "${OS}" == "linux" ]]; then
-		# /usr/local/opt/musl-cross/bin/
 		if [ "${ARCH}" == "amd64" ]; then
-			CC_PATH="x86_64-linux-musl-gcc"
-			CXX_PATH="x86_64-linux-musl-g++"
+			# build with script support
+			if [ -d $GCC_X86_64_DIR ]; then
+				MUSL_DIR=$GCC_X86_64_DIR
+				CC_PATH="x86_64-unknown-linux-gnu-gcc"
+				CXX_PATH="x86_64-unknown-linux-gnu-g++"
+				if [ "$TAG" = "plus" ]; then
+					BUILD_TAG="plus,script"
+				fi
+			else
+				CC_PATH="x86_64-linux-musl-gcc"
+				CXX_PATH="x86_64-linux-musl-g++"
+			fi
 		fi
 		if [ "${ARCH}" == "386" ]; then
 			CC_PATH="i486-linux-musl-gcc"
 			CXX_PATH="i486-linux-musl-g++"
 		fi
 		if [ "${ARCH}" == "arm64" ]; then
-			CC_PATH="aarch64-linux-musl-gcc"
-			CXX_PATH="aarch64-linux-musl-g++"
+			# build with script support
+			if [ -d $GCC_ARM64_DIR ]; then
+				MUSL_DIR=$GCC_ARM64_DIR
+				CC_PATH="aarch64-unknown-linux-gnu-gcc"
+				CXX_PATH="aarch64-unknown-linux-gnu-g++"
+				if [ "$TAG" = "plus" ]; then
+					BUILD_TAG="plus,script"
+				fi
+			else
+				CC_PATH="aarch64-linux-musl-gcc"
+				CXX_PATH="aarch64-linux-musl-g++"
+			fi
 		fi
 		if [ "${ARCH}" == "arm" ]; then
 			CC_PATH="arm-linux-musleabi-gcc"
@@ -84,7 +107,7 @@ function build() {
 		fi
 	fi
 	if [ ! -z $CC_PATH ]; then
-		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -tags $TAG -o $DIST/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" $ROOT/../cmd/edge-node/main.go
+		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -tags $BUILD_TAG -o $DIST/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" $ROOT/../cmd/edge-node/main.go
 	else
 		env GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -tags $TAG -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
 	fi
