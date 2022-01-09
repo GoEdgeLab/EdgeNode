@@ -195,7 +195,9 @@ func (this *HTTPRequest) doReverseProxy() {
 			} else {
 				this.write50x(err, http.StatusBadGateway, true)
 			}
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
+			if httpErr.Err != io.EOF {
+				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
+			}
 		} else {
 			// 是否为客户端方面的错误
 			isClientError := false
