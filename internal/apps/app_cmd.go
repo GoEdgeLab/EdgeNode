@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -244,4 +245,20 @@ func (this *AppCmd) getPID() int {
 		return 0
 	}
 	return maps.NewMap(reply.Params).GetInt("pid")
+}
+
+// ParseOptions 分析参数中的选项
+func (this *AppCmd) ParseOptions(args []string) map[string][]string {
+	var result = map[string][]string{}
+	for _, arg := range args {
+		var pieces = strings.SplitN(arg, "=", 2)
+		var key = strings.TrimLeft(pieces[0], "- ")
+		key = strings.TrimSpace(key)
+		var value = ""
+		if len(pieces) == 2 {
+			value = strings.TrimSpace(pieces[1])
+		}
+		result[key] = append(result[key], value)
+	}
+	return result
 }

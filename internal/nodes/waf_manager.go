@@ -60,10 +60,11 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 		policy.Mode = firewallconfigs.FirewallModeDefend
 	}
 	w := &waf.WAF{
-		Id:   policy.Id,
-		IsOn: policy.IsOn,
-		Name: policy.Name,
-		Mode: policy.Mode,
+		Id:               policy.Id,
+		IsOn:             policy.IsOn,
+		Name:             policy.Name,
+		Mode:             policy.Mode,
+		UseLocalFirewall: policy.UseLocalFirewall,
 	}
 
 	// inbound

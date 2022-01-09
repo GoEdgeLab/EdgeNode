@@ -43,9 +43,9 @@ func Test_Template2(t *testing.T) {
 	}
 
 	waf := Template()
-	err = waf.Init()
-	if err != nil {
-		t.Fatal(err)
+	var errs = waf.Init()
+	if len(errs) > 0 {
+		t.Fatal(errs[0])
 	}
 
 	now := time.Now()

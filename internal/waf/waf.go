@@ -15,13 +15,14 @@ import (
 )
 
 type WAF struct {
-	Id             int64                        `yaml:"id" json:"id"`
-	IsOn           bool                         `yaml:"isOn" json:"isOn"`
-	Name           string                       `yaml:"name" json:"name"`
-	Inbound        []*RuleGroup                 `yaml:"inbound" json:"inbound"`
-	Outbound       []*RuleGroup                 `yaml:"outbound" json:"outbound"`
-	CreatedVersion string                       `yaml:"createdVersion" json:"createdVersion"`
-	Mode           firewallconfigs.FirewallMode `yaml:"mode" json:"mode"`
+	Id               int64                        `yaml:"id" json:"id"`
+	IsOn             bool                         `yaml:"isOn" json:"isOn"`
+	Name             string                       `yaml:"name" json:"name"`
+	Inbound          []*RuleGroup                 `yaml:"inbound" json:"inbound"`
+	Outbound         []*RuleGroup                 `yaml:"outbound" json:"outbound"`
+	CreatedVersion   string                       `yaml:"createdVersion" json:"createdVersion"`
+	Mode             firewallconfigs.FirewallMode `yaml:"mode" json:"mode"`
+	UseLocalFirewall bool                         `yaml:"useLocalFirewall" json:"useLocalFirewall"`
 
 	DefaultBlockAction *BlockAction
 

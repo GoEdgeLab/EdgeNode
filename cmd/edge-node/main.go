@@ -8,7 +8,10 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/nodes"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/maps"
+	"github.com/iwind/TeaGo/types"
 	"github.com/iwind/gosock/pkg/gosock"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -124,6 +127,113 @@ func main() {
 			fmt.Println("[ERROR]" + err.Error())
 		} else {
 			fmt.Println("ok")
+		}
+	})
+	app.On("ip.drop", func() {
+		var args = os.Args[2:]
+		if len(args) == 0 {
+			fmt.Println("Usage: edge-node ip.drop IP [--timeout=SECONDS]")
+			return
+		}
+		var ip = args[0]
+		if len(net.ParseIP(ip)) == 0 {
+			fmt.Println("IP '" + ip + "' is invalid")
+			return
+		}
+		var timeoutSeconds = 0
+		var options = app.ParseOptions(args[1:])
+		timeout, ok := options["timeout"]
+		if ok {
+			timeoutSeconds = types.Int(timeout[0])
+		}
+
+		fmt.Println("drop ip '" + ip + "' for '" + types.String(timeoutSeconds) + "' seconds")
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{
+			Code: "dropIP",
+			Params: map[string]interface{}{
+				"ip":             ip,
+				"timeoutSeconds": timeoutSeconds,
+			},
+		})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			var errString = maps.NewMap(reply.Params).GetString("error")
+			if len(errString) > 0 {
+				fmt.Println("[ERROR]" + errString)
+			} else {
+				fmt.Println("ok")
+			}
+		}
+	})
+	app.On("ip.reject", func() {
+		var args = os.Args[2:]
+		if len(args) == 0 {
+			fmt.Println("Usage: edge-node ip.reject IP [--timeout=SECONDS]")
+			return
+		}
+		var ip = args[0]
+		if len(net.ParseIP(ip)) == 0 {
+			fmt.Println("IP '" + ip + "' is invalid")
+			return
+		}
+		var timeoutSeconds = 0
+		var options = app.ParseOptions(args[1:])
+		timeout, ok := options["timeout"]
+		if ok {
+			timeoutSeconds = types.Int(timeout[0])
+		}
+
+		fmt.Println("reject ip '" + ip + "' for '" + types.String(timeoutSeconds) + "' seconds")
+
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{
+			Code: "rejectIP",
+			Params: map[string]interface{}{
+				"ip":             ip,
+				"timeoutSeconds": timeoutSeconds,
+			},
+		})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			var errString = maps.NewMap(reply.Params).GetString("error")
+			if len(errString) > 0 {
+				fmt.Println("[ERROR]" + errString)
+			} else {
+				fmt.Println("ok")
+			}
+		}
+	})
+	app.On("ip.remove", func() {
+		var args = os.Args[2:]
+		if len(args) == 0 {
+			fmt.Println("Usage: edge-node ip.remove IP")
+			return
+		}
+		var ip = args[0]
+		if len(net.ParseIP(ip)) == 0 {
+			fmt.Println("IP '" + ip + "' is invalid")
+			return
+		}
+
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{
+			Code: "removeIP",
+			Params: map[string]interface{}{
+				"ip": ip,
+			},
+		})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			var errString = maps.NewMap(reply.Params).GetString("error")
+			if len(errString) > 0 {
+				fmt.Println("[ERROR]" + errString)
+			} else {
+				fmt.Println("ok")
+			}
 		}
 	})
 	app.Run(func() {

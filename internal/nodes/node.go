@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
@@ -636,6 +637,47 @@ func (this *Node) listenSock() error {
 						"limiter":     sharedConnectionsLimiter.Len(),
 					},
 				})
+			case "dropIP":
+				var m = maps.NewMap(cmd.Params)
+				var ip = m.GetString("ip")
+				var timeSeconds = m.GetInt("timeoutSeconds")
+				err := firewalls.Firewall().DropSourceIP(ip, timeSeconds)
+				if err != nil {
+					_ = cmd.Reply(&gosock.Command{
+						Params: map[string]interface{}{
+							"error": err.Error(),
+						},
+					})
+				} else {
+					_ = cmd.ReplyOk()
+				}
+			case "rejectIP":
+				var m = maps.NewMap(cmd.Params)
+				var ip = m.GetString("ip")
+				var timeSeconds = m.GetInt("timeoutSeconds")
+				err := firewalls.Firewall().RejectSourceIP(ip, timeSeconds)
+				if err != nil {
+					_ = cmd.Reply(&gosock.Command{
+						Params: map[string]interface{}{
+							"error": err.Error(),
+						},
+					})
+				} else {
+					_ = cmd.ReplyOk()
+				}
+			case "removeIP":
+				var m = maps.NewMap(cmd.Params)
+				var ip = m.GetString("ip")
+				err := firewalls.Firewall().RemoveSourceIP(ip)
+				if err != nil {
+					_ = cmd.Reply(&gosock.Command{
+						Params: map[string]interface{}{
+							"error": err.Error(),
+						},
+					})
+				} else {
+					_ = cmd.ReplyOk()
+				}
 			case "gc":
 				runtime.GC()
 				debug.FreeOSMemory()

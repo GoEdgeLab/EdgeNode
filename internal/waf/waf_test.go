@@ -33,9 +33,9 @@ func TestWAF_MatchRequest(t *testing.T) {
 
 	waf := NewWAF()
 	waf.AddRuleGroup(group)
-	err := waf.Init()
-	if err != nil {
-		t.Fatal(err)
+	errs := waf.Init()
+	if len(errs) > 0 {
+		t.Fatal(errs[0])
 	}
 
 	req, err := http.NewRequest(http.MethodGet, "http://teaos.cn/hello?name=lu&age=20", nil)

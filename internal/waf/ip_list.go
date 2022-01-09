@@ -4,10 +4,12 @@ package waf
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/iwind/TeaGo/types"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var SharedIPWhiteList = NewIPList(IPListTypeAllow)
@@ -71,10 +73,19 @@ func (this *IPList) Add(ipType string, scope firewallconfigs.FirewallScope, serv
 }
 
 // RecordIP 记录IP
-func (this *IPList) RecordIP(ipType string, scope firewallconfigs.FirewallScope, serverId int64, ip string, expiresAt int64, policyId int64, groupId int64, setId int64) {
+func (this *IPList) RecordIP(ipType string,
+	scope firewallconfigs.FirewallScope,
+	serverId int64,
+	ip string,
+	expiresAt int64,
+	policyId int64,
+	useLocalFirewall bool,
+	groupId int64,
+	setId int64) {
 	this.Add(ipType, scope, serverId, ip, expiresAt)
 
 	if this.listType == IPListTypeDeny {
+		// 加入队列等待上传
 		select {
 		case recordIPTaskChan <- &recordIPTask{
 			ip:                            ip,
@@ -89,6 +100,18 @@ func (this *IPList) RecordIP(ipType string, scope firewallconfigs.FirewallScope,
 		}:
 		default:
 
+		}
+
+		// 使用本地防火墙
+		if useLocalFirewall {
+			var seconds = expiresAt - time.Now().Unix()
+			if seconds > 0 {
+				// 最大3600，防止误封时间过长
+				if seconds > 3600 {
+					seconds = 3600
+				}
+				_ = firewalls.Firewall().DropSourceIP(ip, int(seconds))
+			}
 		}
 	}
 }
@@ -111,13 +134,18 @@ func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope,
 }
 
 // RemoveIP 删除IP
-func (this *IPList) RemoveIP(ip string, serverId int64) {
+func (this *IPList) RemoveIP(ip string, serverId int64, shouldExecute bool) {
 	this.locker.Lock()
 	delete(this.ipMap, "*@"+ip+"@"+IPTypeAll)
 	if serverId > 0 {
 		delete(this.ipMap, types.String(serverId)+"@"+ip+"@"+IPTypeAll)
 	}
 	this.locker.Unlock()
+
+	// 从本地防火墙中删除
+	if shouldExecute {
+		_ = firewalls.Firewall().RemoveSourceIP(ip)
+	}
 }
 
 func (this *IPList) remove(id int64) {

@@ -197,7 +197,7 @@ func (this *IPListManager) processItems(items []*pb.IPItem, shouldExecute bool) 
 			list.Delete(item.Id)
 
 			// 从WAF名单中删除
-			waf.SharedIPBlackList.RemoveIP(item.IpFrom, item.ServerId)
+			waf.SharedIPBlackList.RemoveIP(item.IpFrom, item.ServerId, shouldExecute)
 
 			// 操作事件
 			if shouldExecute {
