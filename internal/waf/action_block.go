@@ -83,6 +83,8 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 					logs.Error(err)
 					return false
 				}
+				req.Header.Set("User-Agent", teaconst.GlobalProductName+"/"+teaconst.Version)
+
 				resp, err := httpClient.Do(req)
 				if err != nil {
 					logs.Error(err)
