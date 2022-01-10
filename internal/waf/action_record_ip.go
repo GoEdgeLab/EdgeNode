@@ -22,6 +22,8 @@ type recordIPTask struct {
 	level     string
 	serverId  int64
 
+	reason string
+
 	sourceServerId                int64
 	sourceHTTPFirewallPolicyId    int64
 	sourceHTTPFirewallRuleGroupId int64
@@ -44,12 +46,16 @@ func init() {
 				if strings.Contains(task.ip, ":") {
 					ipType = "ipv6"
 				}
+				var reason = task.reason
+				if len(reason) == 0 {
+					reason = "触发WAF规则自动加入"
+				}
 				_, err = rpcClient.IPItemRPC().CreateIPItem(rpcClient.Context(), &pb.CreateIPItemRequest{
 					IpListId:                      task.listId,
 					IpFrom:                        task.ip,
 					IpTo:                          "",
 					ExpiredAt:                     task.expiredAt,
-					Reason:                        "触发WAF规则自动加入",
+					Reason:                        reason,
 					Type:                          ipType,
 					EventLevel:                    task.level,
 					ServerId:                      task.serverId,

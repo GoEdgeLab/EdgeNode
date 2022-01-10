@@ -81,7 +81,8 @@ func (this *IPList) RecordIP(ipType string,
 	policyId int64,
 	useLocalFirewall bool,
 	groupId int64,
-	setId int64) {
+	setId int64,
+	reason string) {
 	this.Add(ipType, scope, serverId, ip, expiresAt)
 
 	if this.listType == IPListTypeDeny {
@@ -97,6 +98,7 @@ func (this *IPList) RecordIP(ipType string,
 			sourceHTTPFirewallPolicyId:    policyId,
 			sourceHTTPFirewallRuleGroupId: groupId,
 			sourceHTTPFirewallRuleSetId:   setId,
+			reason:                        reason,
 		}:
 		default:
 

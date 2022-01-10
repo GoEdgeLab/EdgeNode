@@ -65,6 +65,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 		Name:             policy.Name,
 		Mode:             policy.Mode,
 		UseLocalFirewall: policy.UseLocalFirewall,
+		SYNFlood:         policy.SYNFlood,
 	}
 
 	// inbound

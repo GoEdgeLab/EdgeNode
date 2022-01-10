@@ -18,7 +18,7 @@ type Firewalld struct {
 
 func NewFirewalld() *Firewalld {
 	var firewalld = &Firewalld{
-		cmdQueue: make(chan *exec.Cmd, 2048),
+		cmdQueue: make(chan *exec.Cmd, 4096),
 	}
 
 	path, err := exec.LookPath("firewall-cmd")

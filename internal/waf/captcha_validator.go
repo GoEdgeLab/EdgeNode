@@ -153,7 +153,7 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int
 			}
 
 			// 加入到白名单
-			SharedIPWhiteList.RecordIP("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId)
+			SharedIPWhiteList.RecordIP("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
 
 			http.Redirect(writer, request.WAFRaw(), originURL, http.StatusSeeOther)
 

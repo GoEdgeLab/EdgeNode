@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+var SharedCache = NewCache()
+
 // Cache TTL缓存
 // 最大的缓存时间为30 * 86400
 // Piece数据结构：

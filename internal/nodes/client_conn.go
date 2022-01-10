@@ -4,9 +4,16 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
+	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
+	"github.com/iwind/TeaGo/types"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,8 +24,9 @@ type ClientConn struct {
 	once          sync.Once
 	globalLimiter *ratelimit.Counter
 
-	isTLS   bool
-	hasRead bool
+	isTLS       bool
+	hasDeadline bool
+	hasRead     bool
 
 	BaseClientConn
 }
@@ -38,9 +46,9 @@ func NewClientConn(conn net.Conn, isTLS bool, quickClose bool, globalLimiter *ra
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
 	if this.isTLS {
-		if !this.hasRead {
+		if !this.hasDeadline {
 			_ = this.rawConn.SetReadDeadline(time.Now().Add(time.Duration(nodeconfigs.DefaultTLSHandshakeTimeout) * time.Second)) // TODO 握手超时时间可以设置
-			this.hasRead = true
+			this.hasDeadline = true
 			defer func() {
 				_ = this.rawConn.SetReadDeadline(time.Time{})
 			}()
@@ -50,7 +58,21 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	n, err = this.rawConn.Read(b)
 	if n > 0 {
 		atomic.AddUint64(&teaconst.InTrafficBytes, uint64(n))
+		this.hasRead = true
 	}
+
+	// SYN Flood检测
+	var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
+	if synFloodConfig != nil && synFloodConfig.IsOn {
+		if err != nil && os.IsTimeout(err) {
+			if !this.hasRead {
+				this.checkSYNFlood()
+			}
+		} else {
+			this.resetSYNFlood()
+		}
+	}
+
 	return
 }
 
@@ -98,4 +120,33 @@ func (this *ClientConn) SetReadDeadline(t time.Time) error {
 
 func (this *ClientConn) SetWriteDeadline(t time.Time) error {
 	return this.rawConn.SetWriteDeadline(t)
+}
+
+func (this *ClientConn) resetSYNFlood() {
+	// 为了不影响性能，暂时不清除状态
+	//ttlcache.SharedCache.Delete("SYN_FLOOD:" + this.RawIP())
+}
+
+func (this *ClientConn) checkSYNFlood() {
+	var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
+	if synFloodConfig == nil || !synFloodConfig.IsOn {
+		return
+	}
+
+	var ip = this.RawIP()
+	if len(ip) > 0 && !iplibrary.IsInWhiteList(ip) && (!synFloodConfig.IgnoreLocal || !utils.IsLocalIP(ip)) {
+		var timestamp = (utils.UnixTime()/60)*60 + 60
+		var result = ttlcache.SharedCache.IncreaseInt64("SYN_FLOOD:"+ip, 1, timestamp)
+		var minAttempts = synFloodConfig.MinAttempts
+		if minAttempts < 3 {
+			minAttempts = 3
+		}
+		if result >= int64(minAttempts) {
+			var timeout = synFloodConfig.TimeoutSeconds
+			if timeout <= 0 {
+				timeout = 600
+			}
+			waf.SharedIPBlackList.RecordIP(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip, time.Now().Unix()+int64(timeout), 0, true, 0, 0, "疑似SYN Flood攻击，当前1分钟"+types.String(result)+"次空连接")
+		}
+	}
 }
