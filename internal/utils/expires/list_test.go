@@ -165,3 +165,21 @@ func Benchmark_Map_Uint64(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkList_GC(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var lists = []*List{}
+
+	for i := 0; i < 100; i++ {
+		lists = append(lists, NewList())
+	}
+
+	var timestamp = time.Now().Unix()
+
+	for i := 0; i < b.N; i++ {
+		for _, list := range lists {
+			list.GC(timestamp, nil)
+		}
+	}
+}

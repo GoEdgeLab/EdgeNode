@@ -63,7 +63,11 @@ func (this *List) Remove(itemId int64) {
 
 func (this *List) GC(timestamp int64, callback func(itemId int64)) {
 	this.locker.Lock()
-	itemMap := this.gcItems(timestamp)
+	var itemMap = this.gcItems(timestamp)
+	if len(itemMap) == 0 {
+		this.locker.Unlock()
+		return
+	}
 	this.locker.Unlock()
 
 	if callback != nil {
