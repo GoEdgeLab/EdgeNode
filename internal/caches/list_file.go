@@ -259,9 +259,10 @@ func (this *FileList) CleanPrefix(prefix string) error {
 	}()
 
 	var count = int64(10000)
-	var staleLife = 600 // TODO 需要可以设置
+	var staleLife = 600             // TODO 需要可以设置
+	var unixTime = utils.UnixTime() // 只删除当前的，不删除新的
 	for {
-		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, utils.UnixTime()+int64(staleLife), utils.UnixTime(), prefix)
+		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, unixTime+int64(staleLife), unixTime, prefix)
 		if err != nil {
 			return err
 		}
