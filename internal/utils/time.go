@@ -23,6 +23,21 @@ func UnixTime() int64 {
 	return unixTime
 }
 
+// FloorUnixTime 取整
+func FloorUnixTime(seconds int) int64 {
+	return UnixTime() / int64(seconds) * int64(seconds)
+}
+
+// CeilUnixTime 取整并加1
+func CeilUnixTime(seconds int) int64 {
+	return UnixTime()/int64(seconds)*int64(seconds) + int64(seconds)
+}
+
+// NextMinuteUnixTime 获取下一分钟开始的时间戳
+func NextMinuteUnixTime() int64 {
+	return CeilUnixTime(60)
+}
+
 // UnixTimeMilli 获取时间戳，精确到毫秒
 func UnixTimeMilli() int64 {
 	return unixTimeMilli

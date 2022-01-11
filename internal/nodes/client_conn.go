@@ -135,7 +135,7 @@ func (this *ClientConn) checkSYNFlood() {
 
 	var ip = this.RawIP()
 	if len(ip) > 0 && !iplibrary.IsInWhiteList(ip) && (!synFloodConfig.IgnoreLocal || !utils.IsLocalIP(ip)) {
-		var timestamp = (utils.UnixTime()/60)*60 + 60
+		var timestamp = utils.NextMinuteUnixTime()
 		var result = ttlcache.SharedCache.IncreaseInt64("SYN_FLOOD:"+ip, 1, timestamp)
 		var minAttempts = synFloodConfig.MinAttempts
 		if minAttempts < 3 {
