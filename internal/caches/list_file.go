@@ -206,6 +206,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 		return err
 	}
 
+	this.memoryCache.Write(hash, 1, item.ExpiredAt)
 	atomic.AddInt64(&this.total, 1)
 
 	if this.onAdd != nil {

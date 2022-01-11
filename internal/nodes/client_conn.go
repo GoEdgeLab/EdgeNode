@@ -66,9 +66,9 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	if synFloodConfig != nil && synFloodConfig.IsOn {
 		if err != nil && os.IsTimeout(err) {
 			if !this.hasRead {
-				this.checkSYNFlood()
+				this.checkSYNFlood(synFloodConfig)
 			}
-		} else {
+		} else if err == nil {
 			this.resetSYNFlood()
 		}
 	}
@@ -123,23 +123,17 @@ func (this *ClientConn) SetWriteDeadline(t time.Time) error {
 }
 
 func (this *ClientConn) resetSYNFlood() {
-	// 为了不影响性能，暂时不清除状态
 	//ttlcache.SharedCache.Delete("SYN_FLOOD:" + this.RawIP())
 }
 
-func (this *ClientConn) checkSYNFlood() {
-	var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
-	if synFloodConfig == nil || !synFloodConfig.IsOn {
-		return
-	}
-
+func (this *ClientConn) checkSYNFlood(synFloodConfig *firewallconfigs.SYNFloodConfig) {
 	var ip = this.RawIP()
 	if len(ip) > 0 && !iplibrary.IsInWhiteList(ip) && (!synFloodConfig.IgnoreLocal || !utils.IsLocalIP(ip)) {
 		var timestamp = utils.NextMinuteUnixTime()
 		var result = ttlcache.SharedCache.IncreaseInt64("SYN_FLOOD:"+ip, 1, timestamp)
 		var minAttempts = synFloodConfig.MinAttempts
-		if minAttempts < 3 {
-			minAttempts = 3
+		if minAttempts < 5 {
+			minAttempts = 5
 		}
 		if result >= int64(minAttempts) {
 			var timeout = synFloodConfig.TimeoutSeconds
