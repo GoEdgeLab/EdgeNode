@@ -86,26 +86,32 @@ func (this *OpenFileCache) Put(filename string, file *OpenFile) {
 	if success {
 		this.count++
 
-		// 如果超过当前容量，则关闭多余的
-		for this.count > this.maxSize {
-			var head = this.poolList.Head()
-			if head == nil {
-				break
+		// 如果超过当前容量，则关闭最早的
+		if this.count > this.maxSize {
+			var delta = this.maxSize / 100 // 清理1%
+			if delta == 0 {
+				delta = 1
 			}
-
-			var headPool = head.Value.(*OpenFilePool)
-			headFile, consumed := headPool.Get()
-			if consumed {
-				this.count--
-				if headFile != nil {
-					_ = headFile.Close()
+			for i := 0; i < delta; i++ {
+				var head = this.poolList.Head()
+				if head == nil {
+					break
 				}
-			}
 
-			if headPool.Len() == 0 {
-				delete(this.poolMap, headPool.filename)
-				this.poolList.Remove(head)
-				_ = this.watcher.Remove(headPool.filename)
+				var headPool = head.Value.(*OpenFilePool)
+				headFile, consumed := headPool.Get()
+				if consumed {
+					this.count--
+					if headFile != nil {
+						_ = headFile.Close()
+					}
+				}
+
+				if headPool.Len() == 0 {
+					delete(this.poolMap, headPool.filename)
+					this.poolList.Remove(head)
+					_ = this.watcher.Remove(headPool.filename)
+				}
 			}
 		}
 	}
