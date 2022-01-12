@@ -2,7 +2,9 @@ module github.com/TeaOSLab/EdgeNode
 
 go 1.15
 
-replace github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
+replace (
+	github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
+)
 
 require (
 	github.com/TeaOSLab/EdgeCommon v0.0.0-00010101000000-000000000000
@@ -11,6 +13,7 @@ require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/chai2010/webp v1.1.0 // indirect
 	github.com/dchest/captcha v0.0.0-20200903113550-03f5f0333e1f
+	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/iwind/TeaGo v0.0.0-20211026123858-7de7a21cad24
@@ -28,7 +31,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 	golang.org/x/net v0.0.0-20211215060638-4ddde0e984e9
-	golang.org/x/sys v0.0.0-20211214234402-4825e8c3871d
+	golang.org/x/sys v0.0.0-20220111092808-5a964db01320
 	golang.org/x/text v0.3.7
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
 	google.golang.org/grpc v1.43.0

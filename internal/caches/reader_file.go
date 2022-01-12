@@ -11,6 +11,10 @@ import (
 type FileReader struct {
 	fp *os.File
 
+	openFile      *OpenFile
+	openFileCache *OpenFileCache
+
+	meta         []byte
 	expiresAt    int64
 	status       int
 	headerOffset int64
@@ -35,13 +39,17 @@ func (this *FileReader) Init() error {
 		}
 	}()
 
-	var buf = make([]byte, SizeMeta)
-	ok, err := this.readToBuff(this.fp, buf)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return ErrNotFound
+	var buf = this.meta
+	if len(buf) == 0 {
+		buf = make([]byte, SizeMeta)
+		ok, err := this.readToBuff(this.fp, buf)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrNotFound
+		}
+		this.meta = buf
 	}
 
 	this.expiresAt = int64(binary.BigEndian.Uint32(buf[:SizeExpiresAt]))
@@ -323,6 +331,14 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 }
 
 func (this *FileReader) Close() error {
+	if this.openFileCache != nil {
+		if this.openFile != nil {
+			this.openFileCache.Put(this.fp.Name(), this.openFile)
+		} else {
+			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, this.meta))
+		}
+		return nil
+	}
 	return this.fp.Close()
 }
 

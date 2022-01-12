@@ -85,7 +85,7 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 	for _, policy := range this.policyMap {
 		storage, ok := this.storageMap[policy.Id]
 		if !ok {
-			storage := this.NewStorageWithPolicy(policy)
+			storage = this.NewStorageWithPolicy(policy)
 			if storage == nil {
 				remotelogs.Error("CACHE", "can not find storage type '"+policy.Type+"'")
 				continue
@@ -106,7 +106,7 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 				delete(this.storageMap, policy.Id)
 
 				// 启动新的
-				storage := this.NewStorageWithPolicy(policy)
+				storage = this.NewStorageWithPolicy(policy)
 				if storage == nil {
 					remotelogs.Error("CACHE", "can not find storage type '"+policy.Type+"'")
 					continue
