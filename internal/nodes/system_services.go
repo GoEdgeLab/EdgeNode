@@ -28,7 +28,7 @@ func init() {
 	})
 }
 
-// 系统服务管理
+// SystemServiceManager 系统服务管理
 type SystemServiceManager struct {
 }
 

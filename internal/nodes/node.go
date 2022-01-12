@@ -451,7 +451,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 func (this *Node) startSyncTimer() {
 	// TODO 这个时间间隔可以自行设置
 	ticker := time.NewTicker(60 * time.Second)
-	events.On(events.EventQuit, func() {
+	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("NODE", "quit sync timer")
 		ticker.Stop()
 	})
@@ -691,7 +691,7 @@ func (this *Node) listenSock() error {
 		}
 	})
 
-	events.On(events.EventQuit, func() {
+	events.OnKey(events.EventQuit, this, func() {
 		logs.Println("NODE", "quit unix sock")
 		_ = this.sock.Close()
 	})

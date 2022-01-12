@@ -20,10 +20,13 @@ func init() {
 			SharedFreeHoursManager.Start()
 		})
 	})
+	events.On(events.EventQuit, func() {
+		SharedFreeHoursManager.Stop()
+	})
 }
 
 // FreeHoursManager 计算节点空闲时间
-// 以便于我们在空闲时间执行高强度的任务，如果清理缓存等
+// 以便于我们在空闲时间执行高强度的任务，如清理缓存等
 type FreeHoursManager struct {
 	dayTrafficMap map[int][24]uint64 // day => [ traffic bytes ]
 	lastBytes     uint64
@@ -32,6 +35,7 @@ type FreeHoursManager struct {
 	count     int
 
 	locker sync.Mutex
+	ticker *time.Ticker
 }
 
 func NewFreeHoursManager() *FreeHoursManager {
@@ -39,8 +43,8 @@ func NewFreeHoursManager() *FreeHoursManager {
 }
 
 func (this *FreeHoursManager) Start() {
-	var ticker = time.NewTicker(30 * time.Minute)
-	for range ticker.C {
+	this.ticker = time.NewTicker(30 * time.Minute)
+	for range this.ticker.C {
 		this.Update(atomic.LoadUint64(&teaconst.InTrafficBytes))
 	}
 }
@@ -111,6 +115,12 @@ func (this *FreeHoursManager) IsFreeHour() bool {
 		}
 	}
 	return false
+}
+
+func (this *FreeHoursManager) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
+	}
 }
 
 // 对数组进行排序，并返回权重

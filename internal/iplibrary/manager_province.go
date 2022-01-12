@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"io/ioutil"
@@ -30,10 +29,15 @@ func init() {
 			SharedProvinceManager.Start()
 		})
 	})
+	events.On(events.EventQuit, func() {
+		SharedProvinceManager.Stop()
+	})
 }
 
 // ProvinceManager 中国省份信息管理
 type ProvinceManager struct {
+	ticker *time.Ticker
+
 	cacheFile string
 
 	provinceMap map[string]int64 // provinceName => provinceId
@@ -65,15 +69,18 @@ func (this *ProvinceManager) Start() {
 	}
 
 	// 定时更新
-	ticker := utils.NewTicker(4 * time.Hour)
-	events.On(events.EventQuit, func() {
-		ticker.Stop()
-	})
-	for ticker.Next() {
+	this.ticker = time.NewTicker(4 * time.Hour)
+	for range this.ticker.C {
 		err := this.loop()
 		if err != nil {
 			remotelogs.ErrorObject("PROVINCE_MANAGER", err)
 		}
+	}
+}
+
+func (this *ProvinceManager) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
 	}
 }
 

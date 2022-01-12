@@ -61,7 +61,7 @@ func (this *Listener) listenTCP() error {
 		return err
 	}
 	var netListener = NewClientListener(tcpListener, protocol.IsHTTPFamily() || protocol.IsHTTPSFamily())
-	events.On(events.EventQuit, func() {
+	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
 		_ = netListener.Close()
 	})
@@ -122,7 +122,7 @@ func (this *Listener) listenUDP() error {
 	if err != nil {
 		return err
 	}
-	events.On(events.EventQuit, func() {
+	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
 		_ = listener.Close()
 	})
@@ -143,6 +143,8 @@ func (this *Listener) listenUDP() error {
 }
 
 func (this *Listener) Close() error {
+	events.Remove(this)
+
 	if this.listener == nil {
 		return nil
 	}

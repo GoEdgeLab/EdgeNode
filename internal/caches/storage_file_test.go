@@ -482,11 +482,7 @@ func TestFileStorage_DecodeFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, path := storage.keyPath("my-key")
-	item, err := storage.decodeFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	logs.PrintAsJSON(item, t)
+	t.Log(path)
 }
 
 func BenchmarkFileStorage_Read(b *testing.B) {

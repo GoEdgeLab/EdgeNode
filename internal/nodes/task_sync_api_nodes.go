@@ -7,7 +7,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/iwind/TeaGo/Tea"
@@ -21,17 +20,22 @@ import (
 	"time"
 )
 
+var sharedSyncAPINodesTask = NewSyncAPINodesTask()
+
 func init() {
 	events.On(events.EventStart, func() {
-		task := NewSyncAPINodesTask()
 		goman.New(func() {
-			task.Start()
+			sharedSyncAPINodesTask.Start()
 		})
+	})
+	events.On(events.EventQuit, func() {
+		sharedSyncAPINodesTask.Stop()
 	})
 }
 
 // SyncAPINodesTask API节点同步任务
 type SyncAPINodesTask struct {
+	ticker *time.Ticker
 }
 
 func NewSyncAPINodesTask() *SyncAPINodesTask {
@@ -39,20 +43,22 @@ func NewSyncAPINodesTask() *SyncAPINodesTask {
 }
 
 func (this *SyncAPINodesTask) Start() {
-	ticker := time.NewTicker(5 * time.Minute)
+	this.ticker = time.NewTicker(5 * time.Minute)
 	if Tea.IsTesting() {
 		// 快速测试
-		ticker = time.NewTicker(1 * time.Minute)
+		this.ticker = time.NewTicker(1 * time.Minute)
 	}
-	events.On(events.EventQuit, func() {
-		remotelogs.Println("SYNC_API_NODES_TASK", "quit task")
-		ticker.Stop()
-	})
-	for range ticker.C {
+	for range this.ticker.C {
 		err := this.Loop()
 		if err != nil {
 			logs.Println("[TASK][SYNC_API_NODES_TASK]" + err.Error())
 		}
+	}
+}
+
+func (this *SyncAPINodesTask) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
 	}
 }
 

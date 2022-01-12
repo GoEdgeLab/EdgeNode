@@ -21,6 +21,9 @@ func init() {
 			SharedOriginStateManager.Start()
 		})
 	})
+	events.On(events.EventQuit, func() {
+		SharedOriginStateManager.Stop()
+	})
 }
 
 // OriginStateManager 源站状态管理
@@ -41,7 +44,7 @@ func NewOriginStateManager() *OriginStateManager {
 
 // Start 启动
 func (this *OriginStateManager) Start() {
-	events.On(events.EventReload, func() {
+	events.OnKey(events.EventReload, this, func() {
 		this.locker.Lock()
 		this.stateMap = map[int64]*OriginState{}
 		this.locker.Unlock()
@@ -55,6 +58,12 @@ func (this *OriginStateManager) Start() {
 		if err != nil {
 			remotelogs.Error("ORIGIN_MANAGER", err.Error())
 		}
+	}
+}
+
+func (this *OriginStateManager) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
 	}
 }
 

@@ -15,15 +15,22 @@ import (
 	"time"
 )
 
+var SharedUpdater = NewUpdater()
+
 func init() {
 	events.On(events.EventStart, func() {
-		updater := NewUpdater()
-		updater.Start()
+		goman.New(func() {
+			SharedUpdater.Start()
+		})
+	})
+	events.On(events.EventQuit, func() {
+		SharedUpdater.Stop()
 	})
 }
 
 // Updater IP库更新程序
 type Updater struct {
+	ticker *time.Ticker
 }
 
 // NewUpdater 获取新对象
@@ -34,15 +41,19 @@ func NewUpdater() *Updater {
 // Start 开始更新
 func (this *Updater) Start() {
 	// 这里不需要太频繁检查更新，因为通常不需要更新IP库
-	ticker := time.NewTicker(1 * time.Hour)
-	goman.New(func() {
-		for range ticker.C {
-			err := this.loop()
-			if err != nil {
-				remotelogs.ErrorObject("IP_LIBRARY", err)
-			}
+	this.ticker = time.NewTicker(1 * time.Hour)
+	for range this.ticker.C {
+		err := this.loop()
+		if err != nil {
+			remotelogs.ErrorObject("IP_LIBRARY", err)
 		}
-	})
+	}
+}
+
+func (this *Updater) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
+	}
 }
 
 // 单次任务

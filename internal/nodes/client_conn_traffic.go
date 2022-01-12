@@ -16,7 +16,7 @@ import (
 // 发送监控流量
 func init() {
 	events.On(events.EventStart, func() {
-		ticker := time.NewTicker(1 * time.Minute)
+		var ticker = time.NewTicker(1 * time.Minute)
 		goman.New(func() {
 			for range ticker.C {
 				// 加入到数据队列中

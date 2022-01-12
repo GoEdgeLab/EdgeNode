@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/types"
@@ -27,10 +26,15 @@ func init() {
 			SharedCityManager.Start()
 		})
 	})
+	events.On(events.EventQuit, func() {
+		SharedCityManager.Stop()
+	})
 }
 
 // CityManager 中国省份信息管理
 type CityManager struct {
+	ticker *time.Ticker
+
 	cacheFile string
 
 	cityMap  map[string]int64 // provinceName_cityName => cityName
@@ -62,15 +66,18 @@ func (this *CityManager) Start() {
 	}
 
 	// 定时更新
-	ticker := utils.NewTicker(4 * time.Hour)
-	events.On(events.EventQuit, func() {
-		ticker.Stop()
-	})
-	for ticker.Next() {
+	this.ticker = time.NewTicker(4 * time.Hour)
+	for range this.ticker.C {
 		err := this.loop()
 		if err != nil {
 			remotelogs.ErrorObject("CITY_MANAGER", err)
 		}
+	}
+}
+
+func (this *CityManager) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
 	}
 }
 

@@ -23,10 +23,15 @@ func init() {
 			SharedIPListManager.Start()
 		})
 	})
+	events.On(events.EventQuit, func() {
+		SharedIPListManager.Stop()
+	})
 }
 
 // IPListManager IP名单管理
 type IPListManager struct {
+	ticker *time.Ticker
+
 	db *IPListDB
 
 	version  int64
@@ -52,17 +57,14 @@ func (this *IPListManager) Start() {
 		remotelogs.ErrorObject("IP_LIST_MANAGER", err)
 	}
 
-	ticker := time.NewTicker(60 * time.Second)
+	this.ticker = time.NewTicker(60 * time.Second)
 	if Tea.IsTesting() {
-		ticker = time.NewTicker(10 * time.Second)
+		this.ticker = time.NewTicker(10 * time.Second)
 	}
-	events.On(events.EventQuit, func() {
-		ticker.Stop()
-	})
 	countErrors := 0
 	for {
 		select {
-		case <-ticker.C:
+		case <-this.ticker.C:
 		case <-IPListUpdateNotify:
 		}
 		err := this.loop()
@@ -81,6 +83,12 @@ func (this *IPListManager) Start() {
 		} else {
 			countErrors = 0
 		}
+	}
+}
+
+func (this *IPListManager) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
 	}
 }
 

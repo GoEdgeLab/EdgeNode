@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"io/ioutil"
@@ -26,10 +25,15 @@ func init() {
 			SharedProviderManager.Start()
 		})
 	})
+	events.On(events.EventQuit, func() {
+		SharedProviderManager.Stop()
+	})
 }
 
 // ProviderManager 中国省份信息管理
 type ProviderManager struct {
+	ticker *time.Ticker
+
 	cacheFile string
 
 	providerMap map[string]int64 // name => id
@@ -61,15 +65,18 @@ func (this *ProviderManager) Start() {
 	}
 
 	// 定时更新
-	ticker := utils.NewTicker(4 * time.Hour)
-	events.On(events.EventQuit, func() {
-		ticker.Stop()
-	})
-	for ticker.Next() {
+	this.ticker = time.NewTicker(4 * time.Hour)
+	for range this.ticker.C {
 		err := this.loop()
 		if err != nil {
 			remotelogs.ErrorObject("PROVIDER_MANAGER", err)
 		}
+	}
+}
+
+func (this *ProviderManager) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
 	}
 }
 

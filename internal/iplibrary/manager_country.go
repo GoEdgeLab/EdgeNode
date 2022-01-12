@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"io/ioutil"
@@ -26,10 +25,15 @@ func init() {
 			SharedCountryManager.Start()
 		})
 	})
+	events.On(events.EventQuit, func() {
+		SharedCountryManager.Stop()
+	})
 }
 
 // CountryManager 国家/地区信息管理
 type CountryManager struct {
+	ticker *time.Ticker
+
 	cacheFile string
 
 	countryMap map[string]int64 // countryName => countryId
@@ -61,15 +65,18 @@ func (this *CountryManager) Start() {
 	}
 
 	// 定时更新
-	ticker := utils.NewTicker(4 * time.Hour)
-	events.On(events.EventQuit, func() {
-		ticker.Stop()
-	})
-	for ticker.Next() {
+	this.ticker = time.NewTicker(4 * time.Hour)
+	for range this.ticker.C {
 		err := this.loop()
 		if err != nil {
 			remotelogs.ErrorObject("COUNTRY_MANAGER", err)
 		}
+	}
+}
+
+func (this *CountryManager) Stop() {
+	if this.ticker != nil {
+		this.ticker.Stop()
 	}
 }
 

@@ -41,7 +41,7 @@ func NewAPIStream() *APIStream {
 }
 
 func (this *APIStream) Start() {
-	events.On(events.EventQuit, func() {
+	events.OnKey(events.EventQuit, this, func() {
 		this.isQuiting = true
 		if this.cancelFunc != nil {
 			this.cancelFunc()

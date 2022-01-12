@@ -41,9 +41,9 @@ func (this *NodeStatusExecutor) Listen() {
 	this.update()
 
 	// TODO 这个时间间隔可以配置
-	ticker := time.NewTicker(30 * time.Second)
+	var ticker = time.NewTicker(30 * time.Second)
 
-	events.On(events.EventQuit, func() {
+	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("NODE_STATUS", "quit executor")
 		ticker.Stop()
 	})

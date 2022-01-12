@@ -64,25 +64,26 @@ func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 // Start 启动
 func (this *HTTPRequestStatManager) Start() {
 	// 上传请求总数
+	var monitorTicker = time.NewTicker(1 * time.Minute)
+	events.OnKey(events.EventQuit, this, func() {
+		monitorTicker.Stop()
+	})
 	goman.New(func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		goman.New(func() {
-			for range ticker.C {
-				if this.totalAttackRequests > 0 {
-					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemAttackRequests, maps.Map{"total": this.totalAttackRequests})
-					this.totalAttackRequests = 0
-				}
+		for range monitorTicker.C {
+			if this.totalAttackRequests > 0 {
+				monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemAttackRequests, maps.Map{"total": this.totalAttackRequests})
+				this.totalAttackRequests = 0
 			}
-		})
+		}
 	})
 
-	loopTicker := time.NewTicker(1 * time.Second)
-	uploadTicker := time.NewTicker(30 * time.Minute)
+	var loopTicker = time.NewTicker(1 * time.Second)
+	var uploadTicker = time.NewTicker(30 * time.Minute)
 	if Tea.IsTesting() {
 		uploadTicker = time.NewTicker(10 * time.Second) // 在测试环境下缩短Ticker时间，以方便我们调试
 	}
 	remotelogs.Println("HTTP_REQUEST_STAT_MANAGER", "start ...")
-	events.On(events.EventQuit, func() {
+	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("HTTP_REQUEST_STAT_MANAGER", "quit")
 		loopTicker.Stop()
 		uploadTicker.Stop()

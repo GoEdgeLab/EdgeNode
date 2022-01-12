@@ -159,7 +159,7 @@ func (this *ListenerManager) TotalActiveConnections() int {
 
 	total := 0
 	for _, listener := range this.listenersMap {
-		total += listener.listener.CountActiveListeners()
+		total += listener.listener.CountActiveConnections()
 	}
 	return total
 }

@@ -56,16 +56,17 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 	this.configFunc = configFunc
 
 	// 上传请求总数
+	var monitorTicker = time.NewTicker(1 * time.Minute)
+	events.OnKey(events.EventQuit, this, func() {
+		monitorTicker.Stop()
+	})
 	goman.New(func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		goman.New(func() {
-			for range ticker.C {
-				if this.totalRequests > 0 {
-					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemRequests, maps.Map{"total": this.totalRequests})
-					this.totalRequests = 0
-				}
+		for range monitorTicker.C {
+			if this.totalRequests > 0 {
+				monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemRequests, maps.Map{"total": this.totalRequests})
+				this.totalRequests = 0
 			}
-		})
+		}
 	})
 
 	// 上传统计数据
@@ -74,8 +75,8 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 		// 测试环境缩短上传时间，方便我们调试
 		duration = 30 * time.Second
 	}
-	ticker := time.NewTicker(duration)
-	events.On(events.EventQuit, func() {
+	var ticker = time.NewTicker(duration)
+	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("TRAFFIC_STAT_MANAGER", "quit")
 		ticker.Stop()
 	})

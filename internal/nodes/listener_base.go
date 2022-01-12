@@ -25,8 +25,8 @@ func (this *BaseListener) Reset() {
 
 }
 
-// CountActiveListeners 获取当前活跃连接数
-func (this *BaseListener) CountActiveListeners() int {
+// CountActiveConnections 获取当前活跃连接数
+func (this *BaseListener) CountActiveConnections() int {
 	return types.Int(this.countActiveConnections)
 }
 
