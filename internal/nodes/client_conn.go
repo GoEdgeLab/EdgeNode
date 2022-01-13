@@ -24,9 +24,10 @@ type ClientConn struct {
 	once          sync.Once
 	globalLimiter *ratelimit.Counter
 
-	isTLS            bool
-	hasDeadline      bool
-	hasRead          bool
+	isTLS       bool
+	hasDeadline bool
+	hasRead     bool
+
 	hasResetSYNFlood bool
 
 	BaseClientConn
@@ -59,22 +60,24 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	n, err = this.rawConn.Read(b)
 	if n > 0 {
 		atomic.AddUint64(&teaconst.InTrafficBytes, uint64(n))
-		this.hasRead = true
+		if !this.hasRead {
+			this.hasRead = true
+		}
 	}
 
 	// SYN Flood检测
+	var isHandshakeError = err != nil && os.IsTimeout(err) && !this.hasRead
 	var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
 	if synFloodConfig != nil && synFloodConfig.IsOn {
-		if err != nil && os.IsTimeout(err) {
+		if isHandshakeError {
 			_ = this.SetLinger(0)
-
-			if !this.hasRead {
-				this.increaseSYNFlood(synFloodConfig)
-			}
+			this.increaseSYNFlood(synFloodConfig)
 		} else if err == nil && !this.hasResetSYNFlood {
 			this.hasResetSYNFlood = true
 			this.resetSYNFlood()
 		}
+	} else if isHandshakeError {
+		_ = this.SetLinger(0)
 	}
 
 	return
