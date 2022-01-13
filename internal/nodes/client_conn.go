@@ -67,17 +67,17 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 
 	// SYN Flood检测
 	var isHandshakeError = err != nil && os.IsTimeout(err) && !this.hasRead
+	if isHandshakeError {
+		_ = this.SetLinger(0)
+	}
 	var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
 	if synFloodConfig != nil && synFloodConfig.IsOn {
 		if isHandshakeError {
-			_ = this.SetLinger(0)
 			this.increaseSYNFlood(synFloodConfig)
 		} else if err == nil && !this.hasResetSYNFlood {
 			this.hasResetSYNFlood = true
 			this.resetSYNFlood()
 		}
-	} else if isHandshakeError {
-		_ = this.SetLinger(0)
 	}
 
 	return
