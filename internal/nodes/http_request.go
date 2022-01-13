@@ -13,7 +13,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -1351,7 +1350,6 @@ func (this *HTTPRequest) Close() {
 
 // Allow 放行
 func (this *HTTPRequest) Allow() {
-	logs.Println("allow") // TODO
 	this.web.FirewallRef = nil
 }
 
