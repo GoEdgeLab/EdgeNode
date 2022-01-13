@@ -24,9 +24,10 @@ type ClientConn struct {
 	once          sync.Once
 	globalLimiter *ratelimit.Counter
 
-	isTLS       bool
-	hasDeadline bool
-	hasRead     bool
+	isTLS            bool
+	hasDeadline      bool
+	hasRead          bool
+	hasResetSYNFlood bool
 
 	BaseClientConn
 }
@@ -65,10 +66,13 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
 	if synFloodConfig != nil && synFloodConfig.IsOn {
 		if err != nil && os.IsTimeout(err) {
+			_ = this.SetLinger(0)
+
 			if !this.hasRead {
-				this.checkSYNFlood(synFloodConfig)
+				this.increaseSYNFlood(synFloodConfig)
 			}
-		} else if err == nil {
+		} else if err == nil && !this.hasResetSYNFlood {
+			this.hasResetSYNFlood = true
 			this.resetSYNFlood()
 		}
 	}
@@ -123,10 +127,10 @@ func (this *ClientConn) SetWriteDeadline(t time.Time) error {
 }
 
 func (this *ClientConn) resetSYNFlood() {
-	//ttlcache.SharedCache.Delete("SYN_FLOOD:" + this.RawIP())
+	ttlcache.SharedCache.Delete("SYN_FLOOD:" + this.RawIP())
 }
 
-func (this *ClientConn) checkSYNFlood(synFloodConfig *firewallconfigs.SYNFloodConfig) {
+func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloodConfig) {
 	var ip = this.RawIP()
 	if len(ip) > 0 && !iplibrary.IsInWhiteList(ip) && (!synFloodConfig.IgnoreLocal || !utils.IsLocalIP(ip)) {
 		var timestamp = utils.NextMinuteUnixTime()
@@ -134,6 +138,10 @@ func (this *ClientConn) checkSYNFlood(synFloodConfig *firewallconfigs.SYNFloodCo
 		var minAttempts = synFloodConfig.MinAttempts
 		if minAttempts < 5 {
 			minAttempts = 5
+		}
+		if !this.isTLS {
+			// 非TLS，设置为两倍，防止误封
+			minAttempts = 2 * minAttempts
 		}
 		if result >= int64(minAttempts) {
 			var timeout = synFloodConfig.TimeoutSeconds

@@ -41,3 +41,18 @@ func (this *BaseClientConn) RawIP() string {
 	ip, _, _ := net.SplitHostPort(this.rawConn.RemoteAddr().String())
 	return ip
 }
+
+// TCPConn 转换为TCPConn
+func (this *BaseClientConn) TCPConn() (*net.TCPConn, bool) {
+	conn, ok := this.rawConn.(*net.TCPConn)
+	return conn, ok
+}
+
+// SetLinger 设置Linger
+func (this *BaseClientConn) SetLinger(seconds int) error {
+	tcpConn, ok := this.TCPConn()
+	if ok {
+		return tcpConn.SetLinger(seconds)
+	}
+	return nil
+}
