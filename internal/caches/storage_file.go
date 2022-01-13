@@ -255,17 +255,16 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool)
 	}
 	var fp *os.File
 	var err error
-	var meta []byte
-	if openFile != nil {
-		fp, meta = openFile.fp, openFile.meta
-	} else {
+	if openFile == nil {
 		fp, err = os.OpenFile(path, os.O_RDONLY, 0444)
-	}
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return nil, err
+			}
+			return nil, ErrNotFound
 		}
-		return nil, ErrNotFound
+	} else {
+		fp = openFile.fp
 	}
 	defer func() {
 		if !isOk {
@@ -274,12 +273,9 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool)
 		}
 	}()
 
-	reader := NewFileReader(fp)
+	var reader = NewFileReader(fp)
 	reader.openFile = openFile
 	reader.openFileCache = this.openFileCache
-	if len(meta) > 0 {
-		reader.meta = meta
-	}
 	err = reader.Init()
 	if err != nil {
 		return nil, err

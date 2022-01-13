@@ -10,13 +10,15 @@ import (
 type OpenFile struct {
 	fp      *os.File
 	meta    []byte
+	header  []byte
 	version int64
 }
 
-func NewOpenFile(fp *os.File, meta []byte) *OpenFile {
+func NewOpenFile(fp *os.File, meta []byte, header []byte) *OpenFile {
 	return &OpenFile{
-		fp:   fp,
-		meta: meta,
+		fp:     fp,
+		meta:   meta,
+		header: header,
 	}
 }
 

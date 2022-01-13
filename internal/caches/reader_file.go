@@ -14,7 +14,9 @@ type FileReader struct {
 	openFile      *OpenFile
 	openFileCache *OpenFileCache
 
-	meta         []byte
+	meta   []byte
+	header []byte
+
 	expiresAt    int64
 	status       int
 	headerOffset int64
@@ -31,6 +33,11 @@ func NewFileReader(fp *os.File) *FileReader {
 }
 
 func (this *FileReader) Init() error {
+	if this.openFile != nil {
+		this.meta = this.openFile.meta
+		this.header = this.openFile.header
+	}
+
 	isOk := false
 
 	defer func() {
@@ -80,6 +87,21 @@ func (this *FileReader) Init() error {
 	this.bodySize = int64(bodySize)
 	this.bodyOffset = this.headerOffset + int64(headerSize)
 
+	// read header
+	if this.openFileCache != nil && len(this.header) == 0 {
+		if headerSize > 0 && headerSize <= 512 {
+			this.header = make([]byte, headerSize)
+			_, err := this.fp.Seek(this.headerOffset, io.SeekStart)
+			if err != nil {
+				return err
+			}
+			_, err = this.readToBuff(this.fp, this.header)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	isOk = true
 
 	return nil
@@ -114,6 +136,22 @@ func (this *FileReader) BodySize() int64 {
 }
 
 func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
+	// 使用缓存
+	if len(this.header) > 0 && len(buf) >= len(this.header) {
+		copy(buf, this.header)
+		_, err := callback(len(this.header))
+		if err != nil {
+			return err
+		}
+
+		// 移动到Body位置
+		_, err = this.fp.Seek(this.bodyOffset, io.SeekStart)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	isOk := false
 
 	defer func() {
@@ -335,7 +373,7 @@ func (this *FileReader) Close() error {
 		if this.openFile != nil {
 			this.openFileCache.Put(this.fp.Name(), this.openFile)
 		} else {
-			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, this.meta))
+			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, this.meta, this.header))
 		}
 		return nil
 	}
