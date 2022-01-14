@@ -560,9 +560,7 @@ ON "` + this.itemsTableName + `" (
 		// v2 => v3
 		remotelogs.Println("CACHE", "transferring old data from v2 to v3 ...")
 		result, err := db.Exec(`INSERT INTO "` + this.itemsTableName + `" ("id", "hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "createdAt", "host", "serverId", "staleAt") SELECT "id", "hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "createdAt", "host", "serverId", "expiredAt"+600 FROM cacheItems_v2`)
-		if err != nil {
-			remotelogs.Println("CACHE", "transfer old data from v2 to v3 failed: "+err.Error())
-		} else {
+		if err == nil {
 			count, _ := result.RowsAffected()
 			remotelogs.Println("CACHE", "transfer old data from v2 to v3 finished, "+types.String(count)+" rows transferred")
 		}
