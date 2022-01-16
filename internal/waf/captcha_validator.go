@@ -114,6 +114,7 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests
 <html>
 <head>
 	<title>` + msgTitle + `</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
 	<script type="text/javascript">
 	if (window.addEventListener != null) {
 		window.addEventListener("load", function () {
