@@ -44,10 +44,22 @@ func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.C
 						// TODO 支持TCP4/TCP6
 						// TODO 支持指定特定网卡
 						// TODO Addr支持端口范围，如果有多个端口时，随机一个端口使用
-						// TODO 支持使用证书
-						conn, err = tls.DialWithDialer(&dialer, "tcp", origin.Addr.Host+":"+origin.Addr.PortRange, &tls.Config{
+
+						var tlsConfig = &tls.Config{
 							InsecureSkipVerify: true,
-						})
+						}
+						if origin.Cert != nil {
+							var obj = origin.Cert.CertObject()
+							if obj != nil {
+								tlsConfig.InsecureSkipVerify = false
+								tlsConfig.Certificates = []tls.Certificate{*obj}
+								if len(origin.Cert.ServerName) > 0 {
+									tlsConfig.ServerName = origin.Cert.ServerName
+								}
+							}
+						}
+
+						conn, err = tls.DialWithDialer(&dialer, "tcp", origin.Addr.Host+":"+origin.Addr.PortRange, tlsConfig)
 					}
 
 					// TODO 需要在合适的时机删除TOA记录
@@ -69,10 +81,22 @@ func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.C
 		// TODO 支持TCP4/TCP6
 		// TODO 支持指定特定网卡
 		// TODO Addr支持端口范围，如果有多个端口时，随机一个端口使用
-		// TODO 支持使用证书
-		return tls.Dial("tcp", origin.Addr.Host+":"+origin.Addr.PortRange, &tls.Config{
+
+		var tlsConfig = &tls.Config{
 			InsecureSkipVerify: true,
-		})
+		}
+		if origin.Cert != nil {
+			var obj = origin.Cert.CertObject()
+			if obj != nil {
+				tlsConfig.InsecureSkipVerify = false
+				tlsConfig.Certificates = []tls.Certificate{*obj}
+				if len(origin.Cert.ServerName) > 0 {
+					tlsConfig.ServerName = origin.Cert.ServerName
+				}
+			}
+		}
+
+		return tls.Dial("tcp", origin.Addr.Host+":"+origin.Addr.PortRange, tlsConfig)
 	case serverconfigs.ProtocolUDP:
 		addr, err := net.ResolveUDPAddr("udp", origin.Addr.Host+":"+origin.Addr.PortRange)
 		if err != nil {

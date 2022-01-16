@@ -86,11 +86,11 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 	}
 
 	// TLS通讯
-	tlsConfig := &tls.Config{
+	var tlsConfig = &tls.Config{
 		InsecureSkipVerify: true,
 	}
 	if origin.Cert != nil {
-		obj := origin.Cert.CertObject()
+		var obj = origin.Cert.CertObject()
 		if obj != nil {
 			tlsConfig.InsecureSkipVerify = false
 			tlsConfig.Certificates = []tls.Certificate{*obj}
