@@ -3,6 +3,8 @@ package waf
 import (
 	"bytes"
 	"encoding/base64"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/jsonutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
@@ -54,7 +56,7 @@ func (this *CaptchaValidator) Run(request requests.Request, writer http.Response
 	var originURL = m.GetString("url")
 
 	if request.WAFRaw().Method == http.MethodPost && len(request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")) > 0 {
-		this.validate(actionConfig, m.GetInt64("policyId"), m.GetInt64("groupId"), setId, originURL, request, writer)
+		this.validate(actionConfig, m.GetInt("maxFails"), m.GetInt("failBlockTimeout"), m.GetInt64("policyId"), m.GetInt64("groupId"), setId, originURL, request, writer)
 	} else {
 		this.show(actionConfig, request, writer)
 	}
@@ -142,11 +144,14 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests
 </html>`))
 }
 
-func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, maxFails int, failBlockTimeout int, policyId int64, groupId int64, setId int64, originURL string, request requests.Request, writer http.ResponseWriter) (allow bool) {
 	captchaId := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
 	if len(captchaId) > 0 {
 		captchaCode := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
 		if captcha.VerifyString(captchaId, captchaCode) {
+			// 删除计数
+			ttlcache.SharedCache.Delete("CAPTCHA:FAILS:" + request.WAFRemoteIP())
+
 			var life = CaptchaSeconds
 			if actionConfig.Life > 0 {
 				life = types.Int(actionConfig.Life)
@@ -159,6 +164,15 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int
 
 			return false
 		} else {
+			// 增加计数
+			if maxFails > 0 && failBlockTimeout > 0 {
+				var countFails = ttlcache.SharedCache.IncreaseInt64("CAPTCHA:FAILS:"+request.WAFRemoteIP(), 1, time.Now().Unix()+300)
+				if int(countFails) >= maxFails {
+					SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, false, groupId, setId, "CAPTCHA验证连续失败")
+					return false
+				}
+			}
+
 			http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusSeeOther)
 		}
 	}

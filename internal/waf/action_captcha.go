@@ -18,7 +18,10 @@ const (
 )
 
 type CaptchaAction struct {
-	Life           int32  `yaml:"life" json:"life"`
+	Life             int32 `yaml:"life" json:"life"`
+	MaxFails         int   `yaml:"maxFails" json:"maxFails"`                 // 最大失败次数
+	FailBlockTimeout int   `yaml:"failBlockTimeout" json:"failBlockTimeout"` // 失败拦截时间
+
 	Language       string `yaml:"language" json:"language"`             // 语言，zh-CN, en-US ...
 	AddToWhiteList bool   `yaml:"addToWhiteList" json:"addToWhiteList"` // 是否加入到白名单
 	Scope          string `yaml:"scope" json:"scope"`
@@ -60,12 +63,14 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	}
 
 	var captchaConfig = maps.Map{
-		"action":    this,
-		"timestamp": time.Now().Unix(),
-		"url":       refURL,
-		"policyId":  waf.Id,
-		"groupId":   group.Id,
-		"setId":     set.Id,
+		"action":           this,
+		"timestamp":        time.Now().Unix(),
+		"maxFails":         this.MaxFails,
+		"failBlockTimeout": this.FailBlockTimeout,
+		"url":              refURL,
+		"policyId":         waf.Id,
+		"groupId":          group.Id,
+		"setId":            set.Id,
 	}
 	info, err := utils.SimpleEncryptMap(captchaConfig)
 	if err != nil {
