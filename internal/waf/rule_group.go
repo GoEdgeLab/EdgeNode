@@ -1,7 +1,9 @@
 package waf
 
 import (
+	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/iwind/TeaGo/types"
 )
 
 // rule group
@@ -30,7 +32,7 @@ func (this *RuleGroup) Init(waf *WAF) error {
 		for _, set := range this.RuleSets {
 			err := set.Init(waf)
 			if err != nil {
-				return err
+				return errors.New("init set '" + types.String(set.Id) + "' failed: " + err.Error())
 			}
 		}
 	}

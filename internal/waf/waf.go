@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/files"
+	"github.com/iwind/TeaGo/types"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net/http"
@@ -89,7 +90,7 @@ func (this *WAF) Init() (resultErrors []error) {
 			err := group.Init(this)
 			if err != nil {
 				// 这里我们不阻止其他规则正常加入
-				resultErrors = append(resultErrors, err)
+				resultErrors = append(resultErrors, errors.New("init group '"+types.String(group.Id)+"' failed: "+err.Error()))
 			}
 		}
 	}

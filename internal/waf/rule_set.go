@@ -1,12 +1,14 @@
 package waf
 
 import (
+	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
+	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"sort"
 )
@@ -47,7 +49,7 @@ func (this *RuleSet) Init(waf *WAF) error {
 		for _, rule := range this.Rules {
 			err := rule.Init()
 			if err != nil {
-				return err
+				return errors.New("init rule '" + rule.Param + " " + rule.Operator + " " + types.String(rule.Value) + "' failed: " + err.Error())
 			}
 		}
 	}
