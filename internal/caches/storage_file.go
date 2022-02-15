@@ -325,10 +325,11 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool)
 }
 
 // OpenWriter 打开缓存文件等待写入
-func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int) (Writer, error) {
+func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64) (Writer, error) {
 	// 先尝试内存缓存
-	if this.memoryStorage != nil {
-		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status)
+	// 我们限定仅小文件优先存在内存中
+	if this.memoryStorage != nil && size > 0 && size < 32*1024*1024 {
+		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status, size)
 		if err == nil {
 			return writer, nil
 		}
@@ -904,7 +905,7 @@ func (this *FileStorage) hotLoop() {
 				continue
 			}
 
-			writer, err := this.memoryStorage.openWriter(item.Key, item.ExpiresAt, item.Status, false)
+			writer, err := this.memoryStorage.openWriter(item.Key, item.ExpiresAt, item.Status, reader.BodySize(), false)
 			if err != nil {
 				if !CanIgnoreErr(err) {
 					remotelogs.Error("CACHE", "transfer hot item failed: "+err.Error())

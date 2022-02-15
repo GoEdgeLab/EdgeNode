@@ -21,7 +21,7 @@ import (
 func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	this.cacheCanTryStale = false
 
-	cachePolicy := this.ReqServer.HTTPCachePolicy
+	var cachePolicy = this.ReqServer.HTTPCachePolicy
 	if cachePolicy == nil || !cachePolicy.IsOn {
 		return
 	}

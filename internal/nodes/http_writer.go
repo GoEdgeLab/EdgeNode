@@ -243,7 +243,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	var expiredAt = utils.UnixTime() + life
 	var cacheKey = this.req.cacheKey
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode())
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size)
 	if err != nil {
 		if !caches.CanIgnoreErr(err) {
 			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
@@ -537,7 +537,7 @@ func (this *HTTPWriter) Close() {
 		if this.cacheWriter != nil {
 			var cacheKey = this.cacheWriter.Key() + webpSuffix
 
-			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, this.cacheWriter.ExpiredAt(), this.StatusCode())
+			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, this.cacheWriter.ExpiredAt(), this.StatusCode(), -1)
 			if webpCacheWriter != nil {
 				// 写入Header
 				for k, v := range this.Header() {
@@ -660,7 +660,7 @@ func (this *HTTPWriter) Close() {
 			// 对比Content-Length
 			var contentLengthString = this.Header().Get("Content-Length")
 			if len(contentLengthString) > 0 {
-				contentLength := types.Int64(contentLengthString)
+				var contentLength = types.Int64(contentLengthString)
 				if contentLength != this.cacheWriter.BodySize() {
 					this.isOk = false
 					_ = this.cacheWriter.Discard()
