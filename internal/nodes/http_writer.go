@@ -339,7 +339,12 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	}
 
 	// 尺寸和类型
-	if !this.compressionConfig.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.Path()), this.req.Format) {
+	var contentType = this.Header().Get("Content-Type")
+	if len(contentType) == 0 {
+		// 如果没有显式设置Content-Type，我们就认为是 text/html
+		contentType = "text/html"
+	}
+	if !this.compressionConfig.MatchResponse(contentType, size, filepath.Ext(this.req.Path()), this.req.Format) {
 		return
 	}
 
