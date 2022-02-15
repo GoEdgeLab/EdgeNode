@@ -302,7 +302,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		this.cacheRef = nil // 不支持缓存
 	}
 
-	this.writer.Prepare(fileSize, http.StatusOK)
+	this.writer.Prepare(nil, fileSize, http.StatusOK, true)
 
 	pool := this.bytePool(fileSize)
 	buf := pool.Get()

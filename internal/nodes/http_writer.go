@@ -5,15 +5,14 @@ package nodes
 import (
 	"bufio"
 	"bytes"
-	"compress/flate"
-	"compress/gzip"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/andybalholm/brotli"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/readers"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/writers"
 	_ "github.com/biessek/golang-ico"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
@@ -26,6 +25,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -34,77 +34,75 @@ import (
 	"sync/atomic"
 )
 
-// 限制WebP能够同时使用的Buffer内存使用量
-const webpMaxBufferSize int64 = 1_000_000_000
+// webp相关配置
 const webpSuffix = "@GOEDGE_WEBP"
 
+var webpMaxBufferSize int64 = 1_000_000_000
 var webpTotalBufferSize int64 = 0
-var webpBufferPool = utils.NewBufferPool(1024)
+
+func init() {
+	var systemMemory = utils.SystemMemoryGB() / 8
+	if systemMemory > 0 {
+		webpMaxBufferSize = int64(systemMemory) * 1024 * 1024 * 1024
+	}
+}
 
 // HTTPWriter 响应Writer
 type HTTPWriter struct {
-	req    *HTTPRequest
-	writer http.ResponseWriter
+	req       *HTTPRequest
+	rawWriter http.ResponseWriter
+
+	rawReader io.ReadCloser
+	delayRead bool
+
+	counterWriter *writers.BytesCounterWriter
+	writer        io.WriteCloser
 
 	size int64
-
-	webpIsEncoding        bool
-	webpBuffer            *bytes.Buffer
-	webpIsWriting         bool
-	webpOriginContentType string
-	webpOriginEncoding    string // gzip
-
-	compressionConfig *serverconfigs.HTTPCompressionConfig
-	compressionWriter compressions.Writer
-	compressionType   serverconfigs.HTTPCompressionType
 
 	statusCode    int
 	sentBodyBytes int64
 
-	bodyCopying           bool
-	body                  []byte
-	compressionBodyBuffer *bytes.Buffer       // 当使用压缩时使用
-	compressionBodyWriter compressions.Writer // 当使用压缩时使用
-
-	cacheWriter  caches.Writer // 缓存写入
-	cacheStorage caches.StorageInterface
-
 	isOk       bool // 是否完全成功
 	isFinished bool // 是否已完成
+
+	// WebP
+	webpIsEncoding        bool
+	webpOriginContentType string
+
+	// Compression
+	compressionConfig *serverconfigs.HTTPCompressionConfig
+
+	// Cache
+	cacheStorage    caches.StorageInterface
+	cacheWriter     caches.Writer
+	cacheIsFinished bool
 }
 
 // NewHTTPWriter 包装对象
 func NewHTTPWriter(req *HTTPRequest, httpResponseWriter http.ResponseWriter) *HTTPWriter {
+	var counterWriter = writers.NewBytesCounterWriter(httpResponseWriter)
 	return &HTTPWriter{
-		req:    req,
-		writer: httpResponseWriter,
+		req:           req,
+		rawWriter:     httpResponseWriter,
+		writer:        counterWriter,
+		counterWriter: counterWriter,
 	}
-}
-
-// SetCompression 设置内容压缩配置
-func (this *HTTPWriter) SetCompression(config *serverconfigs.HTTPCompressionConfig) {
-	this.compressionConfig = config
 }
 
 // Prepare 准备输出
-// 缓存不调用此函数
-func (this *HTTPWriter) Prepare(size int64, status int) (delayHeaders bool) {
+func (this *HTTPWriter) Prepare(resp *http.Response, size int64, status int, enableCache bool) (delayHeaders bool) {
 	this.size = size
 	this.statusCode = status
 
-	if status == http.StatusOK {
-		this.prepareWebP(size)
+	if resp != nil {
+		this.rawReader = resp.Body
 
-		if this.webpIsEncoding {
-			delayHeaders = true
+		if enableCache {
+			this.PrepareCache(resp, size)
 		}
-	}
-
-	this.prepareCache(size)
-
-	// 在WebP模式下，压缩暂不可用
-	if !this.webpIsEncoding {
-		this.PrepareCompression(size)
+		this.PrepareWebP(resp, size)
+		this.PrepareCompression(resp, size)
 	}
 
 	// 是否限速写入
@@ -112,38 +110,308 @@ func (this *HTTPWriter) Prepare(size int64, status int) (delayHeaders bool) {
 		this.req.web.RequestLimit != nil &&
 		this.req.web.RequestLimit.IsOn &&
 		this.req.web.RequestLimit.OutBandwidthPerConnBytes() > 0 {
-		this.writer = NewHTTPRateWriter(this.writer, this.req.web.RequestLimit.OutBandwidthPerConnBytes())
+		this.writer = writers.NewRateLimitWriter(this.writer, this.req.web.RequestLimit.OutBandwidthPerConnBytes())
 	}
 
 	return
 }
 
+// PrepareCache 准备缓存
+func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
+	if resp == nil {
+		return
+	}
+
+	var cachePolicy = this.req.ReqServer.HTTPCachePolicy
+	if cachePolicy == nil || !cachePolicy.IsOn {
+		return
+	}
+
+	var cacheRef = this.req.cacheRef
+	if cacheRef == nil || !cacheRef.IsOn {
+		return
+	}
+
+	var addStatusHeader = this.req.web != nil && this.req.web.Cache != nil && this.req.web.Cache.AddStatusHeader
+
+	// 不支持Range
+	if len(this.Header().Get("Content-Range")) > 0 {
+		this.req.varMapping["cache.status"] = "BYPASS"
+		if addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, not supported Content-Range")
+		}
+		return
+	}
+
+	// 如果允许 ChunkedEncoding，就无需尺寸的判断，因为此时的 size 为 -1
+	if !cacheRef.AllowChunkedEncoding && size < 0 {
+		this.req.varMapping["cache.status"] = "BYPASS"
+		if addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, ChunkedEncoding")
+		}
+		return
+	}
+	if size >= 0 && ((cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
+		(cachePolicy.MaxSizeBytes() > 0 && size > cachePolicy.MaxSizeBytes()) || (cacheRef.MinSizeBytes() > size)) {
+		this.req.varMapping["cache.status"] = "BYPASS"
+		if addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, Content-Length")
+		}
+		return
+	}
+
+	// 检查状态
+	if len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
+		this.req.varMapping["cache.status"] = "BYPASS"
+		if addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, Status: "+types.String(this.StatusCode()))
+		}
+		return
+	}
+
+	// Cache-Control
+	if len(cacheRef.SkipResponseCacheControlValues) > 0 {
+		var cacheControl = this.Header().Get("Cache-Control")
+		if len(cacheControl) > 0 {
+			values := strings.Split(cacheControl, ",")
+			for _, value := range values {
+				if cacheRef.ContainsCacheControl(strings.TrimSpace(value)) {
+					this.req.varMapping["cache.status"] = "BYPASS"
+					if addStatusHeader {
+						this.Header().Set("X-Cache", "BYPASS, Cache-Control: "+cacheControl)
+					}
+					return
+				}
+			}
+		}
+	}
+
+	// Set-Cookie
+	if cacheRef.SkipResponseSetCookie && len(this.Header().Get("Set-Cookie")) > 0 {
+		this.req.varMapping["cache.status"] = "BYPASS"
+		if addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, Set-Cookie")
+		}
+		return
+	}
+
+	// 校验其他条件
+	if cacheRef.Conds != nil && cacheRef.Conds.HasResponseConds() && !cacheRef.Conds.MatchResponse(this.req.Format) {
+		this.req.varMapping["cache.status"] = "BYPASS"
+		if addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, ResponseConds")
+		}
+		return
+	}
+
+	// 打开缓存写入
+	var storage = caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
+	if storage == nil {
+		this.req.varMapping["cache.status"] = "BYPASS"
+		if addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, Storage")
+		}
+		return
+	}
+
+	this.req.varMapping["cache.status"] = "UPDATING"
+	if addStatusHeader {
+		this.Header().Set("X-Cache", "UPDATING")
+	}
+
+	this.cacheStorage = storage
+	life := cacheRef.LifeSeconds()
+
+	if life <= 0 {
+		life = 60
+	}
+
+	// 支持源站设置的max-age
+	if this.req.web.Cache != nil && this.req.web.Cache.EnableCacheControlMaxAge {
+		var cacheControl = this.Header().Get("Cache-Control")
+		var pieces = strings.Split(cacheControl, ";")
+		for _, piece := range pieces {
+			var eqIndex = strings.Index(piece, "=")
+			if eqIndex > 0 && piece[:eqIndex] == "max-age" {
+				var maxAge = types.Int64(piece[eqIndex+1:])
+				if maxAge > 0 {
+					life = maxAge
+				}
+			}
+		}
+	}
+
+	var expiredAt = utils.UnixTime() + life
+	var cacheKey = this.req.cacheKey
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode())
+	if err != nil {
+		if !caches.CanIgnoreErr(err) {
+			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
+		}
+		return
+	}
+	this.cacheWriter = cacheWriter
+
+	// 写入Header
+	for k, v := range this.Header() {
+		for _, v1 := range v {
+			_, err = cacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
+			if err != nil {
+				remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
+				_ = this.cacheWriter.Discard()
+				this.cacheWriter = nil
+				return
+			}
+		}
+	}
+
+	var cacheReader = readers.NewTeeReaderCloser(resp.Body, this.cacheWriter)
+	resp.Body = cacheReader
+	this.rawReader = cacheReader
+
+	cacheReader.OnFail(func(err error) {
+		_ = this.cacheWriter.Discard()
+		this.cacheWriter = nil
+	})
+	cacheReader.OnEOF(func() {
+		this.cacheIsFinished = true
+	})
+}
+
+// PrepareWebP 准备WebP
+func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
+	if resp == nil {
+		return
+	}
+
+	var contentType = this.Header().Get("Content-Type")
+
+	if this.req.web != nil &&
+		this.req.web.WebP != nil &&
+		this.req.web.WebP.IsOn &&
+		this.req.web.WebP.MatchResponse(contentType, size, filepath.Ext(this.req.Path()), this.req.Format) &&
+		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) {
+		// 如果已经是WebP不再重复处理
+		// TODO 考虑是否需要很严格的匹配
+		if strings.Contains(contentType, "image/webp") {
+			return
+		}
+
+		// 检查内存
+		if atomic.LoadInt64(&webpTotalBufferSize) >= webpMaxBufferSize {
+			return
+		}
+
+		var contentEncoding = resp.Header.Get("Content-Encoding")
+		switch contentEncoding {
+		case "gzip", "deflate", "br":
+			reader, err := compressions.NewReader(resp.Body, contentEncoding)
+			if err != nil {
+				return
+			}
+			this.Header().Del("Content-Encoding")
+			this.rawReader = reader
+		case "": // 空
+		default:
+			return
+		}
+
+		this.webpOriginContentType = contentType
+		this.webpIsEncoding = true
+		resp.Body = ioutil.NopCloser(&bytes.Buffer{})
+		this.delayRead = true
+
+		this.Header().Del("Content-Length")
+		this.Header().Set("Content-Type", "image/webp")
+	}
+}
+
+// PrepareCompression 准备压缩
+func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
+	if this.compressionConfig == nil || !this.compressionConfig.IsOn || this.compressionConfig.Level <= 0 {
+		return
+	}
+
+	// 如果已经有编码则不处理
+	var contentEncoding = this.rawWriter.Header().Get("Content-Encoding")
+	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding)) {
+		return
+	}
+
+	// 尺寸和类型
+	if !this.compressionConfig.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.Path()), this.req.Format) {
+		return
+	}
+
+	// 判断Accept是否支持压缩
+	compressionType, compressionEncoding, ok := this.compressionConfig.MatchAcceptEncoding(this.req.RawReq.Header.Get("Accept-Encoding"))
+	if !ok {
+		return
+	}
+
+	// 压缩前后如果编码一致，则不处理
+	if compressionEncoding == contentEncoding {
+		return
+	}
+
+	if len(contentEncoding) > 0 && resp != nil {
+		if !this.compressionConfig.DecompressData {
+			return
+		}
+
+		reader, err := compressions.NewReader(resp.Body, contentEncoding)
+		if err != nil {
+			return
+		}
+		resp.Body = reader
+	}
+
+	// compression writer
+	var err error = nil
+	compressionWriter, err := compressions.NewWriter(this.writer, compressionType, int(this.compressionConfig.Level))
+	if err != nil {
+		remotelogs.Error("HTTP_WRITER", err.Error())
+		return
+	}
+	this.writer = compressionWriter
+
+	header := this.rawWriter.Header()
+	header.Set("Content-Encoding", compressionEncoding)
+	header.Set("Vary", "Accept-Encoding")
+	header.Del("Content-Length")
+}
+
+// SetCompression 设置内容压缩配置
+func (this *HTTPWriter) SetCompression(config *serverconfigs.HTTPCompressionConfig) {
+	this.compressionConfig = config
+}
+
 // Raw 包装前的原始的Writer
 func (this *HTTPWriter) Raw() http.ResponseWriter {
-	return this.writer
+	return this.rawWriter
 }
 
 // Header 获取Header
 func (this *HTTPWriter) Header() http.Header {
-	if this.writer == nil {
+	if this.rawWriter == nil {
 		return http.Header{}
 	}
-	return this.writer.Header()
+	return this.rawWriter.Header()
 }
 
 // DeleteHeader 删除Header
 func (this *HTTPWriter) DeleteHeader(name string) {
-	this.writer.Header().Del(name)
+	this.rawWriter.Header().Del(name)
 }
 
 // SetHeader 设置Header
 func (this *HTTPWriter) SetHeader(name string, values []string) {
-	this.writer.Header()[name] = values
+	this.rawWriter.Header()[name] = values
 }
 
 // AddHeaders 添加一组Header
 func (this *HTTPWriter) AddHeaders(header http.Header) {
-	if this.writer == nil {
+	if this.rawWriter == nil {
 		return
 	}
 	for key, value := range header {
@@ -151,52 +419,17 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 			continue
 		}
 		for _, v := range value {
-			this.writer.Header().Add(key, v)
+			this.rawWriter.Header().Add(key, v)
 		}
 	}
 }
 
 // Write 写入数据
 func (this *HTTPWriter) Write(data []byte) (n int, err error) {
-	n = len(data)
-
-	if this.writer != nil {
-		if this.webpIsEncoding && !this.webpIsWriting {
-			this.webpBuffer.Write(data)
-		} else {
-			// 写入压缩
-			var n1 int
-			if this.compressionWriter != nil {
-				n1, err = this.compressionWriter.Write(data)
-			} else {
-				n1, err = this.writer.Write(data)
-			}
-			if n1 > 0 {
-				this.sentBodyBytes += int64(n1)
-			}
-
-			// 写入缓存
-			if this.cacheWriter != nil {
-				_, err = this.cacheWriter.Write(data)
-				if err != nil {
-					_ = this.cacheWriter.Discard()
-					this.cacheWriter = nil
-					remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
-				}
-			}
-
-			if this.bodyCopying {
-				if this.compressionBodyWriter != nil {
-					_, err := this.compressionBodyWriter.Write(data)
-					if err != nil {
-						remotelogs.Error("HTTP_WRITER", err.Error())
-					}
-				} else {
-					this.body = append(this.body, data...)
-				}
-			}
-		}
+	if this.webpIsEncoding {
+		return
 	}
+	n, err = this.writer.Write(data)
 
 	return
 }
@@ -213,8 +446,8 @@ func (this *HTTPWriter) SentBodyBytes() int64 {
 
 // WriteHeader 写入状态码
 func (this *HTTPWriter) WriteHeader(statusCode int) {
-	if this.writer != nil {
-		this.writer.WriteHeader(statusCode)
+	if this.rawWriter != nil {
+		this.rawWriter.WriteHeader(statusCode)
 	}
 	this.statusCode = statusCode
 }
@@ -267,24 +500,9 @@ func (this *HTTPWriter) StatusCode() int {
 	return this.statusCode
 }
 
-// SetBodyCopying 设置拷贝Body数据
-func (this *HTTPWriter) SetBodyCopying(b bool) {
-	this.bodyCopying = b
-}
-
-// BodyIsCopying 判断是否在拷贝Body数据
-func (this *HTTPWriter) BodyIsCopying() bool {
-	return this.bodyCopying
-}
-
-// Body 读取拷贝的Body数据
-func (this *HTTPWriter) Body() []byte {
-	return this.body
-}
-
 // HeaderData 读取Header二进制数据
 func (this *HTTPWriter) HeaderData() []byte {
-	if this.writer == nil {
+	if this.rawWriter == nil {
 		return nil
 	}
 
@@ -311,152 +529,136 @@ func (this *HTTPWriter) SetOk() {
 
 // Close 关闭
 func (this *HTTPWriter) Close() {
+	// 处理WebP
 	if this.webpIsEncoding {
-		defer func() {
-			atomic.AddInt64(&webpTotalBufferSize, -this.size*32)
-			webpBufferPool.Put(this.webpBuffer)
-		}()
-	}
+		var webpCacheWriter caches.Writer
 
-	// webp writer
-	if this.isOk && this.webpIsEncoding {
-		var bufferLen = int64(this.webpBuffer.Len())
-		atomic.AddInt64(&webpTotalBufferSize, bufferLen*4)
+		// 准备WebP Cache
+		if this.cacheWriter != nil {
+			var cacheKey = this.cacheWriter.Key() + webpSuffix
 
-		// 需要把字节读取出来做备份，防止在image.Decode()过程中丢失
-		var imageBytes = this.webpBuffer.Bytes()
+			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, this.cacheWriter.ExpiredAt(), this.StatusCode())
+			if webpCacheWriter != nil {
+				// 写入Header
+				for k, v := range this.Header() {
+					for _, v1 := range v {
+						_, err := webpCacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
+						if err != nil {
+							remotelogs.Error("HTTP_WRITER", "write webp cache failed: "+err.Error())
+							_ = webpCacheWriter.Discard()
+							webpCacheWriter = nil
+							break
+						}
+					}
+				}
+
+				if webpCacheWriter != nil {
+					var teeWriter = writers.NewTeeWriterCloser(this.writer, webpCacheWriter)
+					teeWriter.OnFail(func(err error) {
+						_ = webpCacheWriter.Discard()
+						webpCacheWriter = nil
+					})
+					this.writer = teeWriter
+				}
+			}
+		}
+
+		var reader = readers.NewBytesCounterReader(this.rawReader)
+
 		var imageData image.Image
 		var gifImage *gif.GIF
 		var isGif = strings.Contains(this.webpOriginContentType, "image/gif")
-
 		var err error
-		if this.webpOriginEncoding == "gzip" {
-			this.Header().Del("Content-Encoding")
-			var reader *gzip.Reader
-			reader, err = gzip.NewReader(this.webpBuffer)
-			if err == nil {
-				defer func() {
-					_ = reader.Close()
-				}()
-				if isGif {
-					gifImage, err = gif.DecodeAll(reader)
-				} else {
-					imageData, _, err = image.Decode(reader)
-				}
-			}
-		} else if this.webpOriginEncoding == "deflate" {
-			this.Header().Del("Content-Encoding")
-			var reader io.ReadCloser
-			reader = flate.NewReader(this.webpBuffer)
-			defer func() {
-				_ = reader.Close()
-			}()
-			if isGif {
-				gifImage, err = gif.DecodeAll(reader)
-			} else {
-				imageData, _, err = image.Decode(reader)
-			}
-		} else if this.webpOriginEncoding == "br" {
-			this.Header().Del("Content-Encoding")
-			var reader *brotli.Reader
-			reader = brotli.NewReader(this.webpBuffer)
-			if isGif {
-				gifImage, err = gif.DecodeAll(reader)
-			} else {
-				imageData, _, err = image.Decode(reader)
-			}
+		if isGif {
+			gifImage, err = gif.DecodeAll(reader)
 		} else {
-			if isGif {
-				gifImage, err = gif.DecodeAll(this.webpBuffer)
-			} else {
-				imageData, _, err = image.Decode(this.webpBuffer)
-			}
+			imageData, _, err = image.Decode(reader)
 		}
+
 		if err != nil {
-			this.Header().Set("Content-Type", this.webpOriginContentType)
-			this.WriteHeader(http.StatusOK)
-			_, _ = this.writer.Write(imageBytes)
+			return
+		}
 
-			// 处理缓存
-			if this.cacheWriter != nil {
-				_ = this.cacheWriter.Discard()
-			}
-			this.cacheWriter = nil
-		} else {
-			var f = types.Float32(this.req.web.WebP.Quality)
-			if f > 100 {
-				f = 100
-			}
-			this.webpIsWriting = true
+		var totalBytes = reader.TotalBytes()
+		atomic.AddInt64(&webpTotalBufferSize, totalBytes)
+		defer func() {
+			atomic.AddInt64(&webpTotalBufferSize, -totalBytes)
+		}()
 
-			if imageData != nil {
-				err = gowebp.Encode(this, imageData, &gowebp.Options{
-					Lossless: false,
-					Quality:  f,
-					Exact:    true,
-				})
-			} else if gifImage != nil {
-				anim := gowebp.NewWebpAnimation(gifImage.Config.Width, gifImage.Config.Height, gifImage.LoopCount)
-				anim.WebPAnimEncoderOptions.SetKmin(9)
-				anim.WebPAnimEncoderOptions.SetKmax(17)
-				defer anim.ReleaseMemory()
-				webpConfig := gowebp.NewWebpConfig()
-				//webpConfig.SetLossless(1)
-				webpConfig.SetQuality(f)
+		var f = types.Float32(this.req.web.WebP.Quality)
+		if f > 100 {
+			f = 100
+		}
 
-				timeline := 0
+		if imageData != nil {
+			err = gowebp.Encode(this.writer, imageData, &gowebp.Options{
+				Lossless: false,
+				Quality:  f,
+				Exact:    true,
+			})
+		} else if gifImage != nil {
+			anim := gowebp.NewWebpAnimation(gifImage.Config.Width, gifImage.Config.Height, gifImage.LoopCount)
+			anim.WebPAnimEncoderOptions.SetKmin(9)
+			anim.WebPAnimEncoderOptions.SetKmax(17)
+			defer anim.ReleaseMemory()
+			webpConfig := gowebp.NewWebpConfig()
+			//webpConfig.SetLossless(1)
+			webpConfig.SetQuality(f)
 
-				for i, img := range gifImage.Image {
-					err = anim.AddFrame(img, timeline, webpConfig)
-					if err != nil {
-						break
-					}
-					timeline += gifImage.Delay[i] * 10
+			timeline := 0
+
+			for i, img := range gifImage.Image {
+				err = anim.AddFrame(img, timeline, webpConfig)
+				if err != nil {
+					break
 				}
+				timeline += gifImage.Delay[i] * 10
+			}
+			if err == nil {
+				err = anim.AddFrame(nil, timeline, webpConfig)
+
 				if err == nil {
-					err = anim.AddFrame(nil, timeline, webpConfig)
-
-					if err == nil {
-						err = anim.Encode(this)
-					}
+					err = anim.Encode(this.writer)
 				}
 			}
+		}
+
+		if err != nil && !this.req.canIgnore(err) {
+			remotelogs.Error("HTTP_WRITER", "'"+this.req.URL()+"' encode webp failed: "+err.Error())
+		}
+
+		if err == nil && webpCacheWriter != nil {
+			err = webpCacheWriter.Close()
 			if err != nil {
-				if !this.req.canIgnore(err) {
-					remotelogs.Error("HTTP_WRITER", "encode webp failed: "+err.Error())
-				}
-
-				this.Header().Set("Content-Type", this.webpOriginContentType)
-				this.WriteHeader(http.StatusOK)
-				_, _ = this.writer.Write(imageBytes)
-
-				// 处理缓存
-				if this.cacheWriter != nil {
-					_ = this.cacheWriter.Discard()
-				}
-				this.cacheWriter = nil
+				_ = webpCacheWriter.Discard()
+			} else {
+				this.cacheStorage.AddToList(&caches.Item{
+					Type:       webpCacheWriter.ItemType(),
+					Key:        webpCacheWriter.Key(),
+					ExpiredAt:  webpCacheWriter.ExpiredAt(),
+					StaleAt:    webpCacheWriter.ExpiredAt() + int64(this.calculateStaleLife()),
+					HeaderSize: webpCacheWriter.HeaderSize(),
+					BodySize:   webpCacheWriter.BodySize(),
+					Host:       this.req.ReqHost,
+					ServerId:   this.req.ReqServer.Id,
+				})
 			}
 		}
-
-		atomic.AddInt64(&webpTotalBufferSize, -bufferLen*4)
-		this.webpBuffer.Reset()
 	}
 
-	// compression writer
-	if this.compressionWriter != nil {
-		if this.bodyCopying && this.compressionBodyWriter != nil {
-			_ = this.compressionBodyWriter.Close()
-			this.body = this.compressionBodyBuffer.Bytes()
-		}
-		_ = this.compressionWriter.Close()
-		this.compressionWriter = nil
+	if this.writer != nil {
+		_ = this.writer.Close()
 	}
 
-	// cache writer
+	if this.rawReader != nil {
+		_ = this.rawReader.Close()
+	}
+
+	// 缓存
 	if this.cacheWriter != nil {
-		if this.isOk {
+		if this.isOk && this.cacheIsFinished {
 			// 对比Content-Length
-			contentLengthString := this.Header().Get("Content-Length")
+			var contentLengthString = this.Header().Get("Content-Length")
 			if len(contentLengthString) > 0 {
 				contentLength := types.Int64(contentLengthString)
 				if contentLength != this.cacheWriter.BodySize() {
@@ -485,11 +687,13 @@ func (this *HTTPWriter) Close() {
 			_ = this.cacheWriter.Discard()
 		}
 	}
+
+	this.sentBodyBytes = this.counterWriter.TotalBytes()
 }
 
 // Hijack Hijack
 func (this *HTTPWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err error) {
-	hijack, ok := this.writer.(http.Hijacker)
+	hijack, ok := this.rawWriter.(http.Hijacker)
 	if ok {
 		return hijack.Hijack()
 	}
@@ -498,254 +702,15 @@ func (this *HTTPWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err erro
 
 // Flush Flush
 func (this *HTTPWriter) Flush() {
-	flusher, ok := this.writer.(http.Flusher)
+	flusher, ok := this.rawWriter.(http.Flusher)
 	if ok {
 		flusher.Flush()
 	}
 }
 
-// 准备Webp
-func (this *HTTPWriter) prepareWebP(size int64) {
-	if this.req.web != nil &&
-		this.req.web.WebP != nil &&
-		this.req.web.WebP.IsOn &&
-		this.req.web.WebP.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.Path()), this.req.Format) &&
-		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) &&
-		atomic.LoadInt64(&webpTotalBufferSize) < webpMaxBufferSize {
-
-		var contentEncoding = this.writer.Header().Get("Content-Encoding")
-		switch contentEncoding {
-		case "gzip", "deflate", "br":
-			this.webpOriginEncoding = contentEncoding
-		case "": // 空
-		default:
-			return
-		}
-
-		this.webpIsEncoding = true
-		this.webpOriginContentType = this.Header().Get("Content-Type")
-		this.webpBuffer = webpBufferPool.Get()
-
-		this.Header().Del("Content-Length")
-		this.Header().Set("Content-Type", "image/webp")
-
-		atomic.AddInt64(&webpTotalBufferSize, size*32)
-	}
-}
-
-// PrepareCompression 准备压缩
-func (this *HTTPWriter) PrepareCompression(size int64) {
-	if this.compressionConfig == nil || !this.compressionConfig.IsOn || this.compressionConfig.Level <= 0 {
-		return
-	}
-
-	// 如果已经有编码则不处理
-	var contentEncoding = this.writer.Header().Get("Content-Encoding")
-	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding)) {
-		return
-	}
-
-	// 尺寸和类型
-	if !this.compressionConfig.MatchResponse(this.Header().Get("Content-Type"), size, filepath.Ext(this.req.Path()), this.req.Format) {
-		return
-	}
-
-	// 判断Accept是否支持压缩
-	compressionType, compressionEncoding, ok := this.compressionConfig.MatchAcceptEncoding(this.req.RawReq.Header.Get("Accept-Encoding"))
-	if !ok {
-		return
-	}
-
-	// 压缩前后如果编码一致，则不处理
-	if compressionEncoding == contentEncoding {
-		return
-	}
-
-	this.compressionType = compressionType
-
-	// compression writer
-	var err error = nil
-	this.compressionWriter, err = compressions.NewWriter(this.writer, compressionType, int(this.compressionConfig.Level))
-	if err != nil {
-		remotelogs.Error("HTTP_WRITER", err.Error())
-		return
-	}
-
-	// convert between encodings
-	if len(contentEncoding) > 0 {
-		this.compressionWriter, err = compressions.NewEncodingWriter(contentEncoding, this.compressionWriter)
-		if err != nil {
-			remotelogs.Error("HTTP_WRITER", err.Error())
-			return
-		}
-	}
-
-	// body copy
-	if this.bodyCopying {
-		this.compressionBodyBuffer = bytes.NewBuffer([]byte{})
-		this.compressionBodyWriter, err = compressions.NewWriter(this.compressionBodyBuffer, compressionType, int(this.compressionConfig.Level))
-		if err != nil {
-			remotelogs.Error("HTTP_WRITER", err.Error())
-		}
-	}
-
-	header := this.writer.Header()
-	header.Set("Content-Encoding", compressionEncoding)
-	header.Set("Vary", "Accept-Encoding")
-	header.Del("Content-Length")
-}
-
-// 准备缓存
-func (this *HTTPWriter) prepareCache(size int64) {
-	if this.writer == nil {
-		return
-	}
-
-	cachePolicy := this.req.ReqServer.HTTPCachePolicy
-	if cachePolicy == nil || !cachePolicy.IsOn {
-		return
-	}
-
-	cacheRef := this.req.cacheRef
-	if cacheRef == nil || !cacheRef.IsOn {
-		return
-	}
-
-	var addStatusHeader = this.req.web != nil && this.req.web.Cache != nil && this.req.web.Cache.AddStatusHeader
-
-	// 不支持Range
-	if len(this.Header().Get("Content-Range")) > 0 {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, not supported Content-Range")
-		}
-		return
-	}
-
-	// 如果允许 ChunkedEncoding，就无需尺寸的判断，因为此时的 size 为 -1
-	if !cacheRef.AllowChunkedEncoding && size < 0 {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, ChunkedEncoding")
-		}
-		return
-	}
-	if size >= 0 && ((cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
-		(cachePolicy.MaxSizeBytes() > 0 && size > cachePolicy.MaxSizeBytes()) || (cacheRef.MinSizeBytes() > size)) {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, Content-Length")
-		}
-		return
-	}
-
-	// 检查状态
-	if len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, Status: "+types.String(this.StatusCode()))
-		}
-		return
-	}
-
-	// Cache-Control
-	if len(cacheRef.SkipResponseCacheControlValues) > 0 {
-		cacheControl := this.writer.Header().Get("Cache-Control")
-		if len(cacheControl) > 0 {
-			values := strings.Split(cacheControl, ",")
-			for _, value := range values {
-				if cacheRef.ContainsCacheControl(strings.TrimSpace(value)) {
-					this.req.varMapping["cache.status"] = "BYPASS"
-					if addStatusHeader {
-						this.Header().Set("X-Cache", "BYPASS, Cache-Control: "+cacheControl)
-					}
-					return
-				}
-			}
-		}
-	}
-
-	// Set-Cookie
-	if cacheRef.SkipResponseSetCookie && len(this.writer.Header().Get("Set-Cookie")) > 0 {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, Set-Cookie")
-		}
-		return
-	}
-
-	// 校验其他条件
-	if cacheRef.Conds != nil && cacheRef.Conds.HasResponseConds() && !cacheRef.Conds.MatchResponse(this.req.Format) {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, ResponseConds")
-		}
-		return
-	}
-
-	// 打开缓存写入
-	storage := caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
-	if storage == nil {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, Storage")
-		}
-		return
-	}
-
-	this.req.varMapping["cache.status"] = "UPDATING"
-	if addStatusHeader {
-		this.Header().Set("X-Cache", "UPDATING")
-	}
-
-	this.cacheStorage = storage
-	life := cacheRef.LifeSeconds()
-
-	if life <= 0 {
-		life = 60
-	}
-
-	// 支持源站设置的max-age
-	if this.req.web.Cache != nil && this.req.web.Cache.EnableCacheControlMaxAge {
-		var cacheControl = this.Header().Get("Cache-Control")
-		var pieces = strings.Split(cacheControl, ";")
-		for _, piece := range pieces {
-			var eqIndex = strings.Index(piece, "=")
-			if eqIndex > 0 && piece[:eqIndex] == "max-age" {
-				var maxAge = types.Int64(piece[eqIndex+1:])
-				if maxAge > 0 {
-					life = maxAge
-				}
-			}
-		}
-	}
-
-	expiredAt := utils.UnixTime() + life
-	var cacheKey = this.req.cacheKey
-	if this.webpIsEncoding {
-		cacheKey += webpSuffix
-	}
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode())
-	if err != nil {
-		if !caches.CanIgnoreErr(err) {
-			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
-		}
-		return
-	}
-	this.cacheWriter = cacheWriter
-
-	// 写入Header
-	for k, v := range this.Header() {
-		for _, v1 := range v {
-			_, err = cacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
-			if err != nil {
-				remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
-				_ = this.cacheWriter.Discard()
-				this.cacheWriter = nil
-				return
-			}
-		}
-	}
+// DelayRead 是否延迟读取Reader
+func (this *HTTPWriter) DelayRead() bool {
+	return this.delayRead
 }
 
 // 计算stale时长

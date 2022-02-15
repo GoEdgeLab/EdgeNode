@@ -54,9 +54,9 @@ func (this *HTTPRequest) doURL(method string, url string, host string, statusCod
 	}
 	this.writer.AddHeaders(resp.Header)
 	if statusCode <= 0 {
-		this.writer.Prepare(resp.ContentLength, resp.StatusCode)
+		this.writer.Prepare(resp, resp.ContentLength, resp.StatusCode, true)
 	} else {
-		this.writer.Prepare(resp.ContentLength, statusCode)
+		this.writer.Prepare(resp, resp.ContentLength, statusCode, true)
 	}
 
 	// 设置响应代码

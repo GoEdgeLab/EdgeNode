@@ -285,10 +285,10 @@ func (this *HTTPRequest) doReverseProxy() {
 	this.processResponseHeaders(resp.StatusCode)
 
 	// 是否需要刷新
-	shouldAutoFlush := this.reverseProxy.AutoFlush || this.RawReq.Header.Get("Accept") == "text/event-stream"
+	var shouldAutoFlush = this.reverseProxy.AutoFlush || this.RawReq.Header.Get("Accept") == "text/event-stream"
 
 	// 准备
-	delayHeaders := this.writer.Prepare(resp.ContentLength, resp.StatusCode)
+	var delayHeaders = this.writer.Prepare(resp, resp.ContentLength, resp.StatusCode, true)
 
 	// 设置响应代码
 	if !delayHeaders {

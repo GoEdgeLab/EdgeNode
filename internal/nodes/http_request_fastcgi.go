@@ -190,7 +190,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 	this.processResponseHeaders(resp.StatusCode)
 
 	// 准备
-	this.writer.Prepare(resp.ContentLength, resp.StatusCode)
+	this.writer.Prepare(resp, resp.ContentLength, resp.StatusCode, true)
 
 	// 设置响应代码
 	this.writer.WriteHeader(resp.StatusCode)

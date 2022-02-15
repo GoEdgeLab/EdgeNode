@@ -278,17 +278,27 @@ func (this *FileReader) Read(buf []byte) (n int, err error) {
 	}()
 
 	// 直接返回从Header中剩余的
-	if this.bodyBufLen > 0 && len(buf) >= this.bodyBufLen {
-		copy(buf, this.bodyBuf)
-		isOk = true
-		n = this.bodyBufLen
+	if this.bodyBufLen > 0 {
+		var bufLen = len(buf)
+		if bufLen < this.bodyBufLen {
+			this.bodyBufLen -= bufLen
+			copy(buf, this.bodyBuf[:bufLen])
+			this.bodyBuf = this.bodyBuf[bufLen:]
 
-		if this.bodySize <= int64(this.bodyBufLen) {
-			err = io.EOF
-			return
+			n = bufLen
+		} else {
+			copy(buf, this.bodyBuf)
+			this.bodyBuf = nil
+
+			if this.bodySize <= int64(this.bodyBufLen) {
+				err = io.EOF
+			}
+
+			n = this.bodyBufLen
+			this.bodyBufLen = 0
 		}
 
-		this.bodyBufLen = 0
+		isOk = true
 		return
 	}
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
-	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
@@ -162,11 +161,15 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var err error
 
 	// 是否优先检查WebP
+	var isWebP = false
 	if this.web.WebP != nil &&
 		this.web.WebP.IsOn &&
 		this.web.WebP.MatchRequest(filepath.Ext(this.Path()), this.Format) &&
 		this.web.WebP.MatchAccept(this.requestHeader("Accept")) {
 		reader, _ = storage.OpenReader(key+webpSuffix, useStale)
+		if reader != nil {
+			isWebP = true
+		}
 	}
 
 	// 检查正常的文件
@@ -189,8 +192,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			return
 		}
 	}
+
 	defer func() {
-		_ = reader.Close()
+		if !this.writer.DelayRead() {
+			_ = reader.Close()
+		}
 	}()
 
 	if useStale {
@@ -257,7 +263,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var eTag = ""
 	var lastModifiedAt = reader.LastModified()
 	if lastModifiedAt > 0 {
-		eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
+		if isWebP {
+			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "_webp" + "\""
+		} else {
+			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
+		}
 		respHeader.Del("Etag")
 		respHeader["ETag"] = []string{eTag}
 	}
@@ -439,25 +449,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				return true
 			}
 		} else { // 没有Range
-			var body io.Reader = reader
-			var contentEncoding = this.writer.Header().Get("Content-Encoding")
-			if len(contentEncoding) > 0 && !httpAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"), contentEncoding) {
-				decompressReader, err := compressions.NewReader(body, contentEncoding)
-				if err == nil {
-					body = decompressReader
-					defer func() {
-						_ = decompressReader.Close()
-					}()
-
-					this.writer.Header().Del("Content-Encoding")
-					this.writer.Header().Del("Content-Length")
-				}
-			}
-
-			this.writer.PrepareCompression(reader.BodySize())
+			var resp = &http.Response{Body: reader}
+			this.writer.Prepare(resp, reader.BodySize(), reader.Status(), false)
 			this.writer.WriteHeader(reader.Status())
 
-			_, err = io.CopyBuffer(this.writer, body, buf)
+			_, err = io.CopyBuffer(this.writer, resp.Body, buf)
 			if err == io.EOF {
 				err = nil
 			}
