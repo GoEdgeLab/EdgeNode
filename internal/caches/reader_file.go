@@ -23,6 +23,8 @@ type FileReader struct {
 	headerSize   int
 	bodySize     int64
 	bodyOffset   int64
+
+	isClosed bool
 }
 
 func NewFileReader(fp *os.File) *FileReader {
@@ -326,6 +328,11 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 
 func (this *FileReader) Close() error {
 	if this.openFileCache != nil {
+		if this.isClosed {
+			return nil
+		}
+		this.isClosed = true
+
 		if this.openFile != nil {
 			this.openFileCache.Put(this.fp.Name(), this.openFile)
 		} else {
@@ -347,5 +354,6 @@ func (this *FileReader) readToBuff(fp *os.File, buf []byte) (ok bool, err error)
 
 func (this *FileReader) discard() error {
 	_ = this.fp.Close()
+	this.isClosed = true
 	return os.Remove(this.fp.Name())
 }
