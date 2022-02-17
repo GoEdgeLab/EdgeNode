@@ -368,6 +368,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		if err != nil {
 			return
 		}
+		this.Header().Del("Content-Encoding")
 		resp.Body = reader
 	}
 

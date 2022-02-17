@@ -187,7 +187,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			}
 
 			if !this.canIgnore(err) {
-				remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
+				remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
 			}
 			return
 		}
@@ -237,7 +237,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	})
 	if err != nil {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
 		}
 		return
 	}
@@ -367,7 +367,6 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			}
 		}
 
-		respHeader := this.writer.Header()
 		if len(rangeSet) == 1 {
 			respHeader.Set("Content-Range", "bytes "+strconv.FormatInt(rangeSet[0][0], 10)+"-"+strconv.FormatInt(rangeSet[0][1], 10)+"/"+strconv.FormatInt(reader.BodySize(), 10))
 			respHeader.Set("Content-Length", strconv.FormatInt(rangeSet[0][1]-rangeSet[0][0]+1, 10))
@@ -389,7 +388,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					return true
 				}
 				if !this.canIgnore(err) {
-					remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
+					remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
 				}
 				return
 			}
@@ -435,7 +434,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				})
 				if err != nil {
 					if !this.canIgnore(err) {
-						remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
+						remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
 					}
 					return true
 				}
@@ -461,7 +460,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				this.varMapping["cache.status"] = "MISS"
 
 				if !this.canIgnore(err) {
-					remotelogs.Warn("HTTP_REQUEST_CACHE", "read from cache failed: "+err.Error())
+					remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
 				}
 				return
 			}

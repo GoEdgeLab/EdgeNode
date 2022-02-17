@@ -23,9 +23,6 @@ type FileReader struct {
 	headerSize   int
 	bodySize     int64
 	bodyOffset   int64
-
-	bodyBufLen int
-	bodyBuf    []byte
 }
 
 func NewFileReader(fp *os.File) *FileReader {
@@ -181,10 +178,6 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 				}
 				headerSize -= n
 			} else {
-				if n > headerSize {
-					this.bodyBuf = buf[headerSize:]
-					this.bodyBufLen = n - headerSize
-				}
 				_, e := callback(headerSize)
 				if e != nil {
 					isOk = true
@@ -203,6 +196,12 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 
 	isOk = true
 
+	// 移动到Body位置
+	_, err = this.fp.Seek(this.bodyOffset, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -215,27 +214,7 @@ func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
 		}
 	}()
 
-	offset := this.bodyOffset
-
-	// 直接返回从Header中剩余的
-	if this.bodyBufLen > 0 && len(buf) >= this.bodyBufLen {
-		offset += int64(this.bodyBufLen)
-
-		copy(buf, this.bodyBuf)
-		isOk = true
-
-		goNext, err := callback(this.bodyBufLen)
-		if err != nil {
-			return err
-		}
-		if !goNext {
-			return nil
-		}
-
-		if this.bodySize <= int64(this.bodyBufLen) {
-			return nil
-		}
-	}
+	var offset = this.bodyOffset
 
 	// 开始读Body部分
 	_, err := this.fp.Seek(offset, io.SeekStart)
@@ -269,42 +248,9 @@ func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
 }
 
 func (this *FileReader) Read(buf []byte) (n int, err error) {
-	var isOk = false
-
-	defer func() {
-		if !isOk {
-			_ = this.discard()
-		}
-	}()
-
-	// 直接返回从Header中剩余的
-	if this.bodyBufLen > 0 {
-		var bufLen = len(buf)
-		if bufLen < this.bodyBufLen {
-			this.bodyBufLen -= bufLen
-			copy(buf, this.bodyBuf[:bufLen])
-			this.bodyBuf = this.bodyBuf[bufLen:]
-
-			n = bufLen
-		} else {
-			copy(buf, this.bodyBuf)
-			this.bodyBuf = nil
-
-			if this.bodySize <= int64(this.bodyBufLen) {
-				err = io.EOF
-			}
-
-			n = this.bodyBufLen
-			this.bodyBufLen = 0
-		}
-
-		isOk = true
-		return
-	}
-
 	n, err = this.fp.Read(buf)
-	if err == nil || err == io.EOF {
-		isOk = true
+	if err != nil && err != io.EOF {
+		_ = this.discard()
 	}
 	return
 }
