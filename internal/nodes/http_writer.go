@@ -328,12 +328,27 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 
 // PrepareCompression 准备压缩
 func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
-	if this.compressionConfig == nil || !this.compressionConfig.IsOn || this.compressionConfig.Level <= 0 {
+	var acceptEncodings = this.req.RawReq.Header.Get("Accept-Encoding")
+	var contentEncoding = this.Header().Get("Content-Encoding")
+
+	if this.compressionConfig == nil || !this.compressionConfig.IsOn {
+		if lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding) && !httpAcceptEncoding(acceptEncodings, contentEncoding) {
+			reader, err := compressions.NewReader(resp.Body, contentEncoding)
+			if err != nil {
+				return
+			}
+			this.Header().Del("Content-Encoding")
+			this.Header().Del("Content-Length")
+			resp.Body = reader
+		}
+		return
+	}
+
+	if this.compressionConfig.Level <= 0 {
 		return
 	}
 
 	// 如果已经有编码则不处理
-	var contentEncoding = this.rawWriter.Header().Get("Content-Encoding")
 	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding)) {
 		return
 	}
@@ -349,7 +364,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	}
 
 	// 判断Accept是否支持压缩
-	compressionType, compressionEncoding, ok := this.compressionConfig.MatchAcceptEncoding(this.req.RawReq.Header.Get("Accept-Encoding"))
+	compressionType, compressionEncoding, ok := this.compressionConfig.MatchAcceptEncoding(acceptEncodings)
 	if !ok {
 		return
 	}
@@ -369,6 +384,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 			return
 		}
 		this.Header().Del("Content-Encoding")
+		this.Header().Del("Content-Length")
 		resp.Body = reader
 	}
 
