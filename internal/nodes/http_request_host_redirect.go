@@ -73,6 +73,13 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				return false
 			}
 
+			if u.KeepArgs {
+				var qIndex = strings.Index(this.uri, "?")
+				if qIndex >= 0 {
+					afterURL += this.uri[qIndex:]
+				}
+			}
+
 			if u.Status <= 0 {
 				this.processResponseHeaders(http.StatusTemporaryRedirect)
 				http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
@@ -88,12 +95,20 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					return false
 				}
 
+				var afterURL = u.AfterURL
+				if u.KeepArgs {
+					var qIndex = strings.Index(this.uri, "?")
+					if qIndex >= 0 {
+						afterURL += this.uri[qIndex:]
+					}
+				}
+
 				if u.Status <= 0 {
 					this.processResponseHeaders(http.StatusTemporaryRedirect)
-					http.Redirect(this.RawWriter, this.RawReq, u.AfterURL, http.StatusTemporaryRedirect)
+					http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
 				} else {
 					this.processResponseHeaders(u.Status)
-					http.Redirect(this.RawWriter, this.RawReq, u.AfterURL, u.Status)
+					http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
 				}
 				return true
 			}
