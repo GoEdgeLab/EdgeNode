@@ -252,6 +252,8 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		} else {
 			this.writer.Header().Set("X-Cache", "HIT, "+refType+", "+reader.TypeName())
 		}
+	} else {
+		this.writer.Header().Del("X-Cache")
 	}
 	if this.web.Cache.AddAgeHeader {
 		this.writer.Header().Set("Age", age)
