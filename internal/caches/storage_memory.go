@@ -145,7 +145,11 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool) (Reader, error)
 }
 
 // OpenWriter 打开缓存写入器等待写入
-func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, size int64) (Writer, error) {
+func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, size int64, isPartial bool) (Writer, error) {
+	// TODO 内存缓存暂时不支持分块内容存储
+	if isPartial {
+		return nil, ErrFileIsWriting
+	}
 	return this.openWriter(key, expiredAt, status, size, true)
 }
 
@@ -387,7 +391,7 @@ func (this *MemoryStorage) flushItem(key string) {
 		return
 	}
 
-	writer, err := this.parentStorage.OpenWriter(key, item.ExpiredAt, item.Status, -1)
+	writer, err := this.parentStorage.OpenWriter(key, item.ExpiredAt, item.Status, -1, false)
 	if err != nil {
 		if !CanIgnoreErr(err) {
 			remotelogs.Error("CACHE", "flush items failed: open writer failed: "+err.Error())

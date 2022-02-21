@@ -1,8 +1,9 @@
+// Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
+
 package caches
 
 import (
 	"encoding/binary"
-	"errors"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"os"
@@ -10,7 +11,7 @@ import (
 	"sync"
 )
 
-type FileWriter struct {
+type PartialFileWriter struct {
 	rawWriter  *os.File
 	key        string
 	headerSize int64
@@ -18,19 +19,29 @@ type FileWriter struct {
 	expiredAt  int64
 	endFunc    func()
 	once       sync.Once
+
+	isNew      bool
+	isPartial  bool
+	bodyOffset int64
 }
 
-func NewFileWriter(rawWriter *os.File, key string, expiredAt int64, endFunc func()) *FileWriter {
-	return &FileWriter{
-		key:       key,
-		rawWriter: rawWriter,
-		expiredAt: expiredAt,
-		endFunc:   endFunc,
+func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, isNew bool, isPartial bool, bodyOffset int64, endFunc func()) *PartialFileWriter {
+	return &PartialFileWriter{
+		key:        key,
+		rawWriter:  rawWriter,
+		expiredAt:  expiredAt,
+		endFunc:    endFunc,
+		isNew:      isNew,
+		isPartial:  isPartial,
+		bodyOffset: bodyOffset,
 	}
 }
 
 // WriteHeader 写入数据
-func (this *FileWriter) WriteHeader(data []byte) (n int, err error) {
+func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
+	if !this.isNew {
+		return
+	}
 	n, err = this.rawWriter.Write(data)
 	this.headerSize += int64(n)
 	if err != nil {
@@ -40,7 +51,7 @@ func (this *FileWriter) WriteHeader(data []byte) (n int, err error) {
 }
 
 // WriteHeaderLength 写入Header长度数据
-func (this *FileWriter) WriteHeaderLength(headerLength int) error {
+func (this *PartialFileWriter) WriteHeaderLength(headerLength int) error {
 	bytes4 := make([]byte, 4)
 	binary.BigEndian.PutUint32(bytes4, uint32(headerLength))
 	_, err := this.rawWriter.Seek(SizeExpiresAt+SizeStatus+SizeURLLength, io.SeekStart)
@@ -57,7 +68,7 @@ func (this *FileWriter) WriteHeaderLength(headerLength int) error {
 }
 
 // Write 写入数据
-func (this *FileWriter) Write(data []byte) (n int, err error) {
+func (this *PartialFileWriter) Write(data []byte) (n int, err error) {
 	n, err = this.rawWriter.Write(data)
 	this.bodySize += int64(n)
 	if err != nil {
@@ -67,14 +78,16 @@ func (this *FileWriter) Write(data []byte) (n int, err error) {
 }
 
 // WriteAt 在指定位置写入数据
-func (this *FileWriter) WriteAt(data []byte, offset int64) error {
-	_ = data
-	_ = offset
-	return errors.New("not supported")
+func (this *PartialFileWriter) WriteAt(data []byte, offset int64) error {
+	if this.bodyOffset == 0 {
+		this.bodyOffset = SizeMeta + int64(len(this.key)) + this.headerSize
+	}
+	_, err := this.rawWriter.WriteAt(data, this.bodyOffset+offset)
+	return err
 }
 
 // WriteBodyLength 写入Body长度数据
-func (this *FileWriter) WriteBodyLength(bodyLength int64) error {
+func (this *PartialFileWriter) WriteBodyLength(bodyLength int64) error {
 	bytes8 := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes8, uint64(bodyLength))
 	_, err := this.rawWriter.Seek(SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength, io.SeekStart)
@@ -91,30 +104,32 @@ func (this *FileWriter) WriteBodyLength(bodyLength int64) error {
 }
 
 // Close 关闭
-func (this *FileWriter) Close() error {
+func (this *PartialFileWriter) Close() error {
 	defer this.once.Do(func() {
 		this.endFunc()
 	})
 
-	path := this.rawWriter.Name()
+	var path = this.rawWriter.Name()
 
-	err := this.WriteHeaderLength(types.Int(this.headerSize))
-	if err != nil {
-		_ = this.rawWriter.Close()
-		_ = os.Remove(path)
-		return err
-	}
-	err = this.WriteBodyLength(this.bodySize)
-	if err != nil {
-		_ = this.rawWriter.Close()
-		_ = os.Remove(path)
-		return err
+	if this.isNew {
+		err := this.WriteHeaderLength(types.Int(this.headerSize))
+		if err != nil {
+			_ = this.rawWriter.Close()
+			_ = os.Remove(path)
+			return err
+		}
+		err = this.WriteBodyLength(this.bodySize)
+		if err != nil {
+			_ = this.rawWriter.Close()
+			_ = os.Remove(path)
+			return err
+		}
 	}
 
-	err = this.rawWriter.Close()
+	err := this.rawWriter.Close()
 	if err != nil {
 		_ = os.Remove(path)
-	} else {
+	} else if !this.isPartial {
 		err = os.Rename(path, strings.Replace(path, ".tmp", "", 1))
 		if err != nil {
 			_ = os.Remove(path)
@@ -125,7 +140,7 @@ func (this *FileWriter) Close() error {
 }
 
 // Discard 丢弃
-func (this *FileWriter) Discard() error {
+func (this *PartialFileWriter) Discard() error {
 	defer this.once.Do(func() {
 		this.endFunc()
 	})
@@ -136,23 +151,23 @@ func (this *FileWriter) Discard() error {
 	return err
 }
 
-func (this *FileWriter) HeaderSize() int64 {
+func (this *PartialFileWriter) HeaderSize() int64 {
 	return this.headerSize
 }
 
-func (this *FileWriter) BodySize() int64 {
+func (this *PartialFileWriter) BodySize() int64 {
 	return this.bodySize
 }
 
-func (this *FileWriter) ExpiredAt() int64 {
+func (this *PartialFileWriter) ExpiredAt() int64 {
 	return this.expiredAt
 }
 
-func (this *FileWriter) Key() string {
+func (this *PartialFileWriter) Key() string {
 	return this.key
 }
 
 // ItemType 获取内容类型
-func (this *FileWriter) ItemType() ItemType {
+func (this *PartialFileWriter) ItemType() ItemType {
 	return ItemTypeFile
 }

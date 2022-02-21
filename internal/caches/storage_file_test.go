@@ -62,7 +62,7 @@ func TestFileStorage_OpenWriter(t *testing.T) {
 
 	header := []byte("Header")
 	body := []byte("This is Body")
-	writer, err := storage.OpenWriter("my-key", time.Now().Unix()+86400, 200, -1)
+	writer, err := storage.OpenWriter("my-key", time.Now().Unix()+86400, 200, -1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,6 +87,41 @@ func TestFileStorage_OpenWriter(t *testing.T) {
 	t.Log("ok")
 }
 
+func TestFileStorage_OpenWriter_Partial(t *testing.T) {
+	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
+		Id:   2,
+		IsOn: true,
+		Options: map[string]interface{}{
+			"dir": Tea.Root + "/caches",
+		},
+	})
+	err := storage.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writer, err := storage.OpenWriter("my-key", time.Now().Unix()+86400, 200, -1, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = writer.WriteHeader([]byte("Content-Type:text/html; charset=utf-8"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = writer.WriteAt([]byte("Hello, World"), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(writer)
+}
+
 func TestFileStorage_OpenWriter_HTTP(t *testing.T) {
 	storage := NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
@@ -104,7 +139,7 @@ func TestFileStorage_OpenWriter_HTTP(t *testing.T) {
 		t.Log(time.Since(now).Seconds()*1000, "ms")
 	}()
 
-	writer, err := storage.OpenWriter("my-http-response", time.Now().Unix()+86400, 200, -1)
+	writer, err := storage.OpenWriter("my-http-response", time.Now().Unix()+86400, 200, -1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,10 +212,11 @@ func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 
-			writer, err := storage.OpenWriter("abc"+strconv.Itoa(i), time.Now().Unix()+3600, 200, -1)
+			writer, err := storage.OpenWriter("abc"+strconv.Itoa(i), time.Now().Unix()+3600, 200, -1, false)
 			if err != nil {
 				if err != ErrFileIsWriting {
-					t.Fatal(err)
+					t.Error(err)
+					return
 				}
 				return
 			}
@@ -188,7 +224,8 @@ func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
 
 			_, err = writer.Write([]byte("Hello,World"))
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 
 			// 故意造成慢速写入
@@ -196,7 +233,8 @@ func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
 
 			err = writer.Close()
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 		}(i)
 	}
@@ -229,10 +267,11 @@ func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 
-			writer, err := storage.OpenWriter("abc"+strconv.Itoa(0), time.Now().Unix()+3600, 200, -1)
+			writer, err := storage.OpenWriter("abc"+strconv.Itoa(0), time.Now().Unix()+3600, 200, -1, false)
 			if err != nil {
 				if err != ErrFileIsWriting {
-					t.Fatal(err)
+					t.Error(err)
+					return
 				}
 				return
 			}
@@ -241,7 +280,8 @@ func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
 			t.Log("writing")
 			_, err = writer.Write([]byte("Hello,World"))
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 
 			// 故意造成慢速写入
@@ -249,7 +289,8 @@ func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
 
 			err = writer.Close()
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
 			}
 		}(i)
 	}

@@ -13,7 +13,7 @@ type StorageInterface interface {
 	OpenReader(key string, useStale bool) (reader Reader, err error)
 
 	// OpenWriter 打开缓存写入器等待写入
-	OpenWriter(key string, expiredAt int64, status int, size int64) (Writer, error)
+	OpenWriter(key string, expiredAt int64, status int, size int64, isPartial bool) (Writer, error)
 
 	// Delete 删除某个键值对应的缓存
 	Delete(key string) error

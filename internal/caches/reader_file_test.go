@@ -54,6 +54,30 @@ func TestFileReader(t *testing.T) {
 	}
 }
 
+func TestFileReader_ReadHeader(t *testing.T) {
+	var path = "/Users/WorkSpace/EdgeProject/EdgeCache/p43/12/6b/126bbed90fc80f2bdfb19558948b0d49.cache"
+	fp, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = fp.Close()
+	}()
+	var reader = NewFileReader(fp)
+	err = reader.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf = make([]byte, 16*1024)
+	err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
+		t.Log("header:", string(buf[:n]))
+		return
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestFileReader_Range(t *testing.T) {
 	storage := NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,

@@ -325,11 +325,11 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool)
 }
 
 // OpenWriter 打开缓存文件等待写入
-func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64) (Writer, error) {
+func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64, isPartial bool) (Writer, error) {
 	// 先尝试内存缓存
 	// 我们限定仅小文件优先存在内存中
-	if this.memoryStorage != nil && size > 0 && size < 32*1024*1024 {
-		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status, size)
+	if !isPartial && this.memoryStorage != nil && size > 0 && size < 32*1024*1024 {
+		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status, size, false)
 		if err == nil {
 			return writer, nil
 		}
@@ -361,13 +361,13 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 	if this.policy.MaxKeys > 0 && count > this.policy.MaxKeys {
 		return nil, NewCapacityError("write file cache failed: too many keys in cache storage")
 	}
-	capacityBytes := this.diskCapacityBytes()
+	var capacityBytes = this.diskCapacityBytes()
 	if capacityBytes > 0 && capacityBytes <= this.totalSize {
 		return nil, NewCapacityError("write file cache failed: over disk size, current total size: " + strconv.FormatInt(this.totalSize, 10) + " bytes, capacity: " + strconv.FormatInt(capacityBytes, 10))
 	}
 
-	hash := stringutil.Md5(key)
-	dir := this.cacheConfig.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/" + hash[:2] + "/" + hash[2:4]
+	var hash = stringutil.Md5(key)
+	var dir = this.cacheConfig.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/" + hash[:2] + "/" + hash[2:4]
 	_, err = os.Stat(dir)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -387,6 +387,9 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 		return nil, ErrFileIsWriting
 	}
 	var tmpPath = cachePath + ".tmp"
+	if isPartial {
+		tmpPath = cachePath
+	}
 
 	// 先删除
 	err = this.list.Remove(hash)
@@ -421,70 +424,96 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 		return nil, ErrFileIsWriting
 	}
 
-	err = writer.Truncate(0)
-	if err != nil {
-		return nil, err
-	}
-
-	// 写入过期时间
-	bytes4 := make([]byte, 4)
-	{
-		binary.BigEndian.PutUint32(bytes4, uint32(expiredAt))
-		_, err = writer.Write(bytes4)
-		if err != nil {
-			return nil, err
+	// 是否已经有内容
+	var isNewCreated = true
+	var partialBodyOffset int64
+	if isPartial {
+		partialFP, err := os.OpenFile(tmpPath, os.O_RDONLY, 0444)
+		if err == nil {
+			var partialReader = NewFileReader(partialFP)
+			err = partialReader.InitAutoDiscard(false)
+			if err == nil && partialReader.bodyOffset > 0 {
+				isNewCreated = false
+				partialBodyOffset = partialReader.bodyOffset
+			}
+			_ = partialReader.Close()
 		}
 	}
 
-	// 写入状态码
-	if status > 999 || status < 100 {
-		status = 200
-	}
-	_, err = writer.WriteString(strconv.Itoa(status))
-	if err != nil {
-		return nil, err
-	}
-
-	// 写入URL长度
-	{
-		binary.BigEndian.PutUint32(bytes4, uint32(len(key)))
-		_, err = writer.Write(bytes4)
+	if isNewCreated {
+		err = writer.Truncate(0)
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	// 写入Header Length
-	{
-		binary.BigEndian.PutUint32(bytes4, uint32(0))
-		_, err = writer.Write(bytes4)
+		// 写入过期时间
+		bytes4 := make([]byte, 4)
+		{
+			binary.BigEndian.PutUint32(bytes4, uint32(expiredAt))
+			_, err = writer.Write(bytes4)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 写入状态码
+		if status > 999 || status < 100 {
+			status = 200
+		}
+		_, err = writer.WriteString(strconv.Itoa(status))
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	// 写入Body Length
-	{
-		b := make([]byte, SizeBodyLength)
-		binary.BigEndian.PutUint64(b, uint64(0))
-		_, err = writer.Write(b)
+		// 写入URL长度
+		{
+			binary.BigEndian.PutUint32(bytes4, uint32(len(key)))
+			_, err = writer.Write(bytes4)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 写入Header Length
+		{
+			binary.BigEndian.PutUint32(bytes4, uint32(0))
+			_, err = writer.Write(bytes4)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 写入Body Length
+		{
+			b := make([]byte, SizeBodyLength)
+			binary.BigEndian.PutUint64(b, uint64(0))
+			_, err = writer.Write(b)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 写入URL
+		_, err = writer.WriteString(key)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	// 写入URL
-	_, err = writer.WriteString(key)
-	if err != nil {
-		return nil, err
 	}
 
 	isOk = true
-	return NewFileWriter(writer, key, expiredAt, func() {
-		sharedWritingFileKeyLocker.Lock()
-		delete(sharedWritingFileKeyMap, key)
-		sharedWritingFileKeyLocker.Unlock()
-	}), nil
+	if isPartial {
+		return NewPartialFileWriter(writer, key, expiredAt, isNewCreated, isPartial, partialBodyOffset, func() {
+			sharedWritingFileKeyLocker.Lock()
+			delete(sharedWritingFileKeyMap, key)
+			sharedWritingFileKeyLocker.Unlock()
+		}), nil
+	} else {
+		return NewFileWriter(writer, key, expiredAt, func() {
+			sharedWritingFileKeyLocker.Lock()
+			delete(sharedWritingFileKeyMap, key)
+			sharedWritingFileKeyLocker.Unlock()
+		}), nil
+	}
 }
 
 // AddToList 添加到List
@@ -930,6 +959,9 @@ func (this *FileStorage) hotLoop() {
 
 			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
 				_, err = writer.Write(buf[:n])
+				if err == nil {
+					goNext = true
+				}
 				return
 			})
 			if err != nil {

@@ -8,6 +8,9 @@ type Writer interface {
 	// Write 写入Body数据
 	Write(data []byte) (n int, err error)
 
+	// WriteAt 在指定位置写入数据
+	WriteAt(data []byte, offset int64) error
+
 	// HeaderSize 写入的Header数据大小
 	HeaderSize() int64
 

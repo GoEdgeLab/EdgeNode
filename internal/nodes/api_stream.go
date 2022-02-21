@@ -182,7 +182,7 @@ func (this *APIStream) handleWriteCache(message *pb.NodeStreamMessage) error {
 	}
 
 	expiredAt := time.Now().Unix() + msg.LifeSeconds
-	writer, err := storage.OpenWriter(msg.Key, expiredAt, 200, int64(len(msg.Value)))
+	writer, err := storage.OpenWriter(msg.Key, expiredAt, 200, int64(len(msg.Value)), false)
 	if err != nil {
 		this.replyFail(message.RequestId, "prepare writing failed: "+err.Error())
 		return err
@@ -462,7 +462,7 @@ func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
 			}
 
 			expiredAt := time.Now().Unix() + 8600
-			writer, err := storage.OpenWriter(key, expiredAt, 200, resp.ContentLength) // TODO 可以设置缓存过期时间
+			writer, err := storage.OpenWriter(key, expiredAt, 200, resp.ContentLength, false) // TODO 可以设置缓存过期时间
 			if err != nil {
 				locker.Lock()
 				errorMessages = append(errorMessages, "open cache writer failed: "+key+": "+err.Error())

@@ -32,6 +32,10 @@ func NewFileReader(fp *os.File) *FileReader {
 }
 
 func (this *FileReader) Init() error {
+	return this.InitAutoDiscard(true)
+}
+
+func (this *FileReader) InitAutoDiscard(autoDiscard bool) error {
 	if this.openFile != nil {
 		this.meta = this.openFile.meta
 		this.header = this.openFile.header
@@ -39,11 +43,13 @@ func (this *FileReader) Init() error {
 
 	isOk := false
 
-	defer func() {
-		if !isOk {
-			_ = this.discard()
-		}
-	}()
+	if autoDiscard {
+		defer func() {
+			if !isOk {
+				_ = this.discard()
+			}
+		}()
+	}
 
 	var buf = this.meta
 	if len(buf) == 0 {
@@ -78,13 +84,13 @@ func (this *FileReader) Init() error {
 	this.headerOffset = int64(SizeMeta) + int64(urlLength)
 
 	// body
+	this.bodyOffset = this.headerOffset + int64(headerSize)
 	bodySize := int(binary.BigEndian.Uint64(buf[SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength : SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength+SizeBodyLength]))
 	if bodySize == 0 {
 		isOk = true
 		return nil
 	}
 	this.bodySize = int64(bodySize)
-	this.bodyOffset = this.headerOffset + int64(headerSize)
 
 	// read header
 	if this.openFileCache != nil && len(this.header) == 0 {

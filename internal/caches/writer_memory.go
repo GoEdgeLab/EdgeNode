@@ -1,6 +1,7 @@
 package caches
 
 import (
+	"errors"
 	"github.com/cespare/xxhash"
 	"sync"
 	"time"
@@ -53,6 +54,13 @@ func (this *MemoryWriter) Write(data []byte) (n int, err error) {
 	this.bodySize += int64(len(data))
 	this.item.BodyValue = append(this.item.BodyValue, data...)
 	return len(data), nil
+}
+
+// WriteAt 在指定位置写入数据
+func (this *MemoryWriter) WriteAt(b []byte, offset int64) error {
+	_ = b
+	_ = offset
+	return errors.New("not supported")
 }
 
 // HeaderSize 数据尺寸

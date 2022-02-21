@@ -243,7 +243,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	var expiredAt = utils.UnixTime() + life
 	var cacheKey = this.req.cacheKey
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size)
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, false)
 	if err != nil {
 		if !caches.CanIgnoreErr(err) {
 			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
@@ -310,6 +310,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 				return
 			}
 			this.Header().Del("Content-Encoding")
+			this.Header().Del("Content-Length")
 			this.rawReader = reader
 		case "": // 空
 		default:
@@ -559,7 +560,7 @@ func (this *HTTPWriter) Close() {
 		if this.cacheWriter != nil {
 			var cacheKey = this.cacheWriter.Key() + webpSuffix
 
-			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, this.cacheWriter.ExpiredAt(), this.StatusCode(), -1)
+			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, this.cacheWriter.ExpiredAt(), this.StatusCode(), -1, false)
 			if webpCacheWriter != nil {
 				// 写入Header
 				for k, v := range this.Header() {
