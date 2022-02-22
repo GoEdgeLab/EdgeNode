@@ -18,6 +18,11 @@ const (
 
 var ErrNotSupportedContentEncoding = errors.New("not supported content encoding")
 
+// AllEncodings 当前支持的所有编码
+func AllEncodings() []ContentEncoding {
+	return []ContentEncoding{ContentEncodingBr, ContentEncodingGzip, ContentEncodingDeflate}
+}
+
 // NewReader 获取Reader
 func NewReader(reader io.Reader, contentEncoding ContentEncoding) (Reader, error) {
 	switch contentEncoding {

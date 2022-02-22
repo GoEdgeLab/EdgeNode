@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
@@ -122,16 +123,27 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		this.cacheRef = nil
 		return
 	}
+	this.writer.cacheStorage = storage
 
 	// 判断是否在Purge
 	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey {
 		this.varMapping["cache.status"] = "PURGE"
 
-		err := storage.Delete(key)
-		if err != nil {
-			remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
+		var subKeys = []string{key}
+		// TODO 根据实际缓存的内容进行组合
+		for _, encoding := range compressions.AllEncodings() {
+			subKeys = append(subKeys, key+compressionCacheSuffix+encoding)
+			subKeys = append(subKeys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
+		}
+		for _, subKey := range subKeys {
+			err := storage.Delete(subKey)
+			if err != nil {
+				remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
+			}
 		}
 
+		// 通过API节点清除别节点上的的Key
+		// TODO 改为队列，不需要每个请求都使用goroutine
 		goman.New(func() {
 			rpcClient, err := rpc.SharedRPC()
 			if err == nil {
@@ -160,15 +172,46 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var reader caches.Reader
 	var err error
 
-	// 是否优先检查WebP
-	var isWebP = false
+	// 检查是否支持WebP
+	var tags = []string{}
+	var webPIsEnabled = false
 	if this.web.WebP != nil &&
 		this.web.WebP.IsOn &&
 		this.web.WebP.MatchRequest(filepath.Ext(this.Path()), this.Format) &&
-		this.web.WebP.MatchAccept(this.requestHeader("Accept")) {
-		reader, _ = storage.OpenReader(key+webpSuffix, useStale)
+		this.web.WebP.MatchAccept(this.RawReq.Header.Get("Accept")) {
+		webPIsEnabled = true
+	}
+
+	// 检查压缩缓存
+	if reader == nil {
+		if this.web.Compression != nil && this.web.Compression.IsOn {
+			_, encoding, ok := this.web.Compression.MatchAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"))
+			if ok {
+				// 检查支持WebP的压缩缓存
+				if webPIsEnabled {
+					reader, _ = storage.OpenReader(key+webpCacheSuffix+compressionCacheSuffix+encoding, useStale)
+					if reader != nil {
+						tags = append(tags, "webp", encoding)
+					}
+				}
+
+				// 检查普通缓存
+				if reader == nil {
+					reader, _ = storage.OpenReader(key+compressionCacheSuffix+encoding, useStale)
+					if reader != nil {
+						tags = append(tags, encoding)
+					}
+				}
+			}
+		}
+	}
+
+	// 检查WebP
+	if reader == nil && webPIsEnabled {
+		reader, _ = storage.OpenReader(key+webpCacheSuffix, useStale)
 		if reader != nil {
-			isWebP = true
+			this.writer.cacheReaderSuffix = webpCacheSuffix
+			tags = append(tags, "webp")
 		}
 	}
 
@@ -265,8 +308,8 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var eTag = ""
 	var lastModifiedAt = reader.LastModified()
 	if lastModifiedAt > 0 {
-		if isWebP {
-			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "_webp" + "\""
+		if len(tags) > 0 {
+			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "_" + strings.Join(tags, "_") + "\""
 		} else {
 			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
 		}

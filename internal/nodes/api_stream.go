@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
@@ -350,7 +351,12 @@ func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
 	if msg.Type == "file" {
 		var keys = msg.Keys
 		for _, key := range keys {
-			keys = append(keys, key+webpSuffix)
+			keys = append(keys, key+webpCacheSuffix)
+			// TODO 根据实际缓存的内容进行组合
+			for _, encoding := range compressions.AllEncodings() {
+				keys = append(keys, key+compressionCacheSuffix+encoding)
+				keys = append(keys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
+			}
 		}
 		msg.Keys = keys
 	}

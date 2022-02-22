@@ -35,10 +35,13 @@ import (
 )
 
 // webp相关配置
-const webpSuffix = "@GOEDGE_WEBP"
+const webpCacheSuffix = "@GOEDGE_WEBP"
 
 var webpMaxBufferSize int64 = 1_000_000_000
 var webpTotalBufferSize int64 = 0
+
+// 压缩相关配置
+const compressionCacheSuffix = "@GOEDGE_"
 
 func init() {
 	var systemMemory = utils.SystemMemoryGB() / 8
@@ -66,17 +69,24 @@ type HTTPWriter struct {
 	isOk       bool // 是否完全成功
 	isFinished bool // 是否已完成
 
+	// Partial
+	isPartial bool
+
 	// WebP
 	webpIsEncoding        bool
 	webpOriginContentType string
 
 	// Compression
-	compressionConfig *serverconfigs.HTTPCompressionConfig
+	compressionConfig      *serverconfigs.HTTPCompressionConfig
+	compressionCacheWriter caches.Writer
 
 	// Cache
 	cacheStorage    caches.StorageInterface
 	cacheWriter     caches.Writer
 	cacheIsFinished bool
+
+	cacheReader       caches.Reader
+	cacheReaderSuffix string
 }
 
 // NewHTTPWriter 包装对象
@@ -95,13 +105,22 @@ func (this *HTTPWriter) Prepare(resp *http.Response, size int64, status int, ena
 	this.size = size
 	this.statusCode = status
 
-	if resp != nil {
+	this.isPartial = status == http.StatusPartialContent
+
+	if resp != nil && resp.Body != nil {
+		cacheReader, ok := resp.Body.(caches.Reader)
+		if ok {
+			this.cacheReader = cacheReader
+		}
+
 		this.rawReader = resp.Body
 
 		if enableCache {
 			this.PrepareCache(resp, size)
 		}
-		this.PrepareWebP(resp, size)
+		if !this.isPartial {
+			this.PrepareWebP(resp, size)
+		}
 		this.PrepareCompression(resp, size)
 	}
 
@@ -302,7 +321,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 			return
 		}
 
-		var contentEncoding = resp.Header.Get("Content-Encoding")
+		var contentEncoding = this.Header().Get("Content-Encoding")
 		switch contentEncoding {
 		case "gzip", "deflate", "br":
 			reader, err := compressions.NewReader(resp.Body, contentEncoding)
@@ -389,19 +408,70 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		resp.Body = reader
 	}
 
+	// 需要放在compression cache writer之前
+	var header = this.rawWriter.Header()
+	header.Set("Content-Encoding", compressionEncoding)
+	header.Set("Vary", "Accept-Encoding")
+	header.Del("Content-Length")
+
+	// compression cache writer
+	if !this.isPartial && this.cacheStorage != nil && (this.cacheReader != nil || this.cacheWriter != nil) && !this.webpIsEncoding {
+		var cacheKey = ""
+		var expiredAt int64 = 0
+
+		if this.cacheReader != nil {
+			cacheKey = this.req.cacheKey
+			expiredAt = this.cacheReader.ExpiresAt()
+		} else if this.cacheWriter != nil {
+			cacheKey = this.cacheWriter.Key()
+			expiredAt = this.cacheWriter.ExpiredAt()
+		}
+
+		if len(this.cacheReaderSuffix) > 0 {
+			cacheKey += this.cacheReaderSuffix
+		}
+
+		compressionCacheWriter, err := this.cacheStorage.OpenWriter(cacheKey+compressionCacheSuffix+compressionEncoding, expiredAt, this.StatusCode(), -1, false)
+		if err != nil {
+			return
+		}
+
+		// 写入Header
+		for k, v := range this.Header() {
+			for _, v1 := range v {
+				_, err = compressionCacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
+				if err != nil {
+					remotelogs.Error("HTTP_WRITER", "write compression cache failed: "+err.Error())
+					_ = compressionCacheWriter.Discard()
+					compressionCacheWriter = nil
+					return
+				}
+			}
+		}
+
+		if compressionCacheWriter != nil {
+			this.compressionCacheWriter = compressionCacheWriter
+			var teeWriter = writers.NewTeeWriterCloser(this.writer, compressionCacheWriter)
+			teeWriter.OnFail(func(err error) {
+				_ = compressionCacheWriter.Discard()
+				this.compressionCacheWriter = nil
+			})
+			this.writer = teeWriter
+		}
+	}
+
 	// compression writer
 	var err error = nil
 	compressionWriter, err := compressions.NewWriter(this.writer, compressionType, int(this.compressionConfig.Level))
 	if err != nil {
 		remotelogs.Error("HTTP_WRITER", err.Error())
+		header.Del("Content-Encoding")
+		if this.compressionCacheWriter != nil {
+			_ = this.compressionCacheWriter.Discard()
+		}
 		return
 	}
 	this.writer = compressionWriter
-
-	header := this.rawWriter.Header()
-	header.Set("Content-Encoding", compressionEncoding)
-	header.Set("Vary", "Accept-Encoding")
-	header.Del("Content-Length")
 }
 
 // SetCompression 设置内容压缩配置
@@ -557,13 +627,26 @@ func (this *HTTPWriter) Close() {
 		var webpCacheWriter caches.Writer
 
 		// 准备WebP Cache
-		if this.cacheWriter != nil {
-			var cacheKey = this.cacheWriter.Key() + webpSuffix
+		if this.cacheReader != nil || this.cacheWriter != nil {
+			var cacheKey = ""
+			var expiredAt int64 = 0
 
-			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, this.cacheWriter.ExpiredAt(), this.StatusCode(), -1, false)
+			if this.cacheReader != nil {
+				cacheKey = this.req.cacheKey + webpCacheSuffix
+				expiredAt = this.cacheReader.ExpiresAt()
+			} else if this.cacheWriter != nil {
+				cacheKey = this.cacheWriter.Key() + webpCacheSuffix
+				expiredAt = this.cacheWriter.ExpiredAt()
+			}
+
+			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), -1, false)
 			if webpCacheWriter != nil {
 				// 写入Header
 				for k, v := range this.Header() {
+					// 这里是原始的数据，不需要内容编码
+					if k == "Content-Encoding" || k == "Transfer-Encoding" {
+						continue
+					}
 					for _, v1 := range v {
 						_, err := webpCacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
 						if err != nil {
@@ -708,6 +791,27 @@ func (this *HTTPWriter) Close() {
 			}
 		} else {
 			_ = this.cacheWriter.Discard()
+		}
+	}
+
+	if this.compressionCacheWriter != nil {
+		if this.isOk {
+			err := this.compressionCacheWriter.Close()
+			if err == nil {
+				var expiredAt = this.compressionCacheWriter.ExpiredAt()
+				this.cacheStorage.AddToList(&caches.Item{
+					Type:       this.compressionCacheWriter.ItemType(),
+					Key:        this.compressionCacheWriter.Key(),
+					ExpiredAt:  expiredAt,
+					StaleAt:    expiredAt + int64(this.calculateStaleLife()),
+					HeaderSize: this.compressionCacheWriter.HeaderSize(),
+					BodySize:   this.compressionCacheWriter.BodySize(),
+					Host:       this.req.ReqHost,
+					ServerId:   this.req.ReqServer.Id,
+				})
+			}
+		} else {
+			_ = this.compressionCacheWriter.Discard()
 		}
 	}
 
