@@ -351,12 +351,11 @@ func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
 	if msg.Type == "file" {
 		var keys = msg.Keys
 		for _, key := range keys {
-			keys = append(keys, key+webpCacheSuffix)
+			keys = append(keys, key+webpCacheSuffix, key+cacheMethodSuffix+"HEAD")
 			// TODO 根据实际缓存的内容进行组合
 			for _, encoding := range compressions.AllEncodings() {
 				keys = append(keys, key+compressionCacheSuffix+encoding)
 				keys = append(keys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
-				keys = append(keys, key+cacheMethodSuffix+"HEAD")
 			}
 		}
 		msg.Keys = keys

@@ -265,10 +265,6 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	var expiredAt = utils.UnixTime() + life
 	var cacheKey = this.req.cacheKey
-	var method = this.req.Method()
-	if method != http.MethodGet && method != http.MethodPost {
-		cacheKey += cacheMethodSuffix + this.req.Method()
-	}
 	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, false)
 	if err != nil {
 		if !caches.CanIgnoreErr(err) {

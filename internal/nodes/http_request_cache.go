@@ -137,12 +137,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey {
 		this.varMapping["cache.status"] = "PURGE"
 
-		var subKeys = []string{key}
+		var subKeys = []string{key, key + cacheMethodSuffix + "HEAD"}
 		// TODO 根据实际缓存的内容进行组合
 		for _, encoding := range compressions.AllEncodings() {
 			subKeys = append(subKeys, key+compressionCacheSuffix+encoding)
 			subKeys = append(subKeys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
-			subKeys = append(subKeys, key+cacheMethodSuffix+"HEAD")
 		}
 		for _, subKey := range subKeys {
 			err := storage.Delete(subKey)
