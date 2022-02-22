@@ -43,6 +43,9 @@ var webpTotalBufferSize int64 = 0
 // 压缩相关配置
 const compressionCacheSuffix = "@GOEDGE_"
 
+// 缓存相关配置
+const cacheMethodSuffix = "@GOEDGE_"
+
 func init() {
 	var systemMemory = utils.SystemMemoryGB() / 8
 	if systemMemory > 0 {
@@ -154,7 +157,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	var addStatusHeader = this.req.web != nil && this.req.web.Cache != nil && this.req.web.Cache.AddStatusHeader
 
 	// 不支持Range
-	if len(this.Header().Get("Content-Range")) > 0 {
+	if this.StatusCode() == http.StatusPartialContent || len(this.Header().Get("Content-Range")) > 0 {
 		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, not supported Content-Range")
@@ -262,6 +265,10 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	var expiredAt = utils.UnixTime() + life
 	var cacheKey = this.req.cacheKey
+	var method = this.req.Method()
+	if method != http.MethodGet && method != http.MethodPost {
+		cacheKey += cacheMethodSuffix + this.req.Method()
+	}
 	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, false)
 	if err != nil {
 		if !caches.CanIgnoreErr(err) {
@@ -348,6 +355,15 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 
 // PrepareCompression 准备压缩
 func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
+	var method = this.req.Method()
+	if method == http.MethodHead {
+		return
+	}
+
+	if this.StatusCode() == http.StatusNoContent {
+		return
+	}
+
 	var acceptEncodings = this.req.RawReq.Header.Get("Accept-Encoding")
 	var contentEncoding = this.Header().Get("Content-Encoding")
 
@@ -763,13 +779,16 @@ func (this *HTTPWriter) Close() {
 	// 缓存
 	if this.cacheWriter != nil {
 		if this.isOk && this.cacheIsFinished {
-			// 对比Content-Length
-			var contentLengthString = this.Header().Get("Content-Length")
-			if len(contentLengthString) > 0 {
-				var contentLength = types.Int64(contentLengthString)
-				if contentLength != this.cacheWriter.BodySize() {
-					this.isOk = false
-					_ = this.cacheWriter.Discard()
+			// 对比缓存前后的Content-Length
+			var method = this.req.Method()
+			if method != http.MethodHead && this.StatusCode() != http.StatusNoContent {
+				var contentLengthString = this.Header().Get("Content-Length")
+				if len(contentLengthString) > 0 {
+					var contentLength = types.Int64(contentLengthString)
+					if contentLength != this.cacheWriter.BodySize() {
+						this.isOk = false
+						_ = this.cacheWriter.Discard()
+					}
 				}
 			}
 

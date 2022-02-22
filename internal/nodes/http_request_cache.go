@@ -107,11 +107,19 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 	// TODO 支持Vary Header
 
+	// 缓存标签
+	var tags = []string{}
+
 	// 检查是否有缓存
-	key := this.Format(this.cacheRef.Key)
+	var key = this.Format(this.cacheRef.Key)
 	if len(key) == 0 {
 		this.cacheRef = nil
 		return
+	}
+	var method = this.Method()
+	if method != http.MethodGet && method != http.MethodPost {
+		key += cacheMethodSuffix + method
+		tags = append(tags, strings.ToLower(method))
 	}
 
 	this.cacheKey = key
@@ -134,6 +142,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		for _, encoding := range compressions.AllEncodings() {
 			subKeys = append(subKeys, key+compressionCacheSuffix+encoding)
 			subKeys = append(subKeys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
+			subKeys = append(subKeys, key+cacheMethodSuffix+"HEAD")
 		}
 		for _, subKey := range subKeys {
 			err := storage.Delete(subKey)
@@ -173,9 +182,10 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var err error
 
 	// 检查是否支持WebP
-	var tags = []string{}
 	var webPIsEnabled = false
-	if this.web.WebP != nil &&
+	var isHeadMethod = method == http.MethodHead
+	if !isHeadMethod &&
+		this.web.WebP != nil &&
 		this.web.WebP.IsOn &&
 		this.web.WebP.MatchRequest(filepath.Ext(this.Path()), this.Format) &&
 		this.web.WebP.MatchAccept(this.RawReq.Header.Get("Accept")) {
@@ -183,7 +193,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 检查压缩缓存
-	if reader == nil {
+	if !isHeadMethod && reader == nil {
 		if this.web.Compression != nil && this.web.Compression.IsOn {
 			_, encoding, ok := this.web.Compression.MatchAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"))
 			if ok {
@@ -207,7 +217,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 检查WebP
-	if reader == nil && webPIsEnabled {
+	if !isHeadMethod && reader == nil && webPIsEnabled {
 		reader, _ = storage.OpenReader(key+webpCacheSuffix, useStale)
 		if reader != nil {
 			this.writer.cacheReaderSuffix = webpCacheSuffix

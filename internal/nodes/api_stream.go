@@ -356,6 +356,7 @@ func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
 			for _, encoding := range compressions.AllEncodings() {
 				keys = append(keys, key+compressionCacheSuffix+encoding)
 				keys = append(keys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
+				keys = append(keys, key+cacheMethodSuffix+"HEAD")
 			}
 		}
 		msg.Keys = keys
