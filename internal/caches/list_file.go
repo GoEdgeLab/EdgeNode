@@ -505,6 +505,7 @@ func (this *FileList) initTables(db *sql.DB, times int) error {
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
   "key" varchar(1024),
+  "tag" varchar(64),
   "headerSize" integer DEFAULT 0,
   "bodySize" integer DEFAULT 0,
   "metaSize" integer DEFAULT 0,
