@@ -211,6 +211,9 @@ func (this *Regexp) parseKeyword(keyword []rune) (result []rune) {
 			}
 			if keyword[index-1] != '\\' {
 				if r == '{' && (braceZero.MatchString(string(keyword[index:])) || braceZero2.MatchString(string(keyword[index:]))) { // r {0, ...}
+					if len(result) == 0 {
+						return nil
+					}
 					return result[:len(result)-1]
 				}
 
@@ -219,6 +222,9 @@ func (this *Regexp) parseKeyword(keyword []rune) (result []rune) {
 		}
 		if r == '?' || r == '*' {
 			if index == 0 {
+				return nil
+			}
+			if len(result) == 0 {
 				return nil
 			}
 			return result[:len(result)-1]
