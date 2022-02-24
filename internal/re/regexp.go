@@ -4,13 +4,14 @@ package re
 
 import (
 	"regexp"
+	"regexp/syntax"
 	"strings"
 )
 
 var prefixReg = regexp.MustCompile(`^\(\?([\w\s]+)\)`) // (?x)
 var prefixReg2 = regexp.MustCompile(`^\(\?([\w\s]*:)`) // (?x: ...
-var braceZero = regexp.MustCompile(`^{\s*0*\s*}`)      // {0}
-var braceZero2 = regexp.MustCompile(`^{\s*0*\s*,`)     // {0, x}
+var braceZeroReg = regexp.MustCompile(`^{\s*0*\s*}`)   // {0}
+var braceZeroReg2 = regexp.MustCompile(`^{\s*0*\s*,`)  // {0, x}
 
 type Regexp struct {
 	exp       string
@@ -53,8 +54,6 @@ func (this *Regexp) init() {
 		return
 	}
 
-	//var keywords = []string{}
-
 	var exp = strings.TrimSpace(this.exp)
 
 	// 去掉前面的(?...)
@@ -68,9 +67,23 @@ func (this *Regexp) init() {
 	}
 
 	var keywords = this.ParseKeywords(exp)
-	this.keywords = keywords
-	if len(keywords) > 0 {
-		this.keywordsMap = NewRuneTree(keywords)
+
+	var filteredKeywords = []string{}
+	var minLength = 1
+	var isValid = true
+	for _, keyword := range keywords {
+		if len(keyword) <= minLength {
+			isValid = false
+			break
+		}
+	}
+	if isValid {
+		filteredKeywords = keywords
+	}
+
+	this.keywords = filteredKeywords
+	if len(filteredKeywords) > 0 {
+		this.keywordsMap = NewRuneTree(filteredKeywords)
 	}
 }
 
@@ -96,6 +109,7 @@ func (this *Regexp) MatchString(s string) bool {
 			return true
 		}
 	}
+
 	return this.rawRegexp.MatchString(s)
 }
 
@@ -113,104 +127,103 @@ func (this *Regexp) Match(s []byte) bool {
 }
 
 // ParseKeywords 提取表达式中的关键词
-// TODO 支持嵌套，类似于 A(abc|bcd)
-// TODO 支持 (?:xxx)
-// TODO 支持  （abc)(bcd)(efg)
-func (this *Regexp) ParseKeywords(exp string) []string {
-	var keywords = []string{}
+func (this *Regexp) ParseKeywords(exp string) (keywords []string) {
 	if len(exp) == 0 {
 		return nil
 	}
 
-	var runes = []rune(exp)
-
-	// (a|b|c)
-	reg, err := regexp.Compile(exp)
-	if err == nil {
-		var countSub = reg.NumSubexp()
-		if countSub == 1 {
-			beginIndex := this.indexOfSymbol(runes, '(')
-			if beginIndex >= 0 {
-				runes = runes[beginIndex+1:]
-				symbolIndex := this.indexOfSymbol(runes, ')')
-				if symbolIndex > 0 && this.isPlain(runes[symbolIndex+1:]) {
-					runes = runes[:symbolIndex]
-					if len(runes) == 0 {
-						return nil
-					}
-				}
-			}
-		}
+	reg, err := syntax.Parse(exp, syntax.Perl)
+	if err != nil {
+		return nil
 	}
 
-	var lastIndex = 0
-	for index, r := range runes {
-		if r == '|' {
-			if index > 0 && runes[index-1] != '\\' {
-				var ks = this.parseKeyword(runes[lastIndex:index])
-				if len(ks) > 0 {
-					keywords = append(keywords, string(ks))
+	if len(reg.Sub) == 0 {
+		var keywordRunes = this.parseKeyword(reg.String())
+		if len(keywordRunes) > 0 {
+			keywords = append(keywords, string(keywordRunes))
+		}
+		return
+	}
+	if len(reg.Sub) == 1 {
+		if reg.Op == syntax.OpStar || reg.Op == syntax.OpQuest || reg.Op == syntax.OpRepeat {
+			return nil
+		}
+		return this.ParseKeywords(reg.Sub[0].String())
+	}
+
+	switch reg.Op {
+	case syntax.OpConcat:
+		var prevKeywords = []string{}
+		var isStarted bool
+		for _, sub := range reg.Sub {
+			if sub.String() == `\b` {
+				if isStarted {
+					break
+				}
+				continue
+			}
+			if sub.Op != syntax.OpLiteral && sub.Op != syntax.OpCapture && sub.Op != syntax.OpAlternate {
+				if isStarted {
+					break
+				}
+				continue
+			}
+			var subKeywords = this.ParseKeywords(sub.String())
+			if len(subKeywords) > 0 {
+				if !isStarted {
+					prevKeywords = subKeywords
+					isStarted = true
 				} else {
-					return nil
+					for _, prevKeyword := range prevKeywords {
+						for _, subKeyword := range subKeywords {
+							keywords = append(keywords, prevKeyword+subKeyword)
+						}
+					}
+					prevKeywords = keywords
 				}
-				lastIndex = index + 1
+			} else {
+				break
 			}
 		}
-	}
-	if lastIndex == 0 {
-		var ks = this.parseKeyword(runes)
-		if len(ks) > 0 {
-			keywords = append(keywords, string(ks))
-		} else {
-			return nil
+		if len(prevKeywords) > 0 && len(keywords) == 0 {
+			keywords = prevKeywords
 		}
-	} else if lastIndex > 0 {
-		var ks = this.parseKeyword(runes[lastIndex:])
-		if len(ks) > 0 {
-			keywords = append(keywords, string(ks))
-		} else {
-			return nil
+	case syntax.OpAlternate:
+		for _, sub := range reg.Sub {
+			var subKeywords = this.ParseKeywords(sub.String())
+			if len(subKeywords) == 0 {
+				keywords = nil
+				return
+			}
+			keywords = append(keywords, subKeywords...)
 		}
 	}
-	return keywords
+
+	return
 }
 
-func (this *Regexp) parseKeyword(keyword []rune) (result []rune) {
-	if len(keyword) == 0 {
-		return
+func (this *Regexp) parseKeyword(subExp string) (result []rune) {
+	if len(subExp) == 0 {
+		return nil
 	}
 
-	// remove first \b
-	for index, r := range keyword {
-		if r == '\b' {
-			keyword = keyword[index+1:]
-			break
-		} else if r != '\t' && r != '\r' && r != '\n' && r != ' ' {
-			break
+	// 去除开始和结尾的()
+	if subExp[0] == '(' && subExp[len(subExp)-1] == ')' {
+		subExp = subExp[1 : len(subExp)-1]
+		if len(subExp) == 0 {
+			return
 		}
-	}
-	if len(keyword) == 0 {
-		return
 	}
 
-	for index, r := range keyword {
-		if index == 0 && r == '^' {
-			continue
-		}
-		if r == '(' || r == ')' {
-			if index == 0 {
-				return nil
-			}
-			if keyword[index-1] != '\\' {
-				return nil
-			}
-		}
+	var runes = []rune(subExp)
+
+	for index, r := range runes {
 		if r == '[' || r == '{' || r == '.' || r == '+' || r == '$' {
 			if index == 0 {
-				return nil
+				return
 			}
-			if keyword[index-1] != '\\' {
-				if r == '{' && (braceZero.MatchString(string(keyword[index:])) || braceZero2.MatchString(string(keyword[index:]))) { // r {0, ...}
+			if runes[index-1] != '\\' {
+				if r == '{' && (braceZeroReg.MatchString(subExp[index:])) || braceZeroReg2.MatchString(subExp[index:]) { // r {0, ...}
 					if len(result) == 0 {
 						return nil
 					}
@@ -222,39 +235,40 @@ func (this *Regexp) parseKeyword(keyword []rune) (result []rune) {
 		}
 		if r == '?' || r == '*' {
 			if index == 0 {
-				return nil
+				return
 			}
-			if len(result) == 0 {
-				return nil
+			if runes[index-1] != '\\' {
+				if len(result) > 0 {
+					return result[:len(result)-1]
+				}
+				return
 			}
-			return result[:len(result)-1]
-		}
-		if r == '\\' || r == '\b' {
-			// TODO 将来更精细的处理 \d, \s, \$等
-			break
 		}
 
+		if (r == 'n' || r == 't' || r == 'a' || r == 'f' || r == 'r' || r == 'v' || r == 'x') && index > 0 && runes[index-1] == '\\' {
+			switch r {
+			case 'n':
+				r = '\n'
+			case 't':
+				r = '\t'
+			case 'f':
+				r = '\f'
+			case 'r':
+				r = '\r'
+			case 'v':
+				r = '\v'
+			case 'a':
+				r = '\a'
+			case 'x':
+				return
+			}
+		}
+
+		if r == '\\' {
+			continue
+		}
 		result = append(result, r)
 	}
+
 	return
-}
-
-// 查找符号位置
-func (this *Regexp) indexOfSymbol(runes []rune, symbol rune) int {
-	for index, c := range runes {
-		if c == symbol && (index == 0 || runes[index-1] != '\\') {
-			return index
-		}
-	}
-	return -1
-}
-
-// 是否可视为为普通字符
-func (this *Regexp) isPlain(runes []rune) bool {
-	for _, r := range []rune{'|', '(', ')'} {
-		if this.indexOfSymbol(runes, r) >= 0 {
-			return false
-		}
-	}
-	return true
 }

@@ -25,6 +25,11 @@ func TestNewRuneTree(t *testing.T) {
 	a.IsTrue(tree.Lookup("iwind.liu@gmail.com", true))
 }
 
+func TestNewRuneTree2(t *testing.T) {
+	var tree = re.NewRuneTree([]string{"abc", "abd", "def", "GHI", "中国", "@"})
+	tree.Lookup("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36", true)
+}
+
 func BenchmarkRuneMap_Lookup(b *testing.B) {
 	var tree = re.NewRuneTree([]string{"abc", "abd", "def", "ghi", "中国"})
 	for i := 0; i < b.N; i++ {
