@@ -387,10 +387,6 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 
 	// 尺寸和类型
 	var contentType = this.Header().Get("Content-Type")
-	if len(contentType) == 0 {
-		// 如果没有显式设置Content-Type，我们就认为是 text/html
-		contentType = "text/html"
-	}
 	if !this.compressionConfig.MatchResponse(contentType, size, filepath.Ext(this.req.Path()), this.req.Format) {
 		return
 	}
@@ -427,7 +423,11 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	header.Del("Content-Length")
 
 	// compression cache writer
-	if !this.isPartial && this.cacheStorage != nil && (this.cacheReader != nil || this.cacheWriter != nil) && !this.webpIsEncoding {
+	// 只有在本身内容已经缓存的情况下才会写入缓存，防止同时写入缓存导致IO负载升高
+	if !this.isPartial &&
+		this.cacheStorage != nil &&
+		(this.cacheReader != nil || (this.cacheStorage.Policy().SyncCompressionCache && this.cacheWriter != nil)) &&
+		!this.webpIsEncoding {
 		var cacheKey = ""
 		var expiredAt int64 = 0
 
