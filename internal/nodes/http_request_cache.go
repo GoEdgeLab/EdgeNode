@@ -63,7 +63,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			break
 		}
 	}
-	if this.cacheRef == nil {
+	if this.cacheRef == nil && !this.web.Cache.DisablePolicyRefs {
 		// 检查策略默认的缓存条件
 		for _, cacheRef := range cachePolicy.CacheRefs {
 			if !cacheRef.IsOn ||
@@ -80,10 +80,10 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				break
 			}
 		}
+	}
 
-		if this.cacheRef == nil {
-			return
-		}
+	if this.cacheRef == nil {
+		return
 	}
 
 	// 校验请求
