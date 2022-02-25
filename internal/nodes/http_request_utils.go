@@ -122,7 +122,7 @@ func httpRequestReadRange(reader io.Reader, buf []byte, start int64, end int64, 
 // 生成boundary
 // 仿照Golang自带的函数（multipart包）
 func httpRequestGenBoundary() string {
-	var buf [30]byte
+	var buf [8]byte
 	_, err := io.ReadFull(rand.Reader, buf[:])
 	if err != nil {
 		panic(err)

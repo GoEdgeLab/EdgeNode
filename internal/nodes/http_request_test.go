@@ -11,7 +11,7 @@ func TestHTTPRequest_RedirectToHTTPS(t *testing.T) {
 	a := assert.NewAssertion(t)
 	{
 		req := &HTTPRequest{
-			Server: &serverconfigs.ServerConfig{
+			ReqServer: &serverconfigs.ServerConfig{
 				Web: &serverconfigs.HTTPWebConfig{
 					RedirectToHttps: &serverconfigs.HTTPRedirectToHTTPSConfig{},
 				},
@@ -22,7 +22,7 @@ func TestHTTPRequest_RedirectToHTTPS(t *testing.T) {
 	}
 	{
 		req := &HTTPRequest{
-			Server: &serverconfigs.ServerConfig{
+			ReqServer: &serverconfigs.ServerConfig{
 				Web: &serverconfigs.HTTPWebConfig{
 					RedirectToHttps: &serverconfigs.HTTPRedirectToHTTPSConfig{
 						IsOn: true,

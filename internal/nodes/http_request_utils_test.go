@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+func TestHTTPRequest_httpRequestGenBoundary(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		var boundary = httpRequestGenBoundary()
+		t.Log(boundary, "[", len(boundary), "bytes", "]")
+	}
+}
+
 func TestHTTPRequest_httpRequestParseContentRange(t *testing.T) {
 	a := assert.NewAssertion(t)
 	{
