@@ -20,7 +20,7 @@ import (
 type AppCmd struct {
 	product       string
 	version       string
-	usage         string
+	usages        []string
 	options       []*CommandHelpOption
 	appendStrings []string
 
@@ -54,7 +54,7 @@ func (this *AppCmd) Version(version string) *AppCmd {
 
 // Usage 使用方法
 func (this *AppCmd) Usage(usage string) *AppCmd {
-	this.usage = usage
+	this.usages = append(this.usages, usage)
 	return this
 }
 
@@ -77,8 +77,10 @@ func (this *AppCmd) Append(appendString string) *AppCmd {
 func (this *AppCmd) Print() {
 	fmt.Println(this.product + " v" + this.version)
 
-	usage := this.usage
-	fmt.Println("Usage:", "\n   "+usage)
+	fmt.Println("Usage:")
+	for _, usage := range this.usages {
+		fmt.Println("   " + usage)
+	}
 
 	if len(this.options) > 0 {
 		fmt.Println("")

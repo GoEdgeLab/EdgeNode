@@ -742,6 +742,17 @@ func (this *Node) listenSock() error {
 				runtime.GC()
 				debug.FreeOSMemory()
 				_ = cmd.ReplyOk()
+			case "reload":
+				err := this.syncConfig(0)
+				if err != nil {
+					_ = cmd.Reply(&gosock.Command{
+						Params: map[string]interface{}{
+							"error": err.Error(),
+						},
+					})
+				} else {
+					_ = cmd.ReplyOk()
+				}
 			}
 		})
 

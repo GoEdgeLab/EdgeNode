@@ -22,12 +22,28 @@ func main() {
 	app := apps.NewAppCmd().
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
-		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|service|daemon|pprof]")
+		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof]").
+		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc]").
+		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove] IP")
 
 	app.On("test", func() {
 		err := nodes.NewNode().Test()
 		if err != nil {
 			_, _ = os.Stderr.WriteString(err.Error())
+		}
+	})
+	app.On("reload", func() {
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{Code: "reload"})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			var params = maps.NewMap(reply.Params)
+			if params.Has("error") {
+				fmt.Println("[ERROR]" + params.GetString("error"))
+			} else {
+				fmt.Println("ok")
+			}
 		}
 	})
 	app.On("daemon", func() {
