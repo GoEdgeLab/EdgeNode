@@ -21,7 +21,7 @@ func (this *AllowAction) IsAttack() bool {
 }
 
 func (this *AllowAction) WillChange() bool {
-	return false
+	return true
 }
 
 func (this *AllowAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
