@@ -10,6 +10,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
+	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -36,6 +38,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		return
 	}
 
+	// 添加 X-Cache Header
 	var addStatusHeader = this.web.Cache.AddStatusHeader
 	if addStatusHeader {
 		defer func() {
@@ -137,7 +140,12 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey {
 		this.varMapping["cache.status"] = "PURGE"
 
-		var subKeys = []string{key, key + cacheMethodSuffix + "HEAD"}
+		var subKeys = []string{
+			key,
+			key + cacheMethodSuffix + "HEAD",
+			key + webpCacheSuffix,
+			key + cachePartialSuffix,
+		}
 		// TODO 根据实际缓存的内容进行组合
 		for _, encoding := range compressions.AllEncodings() {
 			subKeys = append(subKeys, key+compressionCacheSuffix+encoding)
@@ -180,10 +188,14 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var reader caches.Reader
 	var err error
 
+	var rangeHeader = this.RawReq.Header.Get("Range")
+	var isPartialRequest = len(rangeHeader) > 0
+
 	// 检查是否支持WebP
 	var webPIsEnabled = false
 	var isHeadMethod = method == http.MethodHead
-	if !isHeadMethod &&
+	if !isPartialRequest &&
+		!isHeadMethod &&
 		this.web.WebP != nil &&
 		this.web.WebP.IsOn &&
 		this.web.WebP.MatchRequest(filepath.Ext(this.Path()), this.Format) &&
@@ -192,13 +204,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 检查压缩缓存
-	if !isHeadMethod && reader == nil {
+	if !isPartialRequest && !isHeadMethod && reader == nil {
 		if this.web.Compression != nil && this.web.Compression.IsOn {
 			_, encoding, ok := this.web.Compression.MatchAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"))
 			if ok {
 				// 检查支持WebP的压缩缓存
 				if webPIsEnabled {
-					reader, _ = storage.OpenReader(key+webpCacheSuffix+compressionCacheSuffix+encoding, useStale)
+					reader, _ = storage.OpenReader(key+webpCacheSuffix+compressionCacheSuffix+encoding, useStale, false)
 					if reader != nil {
 						tags = append(tags, "webp", encoding)
 					}
@@ -206,7 +218,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 				// 检查普通缓存
 				if reader == nil {
-					reader, _ = storage.OpenReader(key+compressionCacheSuffix+encoding, useStale)
+					reader, _ = storage.OpenReader(key+compressionCacheSuffix+encoding, useStale, false)
 					if reader != nil {
 						tags = append(tags, encoding)
 					}
@@ -216,8 +228,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 检查WebP
-	if !isHeadMethod && reader == nil && webPIsEnabled {
-		reader, _ = storage.OpenReader(key+webpCacheSuffix, useStale)
+	if !isPartialRequest &&
+		!isHeadMethod &&
+		reader == nil &&
+		webPIsEnabled {
+		reader, _ = storage.OpenReader(key+webpCacheSuffix, useStale, false)
 		if reader != nil {
 			this.writer.cacheReaderSuffix = webpCacheSuffix
 			tags = append(tags, "webp")
@@ -225,8 +240,18 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 检查正常的文件
+	var isPartialCache = false
 	if reader == nil {
-		reader, err = storage.OpenReader(key, useStale)
+		reader, err = storage.OpenReader(key, useStale, false)
+		if err != nil && this.cacheRef.AllowPartialContent {
+			pReader := this.tryPartialReader(storage, key, useStale, rangeHeader)
+			if pReader != nil {
+				isPartialCache = true
+				reader = pReader
+				err = nil
+			}
+		}
+
 		if err != nil {
 			if err == caches.ErrNotFound {
 				// cache相关变量
@@ -260,7 +285,16 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 准备Buffer
-	var pool = this.bytePool(reader.BodySize())
+	var fileSize = reader.BodySize()
+	var totalSizeString = types.String(fileSize)
+	if isPartialCache {
+		fileSize = reader.(*caches.PartialFileReader).MaxLength()
+		if totalSizeString == "0" {
+			totalSizeString = "*"
+		}
+	}
+
+	var pool = this.bytePool(fileSize)
 	var buf = pool.Get()
 	defer func() {
 		pool.Put(buf)
@@ -323,7 +357,9 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
 		}
 		respHeader.Del("Etag")
-		respHeader["ETag"] = []string{eTag}
+		if !isPartialCache {
+			respHeader["ETag"] = []string{eTag}
+		}
 	}
 
 	// 支持 Last-Modified
@@ -331,11 +367,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var modifiedTime = ""
 	if lastModifiedAt > 0 {
 		modifiedTime = time.Unix(utils.GMTUnixTime(lastModifiedAt), 0).Format("Mon, 02 Jan 2006 15:04:05") + " GMT"
-		respHeader.Set("Last-Modified", modifiedTime)
+		if !isPartialCache {
+			respHeader.Set("Last-Modified", modifiedTime)
+		}
 	}
 
 	// 支持 If-None-Match
-	if len(eTag) > 0 && this.requestHeader("If-None-Match") == eTag {
+	if !isPartialCache && len(eTag) > 0 && this.requestHeader("If-None-Match") == eTag {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
@@ -346,7 +384,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 支持 If-Modified-Since
-	if len(modifiedTime) > 0 && this.requestHeader("If-Modified-Since") == modifiedTime {
+	if !isPartialCache && len(modifiedTime) > 0 && this.requestHeader("If-Modified-Since") == modifiedTime {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
@@ -364,69 +402,55 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		this.writer.WriteHeader(reader.Status())
 	} else {
 		ifRangeHeaders, ok := this.RawReq.Header["If-Range"]
-		supportRange := true
+		var supportRange = true
 		if ok {
 			supportRange = false
 			for _, v := range ifRangeHeaders {
 				if v == this.writer.Header().Get("ETag") || v == this.writer.Header().Get("Last-Modified") {
 					supportRange = true
+					break
 				}
 			}
 		}
 
 		// 支持Range
-		rangeSet := [][]int64{}
+		var ranges = []rangeutils.Range{}
 		if supportRange {
-			fileSize := reader.BodySize()
-			contentRange := this.RawReq.Header.Get("Range")
-			if len(contentRange) > 0 {
+			if len(rangeHeader) > 0 {
 				if fileSize == 0 {
 					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 					return true
 				}
 
-				set, ok := httpRequestParseContentRange(contentRange)
+				set, ok := httpRequestParseRangeHeader(rangeHeader)
 				if !ok {
 					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 					return true
 				}
 				if len(set) > 0 {
-					rangeSet = set
-					for _, arr := range rangeSet {
-						if arr[0] == -1 {
-							arr[0] = fileSize + arr[1]
-							arr[1] = fileSize - 1
-
-							if arr[0] < 0 {
-								this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
-								this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-								return true
-							}
-						}
-						if arr[1] < 0 {
-							arr[1] = fileSize - 1
-						}
-						if arr[1] >= fileSize {
-							arr[1] = fileSize - 1
-						}
-						if arr[0] > arr[1] {
+					ranges = set
+					for k, r := range ranges {
+						r2, ok := r.Convert(fileSize)
+						if !ok {
 							this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
 							this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 							return true
 						}
+
+						ranges[k] = r2
 					}
 				}
 			}
 		}
 
-		if len(rangeSet) == 1 {
-			respHeader.Set("Content-Range", "bytes "+strconv.FormatInt(rangeSet[0][0], 10)+"-"+strconv.FormatInt(rangeSet[0][1], 10)+"/"+strconv.FormatInt(reader.BodySize(), 10))
-			respHeader.Set("Content-Length", strconv.FormatInt(rangeSet[0][1]-rangeSet[0][0]+1, 10))
+		if len(ranges) == 1 {
+			respHeader.Set("Content-Range", ranges[0].ComposeContentRangeHeader(totalSizeString))
+			respHeader.Set("Content-Length", strconv.FormatInt(ranges[0].Length(), 10))
 			this.writer.WriteHeader(http.StatusPartialContent)
 
-			err = reader.ReadBodyRange(buf, rangeSet[0][0], rangeSet[0][1], func(n int) (goNext bool, err error) {
+			err = reader.ReadBodyRange(buf, ranges[0].Start(), ranges[0].End(), func(n int) (goNext bool, err error) {
 				_, err = this.writer.Write(buf[:n])
 				if err != nil {
 					return false, errWritingToClient
@@ -446,15 +470,15 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				}
 				return
 			}
-		} else if len(rangeSet) > 1 {
-			boundary := httpRequestGenBoundary()
+		} else if len(ranges) > 1 {
+			var boundary = httpRequestGenBoundary()
 			respHeader.Set("Content-Type", "multipart/byteranges; boundary="+boundary)
 			respHeader.Del("Content-Length")
 			contentType := respHeader.Get("Content-Type")
 
 			this.writer.WriteHeader(http.StatusPartialContent)
 
-			for index, set := range rangeSet {
+			for index, r := range ranges {
 				if index == 0 {
 					_, err = this.writer.WriteString("--" + boundary + "\r\n")
 				} else {
@@ -465,7 +489,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					return true
 				}
 
-				_, err = this.writer.WriteString("Content-Range: " + "bytes " + strconv.FormatInt(set[0], 10) + "-" + strconv.FormatInt(set[1], 10) + "/" + strconv.FormatInt(reader.BodySize(), 10) + "\r\n")
+				_, err = this.writer.WriteString("Content-Range: " + r.ComposeContentRangeHeader(totalSizeString) + "\r\n")
 				if err != nil {
 					// 不提示写入客户端错误
 					return true
@@ -479,7 +503,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					}
 				}
 
-				err := reader.ReadBodyRange(buf, set[0], set[1], func(n int) (goNext bool, err error) {
+				err := reader.ReadBodyRange(buf, r.Start(), r.End(), func(n int) (goNext bool, err error) {
 					_, err = this.writer.Write(buf[:n])
 					if err != nil {
 						return false, errWritingToClient
@@ -503,7 +527,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			}
 		} else { // 没有Range
 			var resp = &http.Response{Body: reader}
-			this.writer.Prepare(resp, reader.BodySize(), reader.Status(), false)
+			this.writer.Prepare(resp, fileSize, reader.Status(), false)
 			this.writer.WriteHeader(reader.Status())
 
 			_, err = io.CopyBuffer(this.writer, resp.Body, buf)
@@ -543,4 +567,48 @@ func (this *HTTPRequest) addExpiresHeader(expiresAt int64) {
 			}
 		}
 	}
+}
+
+// 尝试读取区间缓存
+func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key string, useStale bool, rangeHeader string) caches.Reader {
+	// 尝试读取Partial cache
+	if len(rangeHeader) == 0 {
+		return nil
+	}
+
+	ranges, ok := httpRequestParseRangeHeader(rangeHeader)
+	if !ok {
+		return nil
+	}
+
+	pReader, pErr := storage.OpenReader(key+cachePartialSuffix, useStale, true)
+	if pErr != nil {
+		return nil
+	}
+
+	partialReader, ok := pReader.(*caches.PartialFileReader)
+	if !ok {
+		_ = pReader.Close()
+		return nil
+	}
+	var isOk = false
+	defer func() {
+		if !isOk {
+			_ = pReader.Close()
+		}
+	}()
+
+	// 检查范围
+	for _, r := range ranges {
+		r1, ok := r.Convert(partialReader.MaxLength())
+		if !ok {
+			return nil
+		}
+		if !partialReader.ContainsRange(r1) {
+			return nil
+		}
+	}
+
+	isOk = true
+	return pReader
 }

@@ -28,6 +28,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/textproto"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,7 @@ const compressionCacheSuffix = "@GOEDGE_"
 
 // 缓存相关配置
 const cacheMethodSuffix = "@GOEDGE_"
+const cachePartialSuffix = "@GOEDGE_partial"
 
 func init() {
 	var systemMemory = utils.SystemMemoryGB() / 8
@@ -157,12 +159,21 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	var addStatusHeader = this.req.web != nil && this.req.web.Cache != nil && this.req.web.Cache.AddStatusHeader
 
 	// 不支持Range
-	if this.StatusCode() == http.StatusPartialContent || len(this.Header().Get("Content-Range")) > 0 {
-		this.req.varMapping["cache.status"] = "BYPASS"
-		if addStatusHeader {
-			this.Header().Set("X-Cache", "BYPASS, not supported Content-Range")
+	if this.isPartial {
+		if !cacheRef.AllowPartialContent {
+			this.req.varMapping["cache.status"] = "BYPASS"
+			if addStatusHeader {
+				this.Header().Set("X-Cache", "BYPASS, not supported partial content")
+			}
+			return
 		}
-		return
+		if this.cacheStorage.Policy().Type != serverconfigs.CachePolicyStorageFile {
+			this.req.varMapping["cache.status"] = "BYPASS"
+			if addStatusHeader {
+				this.Header().Set("X-Cache", "BYPASS, not supported partial content in memory storage")
+			}
+			return
+		}
 	}
 
 	// 如果允许 ChunkedEncoding，就无需尺寸的判断，因为此时的 size 为 -1
@@ -183,7 +194,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	}
 
 	// 检查状态
-	if len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
+	if !this.isPartial && len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
 		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Status: "+types.String(this.StatusCode()))
@@ -193,7 +204,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	// Cache-Control
 	if len(cacheRef.SkipResponseCacheControlValues) > 0 {
-		var cacheControl = this.Header().Get("Cache-Control")
+		var cacheControl = this.GetHeader("Cache-Control")
 		if len(cacheControl) > 0 {
 			values := strings.Split(cacheControl, ",")
 			for _, value := range values {
@@ -209,7 +220,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	}
 
 	// Set-Cookie
-	if cacheRef.SkipResponseSetCookie && len(this.Header().Get("Set-Cookie")) > 0 {
+	if cacheRef.SkipResponseSetCookie && len(this.GetHeader("Set-Cookie")) > 0 {
 		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Set-Cookie")
@@ -242,7 +253,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	}
 
 	this.cacheStorage = storage
-	life := cacheRef.LifeSeconds()
+	var life = cacheRef.LifeSeconds()
 
 	if life <= 0 {
 		life = 60
@@ -250,7 +261,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	// 支持源站设置的max-age
 	if this.req.web.Cache != nil && this.req.web.Cache.EnableCacheControlMaxAge {
-		var cacheControl = this.Header().Get("Cache-Control")
+		var cacheControl = this.GetHeader("Cache-Control")
 		var pieces = strings.Split(cacheControl, ";")
 		for _, piece := range pieces {
 			var eqIndex = strings.Index(piece, "=")
@@ -265,7 +276,10 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	var expiredAt = utils.UnixTime() + life
 	var cacheKey = this.req.cacheKey
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, false)
+	if this.isPartial {
+		cacheKey += cachePartialSuffix
+	}
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, this.isPartial)
 	if err != nil {
 		if !caches.CanIgnoreErr(err) {
 			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
@@ -277,6 +291,9 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	// 写入Header
 	for k, v := range this.Header() {
 		for _, v1 := range v {
+			if this.isPartial && k == "Content-Type" && strings.Contains(v1, "multipart/byteranges") {
+				continue
+			}
 			_, err = cacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
 			if err != nil {
 				remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
@@ -285,6 +302,101 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 				return
 			}
 		}
+	}
+
+	if this.isPartial {
+		// content-range
+		var contentRange = this.GetHeader("Content-Range")
+		if len(contentRange) > 0 {
+			var start = httpRequestParseContentRangeHeader(contentRange)
+			if start < 0 {
+				return
+			}
+			var filterReader = readers.NewFilterReaderCloser(resp.Body)
+			this.cacheIsFinished = true
+			var hasError = false
+			filterReader.Add(func(p []byte, err error) error {
+				if hasError {
+					return nil
+				}
+
+				var l = len(p)
+				if l == 0 {
+					return nil
+				}
+				defer func() {
+					start += int64(l)
+				}()
+				err = cacheWriter.WriteAt(start, p)
+				if err != nil {
+					this.cacheIsFinished = false
+					hasError = true
+				}
+				return nil
+			})
+			resp.Body = filterReader
+			this.rawReader = filterReader
+			return
+		}
+
+		// multipart/byteranges
+		var contentType = this.GetHeader("Content-Type")
+		if strings.Contains(contentType, "multipart/byteranges") {
+			partialWriter, ok := cacheWriter.(*caches.PartialFileWriter)
+			if !ok {
+				return
+			}
+
+			var boundary = httpRequestParseBoundary(contentType)
+			if len(boundary) == 0 {
+				return
+			}
+
+			var reader = readers.NewByteRangesReaderCloser(resp.Body, boundary)
+			var contentTypeWritten = false
+
+			this.cacheIsFinished = true
+			var hasError = false
+			var writtenTotal = false
+			reader.OnPartRead(func(start int64, end int64, total int64, data []byte, header textproto.MIMEHeader) {
+				if hasError {
+					return
+				}
+
+				// 写入total
+				if !writtenTotal && total > 0 {
+					partialWriter.SetBodyLength(total)
+					writtenTotal = true
+				}
+
+				// 写入Content-Type
+				if partialWriter.IsNew() && !contentTypeWritten {
+					var realContentType = header.Get("Content-Type")
+					if len(realContentType) > 0 {
+						var h = []byte("Content-Type:" + realContentType + "\n")
+						err = partialWriter.AppendHeader(h)
+						if err != nil {
+							hasError = true
+							this.cacheIsFinished = false
+							return
+						}
+					}
+
+					contentTypeWritten = true
+				}
+
+				err := cacheWriter.WriteAt(start, data)
+				if err != nil {
+					hasError = true
+					this.cacheIsFinished = false
+				}
+			})
+
+			resp.Body = reader
+			this.rawReader = reader
+		}
+
+		return
 	}
 
 	var cacheReader = readers.NewTeeReaderCloser(resp.Body, this.cacheWriter)
@@ -306,7 +418,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 		return
 	}
 
-	var contentType = this.Header().Get("Content-Type")
+	var contentType = this.GetHeader("Content-Type")
 
 	if this.req.web != nil &&
 		this.req.web.WebP != nil &&
@@ -324,7 +436,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 			return
 		}
 
-		var contentEncoding = this.Header().Get("Content-Encoding")
+		var contentEncoding = this.GetHeader("Content-Encoding")
 		switch contentEncoding {
 		case "gzip", "deflate", "br":
 			reader, err := compressions.NewReader(resp.Body, contentEncoding)
@@ -361,7 +473,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	}
 
 	var acceptEncodings = this.req.RawReq.Header.Get("Accept-Encoding")
-	var contentEncoding = this.Header().Get("Content-Encoding")
+	var contentEncoding = this.GetHeader("Content-Encoding")
 
 	if this.compressionConfig == nil || !this.compressionConfig.IsOn {
 		if lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding) && !httpAcceptEncoding(acceptEncodings, contentEncoding) {
@@ -386,7 +498,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	}
 
 	// 尺寸和类型
-	var contentType = this.Header().Get("Content-Type")
+	var contentType = this.GetHeader("Content-Type")
 	if !this.compressionConfig.MatchResponse(contentType, size, filepath.Ext(this.req.Path()), this.req.Format) {
 		return
 	}
@@ -502,6 +614,11 @@ func (this *HTTPWriter) Header() http.Header {
 		return http.Header{}
 	}
 	return this.rawWriter.Header()
+}
+
+// GetHeader 读取Header值
+func (this *HTTPWriter) GetHeader(name string) string {
+	return this.Header().Get(name)
 }
 
 // DeleteHeader 删除Header
@@ -777,18 +894,19 @@ func (this *HTTPWriter) Close() {
 		if this.isOk && this.cacheIsFinished {
 			// 对比缓存前后的Content-Length
 			var method = this.req.Method()
-			if method != http.MethodHead && this.StatusCode() != http.StatusNoContent {
-				var contentLengthString = this.Header().Get("Content-Length")
+			if method != http.MethodHead && this.StatusCode() != http.StatusNoContent && !this.isPartial {
+				var contentLengthString = this.GetHeader("Content-Length")
 				if len(contentLengthString) > 0 {
 					var contentLength = types.Int64(contentLengthString)
 					if contentLength != this.cacheWriter.BodySize() {
 						this.isOk = false
 						_ = this.cacheWriter.Discard()
+						this.cacheWriter = nil
 					}
 				}
 			}
 
-			if this.isOk {
+			if this.isOk && this.cacheWriter != nil {
 				err := this.cacheWriter.Close()
 				if err == nil {
 					var expiredAt = this.cacheWriter.ExpiredAt()
@@ -863,7 +981,7 @@ func (this *HTTPWriter) calculateStaleLife() int {
 		// 从Header中读取stale-if-error
 		var isDefinedInHeader = false
 		if staleConfig.SupportStaleIfErrorHeader {
-			var cacheControl = this.Header().Get("Cache-Control")
+			var cacheControl = this.GetHeader("Cache-Control")
 			var pieces = strings.Split(cacheControl, ",")
 			for _, piece := range pieces {
 				var eqIndex = strings.Index(piece, "=")

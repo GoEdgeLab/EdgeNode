@@ -105,7 +105,7 @@ func (this *MemoryStorage) Init() error {
 }
 
 // OpenReader 读取缓存
-func (this *MemoryStorage) OpenReader(key string, useStale bool) (Reader, error) {
+func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool) (Reader, error) {
 	hash := this.hash(key)
 
 	this.locker.RLock()

@@ -2,6 +2,7 @@ package caches
 
 import (
 	"errors"
+	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"io"
 )
 
@@ -195,6 +196,11 @@ func (this *MemoryReader) ReadBodyRange(buf []byte, start int64, end int64, call
 	}
 
 	return nil
+}
+
+// ContainsRange 是否包含某些区间内容
+func (this *MemoryReader) ContainsRange(r rangeutils.Range) bool {
+	return true
 }
 
 func (this *MemoryReader) Close() error {

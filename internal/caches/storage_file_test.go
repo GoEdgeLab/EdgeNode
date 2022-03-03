@@ -110,7 +110,7 @@ func TestFileStorage_OpenWriter_Partial(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = writer.WriteAt([]byte("Hello, World"), 0)
+	err = writer.WriteAt(0, []byte("Hello, World"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +311,7 @@ func TestFileStorage_Read(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now()
-	reader, err := storage.OpenReader("my-key", false)
+	reader, err := storage.OpenReader("my-key", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +347,7 @@ func TestFileStorage_Read_HTTP_Response(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now()
-	reader, err := storage.OpenReader("my-http-response", false)
+	reader, err := storage.OpenReader("my-http-response", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +401,7 @@ func TestFileStorage_Read_NotFound(t *testing.T) {
 	}
 	now := time.Now()
 	buf := make([]byte, 6)
-	reader, err := storage.OpenReader("my-key-10000", false)
+	reader, err := storage.OpenReader("my-key-10000", false, false)
 	if err != nil {
 		if err == ErrNotFound {
 			t.Log("cache not fund")
@@ -543,7 +543,7 @@ func BenchmarkFileStorage_Read(b *testing.B) {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		reader, err := storage.OpenReader("my-key", false)
+		reader, err := storage.OpenReader("my-key", false, false)
 		if err != nil {
 			b.Fatal(err)
 		}

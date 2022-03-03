@@ -3,6 +3,7 @@ package caches
 import (
 	"encoding/binary"
 	"errors"
+	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"os"
@@ -330,6 +331,11 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 	isOk = true
 
 	return nil
+}
+
+// ContainsRange 是否包含某些区间内容
+func (this *FileReader) ContainsRange(r rangeutils.Range) bool {
+	return true
 }
 
 func (this *FileReader) Close() error {

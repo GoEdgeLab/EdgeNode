@@ -57,7 +57,7 @@ func (this *MemoryWriter) Write(data []byte) (n int, err error) {
 }
 
 // WriteAt 在指定位置写入数据
-func (this *MemoryWriter) WriteAt(b []byte, offset int64) error {
+func (this *MemoryWriter) WriteAt(offset int64, b []byte) error {
 	_ = b
 	_ = offset
 	return errors.New("not supported")

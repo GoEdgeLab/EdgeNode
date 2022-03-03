@@ -21,7 +21,8 @@ func TestNewPartialRanges(t *testing.T) {
 	r.Add(200, 1000)
 	r.Add(200, 10040)
 
-	logs.PrintAsJSON(r.Ranges())
+	logs.PrintAsJSON(r.Ranges, t)
+	t.Log("max:", r.Max())
 }
 
 func TestNewPartialRanges1(t *testing.T) {
@@ -35,7 +36,7 @@ func TestNewPartialRanges1(t *testing.T) {
 	r.Add(200, 300)
 	r.Add(1, 1000)
 
-	var rs = r.Ranges()
+	var rs = r.Ranges
 	logs.PrintAsJSON(rs, t)
 	a.IsTrue(len(rs) == 1)
 	if len(rs) == 1 {
@@ -56,7 +57,7 @@ func TestNewPartialRanges2(t *testing.T) {
 	r.Add(303, 304)
 	r.Add(250, 400)
 
-	var rs = r.Ranges()
+	var rs = r.Ranges
 	logs.PrintAsJSON(rs, t)
 }
 
@@ -68,7 +69,7 @@ func TestNewPartialRanges3(t *testing.T) {
 	r.Add(200, 300)
 	r.Add(250, 400)
 
-	var rs = r.Ranges()
+	var rs = r.Ranges
 	logs.PrintAsJSON(rs, t)
 }
 
@@ -83,7 +84,7 @@ func TestNewPartialRanges4(t *testing.T) {
 	r.Add(410, 415)
 	r.Add(400, 409)
 
-	var rs = r.Ranges()
+	var rs = r.Ranges
 	logs.PrintAsJSON(rs, t)
 	t.Log(r.Contains(400, 416))
 }
@@ -93,7 +94,7 @@ func TestNewPartialRanges5(t *testing.T) {
 	for j := 0; j < 1000; j++ {
 		r.Add(int64(j), int64(j+100))
 	}
-	logs.PrintAsJSON(r.Ranges(), t)
+	logs.PrintAsJSON(r.Ranges, t)
 }
 
 func TestNewPartialRanges_AsJSON(t *testing.T) {
@@ -111,7 +112,7 @@ func TestNewPartialRanges_AsJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r2.Ranges())
+	t.Log(r2.Ranges)
 }
 
 func BenchmarkNewPartialRanges(b *testing.B) {

@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func TestPartialFileWriter_SeekOffset(t *testing.T) {
-	var path = "/tmp/test@partial.cache"
+func TestPartialFileWriter_Write(t *testing.T) {
+	var path = "/tmp/test_partial.cache"
 	_ = os.Remove(path)
 
 	var reader = func() {
@@ -27,7 +27,8 @@ func TestPartialFileWriter_SeekOffset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var writer = caches.NewPartialFileWriter(fp, "test", time.Now().Unix()+86500, true, true, 0, func() {
+	var ranges = caches.NewPartialRanges()
+	var writer = caches.NewPartialFileWriter(fp, "test", time.Now().Unix()+86500, true, true, 0, ranges, func() {
 		t.Log("end")
 	})
 	_, err = writer.WriteHeader([]byte("header"))
@@ -36,7 +37,7 @@ func TestPartialFileWriter_SeekOffset(t *testing.T) {
 	}
 
 	// 移动位置
-	err = writer.WriteAt([]byte("HELLO"), 100)
+	err = writer.WriteAt(100, []byte("HELLO"))
 	if err != nil {
 		t.Fatal(err)
 	}

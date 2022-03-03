@@ -2,10 +2,12 @@ package nodes
 
 import (
 	"fmt"
+	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/types"
 	"io"
 	"io/fs"
 	"mime"
@@ -186,7 +188,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	// length
-	fileSize := stat.Size()
+	var fileSize = stat.Size()
 
 	// 支持 Last-Modified
 	modifiedTime := stat.ModTime().Format("Mon, 02 Jan 2006 15:04:05 GMT")
@@ -231,6 +233,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		for _, v := range ifRangeHeaders {
 			if v == eTag || v == modifiedTime {
 				supportRange = true
+				break
 			}
 		}
 		if !supportRange {
@@ -239,7 +242,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	// 支持Range
-	rangeSet := [][]int64{}
+	var ranges = []rangeutils.Range{}
 	if supportRange {
 		contentRange := this.RawReq.Header.Get("Range")
 		if len(contentRange) > 0 {
@@ -249,36 +252,22 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				return true
 			}
 
-			set, ok := httpRequestParseContentRange(contentRange)
+			set, ok := httpRequestParseRangeHeader(contentRange)
 			if !ok {
 				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
 				this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 				return true
 			}
 			if len(set) > 0 {
-				rangeSet = set
-				for _, arr := range rangeSet {
-					if arr[0] == -1 {
-						arr[0] = fileSize + arr[1]
-						arr[1] = fileSize - 1
-
-						if arr[0] < 0 {
-							this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
-							this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-							return true
-						}
-					}
-					if arr[1] > 0 {
-						arr[1] = fileSize - 1
-					}
-					if arr[1] < 0 {
-						arr[1] = fileSize - 1
-					}
-					if arr[0] > arr[1] {
+				ranges = set
+				for k, r := range ranges {
+					r2, ok := r.Convert(fileSize)
+					if !ok {
 						this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
 						this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 						return true
 					}
+					ranges[k] = r2
 				}
 			}
 		} else {
@@ -298,7 +287,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	this.processResponseHeaders(http.StatusOK)
 
 	// 在Range请求中不能缓存
-	if len(rangeSet) > 0 {
+	if len(ranges) > 0 {
 		this.cacheRef = nil // 不支持缓存
 	}
 
@@ -311,11 +300,11 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		pool.Put(buf)
 	}()
 
-	if len(rangeSet) == 1 {
-		respHeader.Set("Content-Range", "bytes "+strconv.FormatInt(rangeSet[0][0], 10)+"-"+strconv.FormatInt(rangeSet[0][1], 10)+"/"+strconv.FormatInt(fileSize, 10))
+	if len(ranges) == 1 {
+		respHeader.Set("Content-Range", ranges[0].ComposeContentRangeHeader(types.String(fileSize)))
 		this.writer.WriteHeader(http.StatusPartialContent)
 
-		ok, err := httpRequestReadRange(reader, buf, rangeSet[0][0], rangeSet[0][1], func(buf []byte, n int) error {
+		ok, err := httpRequestReadRange(reader, buf, ranges[0].Start(), ranges[0].End(), func(buf []byte, n int) error {
 			_, err := this.writer.Write(buf[:n])
 			return err
 		})
@@ -328,13 +317,13 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 			return true
 		}
-	} else if len(rangeSet) > 1 {
+	} else if len(ranges) > 1 {
 		boundary := httpRequestGenBoundary()
 		respHeader.Set("Content-Type", "multipart/byteranges; boundary="+boundary)
 
 		this.writer.WriteHeader(http.StatusPartialContent)
 
-		for index, set := range rangeSet {
+		for index, r := range ranges {
 			if index == 0 {
 				_, err = this.writer.WriteString("--" + boundary + "\r\n")
 			} else {
@@ -345,7 +334,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				return true
 			}
 
-			_, err = this.writer.WriteString("Content-Range: " + "bytes " + strconv.FormatInt(set[0], 10) + "-" + strconv.FormatInt(set[1], 10) + "/" + strconv.FormatInt(fileSize, 10) + "\r\n")
+			_, err = this.writer.WriteString("Content-Range: " + r.ComposeContentRangeHeader(types.String(fileSize)) + "\r\n")
 			if err != nil {
 				logs.Error(err)
 				return true
@@ -359,7 +348,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				}
 			}
 
-			ok, err := httpRequestReadRange(reader, buf, set[0], set[1], func(buf []byte, n int) error {
+			ok, err := httpRequestReadRange(reader, buf, r.Start(), r.End(), func(buf []byte, n int) error {
 				_, err := this.writer.Write(buf[:n])
 				return err
 			})

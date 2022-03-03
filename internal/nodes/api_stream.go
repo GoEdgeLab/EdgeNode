@@ -240,7 +240,7 @@ func (this *APIStream) handleReadCache(message *pb.NodeStreamMessage) error {
 		}()
 	}
 
-	reader, err := storage.OpenReader(msg.Key, false)
+	reader, err := storage.OpenReader(msg.Key, false, false)
 	if err != nil {
 		if err == caches.ErrNotFound {
 			this.replyFail(message.RequestId, "key not found")
@@ -351,7 +351,11 @@ func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
 	if msg.Type == "file" {
 		var keys = msg.Keys
 		for _, key := range keys {
-			keys = append(keys, key+webpCacheSuffix, key+cacheMethodSuffix+"HEAD")
+			keys = append(keys,
+				key+cacheMethodSuffix+"HEAD",
+				key+webpCacheSuffix,
+				key+cachePartialSuffix,
+			)
 			// TODO 根据实际缓存的内容进行组合
 			for _, encoding := range compressions.AllEncodings() {
 				keys = append(keys, key+compressionCacheSuffix+encoding)

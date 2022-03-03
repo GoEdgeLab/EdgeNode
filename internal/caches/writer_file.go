@@ -67,7 +67,7 @@ func (this *FileWriter) Write(data []byte) (n int, err error) {
 }
 
 // WriteAt 在指定位置写入数据
-func (this *FileWriter) WriteAt(data []byte, offset int64) error {
+func (this *FileWriter) WriteAt(offset int64, data []byte) error {
 	_ = data
 	_ = offset
 	return errors.New("not supported")

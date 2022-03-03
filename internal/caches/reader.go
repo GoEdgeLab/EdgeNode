@@ -1,5 +1,7 @@
 package caches
 
+import "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
+
 type ReaderFunc func(n int) (goNext bool, err error)
 
 type Reader interface {
@@ -35,6 +37,9 @@ type Reader interface {
 
 	// BodySize Body Size
 	BodySize() int64
+
+	// ContainsRange 是否包含某个区间内容
+	ContainsRange(r rangeutils.Range) bool
 
 	// Close 关闭
 	Close() error

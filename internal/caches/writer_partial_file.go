@@ -23,9 +23,22 @@ type PartialFileWriter struct {
 	isNew      bool
 	isPartial  bool
 	bodyOffset int64
+
+	ranges    *PartialRanges
+	rangePath string
 }
 
-func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, isNew bool, isPartial bool, bodyOffset int64, endFunc func()) *PartialFileWriter {
+func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, isNew bool, isPartial bool, bodyOffset int64, ranges *PartialRanges, endFunc func()) *PartialFileWriter {
+	var path = rawWriter.Name()
+	// ranges路径
+	var dotIndex = strings.LastIndex(path, ".")
+	var rangePath = ""
+	if dotIndex < 0 {
+		rangePath = path + "@ranges.cache"
+	} else {
+		rangePath = path[:dotIndex] + "@ranges" + path[dotIndex:]
+	}
+
 	return &PartialFileWriter{
 		key:        key,
 		rawWriter:  rawWriter,
@@ -34,6 +47,8 @@ func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, isNew
 		isNew:      isNew,
 		isPartial:  isPartial,
 		bodyOffset: bodyOffset,
+		ranges:     ranges,
+		rangePath:  rangePath,
 	}
 }
 
@@ -48,6 +63,21 @@ func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
 		_ = this.Discard()
 	}
 	return
+}
+
+func (this *PartialFileWriter) AppendHeader(data []byte) error {
+	_, err := this.rawWriter.Write(data)
+	if err != nil {
+		_ = this.Discard()
+	} else {
+		var c = len(data)
+		this.headerSize += int64(c)
+		err = this.WriteHeaderLength(int(this.headerSize))
+		if err != nil {
+			_ = this.Discard()
+		}
+	}
+	return err
 }
 
 // WriteHeaderLength 写入Header长度数据
@@ -78,12 +108,34 @@ func (this *PartialFileWriter) Write(data []byte) (n int, err error) {
 }
 
 // WriteAt 在指定位置写入数据
-func (this *PartialFileWriter) WriteAt(data []byte, offset int64) error {
+func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
+	var c = int64(len(data))
+	if c == 0 {
+		return nil
+	}
+	var end = offset + c - 1
+
+	// 是否已包含在内
+	if this.ranges.Contains(offset, end) {
+		return nil
+	}
+
 	if this.bodyOffset == 0 {
 		this.bodyOffset = SizeMeta + int64(len(this.key)) + this.headerSize
 	}
 	_, err := this.rawWriter.WriteAt(data, this.bodyOffset+offset)
-	return err
+	if err != nil {
+		return err
+	}
+
+	this.ranges.Add(offset, end)
+
+	return nil
+}
+
+// SetBodyLength 设置内容总长度
+func (this *PartialFileWriter) SetBodyLength(bodyLength int64) {
+	this.bodySize = bodyLength
 }
 
 // WriteBodyLength 写入Body长度数据
@@ -109,31 +161,30 @@ func (this *PartialFileWriter) Close() error {
 		this.endFunc()
 	})
 
-	var path = this.rawWriter.Name()
+	err := this.ranges.WriteToFile(this.rangePath)
+	if err != nil {
+		return err
+	}
 
+	// 关闭当前writer
 	if this.isNew {
-		err := this.WriteHeaderLength(types.Int(this.headerSize))
+		err = this.WriteHeaderLength(types.Int(this.headerSize))
 		if err != nil {
 			_ = this.rawWriter.Close()
-			_ = os.Remove(path)
+			this.remove()
 			return err
 		}
 		err = this.WriteBodyLength(this.bodySize)
 		if err != nil {
 			_ = this.rawWriter.Close()
-			_ = os.Remove(path)
+			this.remove()
 			return err
 		}
 	}
 
-	err := this.rawWriter.Close()
+	err = this.rawWriter.Close()
 	if err != nil {
-		_ = os.Remove(path)
-	} else if !this.isPartial {
-		err = os.Rename(path, strings.Replace(path, ".tmp", "", 1))
-		if err != nil {
-			_ = os.Remove(path)
-		}
+		this.remove()
 	}
 
 	return err
@@ -146,6 +197,8 @@ func (this *PartialFileWriter) Discard() error {
 	})
 
 	_ = this.rawWriter.Close()
+
+	_ = os.Remove(this.rangePath)
 
 	err := os.Remove(this.rawWriter.Name())
 	return err
@@ -170,4 +223,13 @@ func (this *PartialFileWriter) Key() string {
 // ItemType 获取内容类型
 func (this *PartialFileWriter) ItemType() ItemType {
 	return ItemTypeFile
+}
+
+func (this *PartialFileWriter) IsNew() bool {
+	return this.isNew && len(this.ranges.Ranges) == 0
+}
+
+func (this *PartialFileWriter) remove() {
+	_ = os.Remove(this.rawWriter.Name())
+	_ = os.Remove(this.rangePath)
 }

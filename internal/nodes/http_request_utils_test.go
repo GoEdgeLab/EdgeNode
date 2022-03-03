@@ -17,52 +17,84 @@ func TestHTTPRequest_httpRequestGenBoundary(t *testing.T) {
 	}
 }
 
-func TestHTTPRequest_httpRequestParseContentRange(t *testing.T) {
-	a := assert.NewAssertion(t)
+func TestHTTPRequest_httpRequestParseBoundary(t *testing.T) {
+	var a = assert.NewAssertion(t)
+	a.IsTrue(httpRequestParseBoundary("multipart/byteranges") == "")
+	a.IsTrue(httpRequestParseBoundary("multipart/byteranges; boundary=123") == "123")
+	a.IsTrue(httpRequestParseBoundary("multipart/byteranges; boundary=123; 456") == "123")
+}
+
+func TestHTTPRequest_httpRequestParseRangeHeader(t *testing.T) {
+	var a = assert.NewAssertion(t)
 	{
-		_, ok := httpRequestParseContentRange("")
+		_, ok := httpRequestParseRangeHeader("")
 		a.IsFalse(ok)
 	}
 	{
-		_, ok := httpRequestParseContentRange("byte=")
+		_, ok := httpRequestParseRangeHeader("byte=")
 		a.IsFalse(ok)
 	}
 	{
-		_, ok := httpRequestParseContentRange("byte=")
+		_, ok := httpRequestParseRangeHeader("byte=")
 		a.IsFalse(ok)
 	}
 	{
-		set, ok := httpRequestParseContentRange("bytes=")
+		set, ok := httpRequestParseRangeHeader("bytes=")
 		a.IsTrue(ok)
 		a.IsTrue(len(set) == 0)
 	}
 	{
-		_, ok := httpRequestParseContentRange("bytes=60-50")
+		_, ok := httpRequestParseRangeHeader("bytes=60-50")
 		a.IsFalse(ok)
 	}
 	{
-		set, ok := httpRequestParseContentRange("bytes=0-50")
+		set, ok := httpRequestParseRangeHeader("bytes=0-50")
 		a.IsTrue(ok)
 		a.IsTrue(len(set) > 0)
 		t.Log(set)
 	}
 	{
-		set, ok := httpRequestParseContentRange("bytes=0-")
+		set, ok := httpRequestParseRangeHeader("bytes=0-")
+		a.IsTrue(ok)
+		a.IsTrue(len(set) > 0)
+		if len(set) > 0 {
+			a.IsTrue(set[0][0] == 0)
+		}
+		t.Log(set)
+	}
+	{
+		set, ok := httpRequestParseRangeHeader("bytes=-50")
 		a.IsTrue(ok)
 		a.IsTrue(len(set) > 0)
 		t.Log(set)
 	}
 	{
-		set, ok := httpRequestParseContentRange("bytes=-50")
+		set, ok := httpRequestParseRangeHeader("bytes=0-50, 60-100")
 		a.IsTrue(ok)
 		a.IsTrue(len(set) > 0)
 		t.Log(set)
 	}
+}
+
+func TestHTTPRequest_httpRequestParseContentRangeHeader(t *testing.T) {
 	{
-		set, ok := httpRequestParseContentRange("bytes=0-50, 60-100")
-		a.IsTrue(ok)
-		a.IsTrue(len(set) > 0)
-		t.Log(set)
+		var c1 = "bytes 0-100/*"
+		t.Log(httpRequestParseContentRangeHeader(c1))
+	}
+	{
+		var c1 = "bytes 30-100/*"
+		t.Log(httpRequestParseContentRangeHeader(c1))
+	}
+	{
+		var c1 = "bytes1 0-100/*"
+		t.Log(httpRequestParseContentRangeHeader(c1))
+	}
+}
+
+func BenchmarkHTTPRequest_httpRequestParseContentRangeHeader(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var c1 = "bytes 0-100/*"
+		httpRequestParseContentRangeHeader(c1)
 	}
 }
 

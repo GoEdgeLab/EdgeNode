@@ -5,15 +5,20 @@ import (
 	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
+	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
 )
 
+var contentRangeRegexp = regexp.MustCompile(`^bytes (\d+)-(\d+)/`)
+
 // 分解Range
-func httpRequestParseContentRange(rangeValue string) (result [][]int64, ok bool) {
+func httpRequestParseRangeHeader(rangeValue string) (result []rangeutils.Range, ok bool) {
 	// 参考RFC：https://tools.ietf.org/html/rfc7233
 	index := strings.Index(rangeValue, "=")
 	if index == -1 {
@@ -24,15 +29,15 @@ func httpRequestParseContentRange(rangeValue string) (result [][]int64, ok bool)
 		return
 	}
 
-	rangeSetString := rangeValue[index+1:]
+	var rangeSetString = rangeValue[index+1:]
 	if len(rangeSetString) == 0 {
 		ok = true
 		return
 	}
 
-	pieces := strings.Split(rangeSetString, ", ")
+	var pieces = strings.Split(rangeSetString, ", ")
 	for _, piece := range pieces {
-		index := strings.Index(piece, "-")
+		index = strings.Index(piece, "-")
 		if index == -1 {
 			return
 		}
@@ -70,7 +75,7 @@ func httpRequestParseContentRange(rangeValue string) (result [][]int64, ok bool)
 			lastInt = -lastInt
 		}
 
-		result = append(result, []int64{firstInt, lastInt})
+		result = append(result, [2]int64{firstInt, lastInt})
 	}
 
 	ok = true
@@ -119,6 +124,15 @@ func httpRequestReadRange(reader io.Reader, buf []byte, start int64, end int64, 
 	}
 }
 
+// 分解Content-Range
+func httpRequestParseContentRangeHeader(contentRange string) (start int64) {
+	var matches = contentRangeRegexp.FindStringSubmatch(contentRange)
+	if len(matches) < 3 {
+		return -1
+	}
+	return types.Int64(matches[1])
+}
+
 // 生成boundary
 // 仿照Golang自带的函数（multipart包）
 func httpRequestGenBoundary() string {
@@ -128,6 +142,21 @@ func httpRequestGenBoundary() string {
 		panic(err)
 	}
 	return fmt.Sprintf("%x", buf[:])
+}
+
+// 从content-type中读取boundary
+func httpRequestParseBoundary(contentType string) string {
+	var delim = "boundary="
+	var boundaryIndex = strings.Index(contentType, delim)
+	if boundaryIndex < 0 {
+		return ""
+	}
+	var boundary = contentType[boundaryIndex+len(delim):]
+	semicolonIndex := strings.Index(boundary, ";")
+	if semicolonIndex >= 0 {
+		return boundary[:semicolonIndex]
+	}
+	return boundary
 }
 
 // 判断状态是否为跳转

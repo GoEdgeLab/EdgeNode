@@ -2,7 +2,9 @@
 
 package writers
 
-import "io"
+import (
+	"io"
+)
 
 type TeeWriterCloser struct {
 	primaryW   io.WriteCloser

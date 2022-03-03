@@ -25,7 +25,7 @@ func TestMemoryStorage_OpenWriter(t *testing.T) {
 	t.Log(storage.valuesMap)
 
 	{
-		reader, err := storage.OpenReader("abc", false)
+		reader, err := storage.OpenReader("abc", false, false)
 		if err != nil {
 			if err == ErrNotFound {
 				t.Log("not found: abc")
@@ -52,7 +52,7 @@ func TestMemoryStorage_OpenWriter(t *testing.T) {
 	}
 
 	{
-		_, err := storage.OpenReader("abc 2", false)
+		_, err := storage.OpenReader("abc 2", false, false)
 		if err != nil {
 			if err == ErrNotFound {
 				t.Log("not found: abc2")
@@ -68,7 +68,7 @@ func TestMemoryStorage_OpenWriter(t *testing.T) {
 	}
 	_, _ = writer.Write([]byte("Hello123"))
 	{
-		reader, err := storage.OpenReader("abc", false)
+		reader, err := storage.OpenReader("abc", false, false)
 		if err != nil {
 			if err == ErrNotFound {
 				t.Log("not found: abc")
@@ -97,7 +97,7 @@ func TestMemoryStorage_OpenReaderLock(t *testing.T) {
 			IsDone: true,
 		},
 	}
-	_, _ = storage.OpenReader("test", false)
+	_, _ = storage.OpenReader("test", false, false)
 }
 
 func TestMemoryStorage_Delete(t *testing.T) {

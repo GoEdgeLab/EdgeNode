@@ -4,28 +4,37 @@ package caches
 
 import (
 	"encoding/json"
+	"errors"
+	"io/ioutil"
 )
 
 // PartialRanges 内容分区范围定义
 type PartialRanges struct {
-	ranges [][2]int64
+	Ranges [][2]int64 `json:"ranges"`
 }
 
 // NewPartialRanges 获取新对象
 func NewPartialRanges() *PartialRanges {
-	return &PartialRanges{ranges: [][2]int64{}}
+	return &PartialRanges{Ranges: [][2]int64{}}
 }
 
 // NewPartialRangesFromJSON 从JSON中解析范围
 func NewPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
-	var rs = [][2]int64{}
+	var rs = NewPartialRanges()
 	err := json.Unmarshal(data, &rs)
 	if err != nil {
 		return nil, err
 	}
-	var r = NewPartialRanges()
-	r.ranges = rs
-	return r, nil
+
+	return rs, nil
+}
+
+func NewPartialRangesFromFile(path string) (*PartialRanges, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return NewPartialRangesFromJSON(data)
 }
 
 // Add 添加新范围
@@ -36,46 +45,41 @@ func (this *PartialRanges) Add(begin int64, end int64) {
 
 	var nr = [2]int64{begin, end}
 
-	var count = len(this.ranges)
+	var count = len(this.Ranges)
 	if count == 0 {
-		this.ranges = [][2]int64{nr}
+		this.Ranges = [][2]int64{nr}
 		return
 	}
 
 	// insert
 	// TODO 将来使用二分法改进
 	var index = -1
-	for i, r := range this.ranges {
+	for i, r := range this.Ranges {
 		if r[0] > begin || (r[0] == begin && r[1] >= end) {
 			index = i
-			this.ranges = append(this.ranges, [2]int64{})
-			copy(this.ranges[index+1:], this.ranges[index:])
-			this.ranges[index] = nr
+			this.Ranges = append(this.Ranges, [2]int64{})
+			copy(this.Ranges[index+1:], this.Ranges[index:])
+			this.Ranges[index] = nr
 			break
 		}
 	}
 
 	if index == -1 {
 		index = count
-		this.ranges = append(this.ranges, nr)
+		this.Ranges = append(this.Ranges, nr)
 	}
 
 	this.merge(index)
 }
 
-// Ranges 获取所有范围
-func (this *PartialRanges) Ranges() [][2]int64 {
-	return this.ranges
-}
-
 // Contains 检查是否包含某个范围
 func (this *PartialRanges) Contains(begin int64, end int64) bool {
-	if len(this.ranges) == 0 {
-		return true
+	if len(this.Ranges) == 0 {
+		return false
 	}
 
 	// TODO 使用二分法查找改进性能
-	for _, r2 := range this.ranges {
+	for _, r2 := range this.Ranges {
 		if r2[0] <= begin && r2[1] >= end {
 			return true
 		}
@@ -86,21 +90,46 @@ func (this *PartialRanges) Contains(begin int64, end int64) bool {
 
 // AsJSON 转换为JSON
 func (this *PartialRanges) AsJSON() ([]byte, error) {
-	return json.Marshal(this.ranges)
+	return json.Marshal(this)
+}
+
+// WriteToFile 写入到文件中
+func (this *PartialRanges) WriteToFile(path string) error {
+	data, err := this.AsJSON()
+	if err != nil {
+		return errors.New("convert to json failed: " + err.Error())
+	}
+	return ioutil.WriteFile(path, data, 0666)
+}
+
+// ReadFromFile 从文件中读取
+func (this *PartialRanges) ReadFromFile(path string) (*PartialRanges, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return NewPartialRangesFromJSON(data)
+}
+
+func (this *PartialRanges) Max() int64 {
+	if len(this.Ranges) > 0 {
+		return this.Ranges[len(this.Ranges)-1][1]
+	}
+	return 0
 }
 
 func (this *PartialRanges) merge(index int) {
 	// forward
 	var lastIndex = index
 	for i := index; i >= 1; i-- {
-		var curr = this.ranges[i]
-		var prev = this.ranges[i-1]
+		var curr = this.Ranges[i]
+		var prev = this.Ranges[i-1]
 		var w1 = this.w(curr)
 		var w2 = this.w(prev)
 		if w1+w2 >= this.max(curr[1], prev[1])-this.min(curr[0], prev[0])-1 {
 			prev = [2]int64{this.min(curr[0], prev[0]), this.max(curr[1], prev[1])}
-			this.ranges[i-1] = prev
-			this.ranges = append(this.ranges[:i], this.ranges[i+1:]...)
+			this.Ranges[i-1] = prev
+			this.Ranges = append(this.Ranges[:i], this.Ranges[i+1:]...)
 			lastIndex = i - 1
 		} else {
 			break
@@ -109,15 +138,15 @@ func (this *PartialRanges) merge(index int) {
 
 	// backward
 	index = lastIndex
-	for index < len(this.ranges)-1 {
-		var curr = this.ranges[index]
-		var next = this.ranges[index+1]
+	for index < len(this.Ranges)-1 {
+		var curr = this.Ranges[index]
+		var next = this.Ranges[index+1]
 		var w1 = this.w(curr)
 		var w2 = this.w(next)
 		if w1+w2 >= this.max(curr[1], next[1])-this.min(curr[0], next[0])-1 {
 			curr = [2]int64{this.min(curr[0], next[0]), this.max(curr[1], next[1])}
-			this.ranges = append(this.ranges[:index], this.ranges[index+1:]...)
-			this.ranges[index] = curr
+			this.Ranges = append(this.Ranges[:index], this.Ranges[index+1:]...)
+			this.Ranges[index] = curr
 		} else {
 			break
 		}

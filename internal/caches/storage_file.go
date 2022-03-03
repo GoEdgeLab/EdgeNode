@@ -216,19 +216,24 @@ func (this *FileStorage) Init() error {
 	return nil
 }
 
-func (this *FileStorage) OpenReader(key string, useStale bool) (Reader, error) {
-	return this.openReader(key, true, useStale)
+func (this *FileStorage) OpenReader(key string, useStale bool, isPartial bool) (Reader, error) {
+	return this.openReader(key, true, useStale, isPartial)
 }
 
-func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool) (Reader, error) {
+func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool, isPartial bool) (Reader, error) {
 	// 使用陈旧缓存的时候，我们认为是短暂的，只需要从文件里检查即可
 	if useStale {
 		allowMemory = false
 	}
 
+	// 区间缓存只存在文件中
+	if isPartial {
+		allowMemory = false
+	}
+
 	// 先尝试内存缓存
 	if allowMemory && this.memoryStorage != nil {
-		reader, err := this.memoryStorage.OpenReader(key, useStale)
+		reader, err := this.memoryStorage.OpenReader(key, useStale, isPartial)
 		if err == nil {
 			return reader, err
 		}
@@ -273,9 +278,18 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool)
 		}
 	}()
 
-	var reader = NewFileReader(fp)
-	reader.openFile = openFile
-	reader.openFileCache = this.openFileCache
+	var reader Reader
+	if isPartial {
+		var partialFileReader = NewPartialFileReader(fp)
+		partialFileReader.openFile = openFile
+		partialFileReader.openFileCache = this.openFileCache
+		reader = partialFileReader
+	} else {
+		var fileReader = NewFileReader(fp)
+		fileReader.openFile = openFile
+		fileReader.openFileCache = this.openFileCache
+		reader = fileReader
+	}
 	err = reader.Init()
 	if err != nil {
 		return nil, err
@@ -284,40 +298,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool)
 	// 增加点击量
 	// 1/1000采样
 	if allowMemory {
-		var rate = this.policy.PersistenceHitSampleRate
-		if rate <= 0 {
-			rate = 1000
-		}
-		if this.lastHotSize == 0 {
-			// 自动降低采样率来增加热点数据的缓存几率
-			rate = rate / 10
-		}
-		if rands.Int(0, rate) == 0 {
-			var hitErr = this.list.IncreaseHit(hash)
-			if hitErr != nil {
-				// 此错误可以忽略
-				remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
-			}
-
-			// 增加到热点
-			// 这里不收录缓存尺寸过大的文件
-			if this.memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*1024*1024 {
-				this.hotMapLocker.Lock()
-				hotItem, ok := this.hotMap[key]
-				if ok {
-					hotItem.Hits++
-					hotItem.ExpiresAt = reader.expiresAt
-				} else if len(this.hotMap) < HotItemSize { // 控制数量
-					this.hotMap[key] = &HotItem{
-						Key:       key,
-						ExpiresAt: reader.ExpiresAt(),
-						Status:    reader.Status(),
-						Hits:      1,
-					}
-				}
-				this.hotMapLocker.Unlock()
-			}
-		}
+		this.increaseHit(key, hash, reader)
 	}
 
 	isOk = true
@@ -380,7 +361,8 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 	}
 
 	// 检查缓存是否已经生成
-	var cachePath = dir + "/" + hash + ".cache"
+	var cachePathName = dir + "/" + hash
+	var cachePath = cachePathName + ".cache"
 	stat, err := os.Stat(cachePath)
 	if err == nil && time.Now().Sub(stat.ModTime()) <= 1*time.Second {
 		// 防止并发连续写入
@@ -388,7 +370,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 	}
 	var tmpPath = cachePath + ".tmp"
 	if isPartial {
-		tmpPath = cachePath
+		tmpPath = cachePathName + ".cache"
 	}
 
 	// 先删除
@@ -502,7 +484,12 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 
 	isOk = true
 	if isPartial {
-		return NewPartialFileWriter(writer, key, expiredAt, isNewCreated, isPartial, partialBodyOffset, func() {
+		ranges, err := NewPartialRangesFromFile(cachePathName + "@ranges.cache")
+		if err != nil {
+			ranges = NewPartialRanges()
+		}
+
+		return NewPartialFileWriter(writer, key, expiredAt, isNewCreated, isPartial, partialBodyOffset, ranges, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
 			sharedWritingFileKeyLocker.Unlock()
@@ -923,7 +910,7 @@ func (this *FileStorage) hotLoop() {
 		var buf = utils.BytePool16k.Get()
 		defer utils.BytePool16k.Put(buf)
 		for _, item := range result[:size] {
-			reader, err := this.openReader(item.Key, false, false)
+			reader, err := this.openReader(item.Key, false, false, false)
 			if err != nil {
 				continue
 			}
@@ -1024,4 +1011,42 @@ func (this *FileStorage) cleanDeletedDirs(dir string) error {
 		}
 	}
 	return nil
+}
+
+// 增加某个Key的点击量
+func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
+	var rate = this.policy.PersistenceHitSampleRate
+	if rate <= 0 {
+		rate = 1000
+	}
+	if this.lastHotSize == 0 {
+		// 自动降低采样率来增加热点数据的缓存几率
+		rate = rate / 10
+	}
+	if rands.Int(0, rate) == 0 {
+		var hitErr = this.list.IncreaseHit(hash)
+		if hitErr != nil {
+			// 此错误可以忽略
+			remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
+		}
+
+		// 增加到热点
+		// 这里不收录缓存尺寸过大的文件
+		if this.memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*1024*1024 {
+			this.hotMapLocker.Lock()
+			hotItem, ok := this.hotMap[key]
+			if ok {
+				hotItem.Hits++
+				hotItem.ExpiresAt = reader.ExpiresAt()
+			} else if len(this.hotMap) < HotItemSize { // 控制数量
+				this.hotMap[key] = &HotItem{
+					Key:       key,
+					ExpiresAt: reader.ExpiresAt(),
+					Status:    reader.Status(),
+					Hits:      1,
+				}
+			}
+			this.hotMapLocker.Unlock()
+		}
+	}
 }

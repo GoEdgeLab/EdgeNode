@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewFilterReader(t *testing.T) {
-	var reader = readers.NewFilterReader(bytes.NewBufferString("0123456789"))
+	var reader = readers.NewFilterReaderCloser(bytes.NewBufferString("0123456789"))
 	reader.Add(func(p []byte, err error) error {
 		t.Log("filter1:", string(p), err)
 		return nil
