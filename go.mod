@@ -15,7 +15,7 @@ require (
 	github.com/dchest/captcha v0.0.0-20200903113550-03f5f0333e1f
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/golang/protobuf v1.5.2
-	github.com/iwind/TeaGo v0.0.0-20220304042834-d8b5103e9027
+	github.com/iwind/TeaGo v0.0.0-20220304043459-0dd944a5b475
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20210722083328-12b2d66abec3
 	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
