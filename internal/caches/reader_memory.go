@@ -199,8 +199,8 @@ func (this *MemoryReader) ReadBodyRange(buf []byte, start int64, end int64, call
 }
 
 // ContainsRange 是否包含某些区间内容
-func (this *MemoryReader) ContainsRange(r rangeutils.Range) bool {
-	return true
+func (this *MemoryReader) ContainsRange(r rangeutils.Range) (r2 rangeutils.Range, ok bool) {
+	return r, true
 }
 
 func (this *MemoryReader) Close() error {

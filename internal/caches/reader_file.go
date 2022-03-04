@@ -334,8 +334,8 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 }
 
 // ContainsRange 是否包含某些区间内容
-func (this *FileReader) ContainsRange(r rangeutils.Range) bool {
-	return true
+func (this *FileReader) ContainsRange(r rangeutils.Range) (r2 rangeutils.Range, ok bool) {
+	return r, true
 }
 
 func (this *FileReader) Close() error {

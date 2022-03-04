@@ -65,7 +65,8 @@ type HTTPWriter struct {
 	isFinished bool // 是否已完成
 
 	// Partial
-	isPartial bool
+	isPartial        bool
+	partialFileIsNew bool
 
 	// WebP
 	webpIsEncoding        bool
@@ -283,6 +284,10 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 		return
 	}
 	this.cacheWriter = cacheWriter
+
+	if this.isPartial {
+		this.partialFileIsNew = cacheWriter.(*caches.PartialFileWriter).IsNew()
+	}
 
 	// 写入Header
 	for k, v := range this.Header() {
@@ -912,6 +917,28 @@ func (this *HTTPWriter) Close() {
 			if this.isOk && this.cacheWriter != nil {
 				err := this.cacheWriter.Close()
 				if err == nil {
+					if !this.isPartial || this.partialFileIsNew {
+						var expiredAt = this.cacheWriter.ExpiredAt()
+						this.cacheStorage.AddToList(&caches.Item{
+							Type:       this.cacheWriter.ItemType(),
+							Key:        this.cacheWriter.Key(),
+							ExpiredAt:  expiredAt,
+							StaleAt:    expiredAt + int64(this.calculateStaleLife()),
+							HeaderSize: this.cacheWriter.HeaderSize(),
+							BodySize:   this.cacheWriter.BodySize(),
+							Host:       this.req.ReqHost,
+							ServerId:   this.req.ReqServer.Id,
+						})
+					}
+				}
+			}
+		} else {
+			if !this.isPartial || !this.cacheIsFinished {
+				_ = this.cacheWriter.Discard()
+			} else {
+				// Partial的文件内容不删除
+				err := this.cacheWriter.Close()
+				if err == nil && this.partialFileIsNew {
 					var expiredAt = this.cacheWriter.ExpiredAt()
 					this.cacheStorage.AddToList(&caches.Item{
 						Type:       this.cacheWriter.ItemType(),
@@ -925,8 +952,6 @@ func (this *HTTPWriter) Close() {
 					})
 				}
 			}
-		} else {
-			_ = this.cacheWriter.Discard()
 		}
 	}
 

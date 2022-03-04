@@ -241,13 +241,15 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 	// 检查正常的文件
 	var isPartialCache = false
+	var partialRanges []rangeutils.Range
 	if reader == nil {
 		reader, err = storage.OpenReader(key, useStale, false)
 		if err != nil && this.cacheRef.AllowPartialContent {
-			pReader := this.tryPartialReader(storage, key, useStale, rangeHeader)
+			pReader, ranges := this.tryPartialReader(storage, key, useStale, rangeHeader)
 			if pReader != nil {
 				isPartialCache = true
 				reader = pReader
+				partialRanges = ranges
 				err = nil
 			}
 		}
@@ -414,7 +416,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		}
 
 		// 支持Range
-		var ranges = []rangeutils.Range{}
+		var ranges = partialRanges
 		if supportRange {
 			if len(rangeHeader) > 0 {
 				if fileSize == 0 {
@@ -423,14 +425,15 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					return true
 				}
 
-				set, ok := httpRequestParseRangeHeader(rangeHeader)
-				if !ok {
-					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
-					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-					return true
+				if len(ranges) == 0 {
+					ranges, ok = httpRequestParseRangeHeader(rangeHeader)
+					if !ok {
+						this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+						this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+						return true
+					}
 				}
-				if len(set) > 0 {
-					ranges = set
+				if len(ranges) > 0 {
 					for k, r := range ranges {
 						r2, ok := r.Convert(fileSize)
 						if !ok {
@@ -570,26 +573,26 @@ func (this *HTTPRequest) addExpiresHeader(expiresAt int64) {
 }
 
 // 尝试读取区间缓存
-func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key string, useStale bool, rangeHeader string) caches.Reader {
+func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key string, useStale bool, rangeHeader string) (caches.Reader, []rangeutils.Range) {
 	// 尝试读取Partial cache
 	if len(rangeHeader) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	ranges, ok := httpRequestParseRangeHeader(rangeHeader)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	pReader, pErr := storage.OpenReader(key+caches.SuffixPartial, useStale, true)
 	if pErr != nil {
-		return nil
+		return nil, nil
 	}
 
 	partialReader, ok := pReader.(*caches.PartialFileReader)
 	if !ok {
 		_ = pReader.Close()
-		return nil
+		return nil, nil
 	}
 	var isOk = false
 	defer func() {
@@ -599,16 +602,18 @@ func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key s
 	}()
 
 	// 检查范围
-	for _, r := range ranges {
+	for index, r := range ranges {
 		r1, ok := r.Convert(partialReader.MaxLength())
 		if !ok {
-			return nil
+			return nil, nil
 		}
-		if !partialReader.ContainsRange(r1) {
-			return nil
+		r2, ok := partialReader.ContainsRange(r1)
+		if !ok {
+			return nil, nil
 		}
+		ranges[index] = r2
 	}
 
 	isOk = true
-	return pReader
+	return pReader, ranges
 }

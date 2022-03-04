@@ -113,8 +113,8 @@ func (this *PartialFileReader) InitAutoDiscard(autoDiscard bool) error {
 
 // ContainsRange 是否包含某些区间内容
 // 这里的 r 是已经经过格式化的
-func (this *PartialFileReader) ContainsRange(r rangeutils.Range) bool {
-	return this.ranges.Contains(r.Start(), r.End())
+func (this *PartialFileReader) ContainsRange(r rangeutils.Range) (r2 rangeutils.Range, ok bool) {
+	return this.ranges.Nearest(r.Start(), r.End())
 }
 
 // MaxLength 获取区间最大长度

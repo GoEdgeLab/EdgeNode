@@ -97,6 +97,34 @@ func TestNewPartialRanges5(t *testing.T) {
 	logs.PrintAsJSON(r.Ranges, t)
 }
 
+func TestNewPartialRanges_Nearest(t *testing.T) {
+	{
+		// nearby
+		var r = caches.NewPartialRanges()
+		r.Add(301, 400)
+		r.Add(401, 500)
+		r.Add(501, 600)
+
+		t.Log(r.Nearest(100, 200))
+		t.Log(r.Nearest(300, 350))
+		t.Log(r.Nearest(302, 350))
+	}
+
+	{
+		// nearby
+		var r = caches.NewPartialRanges()
+		r.Add(301, 400)
+		r.Add(450, 500)
+		r.Add(550, 600)
+
+		t.Log(r.Nearest(100, 200))
+		t.Log(r.Nearest(300, 350))
+		t.Log(r.Nearest(302, 350))
+		t.Log(r.Nearest(302, 440))
+		t.Log(r.Nearest(302, 1000))
+	}
+}
+
 func TestNewPartialRanges_AsJSON(t *testing.T) {
 	var r = caches.NewPartialRanges()
 	for j := 0; j < 1000; j++ {

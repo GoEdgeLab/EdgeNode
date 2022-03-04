@@ -39,7 +39,7 @@ type Reader interface {
 	BodySize() int64
 
 	// ContainsRange 是否包含某个区间内容
-	ContainsRange(r rangeutils.Range) bool
+	ContainsRange(r rangeutils.Range) (r2 rangeutils.Range, ok bool)
 
 	// Close 关闭
 	Close() error

@@ -88,6 +88,23 @@ func (this *PartialRanges) Contains(begin int64, end int64) bool {
 	return false
 }
 
+// Nearest 查找最近的某个范围
+func (this *PartialRanges) Nearest(begin int64, end int64) (r [2]int64, ok bool) {
+	if len(this.Ranges) == 0 {
+		return
+	}
+
+	// TODO 使用二分法查找改进性能
+	for _, r2 := range this.Ranges {
+		if r2[0] <= begin && r2[1] > begin {
+			r = [2]int64{begin, this.min(end, r2[1])}
+			ok = true
+			return
+		}
+	}
+	return
+}
+
 // AsJSON 转换为JSON
 func (this *PartialRanges) AsJSON() ([]byte, error) {
 	return json.Marshal(this)
