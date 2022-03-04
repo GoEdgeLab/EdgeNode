@@ -101,7 +101,12 @@ func (this *HTTPWriter) Prepare(resp *http.Response, size int64, status int, ena
 	this.statusCode = status
 
 	// 是否为区间请求
-	this.isPartial = status == http.StatusPartialContent && this.req.Method() != http.MethodHead
+	this.isPartial = status == http.StatusPartialContent
+
+	// 不支持对GET以外的方法返回的Partial内容的缓存
+	if this.isPartial && this.req.Method() != http.MethodGet {
+		enableCache = false
+	}
 
 	if resp != nil && resp.Body != nil {
 		cacheReader, ok := resp.Body.(caches.Reader)
