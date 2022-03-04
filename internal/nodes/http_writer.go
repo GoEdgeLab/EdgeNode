@@ -100,7 +100,8 @@ func (this *HTTPWriter) Prepare(resp *http.Response, size int64, status int, ena
 	this.size = size
 	this.statusCode = status
 
-	this.isPartial = status == http.StatusPartialContent
+	// 是否为区间请求
+	this.isPartial = status == http.StatusPartialContent && this.req.Method() != http.MethodHead
 
 	if resp != nil && resp.Body != nil {
 		cacheReader, ok := resp.Body.(caches.Reader)
@@ -184,7 +185,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	}
 
 	// 检查状态
-	if !this.isPartial && len(cacheRef.Status) > 0 && !lists.ContainsInt(cacheRef.Status, this.StatusCode()) {
+	if !cacheRef.MatchStatus(this.StatusCode()) {
 		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Status: "+types.String(this.StatusCode()))

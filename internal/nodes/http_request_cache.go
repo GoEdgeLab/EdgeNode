@@ -120,7 +120,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		return
 	}
 	var method = this.Method()
-	if method != http.MethodGet && method != http.MethodPost {
+	if method != http.MethodGet {
 		key += caches.SuffixMethod + method
 		tags = append(tags, strings.ToLower(method))
 	}
