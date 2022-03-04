@@ -1,12 +1,12 @@
 package configs
 
 import (
-	"github.com/go-yaml/yaml"
 	"github.com/iwind/TeaGo/Tea"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 )
 
-// 节点API配置
+// APIConfig 节点API配置
 type APIConfig struct {
 	RPC struct {
 		Endpoints []string `yaml:"endpoints"`

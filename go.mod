@@ -13,10 +13,9 @@ require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/chai2010/webp v1.1.0 // indirect
 	github.com/dchest/captcha v0.0.0-20200903113550-03f5f0333e1f
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-yaml/yaml v2.1.0+incompatible
+	github.com/fsnotify/fsnotify v1.5.1
 	github.com/golang/protobuf v1.5.2
-	github.com/iwind/TeaGo v0.0.0-20211026123858-7de7a21cad24
+	github.com/iwind/TeaGo v0.0.0-20220304042834-d8b5103e9027
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20210722083328-12b2d66abec3
 	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
@@ -30,11 +29,10 @@ require (
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
-	golang.org/x/net v0.0.0-20211215060638-4ddde0e984e9
-	golang.org/x/sys v0.0.0-20220111092808-5a964db01320
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9
 	golang.org/x/text v0.3.7
-	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
-	google.golang.org/grpc v1.43.0
+	google.golang.org/grpc v1.44.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
