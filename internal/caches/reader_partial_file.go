@@ -7,7 +7,6 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"os"
-	"strings"
 )
 
 type PartialFileReader struct {
@@ -18,19 +17,9 @@ type PartialFileReader struct {
 }
 
 func NewPartialFileReader(fp *os.File) *PartialFileReader {
-	// range path
-	var path = fp.Name()
-	var dotIndex = strings.LastIndex(path, ".")
-	var rangePath = ""
-	if dotIndex < 0 {
-		rangePath = path + "@ranges.cache"
-	} else {
-		rangePath = path[:dotIndex] + "@ranges" + path[dotIndex:]
-	}
-
 	return &PartialFileReader{
 		FileReader: NewFileReader(fp),
-		rangePath:  rangePath,
+		rangePath:  partialRangesFilePath(fp.Name()),
 	}
 }
 

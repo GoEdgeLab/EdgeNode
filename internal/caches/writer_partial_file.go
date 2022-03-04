@@ -7,7 +7,6 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"os"
-	"strings"
 	"sync"
 )
 
@@ -29,16 +28,6 @@ type PartialFileWriter struct {
 }
 
 func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, isNew bool, isPartial bool, bodyOffset int64, ranges *PartialRanges, endFunc func()) *PartialFileWriter {
-	var path = rawWriter.Name()
-	// ranges路径
-	var dotIndex = strings.LastIndex(path, ".")
-	var rangePath = ""
-	if dotIndex < 0 {
-		rangePath = path + "@ranges.cache"
-	} else {
-		rangePath = path[:dotIndex] + "@ranges" + path[dotIndex:]
-	}
-
 	return &PartialFileWriter{
 		key:        key,
 		rawWriter:  rawWriter,
@@ -48,7 +37,7 @@ func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, isNew
 		isPartial:  isPartial,
 		bodyOffset: bodyOffset,
 		ranges:     ranges,
-		rangePath:  rangePath,
+		rangePath:  partialRangesFilePath(rawWriter.Name()),
 	}
 }
 

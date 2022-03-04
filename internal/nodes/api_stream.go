@@ -352,14 +352,14 @@ func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
 		var keys = msg.Keys
 		for _, key := range keys {
 			keys = append(keys,
-				key+cacheMethodSuffix+"HEAD",
-				key+webpCacheSuffix,
-				key+cachePartialSuffix,
+				key+caches.SuffixMethod+"HEAD",
+				key+caches.SuffixWebP,
+				key+caches.SuffixPartial,
 			)
 			// TODO 根据实际缓存的内容进行组合
 			for _, encoding := range compressions.AllEncodings() {
-				keys = append(keys, key+compressionCacheSuffix+encoding)
-				keys = append(keys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
+				keys = append(keys, key+caches.SuffixCompression+encoding)
+				keys = append(keys, key+caches.SuffixWebP+caches.SuffixCompression+encoding)
 			}
 		}
 		msg.Keys = keys

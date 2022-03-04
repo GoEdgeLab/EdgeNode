@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 )
 
-var contentRangeRegexp = regexp.MustCompile(`^bytes (\d+)-(\d+)/`)
+var contentRangeRegexp = regexp.MustCompile(`^bytes (\d+)-(\d+)/(\d+|\*)`)
 
 // 分解Range
 func httpRequestParseRangeHeader(rangeValue string) (result []rangeutils.Range, ok bool) {
@@ -125,12 +125,18 @@ func httpRequestReadRange(reader io.Reader, buf []byte, start int64, end int64, 
 }
 
 // 分解Content-Range
-func httpRequestParseContentRangeHeader(contentRange string) (start int64) {
+func httpRequestParseContentRangeHeader(contentRange string) (start int64, total int64) {
 	var matches = contentRangeRegexp.FindStringSubmatch(contentRange)
-	if len(matches) < 3 {
-		return -1
+	if len(matches) < 4 {
+		return -1, -1
 	}
-	return types.Int64(matches[1])
+
+	start = types.Int64(matches[1])
+	var sizeString = matches[3]
+	if sizeString != "*" {
+		total = types.Int64(sizeString)
+	}
+	return
 }
 
 // 生成boundary

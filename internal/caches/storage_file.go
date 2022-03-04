@@ -297,7 +297,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 	// 增加点击量
 	// 1/1000采样
-	if allowMemory {
+	if !isPartial && allowMemory {
 		this.increaseHit(key, hash, reader)
 	}
 
@@ -537,8 +537,14 @@ func (this *FileStorage) Delete(key string) error {
 	}
 	err = os.Remove(path)
 	if err == nil || os.IsNotExist(err) {
+		// 删除Partial相关
+		if strings.HasSuffix(key, SuffixPartial) {
+			_ = os.Remove(partialRangesFilePath(path))
+		}
+
 		return nil
 	}
+
 	return err
 }
 
@@ -650,6 +656,12 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
+
+		// 删除Partial相关
+		if strings.HasSuffix(key, SuffixPartial) {
+			_ = os.Remove(partialRangesFilePath(path))
+		}
+
 		err = this.list.Remove(hash)
 		if err != nil {
 			return err

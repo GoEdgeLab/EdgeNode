@@ -121,7 +121,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 	var method = this.Method()
 	if method != http.MethodGet && method != http.MethodPost {
-		key += cacheMethodSuffix + method
+		key += caches.SuffixMethod + method
 		tags = append(tags, strings.ToLower(method))
 	}
 
@@ -142,14 +142,14 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 		var subKeys = []string{
 			key,
-			key + cacheMethodSuffix + "HEAD",
-			key + webpCacheSuffix,
-			key + cachePartialSuffix,
+			key + caches.SuffixMethod + "HEAD",
+			key + caches.SuffixWebP,
+			key + caches.SuffixPartial,
 		}
 		// TODO 根据实际缓存的内容进行组合
 		for _, encoding := range compressions.AllEncodings() {
-			subKeys = append(subKeys, key+compressionCacheSuffix+encoding)
-			subKeys = append(subKeys, key+webpCacheSuffix+compressionCacheSuffix+encoding)
+			subKeys = append(subKeys, key+caches.SuffixCompression+encoding)
+			subKeys = append(subKeys, key+caches.SuffixWebP+caches.SuffixCompression+encoding)
 		}
 		for _, subKey := range subKeys {
 			err := storage.Delete(subKey)
@@ -210,15 +210,15 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			if ok {
 				// 检查支持WebP的压缩缓存
 				if webPIsEnabled {
-					reader, _ = storage.OpenReader(key+webpCacheSuffix+compressionCacheSuffix+encoding, useStale, false)
+					reader, _ = storage.OpenReader(key+caches.SuffixWebP+caches.SuffixCompression+encoding, useStale, false)
 					if reader != nil {
 						tags = append(tags, "webp", encoding)
 					}
 				}
 
-				// 检查普通缓存
+				// 检查普通压缩缓存
 				if reader == nil {
-					reader, _ = storage.OpenReader(key+compressionCacheSuffix+encoding, useStale, false)
+					reader, _ = storage.OpenReader(key+caches.SuffixCompression+encoding, useStale, false)
 					if reader != nil {
 						tags = append(tags, encoding)
 					}
@@ -232,9 +232,9 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		!isHeadMethod &&
 		reader == nil &&
 		webPIsEnabled {
-		reader, _ = storage.OpenReader(key+webpCacheSuffix, useStale, false)
+		reader, _ = storage.OpenReader(key+caches.SuffixWebP, useStale, false)
 		if reader != nil {
-			this.writer.cacheReaderSuffix = webpCacheSuffix
+			this.writer.cacheReaderSuffix = caches.SuffixWebP
 			tags = append(tags, "webp")
 		}
 	}
@@ -581,7 +581,7 @@ func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key s
 		return nil
 	}
 
-	pReader, pErr := storage.OpenReader(key+cachePartialSuffix, useStale, true)
+	pReader, pErr := storage.OpenReader(key+caches.SuffixPartial, useStale, true)
 	if pErr != nil {
 		return nil
 	}

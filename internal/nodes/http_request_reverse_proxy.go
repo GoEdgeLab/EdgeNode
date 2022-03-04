@@ -284,8 +284,8 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 输出到客户端
-	pool := this.bytePool(resp.ContentLength)
-	buf := pool.Get()
+	var pool = this.bytePool(resp.ContentLength)
+	var buf = pool.Get()
 	if shouldAutoFlush {
 		for {
 			n, readErr := resp.Body.Read(buf)

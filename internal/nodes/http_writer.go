@@ -35,18 +35,8 @@ import (
 	"sync/atomic"
 )
 
-// webp相关配置
-const webpCacheSuffix = "@GOEDGE_WEBP"
-
 var webpMaxBufferSize int64 = 1_000_000_000
 var webpTotalBufferSize int64 = 0
-
-// 压缩相关配置
-const compressionCacheSuffix = "@GOEDGE_"
-
-// 缓存相关配置
-const cacheMethodSuffix = "@GOEDGE_"
-const cachePartialSuffix = "@GOEDGE_partial"
 
 func init() {
 	var systemMemory = utils.SystemMemoryGB() / 8
@@ -277,7 +267,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	var expiredAt = utils.UnixTime() + life
 	var cacheKey = this.req.cacheKey
 	if this.isPartial {
-		cacheKey += cachePartialSuffix
+		cacheKey += caches.SuffixPartial
 	}
 	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, this.isPartial)
 	if err != nil {
@@ -308,9 +298,16 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 		// content-range
 		var contentRange = this.GetHeader("Content-Range")
 		if len(contentRange) > 0 {
-			var start = httpRequestParseContentRangeHeader(contentRange)
+			start, total := httpRequestParseContentRangeHeader(contentRange)
 			if start < 0 {
 				return
+			}
+			if total > 0 {
+				partialWriter, ok := cacheWriter.(*caches.PartialFileWriter)
+				if !ok {
+					return
+				}
+				partialWriter.SetBodyLength(total)
 			}
 			var filterReader = readers.NewFilterReaderCloser(resp.Body)
 			this.cacheIsFinished = true
@@ -555,7 +552,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 			cacheKey += this.cacheReaderSuffix
 		}
 
-		compressionCacheWriter, err := this.cacheStorage.OpenWriter(cacheKey+compressionCacheSuffix+compressionEncoding, expiredAt, this.StatusCode(), -1, false)
+		compressionCacheWriter, err := this.cacheStorage.OpenWriter(cacheKey+caches.SuffixCompression+compressionEncoding, expiredAt, this.StatusCode(), -1, false)
 		if err != nil {
 			return
 		}
@@ -761,10 +758,10 @@ func (this *HTTPWriter) Close() {
 			var expiredAt int64 = 0
 
 			if this.cacheReader != nil {
-				cacheKey = this.req.cacheKey + webpCacheSuffix
+				cacheKey = this.req.cacheKey + caches.SuffixWebP
 				expiredAt = this.cacheReader.ExpiresAt()
 			} else if this.cacheWriter != nil {
-				cacheKey = this.cacheWriter.Key() + webpCacheSuffix
+				cacheKey = this.cacheWriter.Key() + caches.SuffixWebP
 				expiredAt = this.cacheWriter.ExpiredAt()
 			}
 
