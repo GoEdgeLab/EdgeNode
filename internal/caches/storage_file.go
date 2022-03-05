@@ -374,9 +374,29 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 	}
 
 	// 先删除
-	err = this.list.Remove(hash)
-	if err != nil {
-		return nil, err
+	if !isPartial {
+		err = this.list.Remove(hash)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 从已经存储的内容中读取信息
+	var isNewCreated = true
+	var partialBodyOffset int64
+	if isPartial {
+		readerFp, err := os.OpenFile(tmpPath, os.O_RDONLY, 0444)
+		if err == nil {
+			var partialReader = NewPartialFileReader(readerFp)
+			err = partialReader.Init()
+			_ = partialReader.Close()
+			if err == nil && partialReader.bodyOffset > 0 {
+				isNewCreated = false
+				partialBodyOffset = partialReader.bodyOffset
+			} else {
+				_ = this.removeCacheFile(tmpPath)
+			}
+		}
 	}
 
 	writer, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_SYNC|os.O_WRONLY, 0666)
@@ -404,22 +424,6 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 	if err != nil {
 		removeOnFailure = false
 		return nil, ErrFileIsWriting
-	}
-
-	// 是否已经有内容
-	var isNewCreated = true
-	var partialBodyOffset int64
-	if isPartial {
-		partialFP, err := os.OpenFile(tmpPath, os.O_RDONLY, 0444)
-		if err == nil {
-			var partialReader = NewFileReader(partialFP)
-			err = partialReader.InitAutoDiscard(false)
-			if err == nil && partialReader.bodyOffset > 0 {
-				isNewCreated = false
-				partialBodyOffset = partialReader.bodyOffset
-			}
-			_ = partialReader.Close()
-		}
 	}
 
 	if isNewCreated {

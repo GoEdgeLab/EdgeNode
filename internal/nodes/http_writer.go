@@ -181,8 +181,18 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 		}
 		return
 	}
-	if size >= 0 && ((cacheRef.MaxSizeBytes() > 0 && size > cacheRef.MaxSizeBytes()) ||
-		(cachePolicy.MaxSizeBytes() > 0 && size > cachePolicy.MaxSizeBytes()) || (cacheRef.MinSizeBytes() > size)) {
+
+	var contentSize = size
+	if this.isPartial {
+		// 从Content-Range中读取内容总长度
+		var contentRange = this.Header().Get("Content-Range")
+		_, totalSize := httpRequestParseContentRangeHeader(contentRange)
+		if totalSize > 0 {
+			contentSize = totalSize
+		}
+	}
+	if contentSize >= 0 && ((cacheRef.MaxSizeBytes() > 0 && contentSize > cacheRef.MaxSizeBytes()) ||
+		(cachePolicy.MaxSizeBytes() > 0 && contentSize > cachePolicy.MaxSizeBytes()) || (cacheRef.MinSizeBytes() > contentSize)) {
 		this.req.varMapping["cache.status"] = "BYPASS"
 		if addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, Content-Length")
@@ -367,6 +377,8 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 			var hasError = false
 			var writtenTotal = false
 			reader.OnPartRead(func(start int64, end int64, total int64, data []byte, header textproto.MIMEHeader) {
+				// TODO 如果 total 超出缓存限制，则不写入缓存数据，并且记录到某个内存表中，下次不再OpenWriter
+
 				if hasError {
 					return
 				}

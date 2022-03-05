@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 )
 
+// 其中的每个括号里的内容都在被引用，不能轻易修改
 var contentRangeRegexp = regexp.MustCompile(`^bytes (\d+)-(\d+)/(\d+|\*)`)
 
 // 分解Range

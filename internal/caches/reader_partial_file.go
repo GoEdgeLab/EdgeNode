@@ -114,7 +114,20 @@ func (this *PartialFileReader) InitAutoDiscard(autoDiscard bool) error {
 // ContainsRange 是否包含某些区间内容
 // 这里的 r 是已经经过格式化的
 func (this *PartialFileReader) ContainsRange(r rangeutils.Range) (r2 rangeutils.Range, ok bool) {
-	return this.ranges.Nearest(r.Start(), r.End())
+	r2, ok = this.ranges.Nearest(r.Start(), r.End())
+	if ok && this.bodySize > 0 {
+		// 考虑可配置
+		var span int64 = 512 * 1024
+		if this.bodySize > 1<<30 {
+			span = 1 << 20
+		}
+
+		// 这里限制返回的最小缓存，防止因为返回的内容过小而导致请求过多
+		if r2.Length() < r.Length() && r2.Length() < span {
+			ok = false
+		}
+	}
+	return
 }
 
 // MaxLength 获取区间最大长度
