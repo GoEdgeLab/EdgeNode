@@ -511,7 +511,7 @@ func TestFileStorage_Stop(t *testing.T) {
 }
 
 func TestFileStorage_DecodeFile(t *testing.T) {
-	storage := NewFileStorage(&serverconfigs.HTTPCachePolicy{
+	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
 		Options: map[string]interface{}{
@@ -524,6 +524,11 @@ func TestFileStorage_DecodeFile(t *testing.T) {
 	}
 	_, path := storage.keyPath("my-key")
 	t.Log(path)
+}
+
+func TestFileStorage_RemoveCacheFile(t *testing.T) {
+	var storage = NewFileStorage(nil)
+	t.Log(storage.removeCacheFile("/Users/WorkSpace/EdgeProject/EdgeCache/p43/15/7e/157eba0dfc6dfb6fbbf20b1f9e584674.cache"))
 }
 
 func BenchmarkFileStorage_Read(b *testing.B) {

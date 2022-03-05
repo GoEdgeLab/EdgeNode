@@ -274,7 +274,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 	defer func() {
 		if !isOk {
 			_ = fp.Close()
-			_ = os.Remove(path)
+			_ = this.removeCacheFile(path)
 		}
 	}()
 
@@ -535,13 +535,8 @@ func (this *FileStorage) Delete(key string) error {
 	if err != nil {
 		return err
 	}
-	err = os.Remove(path)
+	err = this.removeCacheFile(path)
 	if err == nil || os.IsNotExist(err) {
-		// 删除Partial相关
-		if strings.HasSuffix(key, SuffixPartial) {
-			_ = os.Remove(partialRangesFilePath(path))
-		}
-
 		return nil
 	}
 
@@ -652,14 +647,9 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 	// 文件
 	for _, key := range keys {
 		hash, path := this.keyPath(key)
-		err := os.Remove(path)
+		err := this.removeCacheFile(path)
 		if err != nil && !os.IsNotExist(err) {
 			return err
-		}
-
-		// 删除Partial相关
-		if strings.HasSuffix(key, SuffixPartial) {
-			_ = os.Remove(partialRangesFilePath(path))
 		}
 
 		err = this.list.Remove(hash)
@@ -836,10 +826,11 @@ func (this *FileStorage) purgeLoop() {
 		for i := 0; i < times; i++ {
 			countFound, err := this.list.Purge(purgeCount, func(hash string) error {
 				path := this.hashPath(hash)
-				err := os.Remove(path)
+				err := this.removeCacheFile(path)
 				if err != nil && !os.IsNotExist(err) {
 					remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
 				}
+
 				return nil
 			})
 			if err != nil {
@@ -869,10 +860,11 @@ func (this *FileStorage) purgeLoop() {
 				remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
 				err := this.list.PurgeLFU(count, func(hash string) error {
 					path := this.hashPath(hash)
-					err := os.Remove(path)
+					err := this.removeCacheFile(path)
 					if err != nil && !os.IsNotExist(err) {
 						remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
 					}
+
 					return nil
 				})
 				if err != nil {
@@ -1061,4 +1053,16 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 			this.hotMapLocker.Unlock()
 		}
 	}
+}
+
+// 删除缓存文件
+func (this *FileStorage) removeCacheFile(path string) error {
+	var err = os.Remove(path)
+	if err == nil || os.IsNotExist(err) {
+		err = nil
+
+		// 删除Partial相关
+		_ = os.Remove(partialRangesFilePath(path))
+	}
+	return err
 }
