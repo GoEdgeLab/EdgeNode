@@ -13,7 +13,8 @@ type StorageInterface interface {
 	OpenReader(key string, useStale bool, isPartial bool) (reader Reader, err error)
 
 	// OpenWriter 打开缓存写入器等待写入
-	OpenWriter(key string, expiredAt int64, status int, size int64, isPartial bool) (Writer, error)
+	// size 和 maxSize 可能为-1
+	OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error)
 
 	// Delete 删除某个键值对应的缓存
 	Delete(key string) error
@@ -41,4 +42,7 @@ type StorageInterface interface {
 
 	// AddToList 将缓存添加到列表
 	AddToList(item *Item)
+
+	// IgnoreKey 忽略某个Key，即不缓存某个Key
+	IgnoreKey(key string)
 }

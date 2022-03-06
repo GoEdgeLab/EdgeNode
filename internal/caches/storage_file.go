@@ -12,6 +12,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
@@ -44,7 +46,8 @@ const (
 )
 
 const (
-	HotItemSize = 1024
+	HotItemSize               = 1024         // 热点数据数量
+	FileToMemoryMaxSize int64 = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
 )
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
@@ -68,6 +71,8 @@ type FileStorage struct {
 	lastHotSize  int
 	hotTicker    *utils.Ticker
 
+	ignoreKeys *setutils.FixedSet
+
 	openFileCache *OpenFileCache
 }
 
@@ -76,6 +81,7 @@ func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
 		policy:      policy,
 		hotMap:      map[string]*HotItem{},
 		lastHotSize: -1,
+		ignoreKeys:  setutils.NewFixedSet(32768),
 	}
 }
 
@@ -297,7 +303,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 	// 增加点击量
 	// 1/1000采样
-	if !isPartial && allowMemory {
+	if !isPartial && allowMemory && reader.BodySize() < FileToMemoryMaxSize {
 		this.increaseHit(key, hash, reader)
 	}
 
@@ -306,11 +312,20 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 }
 
 // OpenWriter 打开缓存文件等待写入
-func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64, isPartial bool) (Writer, error) {
+func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
+	// 是否已忽略
+	if this.ignoreKeys.Has(key) {
+		return nil, ErrEntityTooLarge
+	}
+
 	// 先尝试内存缓存
 	// 我们限定仅小文件优先存在内存中
-	if !isPartial && this.memoryStorage != nil && size > 0 && size < 32*1024*1024 {
-		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status, size, false)
+	var maxMemorySize = FileToMemoryMaxSize
+	if maxSize > maxMemorySize {
+		maxMemorySize = maxSize
+	}
+	if !isPartial && this.memoryStorage != nil && ((size > 0 && size < maxMemorySize) || size < 0) {
+		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status, size, maxMemorySize, false)
 		if err == nil {
 			return writer, nil
 		}
@@ -499,7 +514,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 			sharedWritingFileKeyLocker.Unlock()
 		}), nil
 	} else {
-		return NewFileWriter(writer, key, expiredAt, func() {
+		return NewFileWriter(this, writer, key, expiredAt, -1, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
 			sharedWritingFileKeyLocker.Unlock()
@@ -689,6 +704,8 @@ func (this *FileStorage) Stop() {
 	if this.openFileCache != nil {
 		this.openFileCache.CloseAll()
 	}
+
+	this.ignoreKeys.Reset()
 }
 
 // TotalDiskSize 消耗的磁盘尺寸
@@ -702,6 +719,11 @@ func (this *FileStorage) TotalMemorySize() int64 {
 		return 0
 	}
 	return this.memoryStorage.TotalMemorySize()
+}
+
+// IgnoreKey 忽略某个Key，即不缓存某个Key
+func (this *FileStorage) IgnoreKey(key string) {
+	this.ignoreKeys.Push(key)
 }
 
 // 绝对路径
@@ -929,7 +951,7 @@ func (this *FileStorage) hotLoop() {
 				continue
 			}
 
-			writer, err := this.memoryStorage.openWriter(item.Key, item.ExpiresAt, item.Status, reader.BodySize(), false)
+			writer, err := this.memoryStorage.openWriter(item.Key, item.ExpiresAt, item.Status, reader.BodySize(), -1, false)
 			if err != nil {
 				if !CanIgnoreErr(err) {
 					remotelogs.Error("CACHE", "transfer hot item failed: "+err.Error())

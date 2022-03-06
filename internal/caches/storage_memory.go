@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/rands"
@@ -46,6 +47,8 @@ type MemoryStorage struct {
 
 	totalSize     int64
 	writingKeyMap map[string]zero.Zero // key => bool
+
+	ignoreKeys *setutils.FixedSet
 }
 
 func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage StorageInterface) *MemoryStorage {
@@ -65,6 +68,7 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage Stora
 		valuesMap:     map[uint64]*MemoryItem{},
 		dirtyChan:     dirtyChan,
 		writingKeyMap: map[string]zero.Zero{},
+		ignoreKeys:    setutils.NewFixedSet(32768),
 	}
 }
 
@@ -145,15 +149,19 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 }
 
 // OpenWriter 打开缓存写入器等待写入
-func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, size int64, isPartial bool) (Writer, error) {
+func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
+	if this.ignoreKeys.Has(key) {
+		return nil, ErrEntityTooLarge
+	}
+
 	// TODO 内存缓存暂时不支持分块内容存储
 	if isPartial {
 		return nil, ErrFileIsWriting
 	}
-	return this.openWriter(key, expiredAt, status, size, true)
+	return this.openWriter(key, expiredAt, status, size, maxSize, true)
 }
 
-func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, size int64, isDirty bool) (Writer, error) {
+func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isDirty bool) (Writer, error) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
@@ -200,7 +208,7 @@ func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, s
 	}
 
 	isWriting = true
-	return NewMemoryWriter(this, key, expiredAt, status, isDirty, func() {
+	return NewMemoryWriter(this, key, expiredAt, status, isDirty, maxSize, func() {
 		this.locker.Lock()
 		delete(this.writingKeyMap, key)
 		this.locker.Unlock()
@@ -277,6 +285,8 @@ func (this *MemoryStorage) Stop() {
 
 	this.locker.Unlock()
 
+	this.ignoreKeys.Reset()
+
 	// 回收内存
 	runtime.GC()
 
@@ -303,6 +313,11 @@ func (this *MemoryStorage) TotalDiskSize() int64 {
 // TotalMemorySize 内存尺寸
 func (this *MemoryStorage) TotalMemorySize() int64 {
 	return atomic.LoadInt64(&this.totalSize)
+}
+
+// IgnoreKey 忽略某个Key，即不缓存某个Key
+func (this *MemoryStorage) IgnoreKey(key string) {
+	this.ignoreKeys.Push(key)
 }
 
 // 计算Key Hash
@@ -391,7 +406,7 @@ func (this *MemoryStorage) flushItem(key string) {
 		return
 	}
 
-	writer, err := this.parentStorage.OpenWriter(key, item.ExpiredAt, item.Status, -1, false)
+	writer, err := this.parentStorage.OpenWriter(key, item.ExpiredAt, item.Status, -1, -1, false)
 	if err != nil {
 		if !CanIgnoreErr(err) {
 			remotelogs.Error("CACHE", "flush items failed: open writer failed: "+err.Error())

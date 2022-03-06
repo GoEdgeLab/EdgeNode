@@ -11,20 +11,24 @@ import (
 )
 
 type FileWriter struct {
+	storage    StorageInterface
 	rawWriter  *os.File
 	key        string
 	headerSize int64
 	bodySize   int64
 	expiredAt  int64
+	maxSize    int64
 	endFunc    func()
 	once       sync.Once
 }
 
-func NewFileWriter(rawWriter *os.File, key string, expiredAt int64, endFunc func()) *FileWriter {
+func NewFileWriter(storage StorageInterface, rawWriter *os.File, key string, expiredAt int64, maxSize int64, endFunc func()) *FileWriter {
 	return &FileWriter{
+		storage:   storage,
 		key:       key,
 		rawWriter: rawWriter,
 		expiredAt: expiredAt,
+		maxSize:   maxSize,
 		endFunc:   endFunc,
 	}
 }
@@ -60,6 +64,15 @@ func (this *FileWriter) WriteHeaderLength(headerLength int) error {
 func (this *FileWriter) Write(data []byte) (n int, err error) {
 	n, err = this.rawWriter.Write(data)
 	this.bodySize += int64(n)
+
+	if this.maxSize > 0 && this.bodySize > this.maxSize {
+		err = ErrEntityTooLarge
+
+		if this.storage != nil {
+			this.storage.IgnoreKey(this.key)
+		}
+	}
+
 	if err != nil {
 		_ = this.Discard()
 	}

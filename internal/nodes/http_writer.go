@@ -286,8 +286,12 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	if this.isPartial {
 		cacheKey += caches.SuffixPartial
 	}
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, this.isPartial)
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, cacheRef.MaxSizeBytes(), this.isPartial)
 	if err != nil {
+		if err == caches.ErrEntityTooLarge && addStatusHeader {
+			this.Header().Set("X-Cache", "BYPASS, entity too large")
+		}
+
 		if !caches.CanIgnoreErr(err) {
 			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
 		}
@@ -556,8 +560,10 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 
 	// compression cache writer
 	// 只有在本身内容已经缓存的情况下才会写入缓存，防止同时写入缓存导致IO负载升高
+	var cacheRef = this.req.cacheRef
 	if !this.isPartial &&
 		this.cacheStorage != nil &&
+		cacheRef != nil &&
 		(this.cacheReader != nil || (this.cacheStorage.Policy().SyncCompressionCache && this.cacheWriter != nil)) &&
 		!this.webpIsEncoding {
 		var cacheKey = ""
@@ -575,7 +581,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 			cacheKey += this.cacheReaderSuffix
 		}
 
-		compressionCacheWriter, err := this.cacheStorage.OpenWriter(cacheKey+caches.SuffixCompression+compressionEncoding, expiredAt, this.StatusCode(), -1, false)
+		compressionCacheWriter, err := this.cacheStorage.OpenWriter(cacheKey+caches.SuffixCompression+compressionEncoding, expiredAt, this.StatusCode(), -1, cacheRef.MaxSizeBytes(), false)
 		if err != nil {
 			return
 		}
@@ -788,7 +794,7 @@ func (this *HTTPWriter) Close() {
 				expiredAt = this.cacheWriter.ExpiredAt()
 			}
 
-			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), -1, false)
+			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), -1, -1, false)
 			if webpCacheWriter != nil {
 				// 写入Header
 				for k, v := range this.Header() {

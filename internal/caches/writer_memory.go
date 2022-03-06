@@ -16,6 +16,7 @@ type MemoryWriter struct {
 	bodySize   int64
 	status     int
 	isDirty    bool
+	maxSize    int64
 
 	hash    uint64
 	item    *MemoryItem
@@ -23,7 +24,7 @@ type MemoryWriter struct {
 	once    sync.Once
 }
 
-func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, endFunc func()) *MemoryWriter {
+func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, maxSize int64, endFunc func()) *MemoryWriter {
 	w := &MemoryWriter{
 		storage:   memoryStorage,
 		key:       key,
@@ -35,6 +36,7 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 		},
 		status:  status,
 		isDirty: isDirty,
+		maxSize: maxSize,
 		endFunc: endFunc,
 	}
 	w.hash = w.calculateHash(key)
@@ -53,6 +55,14 @@ func (this *MemoryWriter) WriteHeader(data []byte) (n int, err error) {
 func (this *MemoryWriter) Write(data []byte) (n int, err error) {
 	this.bodySize += int64(len(data))
 	this.item.BodyValue = append(this.item.BodyValue, data...)
+
+	// 检查尺寸
+	if this.maxSize > 0 && this.bodySize > this.maxSize {
+		err = ErrEntityTooLarge
+		this.storage.IgnoreKey(this.key)
+		return len(data), err
+	}
+
 	return len(data), nil
 }
 
