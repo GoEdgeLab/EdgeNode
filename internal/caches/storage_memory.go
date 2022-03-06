@@ -99,11 +99,13 @@ func (this *MemoryStorage) Init() error {
 	})
 
 	// 启动定时Flush memory to disk任务
-	goman.New(func() {
-		for hash := range this.dirtyChan {
-			this.flushItem(hash)
-		}
-	})
+	if this.parentStorage != nil {
+		goman.New(func() {
+			for hash := range this.dirtyChan {
+				this.flushItem(hash)
+			}
+		})
+	}
 
 	return nil
 }
@@ -277,7 +279,7 @@ func (this *MemoryStorage) Stop() {
 		this.purgeTicker.Stop()
 	}
 
-	if this.parentStorage != nil && this.dirtyChan != nil {
+	if this.dirtyChan != nil {
 		close(this.dirtyChan)
 	}
 
