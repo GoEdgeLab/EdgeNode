@@ -8,37 +8,37 @@ import (
 
 // AllowIP 检查IP是否被允许访问
 // 如果一个IP不在任何名单中，则允许访问
-func AllowIP(ip string, serverId int64) bool {
+func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool) {
 	var ipLong = utils.IP2Long(ip)
 	if ipLong == 0 {
-		return false
+		return false, false
 	}
 
 	// check white lists
 	if GlobalWhiteIPList.Contains(ipLong) {
-		return true
+		return true, true
 	}
 
 	if serverId > 0 {
 		var list = SharedServerListManager.FindWhiteList(serverId, false)
 		if list != nil && list.Contains(ipLong) {
-			return true
+			return true, true
 		}
 	}
 
 	// check black lists
 	if GlobalBlackIPList.Contains(ipLong) {
-		return false
+		return false, false
 	}
 
 	if serverId > 0 {
 		var list = SharedServerListManager.FindBlackList(serverId, false)
 		if list != nil && list.Contains(ipLong) {
-			return false
+			return false, false
 		}
 	}
 
-	return true
+	return true, false
 }
 
 // IsInWhiteList 检查IP是否在白名单中
@@ -58,7 +58,7 @@ func AllowIPStrings(ipStrings []string, serverId int64) bool {
 		return true
 	}
 	for _, ip := range ipStrings {
-		isAllowed := AllowIP(ip, serverId)
+		isAllowed, _ := AllowIP(ip, serverId)
 		if !isAllowed {
 			return false
 		}

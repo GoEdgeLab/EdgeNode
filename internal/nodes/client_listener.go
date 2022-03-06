@@ -49,7 +49,8 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 	// 是否在WAF名单中
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err == nil {
-		if !iplibrary.AllowIP(ip, 0) || (!waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
+		canGoNext, _ := iplibrary.AllowIP(ip, 0)
+		if !canGoNext || (!waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
 			waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)) {
 			tcpConn, ok := conn.(*net.TCPConn)
 			if ok {

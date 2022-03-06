@@ -5,20 +5,27 @@ package iplibrary
 import (
 	"database/sql"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type IPListDB struct {
 	db *sql.DB
 
-	itemTableName   string
-	deleteItemStmt  *sql.Stmt
-	insertItemStmt  *sql.Stmt
-	selectItemsStmt *sql.Stmt
+	itemTableName          string
+	deleteExpiredItemsStmt *sql.Stmt
+	deleteItemStmt         *sql.Stmt
+	insertItemStmt         *sql.Stmt
+	selectItemsStmt        *sql.Stmt
+	selectMaxVersionStmt   *sql.Stmt
+
+	cleanTicker *time.Ticker
 
 	dir string
 }
@@ -27,6 +34,7 @@ func NewIPListDB() (*IPListDB, error) {
 	var db = &IPListDB{
 		itemTableName: "ipItems",
 		dir:           filepath.Clean(Tea.Root + "/data"),
+		cleanTicker:   time.NewTicker(24 * time.Hour),
 	}
 	err := db.init()
 	return db, err
@@ -83,6 +91,11 @@ ON "` + this.itemTableName + `" (
 	}
 
 	// 初始化SQL语句
+	this.deleteExpiredItemsStmt, err = this.db.Prepare(`DELETE FROM "` + this.itemTableName + `" WHERE  "expiredAt">0 AND "expiredAt"<?`)
+	if err != nil {
+		return err
+	}
+
 	this.deleteItemStmt, err = this.db.Prepare(`DELETE FROM "` + this.itemTableName + `" WHERE "itemId"=?`)
 	if err != nil {
 		return err
@@ -93,14 +106,35 @@ ON "` + this.itemTableName + `" (
 		return err
 	}
 
-	this.selectItemsStmt, err = this.db.Prepare(`SELECT "listId", "listType", "isGlobal", "type", "itemId", "ipFrom", "ipTo", "expiredAt", "eventLevel", "isDeleted", "version", "nodeId", "serverId" FROM "` + this.itemTableName + `" ORDER BY "version" ASC, "itemId" ASC LIMIT ?, ?`)
+	this.selectItemsStmt, err = this.db.Prepare(`SELECT "listId", "listType", "isGlobal", "type", "itemId", "ipFrom", "ipTo", "expiredAt", "eventLevel", "isDeleted", "version", "nodeId", "serverId" FROM "` + this.itemTableName + `" WHERE isDeleted=0 ORDER BY "version" ASC, "itemId" ASC LIMIT ?, ?`)
 	if err != nil {
 		return err
 	}
 
+	this.selectMaxVersionStmt, err = this.db.Prepare(`SELECT "version" FROM "` + this.itemTableName + `" ORDER BY "id" DESC LIMIT 1`)
+
 	this.db = db
 
+	goman.New(func() {
+		events.On(events.EventQuit, func() {
+			this.cleanTicker.Stop()
+		})
+
+		for range this.cleanTicker.C {
+			err := this.DeleteExpiredItems()
+			if err != nil {
+				remotelogs.Error("IP_LIST_DB", "clean expired items failed: "+err.Error())
+			}
+		}
+	})
+
 	return nil
+}
+
+// DeleteExpiredItems 删除过期的条目
+func (this *IPListDB) DeleteExpiredItems() error {
+	_, err := this.deleteExpiredItemsStmt.Exec(time.Now().Unix() - 7*86400)
+	return err
 }
 
 func (this *IPListDB) AddItem(item *pb.IPItem) error {
@@ -133,11 +167,27 @@ func (this *IPListDB) ReadItems(offset int64, size int64) (items []*pb.IPItem, e
 	return
 }
 
+// ReadMaxVersion 读取当前最大版本号
+func (this *IPListDB) ReadMaxVersion() int64 {
+	row := this.selectMaxVersionStmt.QueryRow()
+	if row == nil {
+		return 0
+	}
+	var version int64
+	err = row.Scan(&version)
+	if err != nil {
+		return 0
+	}
+	return version
+}
+
 func (this *IPListDB) Close() error {
 	if this.db != nil {
+		_ = this.deleteExpiredItemsStmt.Close()
 		_ = this.deleteItemStmt.Close()
 		_ = this.insertItemStmt.Close()
 		_ = this.selectItemsStmt.Close()
+		_ = this.selectMaxVersionStmt.Close()
 
 		return this.db.Close()
 	}

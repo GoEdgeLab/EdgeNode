@@ -35,10 +35,14 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	}
 
 	// 是否在全局名单中
-	if !iplibrary.AllowIP(remoteAddr, this.ReqServer.Id) {
+	canGoNext, isInAllowedList := iplibrary.AllowIP(remoteAddr, this.ReqServer.Id)
+	if !canGoNext {
 		this.disableLog = true
 		this.Close()
 		return true
+	}
+	if isInAllowedList {
+		return false
 	}
 
 	// 检查是否在临时黑名单中

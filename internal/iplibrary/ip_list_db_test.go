@@ -1,9 +1,10 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package iplibrary
+package iplibrary_test
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
 	"testing"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestIPListDB_AddItem(t *testing.T) {
-	db, err := NewIPListDB()
+	db, err := iplibrary.NewIPListDB()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +49,7 @@ func TestIPListDB_AddItem(t *testing.T) {
 }
 
 func TestIPListDB_ReadItems(t *testing.T) {
-	db, err := NewIPListDB()
+	db, err := iplibrary.NewIPListDB()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,4 +58,12 @@ func TestIPListDB_ReadItems(t *testing.T) {
 		t.Fatal(err)
 	}
 	logs.PrintAsJSON(items, t)
+}
+
+func TestIPListDB_ReadMaxVersion(t *testing.T) {
+	db, err := iplibrary.NewIPListDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(db.ReadMaxVersion())
 }

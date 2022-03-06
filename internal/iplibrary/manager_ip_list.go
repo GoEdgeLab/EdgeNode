@@ -61,7 +61,7 @@ func (this *IPListManager) Start() {
 	if Tea.IsTesting() {
 		this.ticker = time.NewTicker(10 * time.Second)
 	}
-	countErrors := 0
+	var countErrors = 0
 	for {
 		select {
 		case <-this.ticker.C:
@@ -100,6 +100,13 @@ func (this *IPListManager) init() {
 	} else {
 		this.db = db
 
+		// 删除本地数据库中过期的条目
+		_ = db.DeleteExpiredItems()
+
+		// 本地数据库中最大版本号
+		this.version = db.ReadMaxVersion()
+
+		// 从本地数据库中加载
 		var offset int64 = 0
 		var size int64 = 1000
 		for {
@@ -171,7 +178,7 @@ func (this *IPListManager) FindList(listId int64) *IPList {
 	return list
 }
 
-func (this *IPListManager) processItems(items []*pb.IPItem, shouldExecute bool) {
+func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 	this.locker.Lock()
 	var changedLists = map[*IPList]zero.Zero{}
 	for _, item := range items {
@@ -205,10 +212,10 @@ func (this *IPListManager) processItems(items []*pb.IPItem, shouldExecute bool) 
 			list.Delete(item.Id)
 
 			// 从WAF名单中删除
-			waf.SharedIPBlackList.RemoveIP(item.IpFrom, item.ServerId, shouldExecute)
+			waf.SharedIPBlackList.RemoveIP(item.IpFrom, item.ServerId, fromRemote)
 
 			// 操作事件
-			if shouldExecute {
+			if fromRemote {
 				SharedActionManager.DeleteItem(item.ListType, item)
 			}
 
@@ -225,7 +232,7 @@ func (this *IPListManager) processItems(items []*pb.IPItem, shouldExecute bool) 
 		})
 
 		// 事件操作
-		if shouldExecute {
+		if fromRemote {
 			SharedActionManager.DeleteItem(item.ListType, item)
 			SharedActionManager.AddItem(item.ListType, item)
 		}
@@ -236,5 +243,11 @@ func (this *IPListManager) processItems(items []*pb.IPItem, shouldExecute bool) 
 	}
 
 	this.locker.Unlock()
-	this.version = items[len(items)-1].Version
+
+	if fromRemote {
+		var latestVersion = items[len(items)-1].Version
+		if latestVersion > this.version {
+			this.version = latestVersion
+		}
+	}
 }
