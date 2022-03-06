@@ -125,6 +125,28 @@ func TestNewPartialRanges_Nearest(t *testing.T) {
 	}
 }
 
+func TestNewPartialRanges_Large_Range(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
+	var largeSize int64 = 10000000000000
+	t.Log(largeSize/1024/1024/1024, "G")
+
+	var r = caches.NewPartialRanges()
+	r.Add(1, largeSize)
+	jsonData, err := r.AsJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(jsonData))
+
+	r2, err := caches.NewPartialRangesFromJSON(jsonData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a.IsTrue(largeSize == r2.Ranges[0][1])
+}
+
 func TestNewPartialRanges_AsJSON(t *testing.T) {
 	var r = caches.NewPartialRanges()
 	for j := 0; j < 1000; j++ {
