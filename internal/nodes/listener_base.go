@@ -34,22 +34,23 @@ func (this *BaseListener) CountActiveConnections() int {
 func (this *BaseListener) buildTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: nil,
-		GetConfigForClient: func(configInfo *tls.ClientHelloInfo) (config *tls.Config, e error) {
-			ssl, _, err := this.matchSSL(configInfo.ServerName)
+		GetConfigForClient: func(clientInfo *tls.ClientHelloInfo) (config *tls.Config, e error) {
+			ssl, _, err := this.matchSSL(clientInfo.ServerName)
 			if err != nil {
 				return nil, err
 			}
 
 			return ssl.TLSConfig(), nil
 		},
-		GetCertificate: func(certInfo *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-			_, cert, err := this.matchSSL(certInfo.ServerName)
+		GetCertificate: func(clientInfo *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
+			_, cert, err := this.matchSSL(clientInfo.ServerName)
 			if err != nil {
 				return nil, err
 			}
 			if cert == nil {
-				return nil, errors.New("no ssl certs found for '" + certInfo.ServerName + "'")
+				return nil, errors.New("no ssl certs found for '" + clientInfo.ServerName + "'")
 			}
+
 			return cert, nil
 		},
 	}
