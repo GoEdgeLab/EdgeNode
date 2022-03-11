@@ -414,7 +414,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 		}
 	}
 
-	writer, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_SYNC|os.O_WRONLY, 0666)
+	writer, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, err
 	}
