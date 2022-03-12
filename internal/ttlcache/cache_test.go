@@ -1,6 +1,7 @@
 package ttlcache
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/rands"
 	"runtime"
 	"strconv"
@@ -29,19 +30,26 @@ func TestNewCache(t *testing.T) {
 }
 
 func TestCache_Memory(t *testing.T) {
-	var stat1 = &runtime.MemStats{}
-	runtime.ReadMemStats(stat1)
+	testutils.StartMemoryStats(t)
 
-	cache := NewCache()
-	for i := 0; i < 10_000_000; i++ {
+	var cache = NewCache()
+	var count = 2_000_000
+	for i := 0; i < count; i++ {
 		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+3600)
 	}
-	t.Log("waiting ...")
 
-	var stat2 = &runtime.MemStats{}
-	runtime.ReadMemStats(stat2)
+	t.Log(cache.Count())
 
-	t.Log((stat2.HeapInuse-stat1.HeapInuse)/1024/1024, "MB")
+	time.Sleep(1 * time.Second)
+	for i := 0; i < count; i++ {
+		if i%2 == 0 {
+			cache.Delete("a" + strconv.Itoa(i))
+		}
+	}
+
+	t.Log(cache.Count())
+
+	cache.Count()
 }
 
 func BenchmarkCache_Add(b *testing.B) {

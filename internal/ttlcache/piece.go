@@ -10,7 +10,8 @@ import (
 type Piece struct {
 	m        map[uint64]*Item
 	maxItems int
-	locker   sync.RWMutex
+
+	locker sync.RWMutex
 }
 
 func NewPiece(maxItems int) *Piece {
