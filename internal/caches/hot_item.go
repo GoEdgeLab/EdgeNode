@@ -3,8 +3,6 @@
 package caches
 
 type HotItem struct {
-	Key       string
-	ExpiresAt int64
-	Hits      uint32
-	Status int
+	Key  string
+	Hits uint32
 }

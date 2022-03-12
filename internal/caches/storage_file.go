@@ -47,6 +47,7 @@ const (
 
 const (
 	HotItemSize               = 1024         // 热点数据数量
+	HotItemLifeSeconds  int64 = 3600         // 热点数据生命周期
 	FileToMemoryMaxSize int64 = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
 )
 
@@ -947,11 +948,26 @@ func (this *FileStorage) hotLoop() {
 			if reader == nil {
 				continue
 			}
-			if reader.ExpiresAt() <= time.Now().Unix() {
+
+			// 如果即将过期，则忽略
+			var nowUnixTime = time.Now().Unix()
+			if reader.ExpiresAt() <= nowUnixTime+600 {
 				continue
 			}
 
-			writer, err := this.memoryStorage.openWriter(item.Key, item.ExpiresAt, item.Status, reader.BodySize(), -1, false)
+			// 计算合适的过期时间
+			var bestExpiresAt = nowUnixTime + HotItemLifeSeconds
+			var hotTimes = int64(item.Hits) / 1000
+			if hotTimes > 8 {
+				hotTimes = 8
+			}
+			bestExpiresAt += hotTimes * HotItemLifeSeconds
+			var expiresAt = reader.ExpiresAt()
+			if expiresAt <= 0 || expiresAt > bestExpiresAt {
+				expiresAt = bestExpiresAt
+			}
+
+			writer, err := this.memoryStorage.openWriter(item.Key, expiresAt, reader.Status(), reader.BodySize(), -1, false)
 			if err != nil {
 				if !CanIgnoreErr(err) {
 					remotelogs.Error("CACHE", "transfer hot item failed: "+err.Error())
@@ -990,7 +1006,7 @@ func (this *FileStorage) hotLoop() {
 			this.memoryStorage.AddToList(&Item{
 				Type:       writer.ItemType(),
 				Key:        item.Key,
-				ExpiredAt:  item.ExpiresAt,
+				ExpiredAt:  expiresAt,
 				HeaderSize: writer.HeaderSize(),
 				BodySize:   writer.BodySize(),
 			})
@@ -1065,15 +1081,20 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 		if this.memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*1024*1024 {
 			this.hotMapLocker.Lock()
 			hotItem, ok := this.hotMap[key]
+
+			// 限制热点数据存活时间
+			var unixTime = time.Now().Unix()
+			var expiresAt = reader.ExpiresAt()
+			if expiresAt <= 0 || expiresAt > unixTime+HotItemLifeSeconds {
+				expiresAt = unixTime + HotItemLifeSeconds
+			}
+
 			if ok {
 				hotItem.Hits++
-				hotItem.ExpiresAt = reader.ExpiresAt()
 			} else if len(this.hotMap) < HotItemSize { // 控制数量
 				this.hotMap[key] = &HotItem{
-					Key:       key,
-					ExpiresAt: reader.ExpiresAt(),
-					Status:    reader.Status(),
-					Hits:      1,
+					Key:  key,
+					Hits: 1,
 				}
 			}
 			this.hotMapLocker.Unlock()
