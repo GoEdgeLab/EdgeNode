@@ -1,7 +1,7 @@
 package nodes
 
 import (
-	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/v3/cpu"
 	"testing"
 	"time"
 )

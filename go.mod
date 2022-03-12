@@ -25,9 +25,7 @@ require (
 	github.com/miekg/dns v1.1.43
 	github.com/mssola/user_agent v0.5.3
 	github.com/pires/go-proxyproto v0.6.1
-	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/tklauser/go-sysconf v0.3.6 // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	github.com/shirou/gopsutil/v3 v3.22.2
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9

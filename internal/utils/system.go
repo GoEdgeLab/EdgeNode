@@ -3,7 +3,7 @@
 package utils
 
 import (
-	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 var systemTotalMemory = -1
