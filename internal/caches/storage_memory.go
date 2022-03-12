@@ -446,6 +446,9 @@ func (this *MemoryStorage) flushItem(key string) {
 		BodySize:   writer.BodySize(),
 	})
 
+	// 从内存中移除
+	_ = this.Delete(key)
+
 	return
 }
 
