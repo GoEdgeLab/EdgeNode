@@ -41,7 +41,8 @@ type MemoryStorage struct {
 	locker *sync.RWMutex
 
 	valuesMap map[uint64]*MemoryItem // hash => item
-	dirtyChan chan string            // hash chan
+
+	dirtyChan chan string // hash chan
 
 	purgeTicker *utils.Ticker
 
@@ -434,6 +435,7 @@ func (this *MemoryStorage) flushItem(key string) {
 	if err != nil {
 		_ = writer.Discard()
 		remotelogs.Error("CACHE", "flush items failed: close writer failed: "+err.Error())
+		return
 	}
 
 	this.parentStorage.AddToList(&Item{
