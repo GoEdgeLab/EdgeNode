@@ -81,6 +81,12 @@ func main() {
 		node := nodes.NewNode()
 		node.Start()
 	})
+	app.On("dbstat", func() {
+		teaconst.EnableDBStat = true
+
+		node := nodes.NewNode()
+		node.Start()
+	})
 	app.On("trackers", func() {
 		var sock = gosock.NewTmpSock(teaconst.ProcessName)
 		reply, err := sock.Send(&gosock.Command{Code: "trackers"})

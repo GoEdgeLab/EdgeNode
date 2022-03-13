@@ -5,10 +5,12 @@ package caches
 import (
 	"database/sql"
 	"errors"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
@@ -21,26 +23,26 @@ import (
 // FileList 文件缓存列表管理
 type FileList struct {
 	dir   string
-	db    *sql.DB
+	db    *dbs.DB
 	total int64
 
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
 
 	// cacheItems
-	existsByHashStmt *sql.Stmt // 根据hash检查是否存在
-	insertStmt       *sql.Stmt // 写入数据
-	selectByHashStmt *sql.Stmt // 使用hash查询数据
-	deleteByHashStmt *sql.Stmt // 根据hash删除数据
-	statStmt         *sql.Stmt // 统计
-	purgeStmt        *sql.Stmt // 清理
-	deleteAllStmt    *sql.Stmt // 删除所有数据
+	existsByHashStmt *dbs.Stmt // 根据hash检查是否存在
+	insertStmt       *dbs.Stmt // 写入数据
+	selectByHashStmt *dbs.Stmt // 使用hash查询数据
+	deleteByHashStmt *dbs.Stmt // 根据hash删除数据
+	statStmt         *dbs.Stmt // 统计
+	purgeStmt        *dbs.Stmt // 清理
+	deleteAllStmt    *dbs.Stmt // 删除所有数据
 
 	// hits
-	insertHitStmt       *sql.Stmt // 写入数据
-	increaseHitStmt     *sql.Stmt // 增加点击量
-	deleteHitByHashStmt *sql.Stmt // 根据hash删除数据
-	lfuHitsStmt         *sql.Stmt // 读取老的数据
+	insertHitStmt       *dbs.Stmt // 写入数据
+	increaseHitStmt     *dbs.Stmt // 增加点击量
+	deleteHitByHashStmt *dbs.Stmt // 根据hash删除数据
+	lfuHitsStmt         *dbs.Stmt // 读取老的数据
 
 	oldTables      []string
 	itemsTableName string
@@ -80,14 +82,18 @@ func (this *FileList) Init() error {
 	}
 	var dbPath = dir + "/index.db"
 	remotelogs.Println("CACHE", "loading database '"+dbPath+"'")
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=shared&mode=rwc&_journal_mode=WAL")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=shared&mode=rwc&_journal_mode=WAL&_cache_size=16000")
 	if err != nil {
 		return errors.New("open database failed: " + err.Error())
 	}
 
 	db.SetMaxOpenConns(1)
 
-	this.db = db
+	this.db = dbs.NewDB(db)
+
+	if teaconst.EnableDBStat {
+		this.db.EnableStat(true)
+	}
 
 	// TODO 耗时过长，暂时不整理数据库
 	/**_, err = db.Exec("VACUUM")
@@ -196,15 +202,13 @@ func (this *FileList) Add(hash string, item *Item) error {
 		item.StaleAt = item.ExpiredAt
 	}
 
+	// 放入队列
 	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime())
 	if err != nil {
 		return err
 	}
 
-	_, err = this.insertHitStmt.Exec(hash, timeutil.Format("YW"))
-	if err != nil {
-		return err
-	}
+	// 这里不增加点击量，以减少对数据库的操作次数
 
 	this.memoryCache.Write(hash, 1, item.ExpiredAt)
 	atomic.AddInt64(&this.total, 1)

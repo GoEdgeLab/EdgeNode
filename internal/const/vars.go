@@ -14,4 +14,8 @@ var (
 	NodeIdString       = ""
 
 	GlobalProductName = nodeconfigs.DefaultProductName
+
+	// Track
+
+	EnableDBStat = false
 )

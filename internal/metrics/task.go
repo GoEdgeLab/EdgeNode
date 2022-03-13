@@ -7,17 +7,18 @@ import (
 	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -38,7 +39,7 @@ type Task struct {
 	item     *serverconfigs.MetricItemConfig
 	isLoaded bool
 
-	db            *sql.DB
+	db            *dbs.DB
 	statTableName string
 	isStopped     bool
 
@@ -92,7 +93,11 @@ func (this *Task) Init() error {
 		return err
 	}
 	db.SetMaxOpenConns(1)
-	this.db = db
+	this.db = dbs.NewDB(db)
+
+	if teaconst.EnableDBStat {
+		this.db.EnableStat(true)
+	}
 
 	//创建统计表
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.statTableName + `" (
@@ -438,10 +443,11 @@ func (this *Task) Upload(pauseDuration time.Duration) error {
 
 			if len(idStrings) > 0 {
 				// 设置为已上传
-				_, err = this.db.Exec(`UPDATE "` + this.statTableName + `" SET isUploaded=1 WHERE id IN (` + strings.Join(idStrings, ",") + `)`)
+				// TODO 先不判断是否已经上传，需要改造API进行配合
+				/**_, err = this.db.Exec(`UPDATE "` + this.statTableName + `" SET isUploaded=1 WHERE id IN (` + strings.Join(idStrings, ",") + `)`)
 				if err != nil {
 					return err
-				}
+				}**/
 			}
 		}
 
