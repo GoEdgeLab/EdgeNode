@@ -247,6 +247,12 @@ Loop:
 	if err != nil {
 		return err
 	}
+
+	// 正在退出时不上报错误
+	if teaconst.IsQuiting {
+		return nil
+	}
+
 	_, err = rpcClient.NodeLogRPC().CreateNodeLogs(rpcClient.Context(), &pb.CreateNodeLogsRequest{NodeLogs: logList})
 	return err
 }
