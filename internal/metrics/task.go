@@ -88,7 +88,7 @@ func (this *Task) Init() error {
 		remotelogs.Println("METRIC", "create data dir '"+dir+"'")
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dir+"/metric."+strconv.FormatInt(this.item.Id, 10)+".db?cache=shared&mode=rwc&_journal_mode=WAL")
+	db, err := sql.Open("sqlite3", "file:"+dir+"/metric."+strconv.FormatInt(this.item.Id, 10)+".db?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
 	if err != nil {
 		return err
 	}

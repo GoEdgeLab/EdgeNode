@@ -82,7 +82,7 @@ func (this *FileList) Init() error {
 	}
 	var dbPath = dir + "/index.db"
 	remotelogs.Println("CACHE", "loading database '"+dbPath+"'")
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=shared&mode=rwc&_journal_mode=WAL&_cache_size=16000")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=16000")
 	if err != nil {
 		return errors.New("open database failed: " + err.Error())
 	}
