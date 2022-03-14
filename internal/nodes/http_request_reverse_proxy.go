@@ -159,7 +159,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 获取请求客户端
-	client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol)
+	client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
 	if err != nil {
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write50x(err, http.StatusBadGateway, true)

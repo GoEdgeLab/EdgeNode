@@ -42,7 +42,7 @@ func NewHTTPClientPool() *HTTPClientPool {
 }
 
 // Client 根据地址获取客户端
-func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.OriginConfig, originAddr string, proxyProtocol *serverconfigs.ProxyProtocolConfig) (rawClient *http.Client, err error) {
+func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.OriginConfig, originAddr string, proxyProtocol *serverconfigs.ProxyProtocolConfig, followRedirects bool) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
@@ -139,6 +139,19 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 		Timeout:   readTimeout,
 		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if followRedirects {
+				var schemeIsSame = true
+				for _, r := range via {
+					if r.URL.Scheme != req.URL.Scheme {
+						schemeIsSame = false
+						break
+					}
+				}
+				if schemeIsSame {
+					return nil
+				}
+			}
+
 			return http.ErrUseLastResponse
 		},
 	}
