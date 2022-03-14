@@ -15,7 +15,6 @@ var (
 
 	GlobalProductName = nodeconfigs.DefaultProductName
 
-	// Track
-
-	EnableDBStat = false
+	IsQuiting    = false // 是否正在退出
+	EnableDBStat = false // 是否开启本地数据库统计
 )

@@ -33,10 +33,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"runtime/debug"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -95,6 +97,9 @@ func (this *Node) Start() {
 
 	// 处理异常
 	this.handlePanic()
+
+	// 监听signal
+	this.listenSignals()
 
 	// 启动事件
 	events.Notify(events.EventStart)
@@ -591,6 +596,20 @@ func (this *Node) checkClusterConfig() error {
 	logs.Println("[NODE]wrote 'configs/api.yaml' successfully")
 
 	return nil
+}
+
+// 监听一些信号
+func (this *Node) listenSignals() {
+	var queue = make(chan os.Signal, 8)
+	signal.Notify(queue, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL, syscall.SIGQUIT)
+	goman.New(func() {
+		for range queue {
+			events.Notify(events.EventTerminated)
+			time.Sleep(100 * time.Millisecond)
+			os.Exit(0)
+			return
+		}
+	})
 }
 
 // 监听本地sock

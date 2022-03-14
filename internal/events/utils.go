@@ -1,6 +1,7 @@
 package events
 
 import (
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"sync"
 )
 
@@ -59,6 +60,14 @@ func Remove(key interface{}) {
 
 // Notify 通知事件
 func Notify(event Event) {
+	// 特殊事件
+	switch event {
+	case EventQuit:
+		teaconst.IsQuiting = true
+	case EventTerminated:
+		teaconst.IsQuiting = true
+	}
+
 	locker.Lock()
 	m := eventsMap[event]
 	locker.Unlock()

@@ -5,6 +5,8 @@ package dbs
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 )
 
 type DB struct {
@@ -14,9 +16,15 @@ type DB struct {
 }
 
 func NewDB(rawDB *sql.DB) *DB {
-	return &DB{
+	var db = &DB{
 		rawDB: rawDB,
 	}
+
+	events.OnKey(events.EventTerminated, fmt.Sprintf("db_%p", db), func() {
+		_ = rawDB.Close()
+	})
+
+	return db
 }
 
 func (this *DB) EnableStat(b bool) {
@@ -65,5 +73,6 @@ func (this *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 }
 
 func (this *DB) Close() error {
+	events.Remove(fmt.Sprintf("db_%p", this))
 	return this.rawDB.Close()
 }

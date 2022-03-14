@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -314,6 +315,11 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 // OpenWriter 打开缓存文件等待写入
 func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
+	// 是否正在退出
+	if teaconst.IsQuiting {
+		return nil, ErrWritingUnavaible
+	}
+
 	// 是否已忽略
 	if this.ignoreKeys.Has(key) {
 		return nil, ErrEntityTooLarge
@@ -525,6 +531,11 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 
 // AddToList 添加到List
 func (this *FileStorage) AddToList(item *Item) {
+	// 是否正在退出
+	if teaconst.IsQuiting {
+		return
+	}
+
 	if this.memoryStorage != nil {
 		if item.Type == ItemTypeMemory {
 			this.memoryStorage.AddToList(item)
@@ -542,6 +553,11 @@ func (this *FileStorage) AddToList(item *Item) {
 
 // Delete 删除某个键值对应的缓存
 func (this *FileStorage) Delete(key string) error {
+	// 是否正在退出
+	if teaconst.IsQuiting {
+		return nil
+	}
+
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
@@ -646,6 +662,11 @@ func (this *FileStorage) CleanAll() error {
 
 // Purge 清理过期的缓存
 func (this *FileStorage) Purge(keys []string, urlType string) error {
+	// 是否正在退出
+	if teaconst.IsQuiting {
+		return nil
+	}
+
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
