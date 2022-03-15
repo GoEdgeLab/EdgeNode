@@ -397,6 +397,7 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 
 	defer func() {
 		_ = os.Remove(indexDBPath)
+		remotelogs.Println("CACHE", "upgrading local database finished")
 	}()
 
 	db, err := sql.Open("sqlite3", "file:"+indexDBPath+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
