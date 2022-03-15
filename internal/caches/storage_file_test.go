@@ -564,8 +564,8 @@ func BenchmarkFileStorage_KeyPath(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
 	var storage = &FileStorage{
-		cacheConfig: &serverconfigs.HTTPFileCacheStorage{},
-		policy:      &serverconfigs.HTTPCachePolicy{Id: 1},
+		options: &serverconfigs.HTTPFileCacheStorage{},
+		policy:  &serverconfigs.HTTPCachePolicy{Id: 1},
 	}
 
 	for i := 0; i < b.N; i++ {

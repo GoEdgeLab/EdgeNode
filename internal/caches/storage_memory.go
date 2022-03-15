@@ -89,20 +89,7 @@ func (this *MemoryStorage) Init() error {
 		atomic.AddInt64(&this.totalSize, -item.TotalSize())
 	})
 
-	var autoPurgeInterval = this.policy.MemoryAutoPurgeInterval
-	if autoPurgeInterval <= 0 {
-		autoPurgeInterval = 5
-	}
-
-	// 启动定时清理任务
-	this.purgeTicker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
-	goman.New(func() {
-		for this.purgeTicker.Next() {
-			var tr = trackers.Begin("MEMORY_CACHE_STORAGE_PURGE_LOOP")
-			this.purgeLoop()
-			tr.End()
-		}
-	})
+	this.initPurgeTicker()
 
 	// 启动定时Flush memory to disk任务
 	if this.parentStorage != nil {
@@ -323,6 +310,26 @@ func (this *MemoryStorage) Policy() *serverconfigs.HTTPCachePolicy {
 	return this.policy
 }
 
+// UpdatePolicy 修改策略
+func (this *MemoryStorage) UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) {
+	var oldPolicy = this.policy
+	this.policy = newPolicy
+
+	if oldPolicy.MemoryAutoPurgeInterval != newPolicy.MemoryAutoPurgeInterval {
+		this.initPurgeTicker()
+	}
+
+	// 如果是空的，则清空
+	if newPolicy.CapacityBytes() == 0 {
+		_ = this.CleanAll()
+	}
+}
+
+// CanUpdatePolicy 检查策略是否可以更新
+func (this *MemoryStorage) CanUpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) bool {
+	return true
+}
+
 // AddToList 将缓存添加到列表
 func (this *MemoryStorage) AddToList(item *Item) {
 	item.MetaSize = int64(len(item.Key)) + 128 /** 128是我们评估的数据结构的长度 **/
@@ -496,4 +503,26 @@ func (this *MemoryStorage) deleteWithoutLocker(key string) error {
 	delete(this.valuesMap, hash)
 	_ = this.list.Remove(fmt.Sprintf("%d", hash))
 	return nil
+}
+
+func (this *MemoryStorage) initPurgeTicker() {
+	var autoPurgeInterval = this.policy.MemoryAutoPurgeInterval
+	if autoPurgeInterval <= 0 {
+		autoPurgeInterval = 5
+	}
+
+	// 启动定时清理任务
+
+	if this.purgeTicker != nil {
+		this.purgeTicker.Stop()
+	}
+
+	this.purgeTicker = utils.NewTicker(time.Duration(autoPurgeInterval) * time.Second)
+	goman.New(func() {
+		for this.purgeTicker.Next() {
+			var tr = trackers.Begin("MEMORY_CACHE_STORAGE_PURGE_LOOP")
+			this.purgeLoop()
+			tr.End()
+		}
+	})
 }

@@ -99,7 +99,19 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 		} else {
 			// 检查policy是否有变化
 			if !storage.Policy().IsSame(policy) {
-				remotelogs.Println("CACHE", "policy "+strconv.FormatInt(policy.Id, 10)+" changed")
+				// 检查是否可以直接修改
+				if storage.CanUpdatePolicy(policy) {
+					err := policy.Init()
+					if err != nil {
+						remotelogs.Error("CACHE", "reload policy '"+types.String(policy.Id)+"' failed: init policy failed: "+err.Error())
+						continue
+					}
+					remotelogs.Println("CACHE", "reload policy '"+types.String(policy.Id)+"'")
+					storage.UpdatePolicy(policy)
+					continue
+				}
+
+				remotelogs.Println("CACHE", "restart policy '"+types.String(policy.Id)+"'")
 
 				// 停止老的
 				storage.Stop()

@@ -40,6 +40,12 @@ type StorageInterface interface {
 	// Policy 获取当前存储的Policy
 	Policy() *serverconfigs.HTTPCachePolicy
 
+	// UpdatePolicy 修改策略
+	UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy)
+
+	// CanUpdatePolicy 检查策略是否可以更新
+	CanUpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) bool
+
 	// AddToList 将缓存添加到列表
 	AddToList(item *Item)
 

@@ -2,19 +2,20 @@ package caches
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/iwind/TeaGo/Tea"
 	"testing"
 )
 
 func TestManager_UpdatePolicies(t *testing.T) {
 	{
-		policies := []*serverconfigs.HTTPCachePolicy{}
+		var policies = []*serverconfigs.HTTPCachePolicy{}
 		SharedManager.UpdatePolicies(policies)
 		printManager(t)
 	}
 
 	{
-		policies := []*serverconfigs.HTTPCachePolicy{
+		var policies = []*serverconfigs.HTTPCachePolicy{
 			{
 				Id:   1,
 				Type: serverconfigs.CachePolicyStorageFile,
@@ -42,7 +43,7 @@ func TestManager_UpdatePolicies(t *testing.T) {
 	}
 
 	{
-		policies := []*serverconfigs.HTTPCachePolicy{
+		var policies = []*serverconfigs.HTTPCachePolicy{
 			{
 				Id:   1,
 				Type: serverconfigs.CachePolicyStorageFile,
@@ -69,6 +70,50 @@ func TestManager_UpdatePolicies(t *testing.T) {
 		SharedManager.UpdatePolicies(policies)
 		printManager(t)
 	}
+}
+
+func TestManager_ChangePolicy_Memory(t *testing.T) {
+	var policies = []*serverconfigs.HTTPCachePolicy{
+		{
+			Id:       1,
+			Type:     serverconfigs.CachePolicyStorageMemory,
+			Options:  map[string]interface{}{},
+			Capacity: &shared.SizeCapacity{Count: 1, Unit: shared.SizeCapacityUnitGB},
+		},
+	}
+	SharedManager.UpdatePolicies(policies)
+	SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{
+		{
+			Id:       1,
+			Type:     serverconfigs.CachePolicyStorageMemory,
+			Options:  map[string]interface{}{},
+			Capacity: &shared.SizeCapacity{Count: 2, Unit: shared.SizeCapacityUnitGB},
+		},
+	})
+}
+
+func TestManager_ChangePolicy_File(t *testing.T) {
+	var policies = []*serverconfigs.HTTPCachePolicy{
+		{
+			Id:       1,
+			Type:     serverconfigs.CachePolicyStorageFile,
+			Options:  map[string]interface{}{
+				"dir": Tea.Root + "/data/cache-index/p1",
+			},
+			Capacity: &shared.SizeCapacity{Count: 1, Unit: shared.SizeCapacityUnitGB},
+		},
+	}
+	SharedManager.UpdatePolicies(policies)
+	SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{
+		{
+			Id:       1,
+			Type:     serverconfigs.CachePolicyStorageFile,
+			Options:  map[string]interface{}{
+				"dir": Tea.Root + "/data/cache-index/p1",
+			},
+			Capacity: &shared.SizeCapacity{Count: 2, Unit: shared.SizeCapacityUnitGB},
+		},
+	})
 }
 
 func printManager(t *testing.T) {
