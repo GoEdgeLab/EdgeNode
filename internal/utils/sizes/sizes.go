@@ -3,7 +3,7 @@
 package sizes
 
 const (
-	K = 1024
+	K int64 = 1024
 	M = 1024 * K
 	G = 1024 * M
 	T = 1024 * G

@@ -228,7 +228,7 @@ func (this *UpgradeManager) unzip(zipPath string) error {
 func (this *UpgradeManager) restart() error {
 	// 重新启动
 	if DaemonIsOn && DaemonPid == os.Getppid() {
-		os.Exit(0) // TODO 试着更优雅重启
+		utils.Exit() // TODO 试着更优雅重启
 	} else {
 		exe, err := os.Executable()
 		if err != nil {
@@ -237,6 +237,9 @@ func (this *UpgradeManager) restart() error {
 
 		// quit
 		events.Notify(events.EventQuit)
+
+		// terminated
+		events.Notify(events.EventTerminated)
 
 		// 启动
 		cmd := exec.Command(exe, "start")

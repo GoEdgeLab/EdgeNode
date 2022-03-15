@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/rands"
@@ -42,7 +43,8 @@ type MemoryStorage struct {
 
 	valuesMap map[uint64]*MemoryItem // hash => item
 
-	dirtyChan chan string // hash chan
+	dirtyChan      chan string // hash chan
+	dirtyQueueSize int
 
 	purgeTicker *utils.Ticker
 
@@ -54,22 +56,25 @@ type MemoryStorage struct {
 
 func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage StorageInterface) *MemoryStorage {
 	var dirtyChan chan string
+	var queueSize = policy.MemoryAutoFlushQueueSize
+
 	if parentStorage != nil {
-		var queueSize = policy.MemoryAutoFlushQueueSize
 		if queueSize <= 0 {
-			queueSize = 2048
+			queueSize = 2048 + int(policy.CapacityBytes()/sizes.G)*2048
 		}
+
 		dirtyChan = make(chan string, queueSize)
 	}
 	return &MemoryStorage{
-		parentStorage: parentStorage,
-		policy:        policy,
-		list:          NewMemoryList(),
-		locker:        &sync.RWMutex{},
-		valuesMap:     map[uint64]*MemoryItem{},
-		dirtyChan:     dirtyChan,
-		writingKeyMap: map[string]zero.Zero{},
-		ignoreKeys:    setutils.NewFixedSet(32768),
+		parentStorage:  parentStorage,
+		policy:         policy,
+		list:           NewMemoryList(),
+		locker:         &sync.RWMutex{},
+		valuesMap:      map[uint64]*MemoryItem{},
+		dirtyChan:      dirtyChan,
+		dirtyQueueSize: queueSize,
+		writingKeyMap:  map[string]zero.Zero{},
+		ignoreKeys:     setutils.NewFixedSet(32768),
 	}
 }
 
@@ -101,11 +106,19 @@ func (this *MemoryStorage) Init() error {
 
 	// 启动定时Flush memory to disk任务
 	if this.parentStorage != nil {
-		goman.New(func() {
-			for hash := range this.dirtyChan {
-				this.flushItem(hash)
-			}
-		})
+		var threads = runtime.NumCPU()
+		if threads == 0 {
+			threads = 1
+		} else if threads > 8 {
+			threads = 8
+		}
+		for i := 0; i < threads; i++ {
+			goman.New(func() {
+				for hash := range this.dirtyChan {
+					this.flushItem(hash)
+				}
+			})
+		}
 	}
 
 	return nil
@@ -165,6 +178,15 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, s
 }
 
 func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isDirty bool) (Writer, error) {
+	// 待写入队列是否已满
+	if isDirty &&
+		this.parentStorage != nil &&
+		this.dirtyQueueSize > 0 &&
+		len(this.dirtyChan) == this.dirtyQueueSize &&
+		(expiredAt <= 0 || expiredAt > time.Now().Unix()+7200) { // 缓存时间过长
+		return nil, ErrWritingQueueFull
+	}
+
 	this.locker.Lock()
 	defer this.locker.Unlock()
 

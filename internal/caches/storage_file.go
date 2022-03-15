@@ -122,11 +122,12 @@ func (this *FileStorage) Init() error {
 		return errors.New("[CACHE]cache storage dir can not be empty")
 	}
 
-	list := NewFileList(dir + "/p" + strconv.FormatInt(this.policy.Id, 10))
+	var list = NewFileList(Tea.Root + "/data/cache-index/p" + types.String(this.policy.Id))
 	err = list.Init()
 	if err != nil {
 		return err
 	}
+	list.(*FileList).SetOldDir(this.cacheConfig.Dir + "/p" + types.String(this.policy.Id))
 	this.list = list
 	stat, err := list.Stat(func(hash string) bool {
 		return true
@@ -317,7 +318,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
 	// 是否正在退出
 	if teaconst.IsQuiting {
-		return nil, ErrWritingUnavaible
+		return nil, ErrWritingUnavailable
 	}
 
 	// 是否已忽略
@@ -335,6 +336,11 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 		writer, err := this.memoryStorage.OpenWriter(key, expiredAt, status, size, maxMemorySize, false)
 		if err == nil {
 			return writer, nil
+		}
+
+		// 如果队列满了，则等待
+		if err == ErrWritingQueueFull {
+			return nil, err
 		}
 	}
 

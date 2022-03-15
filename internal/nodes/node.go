@@ -604,9 +604,8 @@ func (this *Node) listenSignals() {
 	signal.Notify(queue, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL, syscall.SIGQUIT)
 	goman.New(func() {
 		for range queue {
-			events.Notify(events.EventTerminated)
 			time.Sleep(100 * time.Millisecond)
-			os.Exit(0)
+			utils.Exit()
 			return
 		}
 	})
@@ -650,7 +649,7 @@ func (this *Node) listenSock() error {
 
 				// 退出主进程
 				events.Notify(events.EventQuit)
-				os.Exit(0)
+				utils.Exit()
 			case "quit":
 				_ = cmd.ReplyOk()
 				_ = this.sock.Close()
@@ -662,7 +661,7 @@ func (this *Node) listenSock() error {
 					for {
 						countActiveConnections := sharedListenerManager.TotalActiveConnections()
 						if countActiveConnections <= 0 {
-							os.Exit(0)
+							utils.Exit()
 							return
 						}
 						time.Sleep(1 * time.Second)

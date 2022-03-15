@@ -1,8 +1,9 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package caches
+package caches_test
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/rands"
@@ -15,21 +16,31 @@ import (
 )
 
 func TestFileList_Init(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		_ = list.Close()
+	}()
 	t.Log("ok")
 }
 
 func TestFileList_Add(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = list.Add(stringutil.Md5("123456"), &Item{
+
+	defer func() {
+		_ = list.Close()
+	}()
+
+	var hash = stringutil.Md5("123456")
+	t.Log("db index:", list.GetDBIndex(hash))
+	err = list.Add(hash, &caches.Item{
 		Key:        "123456",
 		ExpiredAt:  time.Now().Unix(),
 		HeaderSize: 1,
@@ -41,19 +52,25 @@ func TestFileList_Add(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Log("ok")
 }
 
 func TestFileList_Add_Many(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	before := time.Now()
-	for i := 0; i < 2000_0000; i++ {
+	for i := 0; i < 100_000; i++ {
 		u := "https://edge.teaos.cn/123456" + strconv.Itoa(i)
-		_ = list.Add(stringutil.Md5(u), &Item{
+		_ = list.Add(stringutil.Md5(u), &caches.Item{
 			Key:        u,
 			ExpiredAt:  time.Now().Unix() + 3600,
 			HeaderSize: 1,
@@ -72,36 +89,46 @@ func TestFileList_Add_Many(t *testing.T) {
 }
 
 func TestFileList_Exist(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := time.Now()
+
+	defer func() {
+		_ = list.Close()
+	}()
+
+	total, _ := list.Count()
+	t.Log("total:", total)
+
+	var before = time.Now()
 	defer func() {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
 	}()
 	{
-		exists, err := list.Exist(stringutil.Md5("123456"))
+		var hash = stringutil.Md5("123456")
+		exists, err := list.Exist(hash)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Log("exists:", exists)
+		t.Log(hash, "exists:", exists)
 	}
 	{
-		exists, err := list.Exist(stringutil.Md5("http://edge.teaos.cn/1234561"))
+		var hash = stringutil.Md5("http://edge.teaos.cn/1234561")
+		exists, err := list.Exist(hash)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Log("exists:", exists)
+		t.Log(hash, "exists:", exists)
 	}
 }
 
 func TestFileList_Exist_Many_DB(t *testing.T) {
 	// 测试在多个数据库下的性能
-	var listSlice = []ListInterface{}
+	var listSlice = []caches.ListInterface{}
 	for i := 1; i <= 10; i++ {
-		list := NewFileList(Tea.Root + "/data/data" + strconv.Itoa(i))
+		list := caches.NewFileList(Tea.Root + "/data/data" + strconv.Itoa(i))
 		err := list.Init()
 		if err != nil {
 			t.Fatal(err)
@@ -151,13 +178,18 @@ func TestFileList_Exist_Many_DB(t *testing.T) {
 }
 
 func TestFileList_CleanPrefix(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	before := time.Now()
-	err = list.CleanPrefix("1234")
+	err = list.CleanPrefix("123")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,12 +197,17 @@ func TestFileList_CleanPrefix(t *testing.T) {
 }
 
 func TestFileList_Remove(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	list.OnRemove(func(item *Item) {
+
+	defer func() {
+		_ = list.Close()
+	}()
+
+	list.OnRemove(func(item *caches.Item) {
 		t.Logf("remove %#v", item)
 	})
 	err = list.Remove(stringutil.Md5("123456"))
@@ -178,30 +215,71 @@ func TestFileList_Remove(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("ok")
+
+	t.Log("===count===")
+	t.Log(list.Count())
 }
 
 func TestFileList_Purge(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = list.Purge(2, func(hash string) error {
+	defer func() {
+		_ = list.Close()
+	}()
+
+	var count = 0
+	_, err = list.Purge(caches.CountFileDB*2, func(hash string) error {
 		t.Log(hash)
+		count++
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("ok")
+	t.Log("ok, purged", count, "items")
 }
 
-func TestFileList_Stat(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+func TestFileList_PurgeLFU(t *testing.T) {
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		_ = list.Close()
+	}()
+
+	err = list.IncreaseHit(stringutil.Md5("123456"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var count = 0
+	err = list.PurgeLFU(caches.CountFileDB*2, func(hash string) error {
+		t.Log(hash)
+		count++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("ok, purged", count, "items")
+}
+
+func TestFileList_Stat(t *testing.T) {
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	stat, err := list.Stat(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -210,7 +288,7 @@ func TestFileList_Stat(t *testing.T) {
 }
 
 func TestFileList_Count(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	list := caches.NewFileList(Tea.Root + "/data")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -225,7 +303,7 @@ func TestFileList_Count(t *testing.T) {
 }
 
 func TestFileList_CleanAll(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	list := caches.NewFileList(Tea.Root + "/data")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -238,58 +316,17 @@ func TestFileList_CleanAll(t *testing.T) {
 	t.Log(list.Count())
 }
 
-func TestFileList_Conflict(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data").(*FileList)
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rows, err := list.purgeStmt.Query(time.Now().Unix(), 1000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	go func() {
-		time.Sleep(5 * time.Second)
-		_ = rows.Close()
-	}()
-
-	t.Log("before exists")
-	t.Log(list.Exist("123456"))
-	t.Log("after exists")
-}
-
-func TestFileList_IIF(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data").(*FileList)
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rows, err := list.db.Query("SELECT IIF(0, 2, 3)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	if rows.Next() {
-		var result int
-		err = rows.Scan(&result)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Log("result:", result)
-	}
-}
-
 func TestFileList_IncreaseHit(t *testing.T) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 	defer func() {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
@@ -303,13 +340,32 @@ func TestFileList_IncreaseHit(t *testing.T) {
 	t.Log("ok")
 }
 
+func TestFileList_UpgradeV3(t *testing.T) {
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p43").(*caches.FileList)
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		_ = list.Close()
+	}()
+
+	err = list.UpgradeV3("/Users/WorkSpace/EdgeProject/EdgeCache/p43", false)
+	if err != nil {
+		t.Log(err)
+		return
+	}
+	t.Log("ok")
+}
+
 func BenchmarkFileList_Exist(b *testing.B) {
-	list := NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		_, _ = list.Exist("f0eb5b87e0b0041f3917002c0707475f")
+		_, _ = list.Exist("f0eb5b87e0b0041f3917002c0707475f" + types.String(i))
 	}
 }
