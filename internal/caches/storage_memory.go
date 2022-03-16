@@ -13,6 +13,7 @@ import (
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
+	"github.com/shirou/gopsutil/v3/load"
 	"math"
 	"runtime"
 	"strconv"
@@ -93,17 +94,12 @@ func (this *MemoryStorage) Init() error {
 
 	// 启动定时Flush memory to disk任务
 	if this.parentStorage != nil {
-		var threads = runtime.NumCPU()
-		if threads == 0 {
-			threads = 1
-		} else if threads > 8 {
-			threads = 8
-		}
+		// TODO 应该根据磁盘性能决定线程数
+		var threads = 1
+
 		for i := 0; i < threads; i++ {
 			goman.New(func() {
-				for hash := range this.dirtyChan {
-					this.flushItem(hash)
-				}
+				this.startFlush()
 			})
 		}
 	}
@@ -169,8 +165,7 @@ func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, s
 	if isDirty &&
 		this.parentStorage != nil &&
 		this.dirtyQueueSize > 0 &&
-		len(this.dirtyChan) == this.dirtyQueueSize &&
-		(expiredAt <= 0 || expiredAt > time.Now().Unix()+7200) { // 缓存时间过长
+		len(this.dirtyChan) == this.dirtyQueueSize { // 缓存时间过长
 		return nil, ErrWritingQueueFull
 	}
 
@@ -420,7 +415,40 @@ func (this *MemoryStorage) purgeLoop() {
 	}
 }
 
-// Flush任务
+// 开始Flush任务
+func (this *MemoryStorage) startFlush() {
+	var statCount = 0
+	var writeDelayMS float64 = 0
+
+	for hash := range this.dirtyChan {
+		statCount++
+
+		if statCount == 100 {
+			statCount = 0
+
+			loadStat, err := load.Avg()
+			if err == nil && loadStat != nil {
+				if loadStat.Load1 > 10 {
+					writeDelayMS = 100
+				} else if loadStat.Load1 > 3 {
+					writeDelayMS = 50
+				} else if loadStat.Load1 > 2 {
+					writeDelayMS = 10
+				} else {
+					writeDelayMS = 0
+				}
+			}
+		}
+
+		this.flushItem(hash)
+
+		if writeDelayMS > 0 {
+			time.Sleep(time.Duration(writeDelayMS) * time.Millisecond)
+		}
+	}
+}
+
+// 单次Flush任务
 func (this *MemoryStorage) flushItem(key string) {
 	if this.parentStorage == nil {
 		return

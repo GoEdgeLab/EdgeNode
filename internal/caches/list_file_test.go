@@ -42,7 +42,7 @@ func TestFileList_Add(t *testing.T) {
 	t.Log("db index:", list.GetDBIndex(hash))
 	err = list.Add(hash, &caches.Item{
 		Key:        "123456",
-		ExpiredAt:  time.Now().Unix(),
+		ExpiredAt:  time.Now().Unix() + 1,
 		HeaderSize: 1,
 		MetaSize:   2,
 		BodySize:   3,
@@ -52,6 +52,8 @@ func TestFileList_Add(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Log(list.Exist(hash))
 
 	t.Log("ok")
 }

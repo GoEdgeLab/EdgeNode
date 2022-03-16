@@ -205,12 +205,12 @@ func (this *FileStorage) Init() error {
 		return errors.New("[CACHE]cache storage dir can not be empty")
 	}
 
-	var list = NewFileList(Tea.Root + "/data/cache-index/p" + types.String(this.policy.Id))
+	var list = NewFileList(dir + "/p" + types.String(this.policy.Id) + "/.indexes")
 	err = list.Init()
 	if err != nil {
 		return err
 	}
-	list.(*FileList).SetOldDir(this.options.Dir + "/p" + types.String(this.policy.Id))
+	list.(*FileList).SetOldDir(dir + "/p" + types.String(this.policy.Id))
 	this.list = list
 	stat, err := list.Stat(func(hash string) bool {
 		return true

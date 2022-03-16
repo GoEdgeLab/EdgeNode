@@ -10,11 +10,14 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
+	"runtime"
+	"strings"
 	"time"
 )
 
 type FileListDB struct {
-	db *dbs.DB
+	readDB  *dbs.DB
+	writeDB *dbs.DB
 
 	itemsTableName string
 	hitsTableName  string
@@ -46,12 +49,13 @@ func NewFileListDB() *FileListDB {
 }
 
 func (this *FileListDB) Open(dbPath string) error {
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
+	// write db
+	writeDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=32000&_secure_delete=FAST")
 	if err != nil {
-		return errors.New("open database failed: " + err.Error())
+		return errors.New("open write database failed: " + err.Error())
 	}
 
-	db.SetMaxOpenConns(1)
+	writeDB.SetMaxOpenConns(1)
 
 	// TODO 耗时过长，暂时不整理数据库
 	/**_, err = db.Exec("VACUUM")
@@ -59,10 +63,24 @@ func (this *FileListDB) Open(dbPath string) error {
 		return err
 	}**/
 
-	this.db = dbs.NewDB(db)
+	this.writeDB = dbs.NewDB(writeDB)
 
 	if teaconst.EnableDBStat {
-		this.db.EnableStat(true)
+		this.writeDB.EnableStat(true)
+	}
+
+	// read db
+	readDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=ro&_journal_mode=WAL&_sync=OFF&_cache_size=32000")
+	if err != nil {
+		return errors.New("open read database failed: " + err.Error())
+	}
+
+	readDB.SetMaxOpenConns(runtime.NumCPU())
+
+	this.readDB = dbs.NewDB(readDB)
+
+	if teaconst.EnableDBStat {
+		this.readDB.EnableStat(true)
 	}
 
 	return nil
@@ -79,7 +97,7 @@ func (this *FileListDB) Init() error {
 	}
 
 	// 读取总数量
-	row := this.db.QueryRow(`SELECT COUNT(*) FROM "` + this.itemsTableName + `"`)
+	row := this.readDB.QueryRow(`SELECT COUNT(*) FROM "` + this.itemsTableName + `"`)
 	if row.Err() != nil {
 		return row.Err()
 	}
@@ -91,56 +109,56 @@ func (this *FileListDB) Init() error {
 	this.total = total
 
 	// 常用语句
-	this.existsByHashStmt, err = this.db.Prepare(`SELECT "expiredAt" FROM "` + this.itemsTableName + `" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
+	this.existsByHashStmt, err = this.readDB.Prepare(`SELECT "expiredAt" FROM "` + this.itemsTableName + `" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
 	if err != nil {
 		return err
 	}
 
-	this.insertStmt, err = this.db.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	this.insertStmt, err = this.writeDB.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
 
-	this.selectByHashStmt, err = this.db.Prepare(`SELECT "key", "headerSize", "bodySize", "metaSize", "expiredAt" FROM "` + this.itemsTableName + `" WHERE "hash"=? LIMIT 1`)
+	this.selectByHashStmt, err = this.readDB.Prepare(`SELECT "key", "headerSize", "bodySize", "metaSize", "expiredAt" FROM "` + this.itemsTableName + `" WHERE "hash"=? LIMIT 1`)
 	if err != nil {
 		return err
 	}
 
-	this.deleteByHashStmt, err = this.db.Prepare(`DELETE FROM "` + this.itemsTableName + `" WHERE "hash"=?`)
+	this.deleteByHashStmt, err = this.writeDB.Prepare(`DELETE FROM "` + this.itemsTableName + `" WHERE "hash"=?`)
 	if err != nil {
 		return err
 	}
 
-	this.statStmt, err = this.db.Prepare(`SELECT COUNT(*), IFNULL(SUM(headerSize+bodySize+metaSize), 0), IFNULL(SUM(headerSize+bodySize), 0) FROM "` + this.itemsTableName + `"`)
+	this.statStmt, err = this.readDB.Prepare(`SELECT COUNT(*), IFNULL(SUM(headerSize+bodySize+metaSize), 0), IFNULL(SUM(headerSize+bodySize), 0) FROM "` + this.itemsTableName + `"`)
 	if err != nil {
 		return err
 	}
 
-	this.purgeStmt, err = this.db.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" WHERE staleAt<=? LIMIT ?`)
+	this.purgeStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" WHERE staleAt<=? LIMIT ?`)
 	if err != nil {
 		return err
 	}
 
-	this.deleteAllStmt, err = this.db.Prepare(`DELETE FROM "` + this.itemsTableName + `"`)
+	this.deleteAllStmt, err = this.writeDB.Prepare(`DELETE FROM "` + this.itemsTableName + `"`)
 	if err != nil {
 		return err
 	}
 
-	this.listOlderItemsStmt, err = this.db.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "id" ASC LIMIT ?`)
+	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "id" ASC LIMIT ?`)
 
-	this.insertHitStmt, err = this.db.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?)`)
+	this.insertHitStmt, err = this.writeDB.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?)`)
 
-	this.increaseHitStmt, err = this.db.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?) ON CONFLICT("hash") DO UPDATE SET "week1Hits"=IIF("week"=?, "week1Hits", "week2Hits"), "week2Hits"=IIF("week"=?, "week2Hits"+1, 1), "week"=?`)
+	this.increaseHitStmt, err = this.writeDB.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?) ON CONFLICT("hash") DO UPDATE SET "week1Hits"=IIF("week"=?, "week1Hits", "week2Hits"), "week2Hits"=IIF("week"=?, "week2Hits"+1, 1), "week"=?`)
 	if err != nil {
 		return err
 	}
 
-	this.deleteHitByHashStmt, err = this.db.Prepare(`DELETE FROM "` + this.hitsTableName + `" WHERE "hash"=?`)
+	this.deleteHitByHashStmt, err = this.writeDB.Prepare(`DELETE FROM "` + this.hitsTableName + `" WHERE "hash"=?`)
 	if err != nil {
 		return err
 	}
 
-	this.lfuHitsStmt, err = this.db.Prepare(`SELECT "hash" FROM "` + this.hitsTableName + `" ORDER BY "week" ASC, "week1Hits"+"week2Hits" ASC LIMIT ?`)
+	this.lfuHitsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.hitsTableName + `" ORDER BY "week" ASC, "week1Hits"+"week2Hits" ASC LIMIT ?`)
 	if err != nil {
 		return err
 	}
@@ -241,7 +259,7 @@ func (this *FileListDB) CleanPrefix(prefix string) error {
 	var staleLife = 600             // TODO 需要可以设置
 	var unixTime = utils.UnixTime() // 只删除当前的，不删除新的
 	for {
-		result, err := this.db.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, unixTime+int64(staleLife), unixTime, prefix)
+		result, err := this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, unixTime+int64(staleLife), unixTime, prefix)
 		if err != nil {
 			return err
 		}
@@ -272,24 +290,64 @@ func (this *FileListDB) Close() error {
 	this.isClosed = true
 	this.isReady = false
 
-	if this.db != nil {
+	if this.existsByHashStmt != nil {
 		_ = this.existsByHashStmt.Close()
-		_ = this.insertStmt.Close()
-		_ = this.selectByHashStmt.Close()
-		_ = this.deleteByHashStmt.Close()
-		_ = this.statStmt.Close()
-		_ = this.purgeStmt.Close()
-		_ = this.deleteAllStmt.Close()
-		_ = this.listOlderItemsStmt.Close()
-
-		_ = this.insertHitStmt.Close()
-		_ = this.increaseHitStmt.Close()
-		_ = this.deleteHitByHashStmt.Close()
-		_ = this.lfuHitsStmt.Close()
-
-		return this.db.Close()
 	}
-	return nil
+	if this.insertStmt != nil {
+		_ = this.insertStmt.Close()
+	}
+	if this.selectByHashStmt != nil {
+		_ = this.selectByHashStmt.Close()
+	}
+	if this.deleteByHashStmt != nil {
+		_ = this.deleteByHashStmt.Close()
+	}
+	if this.statStmt != nil {
+		_ = this.statStmt.Close()
+	}
+	if this.purgeStmt != nil {
+		_ = this.purgeStmt.Close()
+	}
+	if this.deleteAllStmt != nil {
+		_ = this.deleteAllStmt.Close()
+	}
+	if this.listOlderItemsStmt != nil {
+		_ = this.listOlderItemsStmt.Close()
+	}
+
+	if this.insertHitStmt != nil {
+		_ = this.insertHitStmt.Close()
+	}
+	if this.increaseHitStmt != nil {
+		_ = this.increaseHitStmt.Close()
+	}
+	if this.deleteHitByHashStmt != nil {
+		_ = this.deleteHitByHashStmt.Close()
+	}
+	if this.lfuHitsStmt != nil {
+		_ = this.lfuHitsStmt.Close()
+	}
+
+	var errStrings []string
+
+	if this.readDB != nil {
+		err := this.readDB.Close()
+		if err != nil {
+			errStrings = append(errStrings, err.Error())
+		}
+	}
+
+	if this.writeDB != nil {
+		err := this.writeDB.Close()
+		if err != nil {
+			errStrings = append(errStrings, err.Error())
+		}
+	}
+
+	if len(errStrings) == 0 {
+		return nil
+	}
+	return errors.New("close database failed: " + strings.Join(errStrings, ", "))
 }
 
 // 初始化
@@ -297,7 +355,7 @@ func (this *FileListDB) initTables(times int) error {
 	{
 		// expiredAt - 过期时间，用来判断有无过期
 		// staleAt - 陈旧最大时间，用来清理缓存
-		_, err := this.db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
+		_, err := this.writeDB.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
   "key" varchar(1024),
@@ -341,7 +399,7 @@ ON "` + this.itemsTableName + `" (
 		if err != nil {
 			// 尝试删除重建
 			if times < 3 {
-				_, dropErr := this.db.Exec(`DROP TABLE "` + this.itemsTableName + `"`)
+				_, dropErr := this.writeDB.Exec(`DROP TABLE "` + this.itemsTableName + `"`)
 				if dropErr == nil {
 					return this.initTables(times + 1)
 				}
@@ -353,7 +411,7 @@ ON "` + this.itemsTableName + `" (
 	}
 
 	{
-		_, err := this.db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.hitsTableName + `" (
+		_, err := this.writeDB.Exec(`CREATE TABLE IF NOT EXISTS "` + this.hitsTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
   "week1Hits" integer DEFAULT 0,
@@ -369,7 +427,7 @@ ON "` + this.hitsTableName + `" (
 		if err != nil {
 			// 尝试删除重建
 			if times < 3 {
-				_, dropErr := this.db.Exec(`DROP TABLE "` + this.hitsTableName + `"`)
+				_, dropErr := this.writeDB.Exec(`DROP TABLE "` + this.hitsTableName + `"`)
 				if dropErr == nil {
 					return this.initTables(times + 1)
 				}

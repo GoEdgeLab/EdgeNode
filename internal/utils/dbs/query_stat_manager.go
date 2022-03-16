@@ -25,12 +25,12 @@ func init() {
 					for _, stat := range SharedQueryStatManager.TopN(10) {
 						var avg = stat.CostTotal / float64(stat.Calls)
 						var query = stat.Query
-						if len(query) > 100 {
-							query = query[:100]
+						if len(query) > 128 {
+							query = query[:128]
 						}
 						stats = append(stats, fmt.Sprintf("%.2fms/%.2fms/%.2fms - %d - %s", stat.CostMin*1000, stat.CostMax*1000, avg*1000, stat.Calls, query))
 					}
-					logs.Println("====DB STATS====\n" + strings.Join(stats, "\n"))
+					logs.Println("\n========== DB STATS ==========\n" + strings.Join(stats, "\n") + "\n=============================")
 				}
 			})
 		}

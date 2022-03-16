@@ -3,6 +3,7 @@
 package caches
 
 import (
+	"context"
 	"database/sql"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -15,7 +16,7 @@ import (
 	"time"
 )
 
-const CountFileDB = 10
+const CountFileDB = 20
 
 // FileList 文件缓存列表管理
 type FileList struct {
@@ -131,8 +132,13 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		return true, nil
 	}
 
-	rows, err := db.existsByHashStmt.Query(hash, time.Now().Unix())
+	ctx, cancelCtx := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	rows, err := db.existsByHashStmt.QueryContext(ctx, hash, time.Now().Unix())
+	cancelCtx()
 	if err != nil {
+		if err == context.DeadlineExceeded {
+			return false, nil
+		}
 		return false, err
 	}
 	defer func() {
@@ -423,7 +429,7 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 				offset += count
 			}()
 
-			rows, err := db.Query(`SELECT "hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "createdAt", "host", "serverId" FROM "cacheItems_v3" LIMIT ?, ?`, offset, count)
+			rows, err := db.Query(`SELECT "hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "createdAt", "host", "serverId" FROM "cacheItems_v3" ORDER BY "id" ASC LIMIT ?, ?`, offset, count)
 			if err != nil {
 				return err
 			}
