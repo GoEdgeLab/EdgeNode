@@ -10,7 +10,7 @@ import (
 
 func TestHash(t *testing.T) {
 	for _, key := range []string{"costarring", "liquid", "hello"} {
-		var h = fnv.Hash(key)
+		var h = fnv.HashString(key)
 		t.Log(key + " => " + types.String(h))
 	}
 }

@@ -22,6 +22,11 @@ func (this *ResponseBodyCheckpoint) RequestValue(req requests.Request, param str
 }
 
 func (this *ResponseBodyCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+	if resp.ContentLength == 0 {
+		value = ""
+		return
+	}
+
 	value = ""
 	if resp != nil && resp.Body != nil {
 		if len(resp.BodyData) > 0 {

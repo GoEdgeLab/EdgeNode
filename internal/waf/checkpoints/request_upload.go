@@ -17,6 +17,11 @@ type RequestUploadCheckpoint struct {
 }
 
 func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+	if this.RequestBodyIsEmpty(req) {
+		value = ""
+		return
+	}
+
 	value = ""
 	if param == "minSize" || param == "maxSize" {
 		value = 0

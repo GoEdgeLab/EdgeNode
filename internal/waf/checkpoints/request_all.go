@@ -18,6 +18,11 @@ func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param strin
 		valueBytes = append(valueBytes, req.WAFRaw().URL.RequestURI()...)
 	}
 
+	if this.RequestBodyIsEmpty(req) {
+		value = valueBytes
+		return
+	}
+
 	if req.WAFRaw().Body != nil {
 		valueBytes = append(valueBytes, ' ')
 

@@ -7,9 +7,20 @@ const (
 	prime64  uint64 = 1099511628211
 )
 
+// HashString
+// 非unique Hash
+func HashString(key string) uint64 {
+	var hash = offset64
+	for _, b := range key {
+		hash ^= uint64(b)
+		hash *= prime64
+	}
+	return hash
+}
+
 // Hash
 // 非unique Hash
-func Hash(key string) uint64 {
+func Hash(key []byte) uint64 {
 	var hash = offset64
 	for _, b := range key {
 		hash ^= uint64(b)

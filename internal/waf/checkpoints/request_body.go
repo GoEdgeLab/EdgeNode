@@ -11,6 +11,11 @@ type RequestBodyCheckpoint struct {
 }
 
 func (this *RequestBodyCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+	if this.RequestBodyIsEmpty(req) {
+		value = ""
+		return
+	}
+
 	if req.WAFRaw().Body == nil {
 		value = ""
 		return

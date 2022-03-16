@@ -74,12 +74,12 @@ func (this *Cache) Write(key string, value interface{}, expiredAt int64) (ok boo
 		return
 	}
 
-	currentTimestamp := time.Now().Unix()
+	var currentTimestamp = utils.UnixTime()
 	if expiredAt <= currentTimestamp {
 		return
 	}
 
-	maxExpiredAt := currentTimestamp + 30*86400
+	var maxExpiredAt = currentTimestamp + 30*86400
 	if expiredAt > maxExpiredAt {
 		expiredAt = maxExpiredAt
 	}

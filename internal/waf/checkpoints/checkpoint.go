@@ -1,5 +1,10 @@
 package checkpoints
 
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"net/http"
+)
+
 type Checkpoint struct {
 }
 
@@ -29,4 +34,17 @@ func (this *Checkpoint) Start() {
 
 func (this *Checkpoint) Stop() {
 
+}
+
+func (this *Checkpoint) RequestBodyIsEmpty(req requests.Request) bool {
+	if req.WAFRaw().ContentLength == 0 {
+		return true
+	}
+
+	var method = req.WAFRaw().Method
+	if method == http.MethodHead || method == http.MethodGet {
+		return true
+	}
+
+	return false
 }

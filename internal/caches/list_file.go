@@ -331,11 +331,11 @@ func (this *FileList) Close() error {
 }
 
 func (this *FileList) GetDBIndex(hash string) uint64 {
-	return fnv.Hash(hash) % CountFileDB
+	return fnv.HashString(hash) % CountFileDB
 }
 
 func (this *FileList) getDB(hash string) *FileListDB {
-	return this.dbList[fnv.Hash(hash)%CountFileDB]
+	return this.dbList[fnv.HashString(hash)%CountFileDB]
 }
 
 func (this *FileList) remove(hash string) (notFound bool, err error) {
