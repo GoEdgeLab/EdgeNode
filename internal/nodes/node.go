@@ -796,6 +796,7 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 	// 缓存策略
 	caches.SharedManager.MaxDiskCapacity = config.MaxCacheDiskCapacity
 	caches.SharedManager.MaxMemoryCapacity = config.MaxCacheMemoryCapacity
+	caches.SharedManager.DiskDir = config.CacheDiskDir
 	if len(config.HTTPCachePolicies) > 0 {
 		caches.SharedManager.UpdatePolicies(config.HTTPCachePolicies)
 	} else {
