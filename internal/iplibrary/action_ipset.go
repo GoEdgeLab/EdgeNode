@@ -62,29 +62,39 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 		if err != nil {
 			return err
 		}
-		{
-			cmd := exec.Command(path, "create", this.config.WhiteName, "hash:ip", "timeout", "0", "maxelem", "1000000")
-			stderr := bytes.NewBuffer([]byte{})
+
+		// ipv4
+		for _, listName := range []string{this.config.WhiteName, this.config.BlackName} {
+			if len(listName) == 0 {
+				continue
+			}
+			var cmd = exec.Command(path, "create", listName, "hash:ip", "timeout", "0", "maxelem", "1000000")
+			var stderr = bytes.NewBuffer([]byte{})
 			cmd.Stderr = stderr
 			err := cmd.Run()
 			if err != nil {
-				output := stderr.Bytes()
+				var output = stderr.Bytes()
 				if !bytes.Contains(output, []byte("already exists")) {
-					return errors.New("create ipset '" + this.config.WhiteName + "': " + err.Error() + ", output: " + string(output))
+					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
 				} else {
 					err = nil
 				}
 			}
 		}
-		{
-			cmd := exec.Command(path, "create", this.config.BlackName, "hash:ip", "timeout", "0", "maxelem", "1000000")
-			stderr := bytes.NewBuffer([]byte{})
+
+		// ipv6
+		for _, listName := range []string{this.config.WhiteNameIPv6, this.config.BlackNameIPv6} {
+			if len(listName) == 0 {
+				continue
+			}
+			var cmd = exec.Command(path, "create", listName, "hash:ip", "family", "inet6", "timeout", "0", "maxelem", "1000000")
+			var stderr = bytes.NewBuffer([]byte{})
 			cmd.Stderr = stderr
 			err := cmd.Run()
 			if err != nil {
-				output := stderr.Bytes()
+				var output = stderr.Bytes()
 				if !bytes.Contains(output, []byte("already exists")) {
-					return errors.New("create ipset '" + this.config.BlackName + "': " + err.Error() + ", output: " + string(output))
+					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
 				} else {
 					err = nil
 				}
@@ -99,8 +109,12 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			return err
 		}
 
-		{
-			cmd := exec.Command(path, "--permanent", "--new-ipset="+this.config.WhiteName, "--type=hash:ip", "--option=timeout=0", "--option=maxelem=1000000")
+		// ipv4
+		for _, listName := range []string{this.config.WhiteName, this.config.BlackName} {
+			if len(listName) == 0 {
+				continue
+			}
+			cmd := exec.Command(path, "--permanent", "--new-ipset="+listName, "--type=hash:ip", "--option=timeout=0", "--option=maxelem=1000000")
 			stderr := bytes.NewBuffer([]byte{})
 			cmd.Stderr = stderr
 			err := cmd.Run()
@@ -109,45 +123,57 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 				if bytes.Contains(output, []byte("NAME_CONFLICT")) {
 					err = nil
 				} else {
-					return errors.New("firewall-cmd add ipset '" + this.config.WhiteName + "': " + err.Error() + ", output: " + string(output))
+					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
 				}
 			}
 		}
 
-		{
-			cmd := exec.Command(path, "--permanent", "--add-rich-rule=rule source ipset='"+this.config.WhiteName+"' accept")
-			stderr := bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
-			err := cmd.Run()
-			if err != nil {
-				output := stderr.Bytes()
-				return errors.New("firewall-cmd add rich rule '" + this.config.WhiteName + "': " + err.Error() + ", output: " + string(output))
+		// ipv6
+		for _, listName := range []string{this.config.WhiteNameIPv6, this.config.BlackNameIPv6} {
+			if len(listName) == 0 {
+				continue
 			}
-		}
-
-		{
-			cmd := exec.Command(path, "--permanent", "--new-ipset="+this.config.BlackName, "--type=hash:ip", "--option=timeout=0", "--option=maxelem=1000000")
+			cmd := exec.Command(path, "--permanent", "--new-ipset="+listName, "--type=hash:ip", "--option=family=inet6", "--option=timeout=0", "--option=maxelem=1000000")
 			stderr := bytes.NewBuffer([]byte{})
 			cmd.Stderr = stderr
 			err := cmd.Run()
 			if err != nil {
-				output := stderr.Bytes()
+				var output = stderr.Bytes()
 				if bytes.Contains(output, []byte("NAME_CONFLICT")) {
 					err = nil
 				} else {
-					return errors.New("firewall-cmd add ipset '" + this.config.BlackName + "': " + err.Error() + ", output: " + string(output))
+					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
 				}
 			}
 		}
 
-		{
-			cmd := exec.Command(path, "--permanent", "--add-rich-rule=rule source ipset='"+this.config.BlackName+"' reject")
-			stderr := bytes.NewBuffer([]byte{})
+		// accept
+		for _, listName := range []string{this.config.WhiteName, this.config.WhiteNameIPv6} {
+			if len(listName) == 0 {
+				continue
+			}
+			var cmd = exec.Command(path, "--permanent", "--add-rich-rule=rule source ipset='"+listName+"' accept")
+			var stderr = bytes.NewBuffer([]byte{})
 			cmd.Stderr = stderr
 			err := cmd.Run()
 			if err != nil {
-				output := stderr.Bytes()
-				return errors.New("firewall-cmd add rich rule '" + this.config.WhiteName + "': " + err.Error() + ", output: " + string(output))
+				var output = stderr.Bytes()
+				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + string(output))
+			}
+		}
+
+		// reject
+		for _, listName := range []string{this.config.BlackName, this.config.BlackNameIPv6} {
+			if len(listName) == 0 {
+				continue
+			}
+			var cmd = exec.Command(path, "--permanent", "--add-rich-rule=rule source ipset='"+listName+"' reject")
+			var stderr = bytes.NewBuffer([]byte{})
+			cmd.Stderr = stderr
+			err := cmd.Run()
+			if err != nil {
+				var output = stderr.Bytes()
+				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + string(output))
 			}
 		}
 
@@ -158,7 +184,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			cmd.Stderr = stderr
 			err := cmd.Run()
 			if err != nil {
-				output := stderr.Bytes()
+				var output = stderr.Bytes()
 				return errors.New("firewall-cmd reload: " + err.Error() + ", output: " + string(output))
 			}
 		}
@@ -171,38 +197,48 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			return err
 		}
 
-		{
+		// accept
+		for _, listName := range []string{this.config.WhiteName, this.config.WhiteNameIPv6} {
+			if len(listName) == 0 {
+				continue
+			}
+
 			// 检查规则是否存在
-			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", this.config.WhiteName, "src", "-j", "ACCEPT")
+			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "ACCEPT")
 			err := cmd.Run()
 			var exists = err == nil
 
 			// 添加规则
 			if !exists {
-				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", this.config.WhiteName, "src", "-j", "ACCEPT")
-				stderr := bytes.NewBuffer([]byte{})
+				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "ACCEPT")
+				var stderr = bytes.NewBuffer([]byte{})
 				cmd.Stderr = stderr
 				err := cmd.Run()
 				if err != nil {
-					output := stderr.Bytes()
+					var output = stderr.Bytes()
 					return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
 				}
 			}
 		}
 
-		{
+		// reject
+		for _, listName := range []string{this.config.BlackName, this.config.BlackNameIPv6} {
+			if len(listName) == 0 {
+				continue
+			}
+
 			// 检查规则是否存在
-			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", this.config.BlackName, "src", "-j", "REJECT")
+			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "REJECT")
 			err := cmd.Run()
 			var exists = err == nil
 
 			if !exists {
-				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", this.config.BlackName, "src", "-j", "REJECT")
-				stderr := bytes.NewBuffer([]byte{})
+				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "REJECT")
+				var stderr = bytes.NewBuffer([]byte{})
 				cmd.Stderr = stderr
 				err := cmd.Run()
 				if err != nil {
-					output := stderr.Bytes()
+					var output = stderr.Bytes()
 					return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
 				}
 			}
@@ -236,7 +272,7 @@ func (this *IPSetAction) runAction(action string, listType IPListType, item *pb.
 		return nil
 	}
 	for _, cidr := range cidrList {
-		index := strings.Index(cidr, "/")
+		var index = strings.Index(cidr, "/")
 		if index <= 0 {
 			continue
 		}
@@ -256,26 +292,40 @@ func (this *IPSetAction) runAction(action string, listType IPListType, item *pb.
 	return nil
 }
 
+func (this *IPSetAction) SetConfig(config *firewallconfigs.FirewallActionIPSetConfig) {
+	this.config = config
+}
+
 func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, item *pb.IPItem) error {
 	if item.Type == "all" {
 		return nil
 	}
 
-	listName := ""
+	var listName = ""
+	var isIPv6 = strings.Contains(item.IpFrom, ":")
+
 	switch listType {
 	case IPListTypeWhite:
-		listName = this.config.WhiteName
+		if isIPv6 {
+			listName = this.config.WhiteNameIPv6
+		} else {
+			listName = this.config.WhiteName
+		}
 	case IPListTypeBlack:
-		listName = this.config.BlackName
+		if isIPv6 {
+			listName = this.config.BlackNameIPv6
+		} else {
+			listName = this.config.BlackName
+		}
 	default:
 		// 不支持的类型
 		return nil
 	}
 	if len(listName) == 0 {
-		return errors.New("empty list name for '" + listType + "'")
+		return nil
 	}
 
-	path := this.config.Path
+	var path = this.config.Path
 	var err error
 	if len(path) == 0 {
 		path, err = exec.LookPath("ipset")
@@ -290,7 +340,7 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 	}
 
 	// ipset add edge_ip_list 192.168.2.32 timeout 30
-	args := []string{}
+	var args = []string{}
 	switch action {
 	case "addItem":
 		args = append(args, "add")
@@ -300,7 +350,7 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 
 	args = append(args, listName, item.IpFrom)
 	if action == "addItem" {
-		timestamp := time.Now().Unix()
+		var timestamp = time.Now().Unix()
 		if item.ExpiredAt > timestamp {
 			args = append(args, "timeout", strconv.FormatInt(item.ExpiredAt-timestamp, 10))
 		}
@@ -312,7 +362,7 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 	}
 
 	this.errorBuf.Reset()
-	cmd := exec.Command(path, args...)
+	var cmd = exec.Command(path, args...)
 	cmd.Stderr = this.errorBuf
 	err = cmd.Run()
 	if err != nil {

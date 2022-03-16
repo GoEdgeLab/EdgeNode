@@ -1,15 +1,16 @@
-package iplibrary
+package iplibrary_test
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/iwind/TeaGo/maps"
 	"testing"
 	"time"
 )
 
 func TestIPSetAction_Init(t *testing.T) {
-	action := NewIPSetAction()
+	action := iplibrary.NewIPSetAction()
 	err := action.Init(&firewallconfigs.FirewallActionConfig{
 		Params: maps.Map{
 			"path":      "/usr/bin/iptables",
@@ -24,14 +25,16 @@ func TestIPSetAction_Init(t *testing.T) {
 }
 
 func TestIPSetAction_AddItem(t *testing.T) {
-	action := NewIPSetAction()
-	action.config = &firewallconfigs.FirewallActionIPSetConfig{
-		Path:      "/usr/bin/iptables",
-		WhiteName: "white-list",
-		BlackName: "black-list",
-	}
+	var action = iplibrary.NewIPSetAction()
+	action.SetConfig(&firewallconfigs.FirewallActionIPSetConfig{
+		Path:          "/usr/bin/iptables",
+		WhiteName:     "white-list",
+		BlackName:     "black-list",
+		WhiteNameIPv6: "white-list-ipv6",
+		BlackNameIPv6: "black-list-ipv6",
+	})
 	{
-		err := action.AddItem(IPListTypeWhite, &pb.IPItem{
+		err := action.AddItem(iplibrary.IPListTypeWhite, &pb.IPItem{
 			Type:      "ipv4",
 			Id:        1,
 			IpFrom:    "192.168.1.100",
@@ -42,12 +45,35 @@ func TestIPSetAction_AddItem(t *testing.T) {
 		}
 		t.Log("ok")
 	}
-
 	{
-		err := action.AddItem(IPListTypeBlack, &pb.IPItem{
+		err := action.AddItem(iplibrary.IPListTypeWhite, &pb.IPItem{
+			Type:      "ipv4",
+			Id:        1,
+			IpFrom:    "1:2:3:4",
+			ExpiredAt: time.Now().Unix() + 30,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("ok")
+	}
+	{
+		err := action.AddItem(iplibrary.IPListTypeBlack, &pb.IPItem{
 			Type:      "ipv4",
 			Id:        1,
 			IpFrom:    "192.168.1.100",
+			ExpiredAt: time.Now().Unix() + 30,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("ok")
+	}
+	{
+		err := action.AddItem(iplibrary.IPListTypeBlack, &pb.IPItem{
+			Type:      "ipv4",
+			Id:        1,
+			IpFrom:    "1:2:3:4",
 			ExpiredAt: time.Now().Unix() + 30,
 		})
 		if err != nil {
@@ -58,7 +84,7 @@ func TestIPSetAction_AddItem(t *testing.T) {
 }
 
 func TestIPSetAction_DeleteItem(t *testing.T) {
-	action := NewIPSetAction()
+	action := iplibrary.NewIPSetAction()
 	err := action.Init(&firewallconfigs.FirewallActionConfig{
 		Params: maps.Map{
 			"path":      "/usr/bin/firewalld",
@@ -68,7 +94,7 @@ func TestIPSetAction_DeleteItem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = action.DeleteItem(IPListTypeWhite, &pb.IPItem{
+	err = action.DeleteItem(iplibrary.IPListTypeWhite, &pb.IPItem{
 		Type:      "ipv4",
 		Id:        1,
 		IpFrom:    "192.168.1.100",
