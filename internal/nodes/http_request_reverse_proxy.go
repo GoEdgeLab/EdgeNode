@@ -21,22 +21,22 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 对URL的处理
-	stripPrefix := this.reverseProxy.StripPrefix
-	requestURI := this.reverseProxy.RequestURI
-	requestURIHasVariables := this.reverseProxy.RequestURIHasVariables()
+	var stripPrefix = this.reverseProxy.StripPrefix
+	var requestURI = this.reverseProxy.RequestURI
+	var requestURIHasVariables = this.reverseProxy.RequestURIHasVariables()
 
 	var requestHost = ""
 	if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeCustomized {
 		requestHost = this.reverseProxy.RequestHost
 	}
-	requestHostHasVariables := this.reverseProxy.RequestHostHasVariables()
+	var requestHostHasVariables = this.reverseProxy.RequestHostHasVariables()
 
 	// 源站
-	requestCall := shared.NewRequestCall()
+	var requestCall = shared.NewRequestCall()
 	requestCall.Request = this.RawReq
 	requestCall.Formatter = this.Format
 	requestCall.Domain = this.ReqHost
-	origin := this.reverseProxy.NextOrigin(requestCall)
+	var origin = this.reverseProxy.NextOrigin(requestCall)
 	requestCall.CallResponseCallbacks(this.writer)
 	if origin == nil {
 		err := errors.New(this.URL() + ": no available origin sites for reverse proxy")
@@ -89,9 +89,9 @@ func (this *HTTPRequest) doReverseProxy() {
 		}
 
 		// 处理RequestURI中的问号
-		questionMark := strings.LastIndex(this.uri, "?")
+		var questionMark = strings.LastIndex(this.uri, "?")
 		if questionMark > 0 {
-			path := this.uri[:questionMark]
+			var path = this.uri[:questionMark]
 			if strings.Contains(path, "?") {
 				this.uri = path + "&" + this.uri[questionMark+1:]
 			}
@@ -102,7 +102,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 获取源站地址
-	originAddr := origin.Addr.PickAddress()
+	var originAddr = origin.Addr.PickAddress()
 	if origin.Addr.HostHasVariables() {
 		originAddr = this.Format(originAddr)
 	}
@@ -113,7 +113,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if requestHostHasVariables {
 			this.RawReq.Host = this.Format(requestHost)
 		} else {
-			this.RawReq.Host = this.reverseProxy.RequestHost
+			this.RawReq.Host = requestHost
 		}
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeOrigin {
@@ -132,7 +132,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 
 	// 重组请求URL
-	questionMark := strings.Index(this.uri, "?")
+	var questionMark = strings.Index(this.uri, "?")
 	if questionMark > -1 {
 		this.RawReq.URL.Path = this.uri[:questionMark]
 		this.RawReq.URL.RawQuery = this.uri[questionMark+1:]
@@ -199,7 +199,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			}
 		} else {
 			// 是否为客户端方面的错误
-			isClientError := false
+			var isClientError = false
 			if ok {
 				if httpErr.Err == context.Canceled {
 					// 如果是服务器端主动关闭，则无需提示
@@ -254,7 +254,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if this.web.Charset != nil && this.web.Charset.IsOn && len(this.web.Charset.Charset) > 0 {
 		contentTypes, ok := resp.Header["Content-Type"]
 		if ok && len(contentTypes) > 0 {
-			contentType := contentTypes[0]
+			var contentType = contentTypes[0]
 			if _, found := textMimeMap[contentType]; found {
 				resp.Header["Content-Type"][0] = contentType + "; charset=" + this.web.Charset.Charset
 			}
@@ -306,7 +306,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	}
 	pool.Put(buf)
 
-	closeErr := resp.Body.Close()
+	var closeErr = resp.Body.Close()
 	if closeErr != nil {
 		if !this.canIgnore(closeErr) {
 			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", closeErr.Error())
