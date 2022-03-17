@@ -169,6 +169,10 @@ func (this *IPList) sortItems() {
 
 // 不加锁的情况下查找Item
 func (this *IPList) lookupIP(ip uint64) *IPItem {
+	if len(this.sortedItems) == 0 {
+		return nil
+	}
+
 	var count = len(this.sortedItems)
 	var resultIndex = -1
 	sort.Search(count, func(i int) bool {

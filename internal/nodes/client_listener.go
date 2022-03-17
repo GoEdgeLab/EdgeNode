@@ -50,8 +50,10 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err == nil {
 		canGoNext, _ := iplibrary.AllowIP(ip, 0)
-		if !canGoNext || (!waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
-			waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)) {
+
+		if !canGoNext ||
+			(!waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
+				waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)) {
 			tcpConn, ok := conn.(*net.TCPConn)
 			if ok {
 				_ = tcpConn.SetLinger(0)

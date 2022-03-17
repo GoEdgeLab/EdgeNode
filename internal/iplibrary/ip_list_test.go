@@ -302,16 +302,20 @@ func TestTooManyLists(t *testing.T) {
 func BenchmarkIPList_Contains(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	list := NewIPList()
-	for i := 1; i < 194; i++ {
-		list.Add(&IPItem{
+	var list = NewIPList()
+	for i := 1; i < 200_000; i++ {
+		list.AddDelay(&IPItem{
 			Id:        int64(i),
-			IPFrom:    utils.IP2Long(strconv.Itoa(i%255) + "." + strconv.Itoa(i%255) + ".0.1"),
-			IPTo:      utils.IP2Long(strconv.Itoa(i%255) + "." + strconv.Itoa(i%255) + ".0.1"),
+			IPFrom:    utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
+			IPTo:      utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
 			ExpiredAt: time.Now().Unix() + 60,
 		})
 	}
+	list.Sort()
+
 	b.Log(len(list.itemsMap), "ip")
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = list.Contains(utils.IP2Long("192.168.1.100"))
 	}
