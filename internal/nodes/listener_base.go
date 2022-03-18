@@ -35,21 +35,25 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: nil,
 		GetConfigForClient: func(clientInfo *tls.ClientHelloInfo) (config *tls.Config, e error) {
-			ssl, _, err := this.matchSSL(clientInfo.ServerName)
+			tlsPolicy, _, err := this.matchSSL(clientInfo.ServerName)
 			if err != nil {
 				return nil, err
 			}
 
-			return ssl.TLSConfig(), nil
+			tlsPolicy.CheckOCSP()
+
+			return tlsPolicy.TLSConfig(), nil
 		},
 		GetCertificate: func(clientInfo *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-			_, cert, err := this.matchSSL(clientInfo.ServerName)
+			tlsPolicy, cert, err := this.matchSSL(clientInfo.ServerName)
 			if err != nil {
 				return nil, err
 			}
 			if cert == nil {
 				return nil, errors.New("no ssl certs found for '" + clientInfo.ServerName + "'")
 			}
+
+			tlsPolicy.CheckOCSP()
 
 			return cert, nil
 		},

@@ -70,7 +70,9 @@ func (this *OCSPUpdateTask) Loop() error {
 
 	for _, ocsp := range resp.SslCertOCSP {
 		// 更新OCSP
-		sharedNodeConfig.UpdateCertOCSP(ocsp.SslCertId, ocsp.Ocsp)
+		if sharedNodeConfig != nil {
+			sharedNodeConfig.UpdateCertOCSP(ocsp.SslCertId, ocsp.Data, ocsp.ExpiresAt)
+		}
 
 		// 修改版本
 		this.version = ocsp.Version
@@ -81,12 +83,4 @@ func (this *OCSPUpdateTask) Loop() error {
 
 func (this *OCSPUpdateTask) Stop() {
 	this.ticker.Stop()
-}
-
-func (this *OCSPUpdateTask) updateOCSP(certId int64, ocsp []byte) {
-	var config = sharedNodeConfig
-	if config == nil {
-		return
-	}
-
 }
