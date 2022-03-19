@@ -19,8 +19,11 @@ func NewBrotliWriter(writer io.Writer, level int) (Writer, error) {
 		level = brotli.BestCompression
 	}
 	return &BrotliWriter{
-		writer: brotli.NewWriterLevel(writer, level),
-		level:  level,
+		writer: brotli.NewWriterOptions(writer, brotli.WriterOptions{
+			Quality: level,
+			LGWin:   13, // TODO 在全局设置里可以设置此值
+		}),
+		level: level,
 	}, nil
 }
 

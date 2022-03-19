@@ -8,7 +8,7 @@ replace (
 
 require (
 	github.com/TeaOSLab/EdgeCommon v0.0.0-00010101000000-000000000000
-	github.com/andybalholm/brotli v1.0.3
+	github.com/andybalholm/brotli v1.0.4
 	github.com/biessek/golang-ico v0.0.0-20180326222316-d348d9ea4670
 	github.com/cespare/xxhash v1.1.0
 	github.com/chai2010/webp v1.1.0 // indirect
