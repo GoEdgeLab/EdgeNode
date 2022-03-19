@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package utils
@@ -6,9 +7,9 @@ import (
 	"syscall"
 )
 
-// set resource limit
+// SetRLimit set resource limit
 func SetRLimit(limit uint64) error {
-	rLimit := &syscall.Rlimit{}
+	var rLimit = &syscall.Rlimit{}
 	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, rLimit)
 	if err != nil {
 		return err
@@ -23,7 +24,7 @@ func SetRLimit(limit uint64) error {
 	return syscall.Setrlimit(syscall.RLIMIT_NOFILE, rLimit)
 }
 
-// set best resource limit value
-func SetSuitableRLimit() {
-	SetRLimit(4096 * 100) // 1M=100Files
+// SetSuitableRLimit set best resource limit value
+func SetSuitableRLimit() error {
+	return SetRLimit(4096 * 100) // 1M=100Files
 }
