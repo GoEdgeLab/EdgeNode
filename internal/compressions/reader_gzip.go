@@ -8,10 +8,16 @@ import (
 )
 
 type GzipReader struct {
+	BaseReader
+
 	reader *gzip.Reader
 }
 
 func NewGzipReader(reader io.Reader) (Reader, error) {
+	return sharedGzipReaderPool.Get(reader)
+}
+
+func newGzipReader(reader io.Reader) (Reader, error) {
 	r, err := gzip.NewReader(reader)
 	if err != nil {
 		return nil, err
@@ -25,6 +31,14 @@ func (this *GzipReader) Read(p []byte) (n int, err error) {
 	return this.reader.Read(p)
 }
 
-func (this *GzipReader) Close() error {
+func (this *GzipReader) Reset(reader io.Reader) error {
+	return this.reader.Reset(reader)
+}
+
+func (this *GzipReader) RawClose() error {
 	return this.reader.Close()
+}
+
+func (this *GzipReader) Close() error {
+	return this.Finish(this)
 }

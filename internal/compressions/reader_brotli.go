@@ -9,10 +9,16 @@ import (
 )
 
 type BrotliReader struct {
+	BaseReader
+
 	reader *brotli.Reader
 }
 
 func NewBrotliReader(reader io.Reader) (Reader, error) {
+	return sharedBrotliReaderPool.Get(reader)
+}
+
+func newBrotliReader(reader io.Reader) (Reader, error) {
 	return &BrotliReader{reader: brotli.NewReader(reader)}, nil
 }
 
@@ -24,6 +30,14 @@ func (this *BrotliReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (this *BrotliReader) Close() error {
+func (this *BrotliReader) Reset(reader io.Reader) error {
+	return this.reader.Reset(reader)
+}
+
+func (this *BrotliReader) RawClose() error {
 	return nil
+}
+
+func (this *BrotliReader) Close() error {
+	return this.Finish(this)
 }

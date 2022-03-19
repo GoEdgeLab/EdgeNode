@@ -8,11 +8,17 @@ import (
 )
 
 type GzipWriter struct {
+	BaseWriter
+
 	writer *gzip.Writer
 	level  int
 }
 
 func NewGzipWriter(writer io.Writer, level int) (Writer, error) {
+	return sharedGzipWriterPool.Get(writer, level)
+}
+
+func newGzipWriter(writer io.Writer, level int) (Writer, error) {
 	if level <= 0 {
 		level = gzip.BestSpeed
 	} else if level > gzip.BestCompression {
@@ -38,8 +44,16 @@ func (this *GzipWriter) Flush() error {
 	return this.writer.Flush()
 }
 
-func (this *GzipWriter) Close() error {
+func (this *GzipWriter) Reset(writer io.Writer) {
+	this.writer.Reset(writer)
+}
+
+func (this *GzipWriter) RawClose() error {
 	return this.writer.Close()
+}
+
+func (this *GzipWriter) Close() error {
+	return this.Finish(this)
 }
 
 func (this *GzipWriter) Level() int {

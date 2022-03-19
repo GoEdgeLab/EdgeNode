@@ -8,11 +8,17 @@ import (
 )
 
 type BrotliWriter struct {
+	BaseWriter
+
 	writer *brotli.Writer
 	level  int
 }
 
 func NewBrotliWriter(writer io.Writer, level int) (Writer, error) {
+	return sharedBrotliWriterPool.Get(writer, level)
+}
+
+func newBrotliWriter(writer io.Writer, level int) (*BrotliWriter, error) {
 	if level <= 0 {
 		level = brotli.BestSpeed
 	} else if level > brotli.BestCompression {
@@ -35,8 +41,16 @@ func (this *BrotliWriter) Flush() error {
 	return this.writer.Flush()
 }
 
-func (this *BrotliWriter) Close() error {
+func (this *BrotliWriter) Reset(newWriter io.Writer) {
+	this.writer.Reset(newWriter)
+}
+
+func (this *BrotliWriter) RawClose() error {
 	return this.writer.Close()
+}
+
+func (this *BrotliWriter) Close() error {
+	return this.Finish(this)
 }
 
 func (this *BrotliWriter) Level() int {

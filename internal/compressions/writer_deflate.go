@@ -8,11 +8,17 @@ import (
 )
 
 type DeflateWriter struct {
+	BaseWriter
+
 	writer *flate.Writer
 	level  int
 }
 
 func NewDeflateWriter(writer io.Writer, level int) (Writer, error) {
+	return sharedDeflateWriterPool.Get(writer, level)
+}
+
+func newDeflateWriter(writer io.Writer, level int) (Writer, error) {
 	if level <= 0 {
 		level = flate.BestSpeed
 	} else if level > flate.BestCompression {
@@ -38,8 +44,16 @@ func (this *DeflateWriter) Flush() error {
 	return this.writer.Flush()
 }
 
-func (this *DeflateWriter) Close() error {
+func (this *DeflateWriter) Reset(writer io.Writer) {
+	this.writer.Reset(writer)
+}
+
+func (this *DeflateWriter) RawClose() error {
 	return this.writer.Close()
+}
+
+func (this *DeflateWriter) Close() error {
+	return this.Finish(this)
 }
 
 func (this *DeflateWriter) Level() int {

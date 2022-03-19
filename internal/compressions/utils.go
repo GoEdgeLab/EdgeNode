@@ -37,7 +37,6 @@ func NewReader(reader io.Reader, contentEncoding ContentEncoding) (Reader, error
 }
 
 // NewWriter 获取Writer
-// TODO 考虑重用Writer
 func NewWriter(writer io.Writer, compressType serverconfigs.HTTPCompressionType, level int) (Writer, error) {
 	switch compressType {
 	case serverconfigs.HTTPCompressionTypeGzip:

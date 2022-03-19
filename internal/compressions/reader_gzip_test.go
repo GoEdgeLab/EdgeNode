@@ -1,68 +1,106 @@
 // Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package compressions
+package compressions_test
 
 import (
 	"bytes"
-	"errors"
-	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
+	"github.com/iwind/TeaGo/rands"
+	"github.com/iwind/TeaGo/types"
 	"io"
-	"os"
+	"strings"
 	"testing"
 )
 
 func TestGzipReader(t *testing.T) {
-	fp, err := os.Open("/Users/WorkSpace/EdgeProject/EdgeCache/p43/36/7e/367e02720713fe05b66573a1d69b4f0a.cache")
-	if err != nil {
-		// not fatal
-		t.Log(err)
-		return
-	}
-	defer func() {
-		_ = fp.Close()
-	}()
-
-	var buf = make([]byte, 32*1024)
-	cacheReader := caches.NewFileReader(fp)
-	err = cacheReader.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var headerBuf = []byte{}
-	err = cacheReader.ReadHeader(buf, func(n int) (goNext bool, err error) {
-		headerBuf = append(headerBuf, buf[:n]...)
-		for {
-			nIndex := bytes.Index(headerBuf, []byte{'\n'})
-			if nIndex >= 0 {
-				row := headerBuf[:nIndex]
-				spaceIndex := bytes.Index(row, []byte{':'})
-				if spaceIndex <= 0 {
-					return false, errors.New("invalid header '" + string(row) + "'")
-				}
-
-				headerBuf = headerBuf[nIndex+1:]
-			} else {
-				break
-			}
-		}
-		return true, nil
-	})
-
-	reader, err := NewGzipReader(cacheReader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for {
-		n, err := reader.Read(buf)
+	for _, testString := range []string{"Hello", "World", "Ni", "Hao"} {
+		t.Log("===", testString, "===")
+		var buf = &bytes.Buffer{}
+		writer, err := compressions.NewGzipWriter(buf, 5)
 		if err != nil {
-			if err != io.EOF {
+			t.Fatal(err)
+		}
+		_, err = writer.Write([]byte(testString))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		reader, err := compressions.NewGzipReader(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var data = make([]byte, 4096)
+		for {
+			n, err := reader.Read(data)
+			if n > 0 {
+				t.Log(string(data[:n]))
+			}
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
 				t.Fatal(err)
-			} else {
-				break
 			}
 		}
-		t.Log(string(buf[:n]))
-		_ = n
+		err = reader.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkGzipReader(b *testing.B) {
+	var randomData = func() []byte {
+		var b = strings.Builder{}
+		for i := 0; i < 1024; i++ {
+			b.WriteString(types.String(rands.Int64() % 10))
+		}
+		return []byte(b.String())
+	}
+
+	var buf = &bytes.Buffer{}
+	writer, err := compressions.NewGzipWriter(buf, 5)
+	if err != nil {
+		b.Fatal(err)
+	}
+	_, err = writer.Write(randomData())
+	if err != nil {
+		b.Fatal(err)
+	}
+	err = writer.Close()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		var newBytes = make([]byte, buf.Len())
+		copy(newBytes, buf.Bytes())
+		reader, err := compressions.NewGzipReader(bytes.NewReader(newBytes))
+		if err != nil {
+			b.Fatal(err)
+		}
+		var data = make([]byte, 4096)
+		for {
+			n, err := reader.Read(data)
+			if n > 0 {
+				_ = data[:n]
+			}
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				b.Fatal(err)
+			}
+		}
+		err = reader.Close()
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
