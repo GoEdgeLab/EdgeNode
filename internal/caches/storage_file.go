@@ -997,7 +997,7 @@ func (this *FileStorage) hotLoop() {
 	this.hotMap = map[string]*HotItem{}
 	this.hotMapLocker.Unlock()
 
-	// 取Top10写入内存
+	// 取Top10%写入内存
 	if len(result) > 0 {
 		sort.Slice(result, func(i, j int) bool {
 			return result[i].Hits > result[j].Hits
