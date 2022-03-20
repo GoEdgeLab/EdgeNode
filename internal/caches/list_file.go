@@ -3,7 +3,6 @@
 package caches
 
 import (
-	"context"
 	"database/sql"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -127,31 +126,26 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		return false, nil
 	}
 
-	item := this.memoryCache.Read(hash)
+	var item = this.memoryCache.Read(hash)
 	if item != nil {
 		return true, nil
 	}
 
-	rows, err := db.existsByHashStmt.Query(hash, time.Now().Unix())
+	var row = db.existsByHashStmt.QueryRow(hash, time.Now().Unix())
+	if row.Err() != nil {
+		return false, nil
+	}
+
+	var expiredAt int64
+	err := row.Scan(&expiredAt)
 	if err != nil {
-		if err == context.DeadlineExceeded {
-			return false, nil
+		if err == sql.ErrNoRows {
+			err = nil
 		}
 		return false, err
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
-	if rows.Next() {
-		var expiredAt int64
-		err = rows.Scan(&expiredAt)
-		if err != nil {
-			return false, nil
-		}
-		this.memoryCache.Write(hash, 1, expiredAt)
-		return true, nil
-	}
-	return false, nil
+	this.memoryCache.Write(hash, 1, expiredAt)
+	return true, nil
 }
 
 // CleanPrefix 清理某个前缀的缓存数据
