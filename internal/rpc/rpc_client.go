@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 	"net/url"
 	"sync"
@@ -219,12 +220,14 @@ func (this *RPCClient) init() error {
 			return errors.New("parse endpoint failed: " + err.Error())
 		}
 		var conn *grpc.ClientConn
+		var callOptions = grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(128*1024*1024),
+			grpc.UseCompressor(gzip.Name))
 		if u.Scheme == "http" {
-			conn, err = grpc.Dial(u.Host, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(128*1024*1024)))
+			conn, err = grpc.Dial(u.Host, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		} else if u.Scheme == "https" {
 			conn, err = grpc.Dial(u.Host, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
 				InsecureSkipVerify: true,
-			})), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(128*1024*1024)))
+			})), callOptions)
 		} else {
 			return errors.New("parse endpoint failed: invalid scheme '" + u.Scheme + "'")
 		}
