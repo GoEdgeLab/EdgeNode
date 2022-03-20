@@ -94,7 +94,7 @@ Loop:
 		// 是否包含了invalid UTF-8
 		if strings.Contains(err.Error(), "string field contains invalid UTF-8") {
 			for _, accessLog := range accessLogs {
-				this.toValidUTF8(accessLog)
+				this.ToValidUTF8(accessLog)
 			}
 
 			// 重新提交
@@ -108,7 +108,7 @@ Loop:
 	return nil
 }
 
-func (this *HTTPAccessLogQueue) toValidUTF8(accessLog *pb.HTTPAccessLog) {
+func (this *HTTPAccessLogQueue) ToValidUTF8(accessLog *pb.HTTPAccessLog) {
 	accessLog.RemoteUser = utils.ToValidUTF8string(accessLog.RemoteUser)
 	accessLog.RequestURI = utils.ToValidUTF8string(accessLog.RequestURI)
 	accessLog.RequestPath = utils.ToValidUTF8string(accessLog.RequestPath)
