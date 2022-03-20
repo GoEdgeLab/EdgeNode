@@ -1,15 +1,18 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package nodes
+package nodes_test
 
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/nodes"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"google.golang.org/grpc/status"
 	"reflect"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
@@ -47,7 +50,7 @@ func TestHTTPAccessLogQueue_Push(t *testing.T) {
 		},
 	}
 
-	new(HTTPAccessLogQueue).toValidUTF8(accessLog)
+	new(nodes.HTTPAccessLogQueue).ToValidUTF8(accessLog)
 
 	//	logs.PrintAsJSON(accessLog)
 
@@ -103,6 +106,33 @@ func TestHTTPAccessLogQueue_Push2(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("ok")
+}
+
+func TestHTTPAccessLogQueue_Memory(t *testing.T) {
+	testutils.StartMemoryStats(t)
+
+	debug.SetGCPercent(10)
+
+	var accessLogs = []*pb.HTTPAccessLog{}
+	for i := 0; i < 20_000; i++ {
+		accessLogs = append(accessLogs, &pb.HTTPAccessLog{
+			RequestPath: "https://goedge.cn/hello/world",
+		})
+	}
+
+	runtime.GC()
+
+	// will not release automatically
+	func() {
+		var accessLogs1 = []*pb.HTTPAccessLog{}
+		for i := 0; i < 2_000_000; i++ {
+			accessLogs1 = append(accessLogs1, &pb.HTTPAccessLog{
+				RequestPath: "https://goedge.cn/hello/world",
+			})
+		}
+	}()
+
+	time.Sleep(5 * time.Second)
 }
 
 func BenchmarkHTTPAccessLogQueue_ToValidUTF8(b *testing.B) {
