@@ -132,9 +132,7 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		return true, nil
 	}
 
-	ctx, cancelCtx := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	rows, err := db.existsByHashStmt.QueryContext(ctx, hash, time.Now().Unix())
-	cancelCtx()
+	rows, err := db.existsByHashStmt.Query(hash, time.Now().Unix())
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			return false, nil
