@@ -331,7 +331,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 设置cache.age变量
-	var age = strconv.FormatInt(reader.ExpiresAt()-utils.UnixTime(), 10)
+	var age = strconv.FormatInt(utils.UnixTime()-reader.LastModified(), 10)
 	this.varMapping["cache.age"] = age
 
 	if addStatusHeader {
