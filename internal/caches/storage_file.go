@@ -47,9 +47,10 @@ const (
 )
 
 const (
-	HotItemSize               = 1024         // 热点数据数量
-	HotItemLifeSeconds  int64 = 3600         // 热点数据生命周期
-	FileToMemoryMaxSize int64 = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
+	FileStorageMaxIgnoreKeys       = 32768        // 最大可忽略的键值数（尺寸过大的键值）
+	HotItemSize                    = 1024         // 热点数据数量
+	HotItemLifeSeconds       int64 = 3600         // 热点数据生命周期
+	FileToMemoryMaxSize            = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
 )
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
@@ -83,7 +84,7 @@ func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
 		policy:      policy,
 		hotMap:      map[string]*HotItem{},
 		lastHotSize: -1,
-		ignoreKeys:  setutils.NewFixedSet(32768),
+		ignoreKeys:  setutils.NewFixedSet(FileStorageMaxIgnoreKeys),
 	}
 }
 
@@ -246,12 +247,12 @@ func (this *FileStorage) Init() error {
 
 		cost := time.Since(before).Seconds() * 1000
 		sizeMB := strconv.FormatInt(size, 10) + " Bytes"
-		if size > 1024*1024*1024 {
-			sizeMB = fmt.Sprintf("%.3f G", float64(size)/1024/1024/1024)
-		} else if size > 1024*1024 {
-			sizeMB = fmt.Sprintf("%.3f M", float64(size)/1024/1024)
-		} else if size > 1024 {
-			sizeMB = fmt.Sprintf("%.3f K", float64(size)/1024)
+		if size > 1*sizes.G {
+			sizeMB = fmt.Sprintf("%.3f G", float64(size)/float64(sizes.G))
+		} else if size > 1*sizes.M {
+			sizeMB = fmt.Sprintf("%.3f M", float64(size)/float64(sizes.M))
+		} else if size > 1*sizes.K {
+			sizeMB = fmt.Sprintf("%.3f K", float64(size)/float64(sizes.K))
 		}
 		remotelogs.Println("CACHE", "init policy "+strconv.FormatInt(this.policy.Id, 10)+" from '"+this.options.Dir+"', cost: "+fmt.Sprintf("%.2f", cost)+" ms, count: "+message.NewPrinter(language.English).Sprintf("%d", count)+", size: "+sizeMB)
 	}()
@@ -1151,7 +1152,7 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 
 		// 增加到热点
 		// 这里不收录缓存尺寸过大的文件
-		if memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*1024*1024 {
+		if memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*sizes.M {
 			this.hotMapLocker.Lock()
 			hotItem, ok := this.hotMap[key]
 
