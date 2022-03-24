@@ -99,7 +99,7 @@ func (this *IP2Region) MemorySearch(ipStr string) (ipInfo *IpInfo, err error) {
 		}
 	}
 	if dataPtr == 0 {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
 
 	dataLen := (dataPtr >> 24) & 0xFF
