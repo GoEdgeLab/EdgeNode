@@ -740,6 +740,27 @@ func (this *HTTPWriter) SendFile(status int, path string) (int64, error) {
 	return written, nil
 }
 
+// SendResp 发送响应对象
+func (this *HTTPWriter) SendResp(resp *http.Response) (int64, error) {
+	this.isFinished = true
+
+	for k, v := range resp.Header {
+		this.SetHeader(k, v)
+	}
+	this.WriteHeader(resp.StatusCode)
+	var bufPool = this.req.bytePool(resp.ContentLength)
+	var buf = bufPool.Get()
+	defer bufPool.Put(buf)
+
+	return io.CopyBuffer(this, resp.Body, buf)
+}
+
+// Redirect 跳转
+func (this *HTTPWriter) Redirect(status int, url string) {
+	http.Redirect(this.rawWriter, this.req.RawReq, url, status)
+	this.isFinished = true
+}
+
 // StatusCode 读取状态码
 func (this *HTTPWriter) StatusCode() int {
 	if this.statusCode == 0 {
