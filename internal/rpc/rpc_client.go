@@ -135,11 +135,11 @@ func (this *RPCClient) MetricStatRPC() pb.MetricStatServiceClient {
 	return pb.NewMetricStatServiceClient(this.pickConn())
 }
 
-func (this *RPCClient) FirewallService() pb.FirewallServiceClient {
+func (this *RPCClient) FirewallRPC() pb.FirewallServiceClient {
 	return pb.NewFirewallServiceClient(this.pickConn())
 }
 
-func (this *RPCClient) SSLCertService() pb.SSLCertServiceClient {
+func (this *RPCClient) SSLCertRPC() pb.SSLCertServiceClient {
 	return pb.NewSSLCertServiceClient(this.pickConn())
 }
 

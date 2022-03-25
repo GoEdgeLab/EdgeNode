@@ -333,6 +333,21 @@ func (this *Node) loop() error {
 			goman.New(func() {
 				sharedUpgradeManager.Start()
 			})
+		case "scriptsChanged":
+			err = this.reloadCommonScripts()
+			if err != nil {
+				return errors.New("reload common scripts failed: " + err.Error())
+			}
+
+			// 修改为已同步
+			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+				NodeTaskId: task.Id,
+				IsOk:       true,
+				Error:      "",
+			})
+			if err != nil {
+				return err
+			}
 		}
 	}
 

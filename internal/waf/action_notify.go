@@ -34,7 +34,7 @@ func init() {
 			}
 
 			for task := range notifyChan {
-				_, err = rpcClient.FirewallService().NotifyHTTPFirewallEvent(rpcClient.Context(), &pb.NotifyHTTPFirewallEventRequest{
+				_, err = rpcClient.FirewallRPC().NotifyHTTPFirewallEvent(rpcClient.Context(), &pb.NotifyHTTPFirewallEventRequest{
 					ServerId:                task.ServerId,
 					HttpFirewallPolicyId:    task.HttpFirewallPolicyId,
 					HttpFirewallRuleGroupId: task.HttpFirewallRuleGroupId,
