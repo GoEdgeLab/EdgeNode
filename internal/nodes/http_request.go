@@ -321,14 +321,14 @@ func (this *HTTPRequest) doEnd() {
 
 		if this.isCached {
 			countCached = 1
-			cachedBytes = this.writer.SentBodyBytes()
+			cachedBytes = this.writer.SentBodyBytes() + this.writer.SentHeaderBytes()
 		}
 		if this.isAttack {
 			countAttacks = 1
 			attackBytes = this.CalculateSize()
 		}
 
-		stats.SharedTrafficStatManager.Add(this.ReqServer.Id, this.ReqHost, this.writer.SentBodyBytes(), cachedBytes, 1, countCached, countAttacks, attackBytes, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
+		stats.SharedTrafficStatManager.Add(this.ReqServer.Id, this.ReqHost, this.writer.SentBodyBytes()+this.writer.SentHeaderBytes(), cachedBytes, 1, countCached, countAttacks, attackBytes, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
 	}
 
 	// 指标
@@ -1292,7 +1292,7 @@ func (this *HTTPRequest) CalculateSize() (size int64) {
 	size += int64(len(this.RawReq.Proto)) + 1
 	for k, v := range this.RawReq.Header {
 		for _, v1 := range v {
-			size += int64(len(k) + 2 /** : **/ + len(v1))
+			size += int64(len(k) + 2 /** : **/ + len(v1) + 1)
 		}
 	}
 

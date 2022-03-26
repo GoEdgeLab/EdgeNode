@@ -304,6 +304,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 	// 读取Header
 	var headerBuf = []byte{}
+	this.writer.SetSentHeaderBytes(reader.HeaderSize())
 	err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
 		headerBuf = append(headerBuf, buf[:n]...)
 		for {

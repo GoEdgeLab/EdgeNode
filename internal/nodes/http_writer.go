@@ -58,8 +58,9 @@ type HTTPWriter struct {
 
 	size int64
 
-	statusCode    int
-	sentBodyBytes int64
+	statusCode      int
+	sentBodyBytes   int64
+	sentHeaderBytes int64
 
 	isOk       bool // 是否完全成功
 	isFinished bool // 是否已完成
@@ -690,6 +691,23 @@ func (this *HTTPWriter) WriteString(s string) (n int, err error) {
 // SentBodyBytes 读取发送的字节数
 func (this *HTTPWriter) SentBodyBytes() int64 {
 	return this.sentBodyBytes
+}
+
+// SentHeaderBytes 计算发送的Header字节数
+func (this *HTTPWriter) SentHeaderBytes() int64 {
+	if this.sentHeaderBytes > 0 {
+		return this.sentHeaderBytes
+	}
+	for k, v := range this.Header() {
+		for _, v1 := range v {
+			this.sentHeaderBytes += int64(len(k) + 2 + len(v1) + 1)
+		}
+	}
+	return this.sentHeaderBytes
+}
+
+func (this *HTTPWriter) SetSentHeaderBytes(sentHeaderBytes int64) {
+	this.sentHeaderBytes = sentHeaderBytes
 }
 
 // WriteHeader 写入状态码
