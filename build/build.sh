@@ -42,6 +42,11 @@ function build() {
 		mkdir $DIST/configs
 		mkdir $DIST/logs
 		mkdir $DIST/data
+
+		if [ "$TAG" = "plus" ]; then
+			mkdir $DIST/scripts
+			mkdir $DIST/scripts/js
+		fi
 	fi
 
 	cp $ROOT/configs/api.template.yaml $DIST/configs
