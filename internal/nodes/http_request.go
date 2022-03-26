@@ -474,7 +474,10 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// request scripts
 	if web.RequestScripts != nil {
 		if this.web.RequestScripts == nil {
-			this.web.RequestScripts = web.RequestScripts
+			this.web.RequestScripts = &serverconfigs.HTTPRequestScriptsConfig{
+				InitGroup:    web.RequestScripts.InitGroup,
+				RequestGroup: web.RequestScripts.RequestGroup,
+			} // 不要直接赋值，需要复制，防止在运行时被修改
 		} else {
 			if web.RequestScripts.InitGroup != nil && (web.RequestScripts.InitGroup.IsPrior || isTop) {
 				if this.web.RequestScripts == nil {
