@@ -241,9 +241,18 @@ func (this *HTTPRequest) doBegin() {
 	}
 
 	// 处理健康检查
+	var isHealthCheck = false
 	var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
 	if len(healthCheckKey) > 0 {
-		if this.doHealthCheck(healthCheckKey) {
+		if this.doHealthCheck(healthCheckKey, &isHealthCheck) {
+			return
+		}
+	}
+
+	// UAM
+	if !isHealthCheck && this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
+		if this.doUAM() {
+			this.doEnd()
 			return
 		}
 	}

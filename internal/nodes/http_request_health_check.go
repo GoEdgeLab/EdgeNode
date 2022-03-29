@@ -9,7 +9,7 @@ import (
 )
 
 // 健康检查
-func (this *HTTPRequest) doHealthCheck(key string) (stop bool) {
+func (this *HTTPRequest) doHealthCheck(key string, isHealthCheck *bool) (stop bool) {
 	this.tags = append(this.tags, "healthCheck")
 
 	this.RawReq.Header.Del(serverconfigs.HealthCheckHeaderName)
@@ -19,6 +19,7 @@ func (this *HTTPRequest) doHealthCheck(key string) (stop bool) {
 		remotelogs.Error("HTTP_REQUEST_HEALTH_CHECK", "decode key failed: "+err.Error())
 		return
 	}
+	*isHealthCheck = true
 
 	if data.GetBool("onlyBasicRequest") {
 		return true
