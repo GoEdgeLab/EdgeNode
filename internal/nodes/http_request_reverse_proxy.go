@@ -161,7 +161,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 获取请求客户端
 	client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
 	if err != nil {
-		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+err.Error())
 		this.write50x(err, http.StatusBadGateway, true)
 		return
 	}
@@ -195,7 +195,7 @@ func (this *HTTPRequest) doReverseProxy() {
 				this.write50x(err, http.StatusBadGateway, true)
 			}
 			if httpErr.Err != io.EOF {
-				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
+				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+err.Error())
 			}
 		} else {
 			// 是否为客户端方面的错误
@@ -234,7 +234,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if this.doWAFResponse(resp) {
 			err = resp.Body.Close()
 			if err != nil {
-				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", err.Error())
+				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+err.Error())
 			}
 			return
 		}
@@ -244,7 +244,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()
 		if err != nil {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+err.Error())
 		}
 		return
 	}
@@ -309,13 +309,13 @@ func (this *HTTPRequest) doReverseProxy() {
 	var closeErr = resp.Body.Close()
 	if closeErr != nil {
 		if !this.canIgnore(closeErr) {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", closeErr.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+closeErr.Error())
 		}
 	}
 
 	if err != nil && err != io.EOF {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+err.Error())
 			this.addError(err)
 		}
 	}
