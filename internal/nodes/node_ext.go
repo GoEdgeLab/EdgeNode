@@ -1,6 +1,6 @@
 // Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
-//go:build community
-// +build community
+//go:build !script
+// +build !script
 
 package nodes
 
