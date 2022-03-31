@@ -17,12 +17,13 @@ func (this *HTTPRequest) doShutdown() {
 		return
 	}
 
-	if urlPrefixRegexp.MatchString(shutdown.URL) { // URL
-		this.doURL(http.MethodGet, shutdown.URL, "", shutdown.Status, true)
-		return
-	}
-
 	if len(shutdown.BodyType) == 0 || shutdown.BodyType == shared.BodyTypeURL {
+		// URL
+		if urlPrefixRegexp.MatchString(shutdown.URL) {
+			this.doURL(http.MethodGet, shutdown.URL, "", shutdown.Status, true)
+			return
+		}
+
 		// URL为空，则显示文本
 		if len(shutdown.URL) == 0 {
 			// 自定义响应Headers
