@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/readers"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/writers"
 	_ "github.com/biessek/golang-ico"
 	"github.com/iwind/TeaGo/lists"
@@ -445,6 +446,16 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 
 	// 只有在开启了缓存之后，才会转换，防止占用的系统资源过高
 	if this.req.cacheRef == nil {
+		return
+	}
+
+	// 限制最小和最大尺寸
+	// TODO 需要可以在集群里WebP选项里设置
+	// TODO 需要将reader修改为LimitReader
+	if resp.ContentLength == 0 {
+		return
+	}
+	if resp.ContentLength > 128*sizes.M {
 		return
 	}
 
