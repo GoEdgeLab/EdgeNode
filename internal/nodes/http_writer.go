@@ -443,6 +443,11 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 		return
 	}
 
+	// 只有在开启了缓存之后，才会转换，防止占用的系统资源过高
+	if this.req.cacheRef == nil {
+		return
+	}
+
 	var contentType = this.GetHeader("Content-Type")
 
 	if this.req.web != nil &&
