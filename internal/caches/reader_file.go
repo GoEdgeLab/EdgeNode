@@ -348,7 +348,7 @@ func (this *FileReader) Close() error {
 		if this.openFile != nil {
 			this.openFileCache.Put(this.fp.Name(), this.openFile)
 		} else {
-			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, this.meta, this.header))
+			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, this.meta, this.header, this.LastModified()))
 		}
 		return nil
 	}
@@ -367,5 +367,12 @@ func (this *FileReader) readToBuff(fp *os.File, buf []byte) (ok bool, err error)
 func (this *FileReader) discard() error {
 	_ = this.fp.Close()
 	this.isClosed = true
+
+	// close open file cache
+	if this.openFileCache != nil {
+		this.openFileCache.Close(this.fp.Name())
+	}
+
+	// remove file
 	return os.Remove(this.fp.Name())
 }

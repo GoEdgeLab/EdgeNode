@@ -45,7 +45,7 @@ func (this *OpenFilePool) Get() (*OpenFile, bool) {
 }
 
 func (this *OpenFilePool) Put(file *OpenFile) bool {
-	if file.version > 0 && file.version != this.version {
+	if this.version > 0 && file.version > 0 && file.version != this.version {
 		_ = file.Close()
 		return false
 	}

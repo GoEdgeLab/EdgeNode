@@ -446,6 +446,13 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 	// 检查缓存是否已经生成
 	var cachePathName = dir + "/" + hash
 	var cachePath = cachePathName + ".cache"
+
+	// 关闭OpenFileCache
+	var openFileCache = this.openFileCache
+	if openFileCache != nil {
+		openFileCache.Close(cachePath)
+	}
+
 	stat, err := os.Stat(cachePath)
 	if err == nil && time.Now().Sub(stat.ModTime()) <= 1*time.Second {
 		// 防止并发连续写入
@@ -785,8 +792,9 @@ func (this *FileStorage) Stop() {
 
 	_ = this.list.Close()
 
-	if this.openFileCache != nil {
-		this.openFileCache.CloseAll()
+	var openFileCache = this.openFileCache
+	if openFileCache != nil {
+		openFileCache.CloseAll()
 	}
 
 	this.ignoreKeys.Reset()
@@ -1178,12 +1186,21 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 
 // 删除缓存文件
 func (this *FileStorage) removeCacheFile(path string) error {
+	var openFileCache = this.openFileCache
+	if openFileCache != nil {
+		openFileCache.Close(path)
+	}
+
 	var err = os.Remove(path)
 	if err == nil || os.IsNotExist(err) {
 		err = nil
 
 		// 删除Partial相关
-		_ = os.Remove(partialRangesFilePath(path))
+		var partialPath = partialRangesFilePath(path)
+		if openFileCache != nil {
+			openFileCache.Close(partialPath)
+		}
+		_ = os.Remove(partialPath)
 	}
 	return err
 }

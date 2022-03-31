@@ -77,6 +77,7 @@ func (this *OpenFileCache) Put(filename string, file *OpenFile) {
 	} else {
 		_ = this.watcher.Add(filename)
 		pool = NewOpenFilePool(filename)
+		pool.version = file.version
 		this.poolMap[filename] = pool
 		success = pool.Put(file)
 	}
