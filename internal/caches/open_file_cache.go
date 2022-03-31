@@ -9,6 +9,7 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -43,7 +44,7 @@ func NewOpenFileCache(maxSize int) (*OpenFileCache, error) {
 
 	goman.New(func() {
 		for event := range watcher.Events {
-			if event.Op&fsnotify.Chmod != fsnotify.Chmod {
+			if runtime.GOOS == "linux" || event.Op&fsnotify.Chmod != fsnotify.Chmod {
 				cache.Close(event.Name)
 			}
 		}
