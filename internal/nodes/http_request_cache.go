@@ -203,20 +203,35 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		webPIsEnabled = true
 	}
 
-	// 检查压缩缓存
+	// 检查WebP压缩缓存
+	if webPIsEnabled && !isPartialRequest && !isHeadMethod && reader == nil {
+		if this.web.Compression != nil && this.web.Compression.IsOn {
+			_, encoding, ok := this.web.Compression.MatchAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"))
+			if ok {
+				reader, _ = storage.OpenReader(key+caches.SuffixWebP+caches.SuffixCompression+encoding, useStale, false)
+				if reader != nil {
+					tags = append(tags, "webp", encoding)
+				}
+			}
+		}
+	}
+
+	// 检查WebP
+	if webPIsEnabled && !isPartialRequest &&
+		!isHeadMethod &&
+		reader == nil {
+		reader, _ = storage.OpenReader(key+caches.SuffixWebP, useStale, false)
+		if reader != nil {
+			this.writer.cacheReaderSuffix = caches.SuffixWebP
+			tags = append(tags, "webp")
+		}
+	}
+
+	// 检查普通压缩缓存
 	if !isPartialRequest && !isHeadMethod && reader == nil {
 		if this.web.Compression != nil && this.web.Compression.IsOn {
 			_, encoding, ok := this.web.Compression.MatchAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"))
 			if ok {
-				// 检查支持WebP的压缩缓存
-				if webPIsEnabled {
-					reader, _ = storage.OpenReader(key+caches.SuffixWebP+caches.SuffixCompression+encoding, useStale, false)
-					if reader != nil {
-						tags = append(tags, "webp", encoding)
-					}
-				}
-
-				// 检查普通压缩缓存
 				if reader == nil {
 					reader, _ = storage.OpenReader(key+caches.SuffixCompression+encoding, useStale, false)
 					if reader != nil {
@@ -224,18 +239,6 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					}
 				}
 			}
-		}
-	}
-
-	// 检查WebP
-	if !isPartialRequest &&
-		!isHeadMethod &&
-		reader == nil &&
-		webPIsEnabled {
-		reader, _ = storage.OpenReader(key+caches.SuffixWebP, useStale, false)
-		if reader != nil {
-			this.writer.cacheReaderSuffix = caches.SuffixWebP
-			tags = append(tags, "webp")
 		}
 	}
 
@@ -530,7 +533,10 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				return true
 			}
 		} else { // 没有Range
-			var resp = &http.Response{Body: reader}
+			var resp = &http.Response{
+				Body:          reader,
+				ContentLength: reader.BodySize(),
+			}
 			this.writer.Prepare(resp, fileSize, reader.Status(), false)
 			this.writer.WriteHeader(reader.Status())
 
