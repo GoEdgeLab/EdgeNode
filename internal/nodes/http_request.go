@@ -1625,7 +1625,7 @@ func (this *HTTPRequest) addError(err error) {
 // 计算合适的buffer size
 func (this *HTTPRequest) bytePool(contentLength int64) *utils.BytePool {
 	if contentLength < 0 {
-		return utils.BytePool4k
+		return utils.BytePool16k
 	}
 	if contentLength < 8192 { // 8K
 		return utils.BytePool1k
