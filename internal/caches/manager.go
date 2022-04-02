@@ -61,7 +61,7 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 	// 停止旧有的
 	for _, oldPolicy := range this.policyMap {
 		if !lists.ContainsInt64(newPolicyIds, oldPolicy.Id) {
-			remotelogs.Error("CACHE", "remove policy "+strconv.FormatInt(oldPolicy.Id, 10))
+			remotelogs.Println("CACHE", "remove policy "+strconv.FormatInt(oldPolicy.Id, 10))
 			delete(this.policyMap, oldPolicy.Id)
 			storage, ok := this.storageMap[oldPolicy.Id]
 			if ok {
