@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
@@ -46,6 +47,13 @@ type HTTPRequest struct {
 	ServerAddr string // 实际启动的服务器监听地址
 	IsHTTP     bool
 	IsHTTPS    bool
+
+	// 共享参数
+	nodeConfig *nodeconfigs.NodeConfig
+
+	// ln request
+	isLnRequest  bool
+	lnRemoteAddr string
 
 	// 内部参数
 	isSubRequest         bool
@@ -145,6 +153,9 @@ func (this *HTTPRequest) Do() {
 		return
 	}
 
+	// 是否为低级别节点
+	this.isLnRequest = this.checkLnRequest()
+
 	// 回调事件
 	this.onInit()
 	if this.writer.isFinished {
@@ -152,58 +163,60 @@ func (this *HTTPRequest) Do() {
 		return
 	}
 
-	// 特殊URL处理
-	if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
-		// ACME
-		// TODO 需要配置是否启用ACME检测
-		if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
-			this.doACME()
+	if !this.isLnRequest {
+		// 特殊URL处理
+		if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
+			// ACME
+			// TODO 需要配置是否启用ACME检测
+			if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
+				this.doACME()
+				this.doEnd()
+				return
+			}
+		}
+
+		// 套餐
+		if this.ReqServer.UserPlan != nil && !this.ReqServer.UserPlan.IsAvailable() {
+			this.doPlanExpires()
 			this.doEnd()
 			return
 		}
-	}
 
-	// 套餐
-	if this.ReqServer.UserPlan != nil && !this.ReqServer.UserPlan.IsAvailable() {
-		this.doPlanExpires()
-		this.doEnd()
-		return
-	}
-
-	// 流量限制
-	if this.ReqServer.TrafficLimit != nil && this.ReqServer.TrafficLimit.IsOn && !this.ReqServer.TrafficLimit.IsEmpty() && this.ReqServer.TrafficLimitStatus != nil && this.ReqServer.TrafficLimitStatus.IsValid() {
-		this.doTrafficLimit()
-		this.doEnd()
-		return
-	}
-
-	// WAF
-	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
-		if this.doWAFRequest() {
+		// 流量限制
+		if this.ReqServer.TrafficLimit != nil && this.ReqServer.TrafficLimit.IsOn && !this.ReqServer.TrafficLimit.IsEmpty() && this.ReqServer.TrafficLimitStatus != nil && this.ReqServer.TrafficLimitStatus.IsValid() {
+			this.doTrafficLimit()
 			this.doEnd()
 			return
 		}
-	}
 
-	// 访问控制
-	if !this.isSubRequest && this.web.Auth != nil && this.web.Auth.IsOn {
-		if this.doAuth() {
-			this.doEnd()
-			return
+		// WAF
+		if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
+			if this.doWAFRequest() {
+				this.doEnd()
+				return
+			}
 		}
-	}
 
-	// 自动跳转到HTTPS
-	if this.IsHTTP && this.web.RedirectToHttps != nil && this.web.RedirectToHttps.IsOn {
-		if this.doRedirectToHTTPS(this.web.RedirectToHttps) {
-			this.doEnd()
-			return
+		// 访问控制
+		if !this.isSubRequest && this.web.Auth != nil && this.web.Auth.IsOn {
+			if this.doAuth() {
+				this.doEnd()
+				return
+			}
 		}
-	}
 
-	// Compression
-	if this.web.Compression != nil && this.web.Compression.IsOn && this.web.Compression.Level > 0 {
-		this.writer.SetCompression(this.web.Compression)
+		// 自动跳转到HTTPS
+		if this.IsHTTP && this.web.RedirectToHttps != nil && this.web.RedirectToHttps.IsOn {
+			if this.doRedirectToHTTPS(this.web.RedirectToHttps) {
+				this.doEnd()
+				return
+			}
+		}
+
+		// Compression
+		if this.web.Compression != nil && this.web.Compression.IsOn && this.web.Compression.Level > 0 {
+			this.writer.SetCompression(this.web.Compression)
+		}
 	}
 
 	// 开始调用
@@ -218,56 +231,58 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
-	// 处理request limit
-	if this.web.RequestLimit != nil &&
-		this.web.RequestLimit.IsOn {
-		if this.doRequestLimit() {
+	if !this.isLnRequest {
+		// 处理request limit
+		if this.web.RequestLimit != nil &&
+			this.web.RequestLimit.IsOn {
+			if this.doRequestLimit() {
+				return
+			}
+		}
+
+		// 处理requestBody
+		if this.RawReq.ContentLength > 0 &&
+			this.web.AccessLogRef != nil &&
+			this.web.AccessLogRef.IsOn &&
+			this.web.AccessLogRef.ContainsField(serverconfigs.HTTPAccessLogFieldRequestBody) {
+			var err error
+			this.requestBodyData, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, AccessLogMaxRequestBodySize))
+			if err != nil {
+				this.write50x(err, http.StatusBadGateway, false)
+				return
+			}
+			this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))
+		}
+
+		// 处理健康检查
+		var isHealthCheck = false
+		var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
+		if len(healthCheckKey) > 0 {
+			if this.doHealthCheck(healthCheckKey, &isHealthCheck) {
+				return
+			}
+		}
+
+		// UAM
+		if !isHealthCheck && this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
+			if this.doUAM() {
+				this.doEnd()
+				return
+			}
+		}
+
+		// 跳转
+		if len(this.web.HostRedirects) > 0 {
+			if this.doHostRedirect() {
+				return
+			}
+		}
+
+		// 临时关闭页面
+		if this.web.Shutdown != nil && this.web.Shutdown.IsOn {
+			this.doShutdown()
 			return
 		}
-	}
-
-	// 处理requestBody
-	if this.RawReq.ContentLength > 0 &&
-		this.web.AccessLogRef != nil &&
-		this.web.AccessLogRef.IsOn &&
-		this.web.AccessLogRef.ContainsField(serverconfigs.HTTPAccessLogFieldRequestBody) {
-		var err error
-		this.requestBodyData, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, AccessLogMaxRequestBodySize))
-		if err != nil {
-			this.write50x(err, http.StatusBadGateway, false)
-			return
-		}
-		this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))
-	}
-
-	// 处理健康检查
-	var isHealthCheck = false
-	var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
-	if len(healthCheckKey) > 0 {
-		if this.doHealthCheck(healthCheckKey, &isHealthCheck) {
-			return
-		}
-	}
-
-	// UAM
-	if !isHealthCheck && this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
-		if this.doUAM() {
-			this.doEnd()
-			return
-		}
-	}
-
-	// 跳转
-	if len(this.web.HostRedirects) > 0 {
-		if this.doHostRedirect() {
-			return
-		}
-	}
-
-	// 临时关闭页面
-	if this.web.Shutdown != nil && this.web.Shutdown.IsOn {
-		this.doShutdown()
-		return
 	}
 
 	// 缓存
@@ -277,30 +292,32 @@ func (this *HTTPRequest) doBegin() {
 		}
 	}
 
-	// 重写规则
-	if this.rewriteRule != nil {
-		if this.doRewrite() {
-			return
-		}
-	}
-
-	// Fastcgi
-	if this.web.FastcgiRef != nil && this.web.FastcgiRef.IsOn && len(this.web.FastcgiList) > 0 {
-		if this.doFastcgi() {
-			return
-		}
-	}
-
-	// root
-	if this.web.Root != nil && this.web.Root.IsOn {
-		// 如果处理成功，则终止请求的处理
-		if this.doRoot() {
-			return
+	if !this.isLnRequest {
+		// 重写规则
+		if this.rewriteRule != nil {
+			if this.doRewrite() {
+				return
+			}
 		}
 
-		// 如果明确设置了终止，则也会自动终止
-		if this.web.Root.IsBreak {
-			return
+		// Fastcgi
+		if this.web.FastcgiRef != nil && this.web.FastcgiRef.IsOn && len(this.web.FastcgiList) > 0 {
+			if this.doFastcgi() {
+				return
+			}
+		}
+
+		// root
+		if this.web.Root != nil && this.web.Root.IsOn {
+			// 如果处理成功，则终止请求的处理
+			if this.doRoot() {
+				return
+			}
+
+			// 如果明确设置了终止，则也会自动终止
+			if this.web.Root.IsBreak {
+				return
+			}
 		}
 	}
 
@@ -809,9 +826,9 @@ func (this *HTTPRequest) Format(source string) string {
 		if prefix == "node" {
 			switch suffix {
 			case "id":
-				return strconv.FormatInt(sharedNodeConfig.Id, 10)
+				return strconv.FormatInt(this.nodeConfig.Id, 10)
 			case "name":
-				return sharedNodeConfig.Name
+				return this.nodeConfig.Name
 			case "role":
 				return teaconst.Role
 			}
@@ -970,13 +987,13 @@ func (this *HTTPRequest) Format(source string) string {
 		if prefix == "product" {
 			switch suffix {
 			case "name":
-				if sharedNodeConfig.ProductConfig != nil && len(sharedNodeConfig.ProductConfig.Name) > 0 {
-					return sharedNodeConfig.ProductConfig.Name
+				if this.nodeConfig.ProductConfig != nil && len(this.nodeConfig.ProductConfig.Name) > 0 {
+					return this.nodeConfig.ProductConfig.Name
 				}
 				return teaconst.GlobalProductName
 			case "version":
-				if sharedNodeConfig.ProductConfig != nil && len(sharedNodeConfig.ProductConfig.Version) > 0 {
-					return sharedNodeConfig.ProductConfig.Version
+				if this.nodeConfig.ProductConfig != nil && len(this.nodeConfig.ProductConfig.Version) > 0 {
+					return this.nodeConfig.ProductConfig.Version
 				}
 				return teaconst.Version
 			}
@@ -995,6 +1012,10 @@ func (this *HTTPRequest) addVarMapping(varMapping map[string]string) {
 
 // 获取请求的客户端地址
 func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
+	if len(this.lnRemoteAddr) > 0 {
+		return this.lnRemoteAddr
+	}
+
 	if supportVar && len(this.remoteAddr) > 0 {
 		return this.remoteAddr
 	}

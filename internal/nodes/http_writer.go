@@ -445,7 +445,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 	}
 
 	// 集群配置
-	var policy = sharedNodeConfig.FindWebPImagePolicyWithClusterId(this.req.ReqServer.ClusterId)
+	var policy = this.req.nodeConfig.FindWebPImagePolicyWithClusterId(this.req.ReqServer.ClusterId)
 	if policy == nil {
 		policy = nodeconfigs.DefaultWebPImagePolicy
 	}

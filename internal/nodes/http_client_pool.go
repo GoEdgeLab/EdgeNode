@@ -29,7 +29,7 @@ type HTTPClientPool struct {
 
 // NewHTTPClientPool 获取新对象
 func NewHTTPClientPool() *HTTPClientPool {
-	pool := &HTTPClientPool{
+	var pool = &HTTPClientPool{
 		clientExpiredDuration: 3600 * time.Second,
 		clientsMap:            map[string]*HTTPClient{},
 	}
@@ -42,12 +42,16 @@ func NewHTTPClientPool() *HTTPClientPool {
 }
 
 // Client 根据地址获取客户端
-func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.OriginConfig, originAddr string, proxyProtocol *serverconfigs.ProxyProtocolConfig, followRedirects bool) (rawClient *http.Client, err error) {
+func (this *HTTPClientPool) Client(req *HTTPRequest,
+	origin *serverconfigs.OriginConfig,
+	originAddr string,
+	proxyProtocol *serverconfigs.ProxyProtocolConfig,
+	followRedirects bool) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
 
-	key := origin.UniqueKey() + "@" + originAddr
+	var key = origin.UniqueKey() + "@" + originAddr
 
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -58,11 +62,11 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 		return client.RawClient(), nil
 	}
 
-	maxConnections := origin.MaxConns
-	connectionTimeout := origin.ConnTimeoutDuration()
-	readTimeout := origin.ReadTimeoutDuration()
-	idleTimeout := origin.IdleTimeoutDuration()
-	idleConns := origin.MaxIdleConns
+	var maxConnections = origin.MaxConns
+	var connectionTimeout = origin.ConnTimeoutDuration()
+	var readTimeout = origin.ReadTimeoutDuration()
+	var idleTimeout = origin.IdleTimeoutDuration()
+	var idleConns = origin.MaxIdleConns
 
 	// 超时时间
 	if connectionTimeout <= 0 {
@@ -73,7 +77,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 		idleTimeout = 2 * time.Minute
 	}
 
-	numberCPU := runtime.NumCPU()
+	var numberCPU = runtime.NumCPU()
 	if numberCPU < 8 {
 		numberCPU = 8
 	}
@@ -163,7 +167,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest, origin *serverconfigs.Origi
 
 // 清理不使用的Client
 func (this *HTTPClientPool) cleanClients() {
-	ticker := time.NewTicker(this.clientExpiredDuration)
+	var ticker = time.NewTicker(this.clientExpiredDuration)
 	for range ticker.C {
 		currentAt := time.Now().Unix()
 
@@ -181,11 +185,11 @@ func (this *HTTPClientPool) cleanClients() {
 // 支持TOA
 func (this *HTTPClientPool) handleTOA(req *HTTPRequest, ctx context.Context, network string, originAddr string, connectionTimeout time.Duration) (net.Conn, error) {
 	// TODO 每个服务读取自身所属集群的TOA设置
-	toaConfig := sharedTOAManager.Config()
+	var toaConfig = sharedTOAManager.Config()
 	if toaConfig != nil && toaConfig.IsOn {
-		retries := 3
+		var retries = 3
 		for i := 1; i <= retries; i++ {
-			port := int(toaConfig.RandLocalPort())
+			var port = int(toaConfig.RandLocalPort())
 			// TODO 思考是否支持X-Real-IP/X-Forwarded-IP
 			err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + req.requestRemoteAddr(true))
 			if err != nil {
@@ -223,7 +227,7 @@ func (this *HTTPClientPool) handlePROXYProtocol(conn net.Conn, req *HTTPRequest,
 		if reqConn != nil {
 			destAddr = reqConn.(net.Conn).LocalAddr()
 		}
-		header := proxyproto.Header{
+		var header = proxyproto.Header{
 			Version:           byte(proxyProtocol.Version),
 			Command:           proxyproto.PROXY,
 			TransportProtocol: transportProtocol,

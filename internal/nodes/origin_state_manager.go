@@ -124,9 +124,10 @@ func (this *OriginStateManager) Loop() error {
 
 // Fail 添加失败的源站
 func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, reverseProxy *serverconfigs.ReverseProxyConfig, callback func()) {
-	if origin == nil {
+	if origin == nil || origin.Id <= 0 {
 		return
 	}
+
 	this.locker.Lock()
 	state, ok := this.stateMap[origin.Id]
 	var timestamp = time.Now().Unix()
@@ -164,7 +165,7 @@ func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, reverse
 
 // Success 添加成功的源站
 func (this *OriginStateManager) Success(origin *serverconfigs.OriginConfig, callback func()) {
-	if origin == nil {
+	if origin == nil || origin.Id <= 0 {
 		return
 	}
 
@@ -182,6 +183,10 @@ func (this *OriginStateManager) Success(origin *serverconfigs.OriginConfig, call
 
 // IsAvailable 检查是否正常
 func (this *OriginStateManager) IsAvailable(originId int64) bool {
+	if originId <= 0 {
+		return true
+	}
+
 	this.locker.RLock()
 	_, ok := this.stateMap[originId]
 	this.locker.RUnlock()

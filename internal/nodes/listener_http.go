@@ -134,7 +134,7 @@ func (this *HTTPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 // ServerHTTP 处理HTTP请求
 func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
 	// 域名
-	reqHost := rawReq.Host
+	var reqHost = rawReq.Host
 
 	// TLS域名
 	if this.isIP(reqHost) {
@@ -214,6 +214,8 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		ServerAddr: this.addr,
 		IsHTTP:     this.isHTTP,
 		IsHTTPS:    this.isHTTPS,
+
+		nodeConfig: sharedNodeConfig,
 	}
 	req.Do()
 }

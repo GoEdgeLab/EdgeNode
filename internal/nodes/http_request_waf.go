@@ -24,7 +24,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	var remoteAddr = this.requestRemoteAddr(true)
 
 	// 检查是否为白名单直连
-	if !Tea.IsTesting() && sharedNodeConfig.IPIsAutoAllowed(remoteAddr) {
+	if !Tea.IsTesting() && this.nodeConfig.IPIsAutoAllowed(remoteAddr) {
 		return
 	}
 

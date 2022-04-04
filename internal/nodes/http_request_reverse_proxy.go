@@ -36,22 +36,40 @@ func (this *HTTPRequest) doReverseProxy() {
 	requestCall.Request = this.RawReq
 	requestCall.Formatter = this.Format
 	requestCall.Domain = this.ReqHost
-	var origin = this.reverseProxy.NextOrigin(requestCall)
-	requestCall.CallResponseCallbacks(this.writer)
+
+	var origin *serverconfigs.OriginConfig
+
+	// 二级节点
+	if this.cacheRef != nil {
+		origin = this.getLnOrigin()
+		if origin != nil {
+			// 强制变更原来访问的域名
+			requestHost = this.ReqHost
+		}
+	}
+
+	// 自定义源站
 	if origin == nil {
-		err := errors.New(this.URL() + ": no available origin sites for reverse proxy")
-		remotelogs.ServerError(this.ReqServer.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error(), "", nil)
-		this.write50x(err, http.StatusBadGateway, true)
-		return
+		origin = this.reverseProxy.NextOrigin(requestCall)
+		requestCall.CallResponseCallbacks(this.writer)
+		if origin == nil {
+			err := errors.New(this.URL() + ": no available origin sites for reverse proxy")
+			remotelogs.ServerError(this.ReqServer.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error(), "", nil)
+			this.write50x(err, http.StatusBadGateway, true)
+			return
+		}
+
+		if len(origin.StripPrefix) > 0 {
+			stripPrefix = origin.StripPrefix
+		}
+		if len(origin.RequestURI) > 0 {
+			requestURI = origin.RequestURI
+			requestURIHasVariables = origin.RequestURIHasVariables()
+		}
 	}
+
 	this.origin = origin // 设置全局变量是为了日志等处理
-	if len(origin.StripPrefix) > 0 {
-		stripPrefix = origin.StripPrefix
-	}
-	if len(origin.RequestURI) > 0 {
-		requestURI = origin.RequestURI
-		requestURIHasVariables = origin.RequestURIHasVariables()
-	}
+
 	if len(origin.RequestHost) > 0 {
 		requestHost = origin.RequestHost
 		requestHostHasVariables = origin.RequestHostHasVariables()

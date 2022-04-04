@@ -348,6 +348,32 @@ func (this *Node) loop() error {
 			if err != nil {
 				return err
 			}
+		case "nodeLevelChanged":
+			levelInfoResp, err := rpcClient.NodeRPC().FindNodeLevelInfo(nodeCtx, &pb.FindNodeLevelInfoRequest{})
+			if err != nil {
+				return err
+			}
+
+			sharedNodeConfig.Level = levelInfoResp.Level
+
+			var parentNodes = map[int64][]*nodeconfigs.ParentNodeConfig{}
+			if len(levelInfoResp.ParentNodesMapJSON) > 0 {
+				err = json.Unmarshal(levelInfoResp.ParentNodesMapJSON, &parentNodes)
+				if err != nil {
+					return errors.New("decode level info failed: " + err.Error())
+				}
+			}
+			sharedNodeConfig.ParentNodes = parentNodes
+
+			// 修改为已同步
+			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+				NodeTaskId: task.Id,
+				IsOk:       true,
+				Error:      "",
+			})
+			if err != nil {
+				return err
+			}
 		}
 	}
 

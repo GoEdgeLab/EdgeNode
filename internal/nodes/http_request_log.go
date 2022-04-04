@@ -92,7 +92,7 @@ func (this *HTTPRequest) log() {
 
 	accessLog := &pb.HTTPAccessLog{
 		RequestId:       this.requestId,
-		NodeId:          sharedNodeConfig.Id,
+		NodeId:          this.nodeConfig.Id,
 		ServerId:        this.ReqServer.Id,
 		RemoteAddr:      this.requestRemoteAddr(true),
 		RawRemoteAddr:   addr,
