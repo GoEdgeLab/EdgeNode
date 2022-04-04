@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/re"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/cespare/xxhash"
@@ -19,13 +18,13 @@ func MatchStringCache(regex *re.Regexp, s string) bool {
 		return regex.MatchString(s)
 	}
 
-	hash := xxhash.Sum64String(s)
-	key := fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10)
-	item := cache.Read(key)
+	var hash = xxhash.Sum64String(s)
+	var key = regex.IdString() + "@" + strconv.FormatUint(hash, 10)
+	var item = cache.Read(key)
 	if item != nil {
 		return types.Int8(item.Value) == 1
 	}
-	b := regex.MatchString(s)
+	var b = regex.MatchString(s)
 	if b {
 		cache.Write(key, 1, time.Now().Unix()+1800)
 	} else {
@@ -41,16 +40,16 @@ func MatchBytesCache(regex *re.Regexp, byteSlice []byte) bool {
 		return regex.Match(byteSlice)
 	}
 
-	hash := xxhash.Sum64(byteSlice)
-	key := fmt.Sprintf("%p_", regex) + strconv.FormatUint(hash, 10)
-	item := cache.Read(key)
+	var hash = xxhash.Sum64(byteSlice)
+	var key = regex.IdString() + "@" + strconv.FormatUint(hash, 10)
+	var item = cache.Read(key)
 	if item != nil {
 		return types.Int8(item.Value) == 1
 	}
 	if item != nil {
 		return types.Int8(item.Value) == 1
 	}
-	b := regex.Match(byteSlice)
+	var b = regex.Match(byteSlice)
 	if b {
 		cache.Write(key, 1, time.Now().Unix()+1800)
 	} else {

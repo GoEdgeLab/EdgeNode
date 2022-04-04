@@ -3,9 +3,9 @@
 package metrics
 
 import (
-	"encoding/json"
-	"github.com/cespare/xxhash"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"strconv"
+	"strings"
 )
 
 type Stat struct {
@@ -17,6 +17,6 @@ type Stat struct {
 }
 
 func SumStat(serverId int64, keys []string, time string, version int32, itemId int64) string {
-	keysData, _ := json.Marshal(keys)
-	return strconv.FormatUint(xxhash.Sum64String(strconv.FormatInt(serverId, 10)+"@"+string(keysData)+"@"+time+"@"+strconv.Itoa(int(version))+"@"+strconv.FormatInt(itemId, 10)), 10)
+	keysData := strings.Join(keys, "$EDGE$")
+	return strconv.FormatUint(fnv.HashString(strconv.FormatInt(serverId, 10)+"@"+keysData+"@"+time+"@"+strconv.Itoa(int(version))+"@"+strconv.FormatInt(itemId, 10)), 10)
 }

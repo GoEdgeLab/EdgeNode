@@ -338,6 +338,11 @@ func (this *FileReader) ContainsRange(r rangeutils.Range) (r2 rangeutils.Range, 
 	return r, true
 }
 
+// FP 原始的文件句柄
+func (this *FileReader) FP() *os.File {
+	return this.fp
+}
+
 func (this *FileReader) Close() error {
 	if this.openFileCache != nil {
 		if this.isClosed {

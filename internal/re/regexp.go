@@ -3,15 +3,19 @@
 package re
 
 import (
+	"github.com/iwind/TeaGo/types"
 	"regexp"
 	"regexp/syntax"
 	"strings"
+	"sync/atomic"
 )
 
 var prefixReg = regexp.MustCompile(`^\(\?([\w\s]+)\)`) // (?x)
 var prefixReg2 = regexp.MustCompile(`^\(\?([\w\s]*:)`) // (?x: ...
 var braceZeroReg = regexp.MustCompile(`^{\s*0*\s*}`)   // {0}
 var braceZeroReg2 = regexp.MustCompile(`^{\s*0*\s*,`)  // {0, x}
+
+var lastId uint64
 
 type Regexp struct {
 	exp       string
@@ -21,6 +25,9 @@ type Regexp struct {
 	isCaseInsensitive bool
 	keywords          []string
 	keywordsMap       RuneMap
+
+	id       uint64
+	idString string
 }
 
 func MustCompile(exp string) *Regexp {
@@ -50,6 +57,9 @@ func NewRegexp(rawRegexp *regexp.Regexp) *Regexp {
 }
 
 func (this *Regexp) init() {
+	this.id = atomic.AddUint64(&lastId, 1)
+	this.idString = "re:" + types.String(this.id)
+
 	if len(this.exp) == 0 {
 		return
 	}
@@ -200,6 +210,10 @@ func (this *Regexp) ParseKeywords(exp string) (keywords []string) {
 	}
 
 	return
+}
+
+func (this *Regexp) IdString() string {
+	return this.idString
 }
 
 func (this *Regexp) parseKeyword(subExp string) (result []rune) {
