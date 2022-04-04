@@ -347,6 +347,11 @@ func (this *MemoryStorage) IgnoreKey(key string) {
 	this.ignoreKeys.Push(key)
 }
 
+// CanSendfile 是否支持Sendfile
+func (this *MemoryStorage) CanSendfile() bool {
+	return false
+}
+
 // 计算Key Hash
 func (this *MemoryStorage) hash(key string) uint64 {
 	return xxhash.Sum64String(key)

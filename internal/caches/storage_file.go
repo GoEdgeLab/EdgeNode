@@ -819,6 +819,14 @@ func (this *FileStorage) IgnoreKey(key string) {
 	this.ignoreKeys.Push(key)
 }
 
+// CanSendfile 是否支持Sendfile
+func (this *FileStorage) CanSendfile() bool {
+	if this.options == nil {
+		return false
+	}
+	return this.options.EnableSendfile
+}
+
 // 绝对路径
 func (this *FileStorage) dir() string {
 	return this.options.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/"

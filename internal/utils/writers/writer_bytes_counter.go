@@ -13,6 +13,10 @@ func NewBytesCounterWriter(rawWriter io.Writer) *BytesCounterWriter {
 	return &BytesCounterWriter{writer: rawWriter}
 }
 
+func (this *BytesCounterWriter) RawWriter() io.Writer {
+	return this.writer
+}
+
 func (this *BytesCounterWriter) Write(p []byte) (n int, err error) {
 	n, err = this.writer.Write(p)
 	this.count += int64(n)

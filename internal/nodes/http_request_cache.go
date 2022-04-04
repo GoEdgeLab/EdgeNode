@@ -540,7 +540,15 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			this.writer.Prepare(resp, fileSize, reader.Status(), false)
 			this.writer.WriteHeader(reader.Status())
 
-			_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+			if storage.CanSendfile() {
+				if fp, canSendFile := this.writer.canSendfile(); canSendFile {
+					this.writer.sentBodyBytes, err = io.CopyBuffer(this.writer.rawWriter, fp, buf)
+				} else {
+					_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+				}
+			} else {
+				_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+			}
 			if err == io.EOF {
 				err = nil
 			}

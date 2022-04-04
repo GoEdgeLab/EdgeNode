@@ -51,4 +51,7 @@ type StorageInterface interface {
 
 	// IgnoreKey 忽略某个Key，即不缓存某个Key
 	IgnoreKey(key string)
+
+	// CanSendfile 是否支持Sendfile
+	CanSendfile() bool
 }

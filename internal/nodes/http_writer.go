@@ -1058,7 +1058,9 @@ func (this *HTTPWriter) Close() {
 		}
 	}
 
-	this.sentBodyBytes = this.counterWriter.TotalBytes()
+	if this.sentBodyBytes == 0 {
+		this.sentBodyBytes = this.counterWriter.TotalBytes()
+	}
 }
 
 // Hijack Hijack
