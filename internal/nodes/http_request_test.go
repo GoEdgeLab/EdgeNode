@@ -8,7 +8,7 @@ import (
 )
 
 func TestHTTPRequest_RedirectToHTTPS(t *testing.T) {
-	a := assert.NewAssertion(t)
+	var a = assert.NewAssertion(t)
 	{
 		req := &HTTPRequest{
 			ReqServer: &serverconfigs.ServerConfig{
@@ -47,4 +47,5 @@ func TestHTTPRequest_Memory(t *testing.T) {
 	var stat2 = &runtime.MemStats{}
 	runtime.ReadMemStats(stat2)
 	t.Log((stat2.HeapInuse-stat1.HeapInuse)/1024/1024, "MB,")
+	t.Log(len(requests))
 }
