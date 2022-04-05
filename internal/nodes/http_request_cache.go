@@ -379,7 +379,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 支持 If-None-Match
-	if !isPartialCache && len(eTag) > 0 && this.requestHeader("If-None-Match") == eTag {
+	if !this.isLnRequest && !isPartialCache && len(eTag) > 0 && this.requestHeader("If-None-Match") == eTag {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
@@ -390,7 +390,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 支持 If-Modified-Since
-	if !isPartialCache && len(modifiedTime) > 0 && this.requestHeader("If-Modified-Since") == modifiedTime {
+	if !this.isLnRequest && !isPartialCache && len(modifiedTime) > 0 && this.requestHeader("If-Modified-Since") == modifiedTime {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
@@ -402,6 +402,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 	this.processResponseHeaders(reader.Status())
 	this.addExpiresHeader(reader.ExpiresAt())
+
+	// 返回上级节点过期时间
+	if this.isLnRequest {
+		respHeader.Set(LNExpiresHeader, types.String(reader.ExpiresAt()))
+	}
 
 	// 输出Body
 	if this.RawReq.Method == http.MethodHead {

@@ -8,6 +8,10 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 )
 
+const (
+	LNExpiresHeader = "X-Edge-Ln-Expires"
+)
+
 func (this *HTTPRequest) checkLnRequest() bool {
 	return false
 }

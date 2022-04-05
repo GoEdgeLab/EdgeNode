@@ -1557,7 +1557,7 @@ func (this *HTTPRequest) fixRequestHeader(header http.Header) {
 
 // 处理自定义Response Header
 func (this *HTTPRequest) processResponseHeaders(statusCode int) {
-	responseHeader := this.writer.Header()
+	var responseHeader = this.writer.Header()
 
 	// 删除/添加/替换Header
 	// TODO 实现AddTrailers

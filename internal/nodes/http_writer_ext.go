@@ -4,6 +4,10 @@
 
 package nodes
 
+import (
+	"os"
+)
+
 func (this *HTTPWriter) canSendfile() (*os.File, bool) {
 	return nil, false
 }

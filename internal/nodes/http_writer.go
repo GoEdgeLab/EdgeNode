@@ -283,12 +283,28 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 		}
 	}
 
-	var expiredAt = utils.UnixTime() + life
+	var expiresAt = utils.UnixTime() + life
+
+	if this.req.isLnRequest {
+		// 返回上级节点过期时间
+		this.SetHeader(LNExpiresHeader, []string{types.String(expiresAt)})
+	} else {
+		var expiresHeader = this.Header().Get(LNExpiresHeader)
+		if len(expiresHeader) > 0 {
+			this.Header().Del(LNExpiresHeader)
+
+			var expiresHeaderInt64 = types.Int64(expiresHeader)
+			if expiresHeaderInt64 > 0 {
+				expiresAt = expiresHeaderInt64
+			}
+		}
+	}
+
 	var cacheKey = this.req.cacheKey
 	if this.isPartial {
 		cacheKey += caches.SuffixPartial
 	}
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), size, cacheRef.MaxSizeBytes(), this.isPartial)
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiresAt, this.StatusCode(), size, cacheRef.MaxSizeBytes(), this.isPartial)
 	if err != nil {
 		if err == caches.ErrEntityTooLarge && addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, entity too large")
