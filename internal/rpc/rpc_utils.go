@@ -41,7 +41,8 @@ func IsConnError(err error) bool {
 	// 检查是否为连接错误
 	statusErr, ok := status.FromError(err)
 	if ok {
-		return statusErr.Code() == codes.Unavailable
+		var errorCode = statusErr.Code()
+		return errorCode == codes.Unavailable || errorCode == codes.Canceled
 	}
 
 	return false
