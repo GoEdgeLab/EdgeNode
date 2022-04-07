@@ -148,6 +148,7 @@ func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
 	// 记录监控数据
 	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemCPU, maps.Map{
 		"usage": status.CPUUsage,
+		"cores": runtime.NumCPU(),
 	})
 
 	if this.cpuLogicalCount == 0 && this.cpuPhysicalCount == 0 {

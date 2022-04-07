@@ -20,20 +20,21 @@ func init() {
 		goman.New(func() {
 			for range ticker.C {
 				// 加入到数据队列中
-				if teaconst.InTrafficBytes > 0 {
+				var inBytes = atomic.LoadUint64(&teaconst.InTrafficBytes)
+				atomic.StoreUint64(&teaconst.InTrafficBytes, 0) // 重置数据
+				if inBytes > 0 {
 					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemTrafficIn, maps.Map{
-						"total": teaconst.InTrafficBytes,
-					})
-				}
-				if teaconst.OutTrafficBytes > 0 {
-					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemTrafficOut, maps.Map{
-						"total": teaconst.OutTrafficBytes,
+						"total": inBytes,
 					})
 				}
 
-				// 重置数据
-				atomic.StoreUint64(&teaconst.InTrafficBytes, 0)
-				atomic.StoreUint64(&teaconst.OutTrafficBytes, 0)
+				var outBytes = atomic.LoadUint64(&teaconst.OutTrafficBytes)
+				atomic.StoreUint64(&teaconst.OutTrafficBytes, 0) // 重置数据
+				if outBytes > 0 {
+					monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemTrafficOut, maps.Map{
+						"total": outBytes,
+					})
+				}
 			}
 		})
 	})
