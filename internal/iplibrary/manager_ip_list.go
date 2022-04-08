@@ -149,6 +149,10 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		Size:    this.pageSize,
 	})
 	if err != nil {
+		if rpc.IsConnError(err) {
+			remotelogs.Warn("IP_LIST_MANAGER", "rpc connection error: "+err.Error())
+			return false, nil
+		}
 		return false, err
 	}
 	items := itemsResp.IpItems
