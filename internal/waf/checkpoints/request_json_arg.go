@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"strings"
 )
@@ -16,7 +17,7 @@ type RequestJSONArgCheckpoint struct {
 func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
 	var bodyData = req.WAFGetCacheBody()
 	if len(bodyData) == 0 {
-		data, err := req.WAFReadBody(int64(32 * 1024 * 1024)) // read 32m bytes
+		data, err := req.WAFReadBody(wafutils.MaxBodySize) // read body
 		if err != nil {
 			return "", err, nil
 		}
