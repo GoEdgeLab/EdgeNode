@@ -31,31 +31,32 @@ func NewManager() *Manager {
 func (this *Manager) init() {
 	var lastTimestamp = int64(0)
 	for range this.ticker.C {
-		timestamp := time.Now().Unix()
+		var currentTime = time.Now().Unix()
 		if lastTimestamp == 0 {
-			lastTimestamp = timestamp - 3600
+			lastTimestamp = currentTime - 3600
 		}
 
-		if timestamp >= lastTimestamp {
-			for i := lastTimestamp; i <= timestamp; i++ {
+		if currentTime >= lastTimestamp {
+			for i := lastTimestamp; i <= currentTime; i++ {
 				this.locker.Lock()
 				for list := range this.listMap {
-					list.GC(i, list.gcCallback)
+					list.GC(i)
 				}
 				this.locker.Unlock()
 			}
 		} else {
-			for i := timestamp; i <= lastTimestamp; i++ {
+			// 如果过去的时间比现在大，则从这一秒重新开始
+			for i := currentTime; i <= currentTime; i++ {
 				this.locker.Lock()
 				for list := range this.listMap {
-					list.GC(i, list.gcCallback)
+					list.GC(i)
 				}
 				this.locker.Unlock()
 			}
 		}
 
 		// 这样做是为了防止系统时钟突变
-		lastTimestamp = timestamp
+		lastTimestamp = currentTime
 	}
 }
 

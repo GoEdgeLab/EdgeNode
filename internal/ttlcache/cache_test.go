@@ -1,16 +1,20 @@
 package ttlcache
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
+	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/rands"
+	"github.com/iwind/TeaGo/types"
 	"runtime"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestNewCache(t *testing.T) {
-	cache := NewCache()
+	var cache = NewCache()
 	cache.Write("a", 1, time.Now().Unix()+3600)
 	cache.Write("b", 2, time.Now().Unix()+3601)
 	cache.Write("a", 1, time.Now().Unix()+3602)
@@ -23,10 +27,10 @@ func TestNewCache(t *testing.T) {
 			}
 		}
 	}
-	t.Log(cache.Read("a"))
+	t.Log("a:", cache.Read("a"))
 	time.Sleep(2 * time.Second)
-	t.Log(cache.Read("d"))
-	t.Log(cache.Count(), "items")
+	t.Log("d:", cache.Read("d")) // should be nil
+	t.Log("left:", cache.Count(), "items")
 }
 
 func TestCache_Memory(t *testing.T) {
@@ -40,7 +44,7 @@ func TestCache_Memory(t *testing.T) {
 
 	t.Log(cache.Count())
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Second)
 	for i := 0; i < count; i++ {
 		if i%2 == 0 {
 			cache.Delete("a" + strconv.Itoa(i))
@@ -50,27 +54,29 @@ func TestCache_Memory(t *testing.T) {
 	t.Log(cache.Count())
 
 	cache.Count()
-}
 
-func BenchmarkCache_Add(b *testing.B) {
-	runtime.GOMAXPROCS(1)
-
-	cache := NewCache()
-	for i := 0; i < b.N; i++ {
-		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(i%1024))
-	}
+	time.Sleep(10 * time.Second)
 }
 
 func TestCache_IncreaseInt64(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
 	var cache = NewCache()
+	var unixTime = time.Now().Unix()
 
 	{
-		cache.IncreaseInt64("a", 1, time.Now().Unix()+3600)
-		t.Log(cache.Read("a"))
+		cache.IncreaseInt64("a", 1, unixTime+3600)
+		var item = cache.Read("a")
+		t.Log(item)
+		a.IsTrue(item.Value == int64(1))
+		a.IsTrue(item.expiredAt == unixTime+3600)
 	}
 	{
-		cache.IncreaseInt64("a", 1, time.Now().Unix()+3600+1)
-		t.Log(cache.Read("a"))
+		cache.IncreaseInt64("a", 1, unixTime+3600+1)
+		var item = cache.Read("a")
+		t.Log(item)
+		a.IsTrue(item.Value == int64(2))
+		a.IsTrue(item.expiredAt == unixTime+3600+1)
 	}
 	{
 		cache.Write("b", 1, time.Now().Unix()+3600+2)
@@ -124,11 +130,16 @@ func TestCache_GC(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		cache.GC()
 		t.Log("items:", cache.Count())
+
+		if cache.Count() == 0 {
+			break
+		}
 		time.Sleep(1 * time.Second)
 	}
 
 	t.Log("now:", time.Now().Unix())
 	for _, p := range cache.pieces {
+		t.Log("expire list:", p.expiresList.Count(), p.expiresList)
 		for k, v := range p.m {
 			t.Log(k, v.Value, v.expiredAt)
 		}
@@ -168,6 +179,61 @@ func BenchmarkNewCache(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			cache.Read(strconv.Itoa(rands.Int(0, 999999)))
+		}
+	})
+}
+
+func BenchmarkCache_Add(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var cache = NewCache()
+	for i := 0; i < b.N; i++ {
+		cache.Write(strconv.Itoa(i), i, utils.UnixTime()+int64(i%1024))
+	}
+}
+
+func BenchmarkCache_Add_Parallel(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var cache = NewCache()
+	var i int64
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			var j = atomic.AddInt64(&i, 1)
+			cache.Write(types.String(j), j, utils.UnixTime()+i%1024)
+		}
+	})
+}
+
+func BenchmarkNewCacheGC(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var cache = NewCache(NewPiecesOption(1024))
+	for i := 0; i < 3_000_000; i++ {
+		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 100)))
+	}
+	//b.Log(cache.pieces[0].Count())
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			cache.GC()
+		}
+	})
+}
+
+func BenchmarkNewCacheClean(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var cache = NewCache(NewPiecesOption(128))
+	for i := 0; i < 3_000_000; i++ {
+		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(10, 100)))
+	}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			cache.Clean()
 		}
 	})
 }

@@ -213,7 +213,7 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 		changedLists[list] = zero.New()
 
 		if item.IsDeleted {
-			list.Delete(item.Id)
+			list.Delete(uint64(item.Id))
 
 			// 从WAF名单中删除
 			waf.SharedIPBlackList.RemoveIP(item.IpFrom, item.ServerId, fromRemote)
@@ -227,7 +227,7 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 		}
 
 		list.AddDelay(&IPItem{
-			Id:         item.Id,
+			Id:         uint64(item.Id),
 			Type:       item.Type,
 			IPFrom:     utils.IP2Long(item.IpFrom),
 			IPTo:       utils.IP2Long(item.IpTo),

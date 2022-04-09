@@ -24,7 +24,7 @@ type Cache struct {
 }
 
 func NewCache(opt ...OptionInterface) *Cache {
-	var countPieces = 128
+	var countPieces = 256
 	var maxItems = 2_000_000
 
 	var totalMemory = utils.SystemMemoryGB()

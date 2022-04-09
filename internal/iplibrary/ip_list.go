@@ -13,9 +13,9 @@ var GlobalWhiteIPList = NewIPList()
 // IPList IP名单
 // TODO IP名单可以分片关闭，这样让每一片的数据量减少，查询更快
 type IPList struct {
-	itemsMap    map[int64]*IPItem // id => item
+	itemsMap    map[uint64]*IPItem // id => item
 	sortedItems []*IPItem
-	allItemsMap map[int64]*IPItem // id => item
+	allItemsMap map[uint64]*IPItem // id => item
 
 	expireList *expires.List
 
@@ -24,12 +24,12 @@ type IPList struct {
 
 func NewIPList() *IPList {
 	list := &IPList{
-		itemsMap:    map[int64]*IPItem{},
-		allItemsMap: map[int64]*IPItem{},
+		itemsMap:    map[uint64]*IPItem{},
+		allItemsMap: map[uint64]*IPItem{},
 	}
 
 	expireList := expires.NewList()
-	expireList.OnGC(func(itemId int64) {
+	expireList.OnGC(func(itemId uint64) {
 		list.Delete(itemId)
 	})
 	list.expireList = expireList
@@ -51,7 +51,7 @@ func (this *IPList) Sort() {
 	this.locker.Unlock()
 }
 
-func (this *IPList) Delete(itemId int64) {
+func (this *IPList) Delete(itemId uint64) {
 	this.locker.Lock()
 	this.deleteItem(itemId)
 	this.locker.Unlock()
@@ -198,7 +198,7 @@ func (this *IPList) lookupIP(ip uint64) *IPItem {
 
 // 在不加锁的情况下删除某个Item
 // 将会被别的方法引用，切记不能加锁
-func (this *IPList) deleteItem(itemId int64) {
+func (this *IPList) deleteItem(itemId uint64) {
 	_, ok := this.itemsMap[itemId]
 	if !ok {
 		return

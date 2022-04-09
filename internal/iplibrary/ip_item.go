@@ -13,7 +13,7 @@ const (
 // IPItem IP条目
 type IPItem struct {
 	Type       string `json:"type"`
-	Id         int64  `json:"id"`
+	Id         uint64 `json:"id"`
 	IPFrom     uint64 `json:"ipFrom"`
 	IPTo       uint64 `json:"ipTo"`
 	ExpiredAt  int64  `json:"expiredAt"`

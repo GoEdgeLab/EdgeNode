@@ -27,26 +27,26 @@ const IPTypeAll = "*"
 // IPList IP列表管理
 type IPList struct {
 	expireList *expires.List
-	ipMap      map[string]int64 // ip => id
-	idMap      map[int64]string // id => ip
+	ipMap      map[string]uint64 // ip => id
+	idMap      map[uint64]string // id => ip
 	listType   IPListType
 
-	id     int64
+	id     uint64
 	locker sync.RWMutex
 }
 
 // NewIPList 获取新对象
 func NewIPList(listType IPListType) *IPList {
 	var list = &IPList{
-		ipMap:    map[string]int64{},
-		idMap:    map[int64]string{},
+		ipMap:    map[string]uint64{},
+		idMap:    map[uint64]string{},
 		listType: listType,
 	}
 
 	e := expires.NewList()
 	list.expireList = e
 
-	e.OnGC(func(itemId int64) {
+	e.OnGC(func(itemId uint64) {
 		list.remove(itemId)
 	})
 
@@ -150,7 +150,7 @@ func (this *IPList) RemoveIP(ip string, serverId int64, shouldExecute bool) {
 	}
 }
 
-func (this *IPList) remove(id int64) {
+func (this *IPList) remove(id uint64) {
 	this.locker.Lock()
 	ip, ok := this.idMap[id]
 	if ok {
@@ -163,6 +163,6 @@ func (this *IPList) remove(id int64) {
 	this.locker.Unlock()
 }
 
-func (this *IPList) nextId() int64 {
-	return atomic.AddInt64(&this.id, 1)
+func (this *IPList) nextId() uint64 {
+	return atomic.AddUint64(&this.id, 1)
 }
