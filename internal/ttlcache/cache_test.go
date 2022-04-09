@@ -165,6 +165,13 @@ func TestCache_GC2(t *testing.T) {
 	}
 }
 
+func TestCacheDestroy(t *testing.T) {
+	var cache = NewCache()
+	t.Log("count:", SharedManager.Count())
+	cache.Destroy()
+	t.Log("count:", SharedManager.Count())
+}
+
 func BenchmarkNewCache(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 

@@ -54,7 +54,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 		}
 	}
 
-	cache := &Cache{
+	var cache = &Cache{
 		countPieces: uint64(countPieces),
 		maxItems:    maxItems,
 	}

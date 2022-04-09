@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var ccCache = ttlcache.NewCache(ttlcache.NewPiecesOption(32))
+var ccCache = ttlcache.NewCache()
 
 // CC2Checkpoint 新的CC
 type CC2Checkpoint struct {

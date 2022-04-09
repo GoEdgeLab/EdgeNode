@@ -52,3 +52,9 @@ func (this *Manager) Remove(cache *Cache) {
 	delete(this.cacheMap, cache)
 	this.locker.Unlock()
 }
+
+func (this *Manager) Count() int {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+	return len(this.cacheMap)
+}
