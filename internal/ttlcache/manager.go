@@ -20,7 +20,7 @@ type Manager struct {
 
 func NewManager() *Manager {
 	var manager = &Manager{
-		ticker:   time.NewTicker(3 * time.Second),
+		ticker:   time.NewTicker(2 * time.Second),
 		cacheMap: map[*Cache]zero.Zero{},
 	}
 
