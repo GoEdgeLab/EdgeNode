@@ -142,11 +142,12 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 	rawClient = &http.Client{
 		Timeout:   readTimeout,
 		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(targetReq *http.Request, via []*http.Request) error {
+			// 是否跟随
 			if followRedirects {
 				var schemeIsSame = true
 				for _, r := range via {
-					if r.URL.Scheme != req.URL.Scheme {
+					if r.URL.Scheme != targetReq.URL.Scheme {
 						schemeIsSame = false
 						break
 					}

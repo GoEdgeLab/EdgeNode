@@ -279,6 +279,22 @@ func (this *HTTPRequest) doReverseProxy() {
 		}
 	}
 
+	// 替换Location中的源站地址
+	var locationHeader = resp.Header.Get("Location")
+	if len(locationHeader) > 0 {
+		locationURL, err := url.Parse(locationHeader)
+		if err == nil && (locationURL.Host == originAddr || strings.HasPrefix(originAddr, locationURL.Host+":")) {
+			locationURL.Host = this.ReqHost
+			if this.IsHTTP {
+				locationURL.Scheme = "http"
+			} else if this.IsHTTPS {
+				locationURL.Scheme = "https"
+			}
+
+			resp.Header.Set("Location", locationURL.String())
+		}
+	}
+
 	// 响应Header
 	this.writer.AddHeaders(resp.Header)
 	this.processResponseHeaders(resp.StatusCode)
