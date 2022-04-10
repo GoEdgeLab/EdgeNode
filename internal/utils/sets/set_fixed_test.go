@@ -5,6 +5,7 @@ package setutils_test
 import (
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/iwind/TeaGo/assert"
+	"github.com/iwind/TeaGo/rands"
 	"testing"
 )
 
@@ -45,13 +46,17 @@ func TestFixedSet_Reset(t *testing.T) {
 }
 
 func BenchmarkFixedSet_Has(b *testing.B) {
-	var count = 100_000
+	var count = 1_000_000
 	var set = setutils.NewFixedSet(count)
 	for i := 0; i < count; i++ {
 		set.Push(i)
 	}
 
-	for i := 0; i < b.N; i++ {
-		set.Has(i)
-	}
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			set.Has(rands.Int(0, 100_000))
+		}
+	})
 }
