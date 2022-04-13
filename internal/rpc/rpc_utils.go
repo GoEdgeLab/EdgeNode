@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strings"
 	"sync"
 )
 
@@ -43,6 +44,10 @@ func IsConnError(err error) bool {
 	if ok {
 		var errorCode = statusErr.Code()
 		return errorCode == codes.Unavailable || errorCode == codes.Canceled
+	}
+
+	if strings.Contains(err.Error(), "code = Canceled") {
+		return true
 	}
 
 	return false
