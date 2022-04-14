@@ -17,4 +17,6 @@ var (
 
 	IsQuiting    = false // 是否正在退出
 	EnableDBStat = false // 是否开启本地数据库统计
+
+	DiskIsFast = false // 是否为高速硬盘
 )

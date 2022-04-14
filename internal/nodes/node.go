@@ -111,6 +111,9 @@ func (this *Node) Start() {
 		return
 	}
 
+	// 检查硬盘类型
+	this.checkDisk()
+
 	// 读取API配置
 	err = this.syncConfig(0)
 	if err != nil {
@@ -909,5 +912,23 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 	// product information
 	if config.ProductConfig != nil {
 		teaconst.GlobalProductName = config.ProductConfig.Name
+	}
+}
+
+func (this *Node) checkDisk() {
+	if runtime.GOOS == "linux" {
+		for _, path := range []string{
+			"/sys/block/vda/queue/rotational",
+			"/sys/block/sda/queue/rotational",
+		} {
+			data, err := ioutil.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			if string(data) == "0" {
+				teaconst.DiskIsFast = true
+			}
+			break
+		}
 	}
 }

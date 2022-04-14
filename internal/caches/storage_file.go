@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,7 +63,16 @@ const (
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
 var sharedWritingFileKeyLocker = sync.Mutex{}
 
-var maxOpenFiles = 2
+var maxOpenFiles = 3
+
+func init() {
+	if teaconst.DiskIsFast {
+		maxOpenFiles = runtime.NumCPU()
+	}
+	if maxOpenFiles < 3 {
+		maxOpenFiles = 3
+	}
+}
 
 // FileStorage 文件缓存
 //   文件结构：
@@ -425,7 +435,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		return nil, ErrFileIsWriting
 	}
 
-	if len(sharedWritingFileKeyMap) > maxOpenFiles {
+	if !isFlushing && len(sharedWritingFileKeyMap) >= maxOpenFiles {
 		sharedWritingFileKeyLocker.Unlock()
 		return nil, ErrTooManyOpenFiles
 	}
