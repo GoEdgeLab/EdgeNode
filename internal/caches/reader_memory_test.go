@@ -4,7 +4,7 @@ import "testing"
 
 func TestMemoryReader_Header(t *testing.T) {
 	item := &MemoryItem{
-		ExpiredAt:   0,
+		ExpiresAt:   0,
 		HeaderValue: []byte("0123456789"),
 		BodyValue:   nil,
 		Status:      2000,
@@ -22,7 +22,7 @@ func TestMemoryReader_Header(t *testing.T) {
 
 func TestMemoryReader_Body(t *testing.T) {
 	item := &MemoryItem{
-		ExpiredAt:   0,
+		ExpiresAt:   0,
 		HeaderValue: nil,
 		BodyValue:   []byte("0123456789"),
 		Status:      2000,
@@ -40,7 +40,7 @@ func TestMemoryReader_Body(t *testing.T) {
 
 func TestMemoryReader_Body_Range(t *testing.T) {
 	item := &MemoryItem{
-		ExpiredAt:   0,
+		ExpiresAt:   0,
 		HeaderValue: nil,
 		BodyValue:   []byte("0123456789"),
 		Status:      2000,

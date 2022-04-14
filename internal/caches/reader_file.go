@@ -67,17 +67,17 @@ func (this *FileReader) InitAutoDiscard(autoDiscard bool) error {
 
 	this.expiresAt = int64(binary.BigEndian.Uint32(buf[:SizeExpiresAt]))
 
-	status := types.Int(string(buf[SizeExpiresAt : SizeExpiresAt+SizeStatus]))
+	status := types.Int(string(buf[OffsetStatus : OffsetStatus+SizeStatus]))
 	if status < 100 || status > 999 {
 		return errors.New("invalid status")
 	}
 	this.status = status
 
 	// URL
-	urlLength := binary.BigEndian.Uint32(buf[SizeExpiresAt+SizeStatus : SizeExpiresAt+SizeStatus+SizeURLLength])
+	urlLength := binary.BigEndian.Uint32(buf[OffsetURLLength : OffsetURLLength+SizeURLLength])
 
 	// header
-	headerSize := int(binary.BigEndian.Uint32(buf[SizeExpiresAt+SizeStatus+SizeURLLength : SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength]))
+	headerSize := int(binary.BigEndian.Uint32(buf[OffsetHeaderLength : OffsetHeaderLength+SizeHeaderLength]))
 	if headerSize == 0 {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (this *FileReader) InitAutoDiscard(autoDiscard bool) error {
 
 	// body
 	this.bodyOffset = this.headerOffset + int64(headerSize)
-	bodySize := int(binary.BigEndian.Uint64(buf[SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength : SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength+SizeBodyLength]))
+	bodySize := int(binary.BigEndian.Uint64(buf[OffsetBodyLength : OffsetBodyLength+SizeBodyLength]))
 	if bodySize == 0 {
 		isOk = true
 		return nil
@@ -353,7 +353,9 @@ func (this *FileReader) Close() error {
 		if this.openFile != nil {
 			this.openFileCache.Put(this.fp.Name(), this.openFile)
 		} else {
-			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, this.meta, this.header, this.LastModified()))
+			var cacheMeta = make([]byte, len(this.meta))
+			copy(cacheMeta, this.meta)
+			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, cacheMeta, this.header, this.LastModified()))
 		}
 		return nil
 	}

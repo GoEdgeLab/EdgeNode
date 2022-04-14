@@ -30,7 +30,7 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 		key:       key,
 		expiredAt: expiredAt,
 		item: &MemoryItem{
-			ExpiredAt:  expiredAt,
+			ExpiresAt:  expiredAt,
 			ModifiedAt: time.Now().Unix(),
 			Status:     status,
 		},

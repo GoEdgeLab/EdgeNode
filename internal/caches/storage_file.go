@@ -37,13 +37,19 @@ import (
 )
 
 const (
-	SizeExpiresAt    = 4
-	SizeStatus       = 3
-	SizeURLLength    = 4
-	SizeHeaderLength = 4
-	SizeBodyLength   = 8
+	SizeExpiresAt      = 4
+	OffsetExpiresAt    = 0
+	SizeStatus         = 3
+	OffsetStatus       = SizeExpiresAt
+	SizeURLLength      = 4
+	OffsetURLLength    = OffsetStatus + SizeStatus
+	SizeHeaderLength   = 4
+	OffsetHeaderLength = OffsetURLLength + SizeURLLength
+	SizeBodyLength     = 8
+	OffsetBodyLength   = OffsetHeaderLength + SizeHeaderLength
 
-	SizeMeta = SizeExpiresAt + SizeStatus + SizeURLLength + SizeHeaderLength + SizeBodyLength
+	SizeMeta  = SizeExpiresAt + SizeStatus + SizeURLLength + SizeHeaderLength + SizeBodyLength
+	OffsetKey = SizeMeta
 )
 
 const (
@@ -55,6 +61,8 @@ const (
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
 var sharedWritingFileKeyLocker = sync.Mutex{}
+
+var maxOpenFiles = 2
 
 // FileStorage 文件缓存
 //   文件结构：
@@ -369,7 +377,16 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 }
 
 // OpenWriter 打开缓存文件等待写入
-func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
+func (this *FileStorage) OpenWriter(key string, expiresAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
+	return this.openWriter(key, expiresAt, status, size, maxSize, isPartial, false)
+}
+
+// OpenFlushWriter 打开从其他媒介直接刷入的写入器
+func (this *FileStorage) OpenFlushWriter(key string, expiresAt int64, status int) (Writer, error) {
+	return this.openWriter(key, expiresAt, status, -1, -1, false, true)
+}
+
+func (this *FileStorage) openWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool, isFlushing bool) (Writer, error) {
 	// 是否正在退出
 	if teaconst.IsQuiting {
 		return nil, ErrWritingUnavailable
@@ -387,7 +404,7 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 		maxMemorySize = maxSize
 	}
 	var memoryStorage = this.memoryStorage
-	if !isPartial && memoryStorage != nil && ((size > 0 && size < maxMemorySize) || size < 0) {
+	if !isFlushing && !isPartial && memoryStorage != nil && ((size > 0 && size < maxMemorySize) || size < 0) {
 		writer, err := memoryStorage.OpenWriter(key, expiredAt, status, size, maxMemorySize, false)
 		if err == nil {
 			return writer, nil
@@ -407,6 +424,12 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 		sharedWritingFileKeyLocker.Unlock()
 		return nil, ErrFileIsWriting
 	}
+
+	if len(sharedWritingFileKeyMap) > maxOpenFiles {
+		sharedWritingFileKeyLocker.Unlock()
+		return nil, ErrTooManyOpenFiles
+	}
+
 	sharedWritingFileKeyMap[key] = zero.New()
 	sharedWritingFileKeyLocker.Unlock()
 	defer func() {
@@ -523,54 +546,28 @@ func (this *FileStorage) OpenWriter(key string, expiredAt int64, status int, siz
 		}
 
 		// 写入过期时间
-		bytes4 := make([]byte, 4)
-		{
-			binary.BigEndian.PutUint32(bytes4, uint32(expiredAt))
-			_, err = writer.Write(bytes4)
-			if err != nil {
-				return nil, err
-			}
-		}
+		var metaBytes = make([]byte, SizeMeta+len(key))
+		binary.BigEndian.PutUint32(metaBytes[OffsetExpiresAt:], uint32(expiredAt))
 
 		// 写入状态码
 		if status > 999 || status < 100 {
 			status = 200
 		}
-		_, err = writer.WriteString(strconv.Itoa(status))
-		if err != nil {
-			return nil, err
-		}
+		copy(metaBytes[OffsetStatus:], strconv.Itoa(status))
 
 		// 写入URL长度
-		{
-			binary.BigEndian.PutUint32(bytes4, uint32(len(key)))
-			_, err = writer.Write(bytes4)
-			if err != nil {
-				return nil, err
-			}
-		}
+		binary.BigEndian.PutUint32(metaBytes[OffsetURLLength:], uint32(len(key)))
 
 		// 写入Header Length
-		{
-			binary.BigEndian.PutUint32(bytes4, uint32(0))
-			_, err = writer.Write(bytes4)
-			if err != nil {
-				return nil, err
-			}
-		}
+		binary.BigEndian.PutUint32(metaBytes[OffsetHeaderLength:], uint32(0))
 
 		// 写入Body Length
-		{
-			b := make([]byte, SizeBodyLength)
-			binary.BigEndian.PutUint64(b, uint64(0))
-			_, err = writer.Write(b)
-			if err != nil {
-				return nil, err
-			}
-		}
+		binary.BigEndian.PutUint64(metaBytes[OffsetBodyLength:], uint64(0))
 
 		// 写入URL
-		_, err = writer.WriteString(key)
+		copy(metaBytes[OffsetKey:], key)
+
+		_, err = writer.Write(metaBytes)
 		if err != nil {
 			return nil, err
 		}

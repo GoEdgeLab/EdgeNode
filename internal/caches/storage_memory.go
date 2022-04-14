@@ -23,7 +23,7 @@ import (
 )
 
 type MemoryItem struct {
-	ExpiredAt   int64
+	ExpiresAt   int64
 	HeaderValue []byte
 	BodyValue   []byte
 	Status      int
@@ -32,7 +32,7 @@ type MemoryItem struct {
 }
 
 func (this *MemoryItem) IsExpired() bool {
-	return this.ExpiredAt < utils.UnixTime()
+	return this.ExpiresAt < utils.UnixTime()
 }
 
 type MemoryStorage struct {
@@ -118,7 +118,7 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 		return nil, ErrNotFound
 	}
 
-	if useStale || (item.ExpiredAt > utils.UnixTime()) {
+	if useStale || (item.ExpiresAt > utils.UnixTime()) {
 		reader := NewMemoryReader(item)
 		err := reader.Init()
 		if err != nil {
@@ -160,7 +160,12 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, s
 	return this.openWriter(key, expiredAt, status, size, maxSize, true)
 }
 
-func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isDirty bool) (Writer, error) {
+// OpenFlushWriter 打开从其他媒介直接刷入的写入器
+func (this *MemoryStorage) OpenFlushWriter(key string, expiresAt int64, status int) (Writer, error) {
+	return this.openWriter(key, expiresAt, status, -1, -1, true)
+}
+
+func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, size int64, maxSize int64, isDirty bool) (Writer, error) {
 	// 待写入队列是否已满
 	if isDirty &&
 		this.parentStorage != nil &&
@@ -215,7 +220,7 @@ func (this *MemoryStorage) openWriter(key string, expiredAt int64, status int, s
 	}
 
 	isWriting = true
-	return NewMemoryWriter(this, key, expiredAt, status, isDirty, maxSize, func() {
+	return NewMemoryWriter(this, key, expiresAt, status, isDirty, maxSize, func() {
 		this.locker.Lock()
 		delete(this.writingKeyMap, key)
 		this.locker.Unlock()
@@ -471,7 +476,7 @@ func (this *MemoryStorage) flushItem(key string) {
 		return
 	}
 
-	writer, err := this.parentStorage.OpenWriter(key, item.ExpiredAt, item.Status, -1, -1, false)
+	writer, err := this.parentStorage.OpenFlushWriter(key, item.ExpiresAt, item.Status)
 	if err != nil {
 		if !CanIgnoreErr(err) {
 			remotelogs.Error("CACHE", "flush items failed: open writer failed: "+err.Error())
@@ -503,7 +508,7 @@ func (this *MemoryStorage) flushItem(key string) {
 	this.parentStorage.AddToList(&Item{
 		Type:       writer.ItemType(),
 		Key:        key,
-		ExpiredAt:  item.ExpiredAt,
+		ExpiredAt:  item.ExpiresAt,
 		HeaderSize: writer.HeaderSize(),
 		BodySize:   writer.BodySize(),
 	})

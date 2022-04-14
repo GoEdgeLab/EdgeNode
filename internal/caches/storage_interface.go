@@ -14,7 +14,10 @@ type StorageInterface interface {
 
 	// OpenWriter 打开缓存写入器等待写入
 	// size 和 maxSize 可能为-1
-	OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error)
+	OpenWriter(key string, expiresAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error)
+
+	// OpenFlushWriter 打开从其他媒介直接刷入的写入器
+	OpenFlushWriter(key string, expiresAt int64, status int) (Writer, error)
 
 	// Delete 删除某个键值对应的缓存
 	Delete(key string) error

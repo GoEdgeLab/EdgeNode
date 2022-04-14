@@ -313,6 +313,8 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 		if !caches.CanIgnoreErr(err) {
 			remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
 		}
+
+		this.Header().Set("X-Cache", "BYPASS, open failed")
 		return
 	}
 	this.cacheWriter = cacheWriter

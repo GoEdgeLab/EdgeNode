@@ -11,7 +11,7 @@ func TestOpenFilePool_Get(t *testing.T) {
 	var pool = caches.NewOpenFilePool("a")
 	t.Log(pool.Filename())
 	t.Log(pool.Get())
-	t.Log(pool.Put(caches.NewOpenFile(nil, nil, []byte{})))
+	t.Log(pool.Put(caches.NewOpenFile(nil, nil, nil, 0)))
 	t.Log(pool.Get())
 	t.Log(pool.Get())
 }
