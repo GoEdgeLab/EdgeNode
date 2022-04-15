@@ -522,7 +522,11 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		}
 	}
 
-	writer, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY, 0666)
+	var flags = os.O_CREATE | os.O_WRONLY
+	if isNewCreated {
+		flags |= os.O_TRUNC
+	}
+	writer, err := os.OpenFile(tmpPath, flags, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -550,11 +554,6 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	}
 
 	if isNewCreated {
-		err = writer.Truncate(0)
-		if err != nil {
-			return nil, err
-		}
-
 		// 写入过期时间
 		var metaBytes = make([]byte, SizeMeta+len(key))
 		binary.BigEndian.PutUint32(metaBytes[OffsetExpiresAt:], uint32(expiredAt))
