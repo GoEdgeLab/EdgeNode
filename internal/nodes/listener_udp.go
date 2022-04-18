@@ -24,6 +24,8 @@ type UDPListener struct {
 	connTicker *utils.Ticker
 
 	reverseProxy *serverconfigs.ReverseProxyConfig
+
+	isClosed bool
 }
 
 func (this *UDPListener) Serve() error {
@@ -46,7 +48,18 @@ func (this *UDPListener) Serve() error {
 
 	var buffer = make([]byte, 4*1024)
 	for {
-		n, addr, _ := this.Listener.ReadFrom(buffer)
+		if this.isClosed {
+			return nil
+		}
+
+		n, addr, err := this.Listener.ReadFrom(buffer)
+		if err != nil {
+			if this.isClosed {
+				return nil
+			}
+			return err
+		}
+
 		if n > 0 {
 			this.connLocker.Lock()
 			conn, ok := this.connMap[addr.String()]
@@ -76,6 +89,8 @@ func (this *UDPListener) Serve() error {
 }
 
 func (this *UDPListener) Close() error {
+	this.isClosed = true
+
 	if this.connTicker != nil {
 		this.connTicker.Stop()
 	}
