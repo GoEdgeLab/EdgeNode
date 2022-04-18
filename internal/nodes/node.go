@@ -537,42 +537,7 @@ func (this *Node) startSyncTimer() {
 					continue
 				}
 			case <-serverChangeTicker.C: // 服务变化
-				this.locker.Lock()
-				if len(this.updatingServerMap) > 0 {
-					var updatingServerMap = this.updatingServerMap
-					this.updatingServerMap = map[int64]*serverconfigs.ServerConfig{}
-					newNodeConfig, err := nodeconfigs.CloneNodeConfig(sharedNodeConfig)
-					if err != nil {
-						remotelogs.Error("NODE", "apply server config error: "+err.Error())
-						continue
-					}
-					for serverId, serverConfig := range updatingServerMap {
-						if serverConfig != nil {
-							newNodeConfig.AddServer(serverConfig)
-						} else {
-							newNodeConfig.RemoveServer(serverId)
-						}
-					}
-
-					err, serverErrors := newNodeConfig.Init()
-					if err != nil {
-						remotelogs.Error("NODE", "apply server config error: "+err.Error())
-						continue
-					}
-					if len(serverErrors) > 0 {
-						for _, serverErr := range serverErrors {
-							remotelogs.ServerError(serverErr.Id, "NODE", serverErr.Message, nodeconfigs.NodeLogTypeServerConfigInitFailed, maps.Map{})
-						}
-					}
-
-					this.onReload(newNodeConfig)
-
-					err = sharedListenerManager.Start(newNodeConfig)
-					if err != nil {
-						remotelogs.Error("NODE", "apply server config error: "+err.Error())
-					}
-				}
-				this.locker.Unlock()
+				this.reloadServer()
 			case <-nodeTaskNotify: // 有新的更新任务
 				err := this.loop()
 				if err != nil {
@@ -912,6 +877,47 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 	// product information
 	if config.ProductConfig != nil {
 		teaconst.GlobalProductName = config.ProductConfig.Name
+	}
+}
+
+// reload server config
+func (this *Node) reloadServer() {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	if len(this.updatingServerMap) > 0 {
+		var updatingServerMap = this.updatingServerMap
+		this.updatingServerMap = map[int64]*serverconfigs.ServerConfig{}
+		newNodeConfig, err := nodeconfigs.CloneNodeConfig(sharedNodeConfig)
+		if err != nil {
+			remotelogs.Error("NODE", "apply server config error: "+err.Error())
+			return
+		}
+		for serverId, serverConfig := range updatingServerMap {
+			if serverConfig != nil {
+				newNodeConfig.AddServer(serverConfig)
+			} else {
+				newNodeConfig.RemoveServer(serverId)
+			}
+		}
+
+		err, serverErrors := newNodeConfig.Init()
+		if err != nil {
+			remotelogs.Error("NODE", "apply server config error: "+err.Error())
+			return
+		}
+		if len(serverErrors) > 0 {
+			for _, serverErr := range serverErrors {
+				remotelogs.ServerError(serverErr.Id, "NODE", serverErr.Message, nodeconfigs.NodeLogTypeServerConfigInitFailed, maps.Map{})
+			}
+		}
+
+		this.onReload(newNodeConfig)
+
+		err = sharedListenerManager.Start(newNodeConfig)
+		if err != nil {
+			remotelogs.Error("NODE", "apply server config error: "+err.Error())
+		}
 	}
 }
 
