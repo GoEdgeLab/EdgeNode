@@ -2,6 +2,7 @@ package apps
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/files"
@@ -77,7 +78,7 @@ func (this *LogWriter) Write(message string) {
 			var ok bool
 			_, file, line, ok = runtime.Caller(callDepth)
 			if ok {
-				file = this.packagePath(file)
+				file = utils.RemoveWorkspace(this.packagePath(file))
 			}
 		}
 
