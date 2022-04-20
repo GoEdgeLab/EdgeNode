@@ -65,7 +65,7 @@ var sharedWritingFileKeyLocker = sync.Mutex{}
 
 var maxOpenFiles = NewMaxOpenFiles(2)
 
-const maxOpenFilesSlowCost = 1 * time.Microsecond
+const maxOpenFilesSlowCost = 500 * time.Microsecond // 0.5ms
 
 // FileStorage 文件缓存
 //   文件结构：
