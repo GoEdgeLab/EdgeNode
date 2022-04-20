@@ -213,7 +213,16 @@ func (this *AppCmd) runStop() {
 		return
 	}
 
-	_, _ = this.sock.Send(&gosock.Command{Code: "stop"})
+	// 从systemd中停止
+	if runtime.GOOS == "linux" {
+		systemctl, _ := exec.LookPath("systemctl")
+		if len(systemctl) > 0 {
+			_ = exec.Command(systemctl, "stop", teaconst.SystemdServiceName).Run()
+		}
+	}
+
+	// 如果仍在运行，则发送停止指令
+	_, _ = this.sock.SendTimeout(&gosock.Command{Code: "stop"}, 1*time.Second)
 
 	fmt.Println(this.product+" stopped ok, pid:", types.String(pid))
 }
