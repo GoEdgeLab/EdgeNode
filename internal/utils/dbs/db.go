@@ -31,6 +31,10 @@ func (this *DB) EnableStat(b bool) {
 	this.enableStat = b
 }
 
+func (this *DB) Begin() (*sql.Tx, error) {
+	return this.rawDB.Begin()
+}
+
 func (this *DB) Prepare(query string) (*Stmt, error) {
 	stmt, err := this.rawDB.Prepare(query)
 	if err != nil {

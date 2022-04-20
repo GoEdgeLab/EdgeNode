@@ -58,6 +58,7 @@ func (this *FileListDB) Open(dbPath string) error {
 	writeDB.SetMaxOpenConns(1)
 
 	// TODO 耗时过长，暂时不整理数据库
+	// TODO 需要根据行数来判断是否VACUUM
 	/**_, err = db.Exec("VACUUM")
 	if err != nil {
 		return err
@@ -109,7 +110,7 @@ func (this *FileListDB) Init() error {
 	this.total = total
 
 	// 常用语句
-	this.existsByHashStmt, err = this.readDB.Prepare(`SELECT "expiredAt" FROM "` + this.itemsTableName + `" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
+	this.existsByHashStmt, err = this.readDB.Prepare(`SELECT "expiredAt" FROM "` + this.itemsTableName + `" INDEXED BY "hash" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
 	if err != nil {
 		return err
 	}
@@ -354,7 +355,7 @@ func (this *FileListDB) Close() error {
 func (this *FileListDB) initTables(times int) error {
 	{
 		// expiredAt - 过期时间，用来判断有无过期
-		// staleAt - 陈旧最大时间，用来清理缓存
+		// staleAt - 过时缓存最大时间，用来清理缓存
 		_, err := this.writeDB.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
@@ -370,15 +371,9 @@ func (this *FileListDB) initTables(times int) error {
   "serverId" integer
 );
 
-CREATE INDEX IF NOT EXISTS "createdAt"
-ON "` + this.itemsTableName + `" (
-  "createdAt" ASC
-);
-
-CREATE INDEX IF NOT EXISTS "expiredAt"
-ON "` + this.itemsTableName + `" (
-  "expiredAt" ASC
-);
+DROP INDEX IF EXISTS "createdAt";
+DROP INDEX IF EXISTS "expiredAt";
+DROP INDEX IF EXISTS "serverId";
 
 CREATE INDEX IF NOT EXISTS "staleAt"
 ON "` + this.itemsTableName + `" (
@@ -388,11 +383,6 @@ ON "` + this.itemsTableName + `" (
 CREATE UNIQUE INDEX IF NOT EXISTS "hash"
 ON "` + this.itemsTableName + `" (
   "hash" ASC
-);
-
-CREATE INDEX IF NOT EXISTS "serverId"
-ON "` + this.itemsTableName + `" (
-  "serverId" ASC
 );
 `)
 

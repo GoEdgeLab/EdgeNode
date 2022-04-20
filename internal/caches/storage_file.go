@@ -27,7 +27,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -58,21 +57,15 @@ const (
 	HotItemSize                    = 1024         // 热点数据数量
 	HotItemLifeSeconds       int64 = 3600         // 热点数据生命周期
 	FileToMemoryMaxSize            = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
+	FileTmpSuffix                  = ".tmp"
 )
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
 var sharedWritingFileKeyLocker = sync.Mutex{}
 
-var maxOpenFiles = 3
+var maxOpenFiles = NewMaxOpenFiles(2)
 
-func init() {
-	if teaconst.DiskIsFast {
-		maxOpenFiles = runtime.NumCPU()
-	}
-	if maxOpenFiles < 3 {
-		maxOpenFiles = 3
-	}
-}
+const maxOpenFilesSlowCost = 1 * time.Microsecond
 
 // FileStorage 文件缓存
 //   文件结构：
@@ -263,7 +256,7 @@ func (this *FileStorage) Init() error {
 		var count = stat.Count
 		var size = stat.Size
 
-		cost := time.Since(before).Seconds() * 1000
+		var cost = time.Since(before).Seconds() * 1000
 		sizeMB := strconv.FormatInt(size, 10) + " Bytes"
 		if size > 1*sizes.G {
 			sizeMB = fmt.Sprintf("%.3f G", float64(size)/float64(sizes.G))
@@ -435,7 +428,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		return nil, ErrFileIsWriting
 	}
 
-	if !isFlushing && len(sharedWritingFileKeyMap) >= maxOpenFiles {
+	if len(sharedWritingFileKeyMap) >= int(maxOpenFiles.Max()) {
 		sharedWritingFileKeyLocker.Unlock()
 		return nil, ErrTooManyOpenFiles
 	}
@@ -464,6 +457,8 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	}
 
 	var hash = stringutil.Md5(key)
+
+	// TODO 可以只stat一次
 	var dir = this.options.Dir + "/p" + strconv.FormatInt(this.policy.Id, 10) + "/" + hash[:2] + "/" + hash[2:4]
 	_, err = os.Stat(dir)
 	if err != nil {
@@ -491,7 +486,15 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		// 防止并发连续写入
 		return nil, ErrFileIsWriting
 	}
-	var tmpPath = cachePath + ".tmp"
+	var tmpPath = cachePath
+	var existsFile = false
+	if stat != nil {
+		existsFile = true
+
+		// 如果已经存在，则增加一个.tmp后缀，防止读写冲突
+		tmpPath += FileTmpSuffix
+	}
+
 	if isPartial {
 		tmpPath = cachePathName + ".cache"
 	}
@@ -523,12 +526,18 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	}
 
 	var flags = os.O_CREATE | os.O_WRONLY
-	if isNewCreated {
+	if isNewCreated && existsFile {
 		flags |= os.O_TRUNC
 	}
+	var before = time.Now()
 	writer, err := os.OpenFile(tmpPath, flags, 0666)
 	if err != nil {
 		return nil, err
+	}
+	if time.Since(before) >= maxOpenFilesSlowCost {
+		maxOpenFiles.Slow()
+	} else {
+		maxOpenFiles.Fast()
 	}
 
 	var removeOnFailure = true

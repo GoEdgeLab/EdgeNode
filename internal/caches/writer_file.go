@@ -127,8 +127,8 @@ func (this *FileWriter) Close() error {
 	err = this.rawWriter.Close()
 	if err != nil {
 		_ = os.Remove(path)
-	} else {
-		err = os.Rename(path, strings.Replace(path, ".tmp", "", 1))
+	} else if strings.HasSuffix(path, FileTmpSuffix) {
+		err = os.Rename(path, strings.Replace(path, FileTmpSuffix, "", 1))
 		if err != nil {
 			_ = os.Remove(path)
 		}
