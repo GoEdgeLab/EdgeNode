@@ -206,6 +206,10 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 
 	if ruleSet != nil {
+		if firewallPolicy.Log != nil && firewallPolicy.Log.IsOn {
+			this.forceLog = true
+		}
+
 		if ruleSet.HasSpecialActions() {
 			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
@@ -213,9 +217,6 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 			if ruleSet.HasAttackActions() {
 				this.isAttack = true
-				if firewallPolicy.Log != nil && firewallPolicy.Log.IsOn {
-					this.forceLog = true
-				}
 			}
 
 			// 添加统计
@@ -271,6 +272,10 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 	}
 
 	if ruleSet != nil {
+		if firewallPolicy.Log != nil && firewallPolicy.Log.IsOn {
+			this.forceLog = true
+		}
+
 		if ruleSet.HasSpecialActions() {
 			this.firewallPolicyId = firewallPolicy.Id
 			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
@@ -278,9 +283,6 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 
 			if ruleSet.HasAttackActions() {
 				this.isAttack = true
-				if firewallPolicy.Log != nil && firewallPolicy.Log.IsOn {
-					this.forceLog = true
-				}
 			}
 
 			// 添加统计
