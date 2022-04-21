@@ -25,12 +25,12 @@ type Cache struct {
 
 func NewCache(opt ...OptionInterface) *Cache {
 	var countPieces = 256
-	var maxItems = 2_000_000
+	var maxItems = 1_000_000
 
 	var totalMemory = utils.SystemMemoryGB()
 	if totalMemory < 2 {
 		// 我们限制内存过小的服务能够使用的数量
-		maxItems = 1_000_000
+		maxItems = 500_000
 	} else {
 		var delta = totalMemory / 8
 		if delta > 0 {
