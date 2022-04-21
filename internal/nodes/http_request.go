@@ -93,7 +93,8 @@ type HTTPRequest struct {
 
 	logAttrs map[string]string
 
-	disableLog bool // 此请求中关闭Log
+	disableLog bool // 是否在当前请求中关闭Log
+	forceLog   bool // 是否强制记录日志
 
 	// script相关操作
 	isDone bool
