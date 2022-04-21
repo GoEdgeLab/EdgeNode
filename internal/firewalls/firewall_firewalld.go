@@ -60,6 +60,11 @@ func (this *Firewalld) IsReady() bool {
 	return this.isReady
 }
 
+// IsMock 是否为模拟
+func (this *Firewalld) IsMock() bool {
+	return false
+}
+
 func (this *Firewalld) AllowPort(port int, protocol string) error {
 	if !this.isReady {
 		return nil

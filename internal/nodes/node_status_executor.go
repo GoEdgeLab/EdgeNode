@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
@@ -62,7 +63,7 @@ func (this *NodeStatusExecutor) update() {
 	var tr = trackers.Begin("UPLOAD_NODE_STATUS")
 	defer tr.End()
 
-	status := &nodeconfigs.NodeStatus{}
+	var status = &nodeconfigs.NodeStatus{}
 	status.BuildVersion = teaconst.Version
 	status.BuildVersionCode = utils.VersionToLong(teaconst.Version)
 	status.OS = runtime.GOOS
@@ -74,6 +75,8 @@ func (this *NodeStatusExecutor) update() {
 	status.CacheTotalMemorySize = caches.SharedManager.TotalMemorySize()
 	status.TrafficInBytes = teaconst.InTrafficBytes
 	status.TrafficOutBytes = teaconst.OutTrafficBytes
+	var localFirewall = firewalls.Firewall()
+	status.HasLocalFirewall = localFirewall != nil && !localFirewall.IsMock()
 
 	// 记录监控数据
 	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemConnections, maps.Map{

@@ -10,6 +10,9 @@ type FirewallInterface interface {
 	// IsReady 是否已准备被调用
 	IsReady() bool
 
+	// IsMock 是否为模拟
+	IsMock() bool
+
 	// AllowPort 允许端口
 	AllowPort(port int, protocol string) error
 

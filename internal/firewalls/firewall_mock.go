@@ -20,6 +20,11 @@ func (this *MockFirewall) IsReady() bool {
 	return true
 }
 
+// IsMock 是否为模拟
+func (this *MockFirewall) IsMock() bool {
+	return true
+}
+
 // AllowPort 允许端口
 func (this *MockFirewall) AllowPort(port int, protocol string) error {
 	_ = port
