@@ -76,7 +76,9 @@ func (this *NodeStatusExecutor) update() {
 	status.TrafficInBytes = teaconst.InTrafficBytes
 	status.TrafficOutBytes = teaconst.OutTrafficBytes
 	var localFirewall = firewalls.Firewall()
-	status.HasLocalFirewall = localFirewall != nil && !localFirewall.IsMock()
+	if localFirewall != nil && !localFirewall.IsMock() {
+		status.LocalFirewallName = localFirewall.Name()
+	}
 
 	// 记录监控数据
 	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemConnections, maps.Map{
