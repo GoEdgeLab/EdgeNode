@@ -2,9 +2,18 @@
 
 package nodes
 
-import "net/http"
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
+	"net/http"
+)
 
 func (this *HTTPRequest) doRequestLimit() (shouldStop bool) {
+	// 是否在全局名单中
+	_, isInAllowedList := iplibrary.AllowIP(this.RemoteAddr(), this.ReqServer.Id)
+	if isInAllowedList {
+		return false
+	}
+
 	// 检查请求Body尺寸
 	// TODO 处理分片提交的内容
 	if this.web.RequestLimit.MaxBodyBytes() > 0 &&
