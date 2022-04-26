@@ -217,7 +217,10 @@ func (this *AppCmd) runStop() {
 	if runtime.GOOS == "linux" {
 		systemctl, _ := exec.LookPath("systemctl")
 		if len(systemctl) > 0 {
-			_ = exec.Command(systemctl, "stop", teaconst.SystemdServiceName).Run()
+			go func() {
+				// 有可能会长时间执行，这里不阻塞进程
+				_ = exec.Command(systemctl, "stop", teaconst.SystemdServiceName).Run()
+			}()
 		}
 	}
 
