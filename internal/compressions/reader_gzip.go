@@ -3,7 +3,7 @@
 package compressions
 
 import (
-	"compress/gzip"
+	"github.com/klauspost/compress/gzip"
 	"io"
 )
 

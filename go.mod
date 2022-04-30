@@ -2,7 +2,9 @@ module github.com/TeaOSLab/EdgeNode
 
 go 1.15
 
-replace github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
+replace (
+	github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
+)
 
 require (
 	github.com/TeaOSLab/EdgeCommon v0.0.0-00010101000000-000000000000
@@ -20,6 +22,7 @@ require (
 	github.com/iwind/gosock v0.0.0-20211103081026-ee4652210ca4
 	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
+	github.com/klauspost/compress v1.15.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/miekg/dns v1.1.43
