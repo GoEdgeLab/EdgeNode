@@ -265,10 +265,19 @@ func (this *HTTPRequest) doBegin() {
 		}
 
 		// UAM
-		if !isHealthCheck && this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
-			if this.doUAM() {
-				this.doEnd()
-				return
+		if !isHealthCheck {
+			if this.web.UAM != nil {
+				if this.web.UAM.IsOn {
+					if this.doUAM() {
+						this.doEnd()
+						return
+					}
+				}
+			} else if this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
+				if this.doUAM() {
+					this.doEnd()
+					return
+				}
 			}
 		}
 
@@ -519,6 +528,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 				this.web.RequestScripts.RequestGroup = web.RequestScripts.RequestGroup
 			}
 		}
+	}
+
+	// UAM
+	if web.UAM != nil && (web.UAM.IsPrior || isTop) {
+		this.web.UAM = web.UAM
 	}
 
 	// 重写规则
