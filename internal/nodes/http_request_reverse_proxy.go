@@ -283,7 +283,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	var locationHeader = resp.Header.Get("Location")
 	if len(locationHeader) > 0 {
 		locationURL, err := url.Parse(locationHeader)
-		if err == nil && (locationURL.Host == originAddr || strings.HasPrefix(originAddr, locationURL.Host+":")) {
+		if err == nil && locationURL.Host != this.ReqHost && (locationURL.Host == originAddr || strings.HasPrefix(originAddr, locationURL.Host+":")) {
 			locationURL.Host = this.ReqHost
 			if this.IsHTTP {
 				locationURL.Scheme = "http"
