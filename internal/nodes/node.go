@@ -878,6 +878,22 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 	if config.ProductConfig != nil {
 		teaconst.GlobalProductName = config.ProductConfig.Name
 	}
+
+	// DNS resolver
+	if config.DNSResolver != nil {
+		var err error
+		switch config.DNSResolver.Type {
+		case nodeconfigs.DNSResolverTypeGoNative:
+			err = os.Setenv("GODEBUG", "netdns=go+2")
+		case nodeconfigs.DNSResolverTypeCGO:
+			err = os.Setenv("GODEBUG", "netdns=cgo+2")
+		default:
+			err = os.Unsetenv("GODEBUG")
+		}
+		if err != nil {
+			remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
+		}
+	}
 }
 
 // reload server config
