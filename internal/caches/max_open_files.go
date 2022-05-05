@@ -68,7 +68,7 @@ func (this *MaxOpenFiles) init() {
 				atomic.StoreInt32(&this.currentOpens, 0)
 			}
 
-			// reset mod
+			// reset mode
 			atomic.StoreInt32(&this.mode, 0)
 		}
 	})
