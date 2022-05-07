@@ -428,7 +428,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		return nil, ErrFileIsWriting
 	}
 
-	if len(sharedWritingFileKeyMap) >= int(maxOpenFiles.Max()) {
+	if !isFlushing && len(sharedWritingFileKeyMap) >= int(maxOpenFiles.Max()) {
 		sharedWritingFileKeyLocker.Unlock()
 		return nil, ErrTooManyOpenFiles
 	}
@@ -534,10 +534,12 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	if err != nil {
 		return nil, err
 	}
-	if time.Since(before) >= maxOpenFilesSlowCost {
-		maxOpenFiles.Slow()
-	} else {
-		maxOpenFiles.Fast()
+	if !isFlushing {
+		if time.Since(before) >= maxOpenFilesSlowCost {
+			maxOpenFiles.Slow()
+		} else {
+			maxOpenFiles.Fast()
+		}
 	}
 
 	var removeOnFailure = true
