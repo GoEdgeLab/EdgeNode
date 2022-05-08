@@ -1047,7 +1047,7 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 	}
 
 	// X-Forwarded-For
-	forwardedFor := this.RawReq.Header.Get("X-Forwarded-For")
+	var forwardedFor = this.RawReq.Header.Get("X-Forwarded-For")
 	if len(forwardedFor) > 0 {
 		commaIndex := strings.Index(forwardedFor, ",")
 		if commaIndex > 0 {
@@ -1461,7 +1461,12 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 				header["X-Forwarded-For"] = []string{strings.Join(forwardedFor, ", ") + ", " + remoteAddr}
 			}
 		} else {
-			header["X-Forwarded-For"] = []string{remoteAddr}
+			var clientRemoteAddr = this.requestRemoteAddr(true)
+			if len(clientRemoteAddr) > 0 && clientRemoteAddr != remoteAddr {
+				header["X-Forwarded-For"] = []string{clientRemoteAddr + ", " + remoteAddr}
+			} else {
+				header["X-Forwarded-For"] = []string{remoteAddr}
+			}
 		}
 	}
 
