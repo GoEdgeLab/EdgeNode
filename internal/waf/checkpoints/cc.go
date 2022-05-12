@@ -114,7 +114,7 @@ func (this *CCCheckpoint) RequestValue(req requests.Request, param string, optio
 		if len(key) == 0 {
 			key = req.WAFRemoteIP()
 		}
-		value = this.cache.IncreaseInt64(key, int64(1), time.Now().Unix()+period)
+		value = this.cache.IncreaseInt64(key, int64(1), time.Now().Unix()+period, false)
 	}
 
 	return

@@ -38,7 +38,7 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 		threshold = 1000
 	}
 
-	value = ccCache.IncreaseInt64("WAF-CC-"+strings.Join(keyValues, "@"), 1, time.Now().Unix()+period)
+	value = ccCache.IncreaseInt64("WAF-CC-"+strings.Join(keyValues, "@"), 1, time.Now().Unix()+period, false)
 
 	return
 }

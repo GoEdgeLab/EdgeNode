@@ -65,14 +65,14 @@ func TestCache_IncreaseInt64(t *testing.T) {
 	var unixTime = time.Now().Unix()
 
 	{
-		cache.IncreaseInt64("a", 1, unixTime+3600)
+		cache.IncreaseInt64("a", 1, unixTime+3600, false)
 		var item = cache.Read("a")
 		t.Log(item)
 		a.IsTrue(item.Value == int64(1))
 		a.IsTrue(item.expiredAt == unixTime+3600)
 	}
 	{
-		cache.IncreaseInt64("a", 1, unixTime+3600+1)
+		cache.IncreaseInt64("a", 1, unixTime+3600+1, true)
 		var item = cache.Read("a")
 		t.Log(item)
 		a.IsTrue(item.Value == int64(2))
@@ -83,7 +83,7 @@ func TestCache_IncreaseInt64(t *testing.T) {
 		t.Log(cache.Read("b"))
 	}
 	{
-		cache.IncreaseInt64("b", 1, time.Now().Unix()+3600+3)
+		cache.IncreaseInt64("b", 1, time.Now().Unix()+3600+3, false)
 		t.Log(cache.Read("b"))
 	}
 }

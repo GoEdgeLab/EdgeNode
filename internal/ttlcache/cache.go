@@ -91,7 +91,7 @@ func (this *Cache) Write(key string, value interface{}, expiredAt int64) (ok boo
 	})
 }
 
-func (this *Cache) IncreaseInt64(key string, delta int64, expiredAt int64) int64 {
+func (this *Cache) IncreaseInt64(key string, delta int64, expiredAt int64, extend bool) int64 {
 	if this.isDestroyed {
 		return 0
 	}
@@ -107,7 +107,7 @@ func (this *Cache) IncreaseInt64(key string, delta int64, expiredAt int64) int64
 	}
 	uint64Key := HashKey([]byte(key))
 	pieceIndex := uint64Key % this.countPieces
-	return this.pieces[pieceIndex].IncreaseInt64(uint64Key, delta, expiredAt)
+	return this.pieces[pieceIndex].IncreaseInt64(uint64Key, delta, expiredAt, extend)
 }
 
 func (this *Cache) Read(key string) (item *Item) {

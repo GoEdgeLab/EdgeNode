@@ -39,13 +39,15 @@ func (this *Piece) Add(key uint64, item *Item) (ok bool) {
 	return true
 }
 
-func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64) (result int64) {
+func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64, extend bool) (result int64) {
 	this.locker.Lock()
 	item, ok := this.m[key]
 	if ok && item.expiredAt > time.Now().Unix() {
 		result = types.Int64(item.Value) + delta
 		item.Value = result
-		item.expiredAt = expiredAt
+		if extend {
+			item.expiredAt = expiredAt
+		}
 		this.expiresList.Add(key, expiredAt)
 	} else {
 		if len(this.m) < this.maxItems {

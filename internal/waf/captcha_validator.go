@@ -167,7 +167,7 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, maxFails int
 		} else {
 			// 增加计数
 			if maxFails > 0 && failBlockTimeout > 0 {
-				var countFails = ttlcache.SharedCache.IncreaseInt64("CAPTCHA:FAILS:"+request.WAFRemoteIP(), 1, time.Now().Unix()+300)
+				var countFails = ttlcache.SharedCache.IncreaseInt64("CAPTCHA:FAILS:"+request.WAFRemoteIP(), 1, time.Now().Unix()+300, true)
 				if int(countFails) >= maxFails {
 					SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, false, groupId, setId, "CAPTCHA验证连续失败")
 					return false
