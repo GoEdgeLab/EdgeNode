@@ -426,7 +426,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		return nil
 	}
 
-	configJSON := configResp.NodeJSON
+	var configJSON = configResp.NodeJSON
 	if configResp.IsCompressed {
 		var reader = brotli.NewReader(bytes.NewReader(configJSON))
 		var configBuf = &bytes.Buffer{}
@@ -445,13 +445,22 @@ func (this *Node) syncConfig(taskVersion int64) error {
 
 	nodeConfigUpdatedAt = time.Now().Unix()
 
-	nodeConfig := &nodeconfigs.NodeConfig{}
+	var nodeConfig = &nodeconfigs.NodeConfig{}
 	err = json.Unmarshal(configJSON, nodeConfig)
 	if err != nil {
 		return errors.New("decode config failed: " + err.Error())
 	}
 	teaconst.NodeId = nodeConfig.Id
 	teaconst.NodeIdString = types.String(teaconst.NodeId)
+
+	// 检查时间是否一致
+	// 这个需要在 teaconst.NodeId 设置之后，因为上报到API节点的时候需要节点ID
+	if configResp.Timestamp > 0 {
+		var timestampDelta = configResp.Timestamp - time.Now().Unix()
+		if timestampDelta > 60 || timestampDelta < -60 {
+			remotelogs.Error("NODE", "node timestamp ('"+types.String(time.Now().Unix())+"') is not same as api node ('"+types.String(configResp.Timestamp)+"'), please sync the time")
+		}
+	}
 
 	// 写入到文件中
 	err = nodeConfig.Save()
