@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const MaxQueueSize = 10240
+const MaxQueueSize = 2048
 
 // Task 单个指标任务
 // 数据库存储：
@@ -58,7 +58,7 @@ type Task struct {
 	timeMap           map[string]zero.Zero // time => bool
 	serverIdMapLocker sync.Mutex
 
-	statsMap    map[string]*Stat
+	statsMap    map[string]*Stat // 待写入队列，hash => *Stat
 	statsLocker sync.Mutex
 	statsTicker *utils.Ticker
 }
