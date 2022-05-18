@@ -3,15 +3,11 @@
 package nodes
 
 import (
-	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
-	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"net"
 )
-
-var sharedConnectionsLimiter = ratelimit.NewCounter(nodeconfigs.DefaultTCPMaxConnections)
 
 // ClientListener 客户端网络监听
 type ClientListener struct {
@@ -36,13 +32,8 @@ func (this *ClientListener) IsTLS() bool {
 }
 
 func (this *ClientListener) Accept() (net.Conn, error) {
-	// 限制并发连接数
-	var limiter = sharedConnectionsLimiter
-	limiter.Ack()
-
 	conn, err := this.rawListener.Accept()
 	if err != nil {
-		limiter.Release()
 		return nil, err
 	}
 
@@ -60,12 +51,11 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 			}
 
 			_ = conn.Close()
-			limiter.Release()
 			return this.Accept()
 		}
 	}
 
-	return NewClientConn(conn, this.isTLS, this.quickClose, limiter), nil
+	return NewClientConn(conn, this.isTLS, this.quickClose), nil
 }
 
 func (this *ClientListener) Close() error {

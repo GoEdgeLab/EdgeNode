@@ -7,7 +7,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
-	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
@@ -21,8 +20,7 @@ import (
 
 // ClientConn 客户端连接
 type ClientConn struct {
-	once          sync.Once
-	globalLimiter *ratelimit.Counter
+	once sync.Once
 
 	isTLS       bool
 	hasDeadline bool
@@ -33,7 +31,7 @@ type ClientConn struct {
 	BaseClientConn
 }
 
-func NewClientConn(conn net.Conn, isTLS bool, quickClose bool, globalLimiter *ratelimit.Counter) net.Conn {
+func NewClientConn(conn net.Conn, isTLS bool, quickClose bool) net.Conn {
 	if quickClose {
 		// TCP
 		tcpConn, ok := conn.(*net.TCPConn)
@@ -43,7 +41,7 @@ func NewClientConn(conn net.Conn, isTLS bool, quickClose bool, globalLimiter *ra
 		}
 	}
 
-	return &ClientConn{BaseClientConn: BaseClientConn{rawConn: conn}, isTLS: isTLS, globalLimiter: globalLimiter}
+	return &ClientConn{BaseClientConn: BaseClientConn{rawConn: conn}, isTLS: isTLS}
 }
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
@@ -95,13 +93,6 @@ func (this *ClientConn) Close() error {
 	this.isClosed = true
 
 	err := this.rawConn.Close()
-
-	// 全局并发数限制
-	this.once.Do(func() {
-		if this.globalLimiter != nil {
-			this.globalLimiter.Release()
-		}
-	})
 
 	// 单个服务并发数限制
 	sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())

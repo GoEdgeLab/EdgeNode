@@ -26,3 +26,26 @@ func TestIsLocalIP(t *testing.T) {
 	a.IsFalse(IsLocalIP("::1:2:3"))
 	a.IsFalse(IsLocalIP("8.8.8.8"))
 }
+
+func TestIsIPv4(t *testing.T) {
+	var a = assert.NewAssertion(t)
+	a.IsTrue(IsIPv4("192.168.1.1"))
+	a.IsTrue(IsIPv4("0.0.0.0"))
+	a.IsFalse(IsIPv4("192.168.1.256"))
+	a.IsFalse(IsIPv4("192.168.1"))
+	a.IsFalse(IsIPv4("::1"))
+	a.IsFalse(IsIPv4("2001:0db8:85a3:0000:0000:8a2e:0370:7334"))
+	a.IsFalse(IsIPv4("::ffff:192.168.0.1"))
+}
+
+func TestIsIPv6(t *testing.T) {
+	var a = assert.NewAssertion(t)
+	a.IsFalse(IsIPv6("192.168.1.1"))
+	a.IsFloat32(IsIPv6("0.0.0.0"))
+	a.IsFalse(IsIPv6("192.168.1.256"))
+	a.IsFalse(IsIPv6("192.168.1"))
+	a.IsTrue(IsIPv6("::1"))
+	a.IsTrue(IsIPv6("2001:0db8:85a3:0000:0000:8a2e:0370:7334"))
+	a.IsTrue(IsIPv4("::ffff:192.168.0.1"))
+	a.IsTrue(IsIPv6("::ffff:192.168.0.1"))
+}

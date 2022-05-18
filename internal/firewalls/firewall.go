@@ -1,6 +1,4 @@
 // Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
-//go:build !plus
-// +build !plus
 
 package firewalls
 
@@ -8,9 +6,11 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"runtime"
+	"sync"
 )
 
 var currentFirewall FirewallInterface
+var firewallLocker = &sync.Mutex{}
 
 // 初始化
 func init() {
@@ -24,8 +24,26 @@ func init() {
 
 // Firewall 查找当前系统中最适合的防火墙
 func Firewall() FirewallInterface {
+	firewallLocker.Lock()
+	defer firewallLocker.Unlock()
 	if currentFirewall != nil {
 		return currentFirewall
+	}
+
+	// nftables
+	if runtime.GOOS == "linux" {
+		nftables, err := NewNFTablesFirewall()
+		if err != nil {
+			remotelogs.Warn("FIREWALL", "'nftables' should be installed on the system to enhance security (init failed: "+err.Error()+")")
+		} else {
+			if nftables.IsReady() {
+				currentFirewall = nftables
+				events.Notify(events.EventNFTablesReady)
+				return nftables
+			} else {
+				remotelogs.Warn("FIREWALL", "'nftables' should be enabled on the system to enhance security")
+			}
+		}
 	}
 
 	// firewalld

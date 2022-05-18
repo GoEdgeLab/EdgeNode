@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"sort"
 	"strings"
 	"unsafe"
 )
@@ -36,6 +37,22 @@ func FormatAddressList(addrList []string) []string {
 	return result
 }
 
+// ToValidUTF8string 去除字符串中的非UTF-8字符
 func ToValidUTF8string(v string) string {
 	return strings.ToValidUTF8(v, "")
+}
+
+// ContainsSameStrings 检查两个字符串slice内容是否一致
+func ContainsSameStrings(s1 []string, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+	sort.Strings(s1)
+	sort.Strings(s2)
+	for index, v1 := range s1 {
+		if v1 != s2[index] {
+			return false
+		}
+	}
+	return true
 }

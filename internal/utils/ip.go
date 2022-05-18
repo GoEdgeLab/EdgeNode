@@ -5,8 +5,11 @@ import (
 	"github.com/cespare/xxhash"
 	"math"
 	"net"
+	"regexp"
 	"strings"
 )
+
+var ipv4Reg = regexp.MustCompile(`\d+\.`)
 
 // IP2Long 将IP转换为整型
 // 注意IPv6没有顺序
@@ -53,4 +56,25 @@ func IsLocalIP(ipString string) bool {
 	}
 
 	return false
+}
+
+// IsIPv4 是否为IPv4
+func IsIPv4(ip string) bool {
+	var data = net.ParseIP(ip)
+	if data == nil {
+		return false
+	}
+	if strings.Contains(ip, ":") {
+		return false
+	}
+	return data.To4() != nil
+}
+
+// IsIPv6 是否为IPv6
+func IsIPv6(ip string) bool {
+	var data = net.ParseIP(ip)
+	if data == nil {
+		return false
+	}
+	return !IsIPv4(ip)
 }

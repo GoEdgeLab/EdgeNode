@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/ddosconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -15,7 +16,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
-	"github.com/TeaOSLab/EdgeNode/internal/ratelimit"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
@@ -367,6 +367,38 @@ func (this *Node) loop() error {
 				}
 			}
 			sharedNodeConfig.ParentNodes = parentNodes
+
+			// 修改为已同步
+			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+				NodeTaskId: task.Id,
+				IsOk:       true,
+				Error:      "",
+			})
+			if err != nil {
+				return err
+			}
+		case "ddosProtectionChanged":
+			resp, err := rpcClient.NodeRPC().FindNodeDDoSProtection(nodeCtx, &pb.FindNodeDDoSProtectionRequest{})
+			if err != nil {
+				return err
+			}
+			if len(resp.DdosProtectionJSON) == 0 {
+				if sharedNodeConfig != nil {
+					sharedNodeConfig.DDOSProtection = nil
+				}
+			} else {
+				var ddosProtectionConfig = &ddosconfigs.ProtectionConfig{}
+				err = json.Unmarshal(resp.DdosProtectionJSON, ddosProtectionConfig)
+				if err != nil {
+					return errors.New("decode DDoS protection config failed: " + err.Error())
+				}
+
+				err = firewalls.SharedDDoSProtectionManager.Apply(ddosProtectionConfig)
+				if err != nil {
+					// 不阻塞
+					remotelogs.Error("NODE", "apply DDoS protection failed: "+err.Error())
+				}
+			}
 
 			// 修改为已同步
 			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
@@ -730,7 +762,6 @@ func (this *Node) listenSock() error {
 						"ipConns":     ipConns,
 						"serverConns": serverConns,
 						"total":       sharedListenerManager.TotalActiveConnections(),
-						"limiter":     sharedConnectionsLimiter.Len(),
 					},
 				})
 			case "dropIP":
@@ -852,17 +883,6 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 			remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(nodeconfigs.DefaultMaxThreads)+"'")
 		}
 		this.maxThreads = config.MaxThreads
-	}
-
-	// max tcp connections
-	if config.TCPMaxConnections <= 0 {
-		config.TCPMaxConnections = nodeconfigs.DefaultTCPMaxConnections
-	}
-	if config.TCPMaxConnections != sharedConnectionsLimiter.Count() {
-		remotelogs.Println("NODE", "[TCP]changed tcp max connections to '"+types.String(config.TCPMaxConnections)+"'")
-
-		sharedConnectionsLimiter.Close()
-		sharedConnectionsLimiter = ratelimit.NewCounter(config.TCPMaxConnections)
 	}
 
 	// timezone

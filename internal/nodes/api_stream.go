@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -14,16 +15,20 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/maps"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"os/exec"
+	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -119,6 +124,8 @@ func (this *APIStream) loop() error {
 			err = this.handleNewNodeTask(message)
 		case messageconfigs.MessageCodeCheckSystemdService: // 检查Systemd服务
 			err = this.handleCheckSystemdService(message)
+		case messageconfigs.MessageCodeCheckLocalFirewall: // 检查本地防火墙
+			err = this.handleCheckLocalFirewall(message)
 		case messageconfigs.MessageCodeChangeAPINode: // 修改API节点地址
 			err = this.handleChangeAPINode(message)
 		default:
@@ -569,7 +576,7 @@ func (this *APIStream) handleCheckSystemdService(message *pb.NodeStreamMessage) 
 		return nil
 	}
 
-	cmd := utils.NewCommandExecutor()
+	var cmd = utils.NewCommandExecutor()
 	shortName := teaconst.SystemdServiceName
 	cmd.Add(systemctl, "is-enabled", shortName)
 	output, err := cmd.Run()
@@ -582,6 +589,63 @@ func (this *APIStream) handleCheckSystemdService(message *pb.NodeStreamMessage) 
 	} else {
 		this.replyFail(message.RequestId, "not installed")
 	}
+	return nil
+}
+
+// 检查本地防火墙
+func (this *APIStream) handleCheckLocalFirewall(message *pb.NodeStreamMessage) error {
+	var dataMessage = &messageconfigs.CheckLocalFirewallMessage{}
+	err := json.Unmarshal(message.DataJSON, dataMessage)
+	if err != nil {
+		this.replyFail(message.RequestId, "decode message data failed: "+err.Error())
+		return nil
+	}
+
+	// nft
+	if dataMessage.Name == "nftables" {
+		if runtime.GOOS != "linux" {
+			this.replyFail(message.RequestId, "not Linux system")
+			return nil
+		}
+
+		nft, err := exec.LookPath("nft")
+		if err != nil {
+			this.replyFail(message.RequestId, "'nft' not found: "+err.Error())
+			return nil
+		}
+
+		var cmd = exec.Command(nft, "--version")
+		var output = &bytes.Buffer{}
+		cmd.Stdout = output
+		err = cmd.Run()
+		if err != nil {
+			this.replyFail(message.RequestId, "get version failed: "+err.Error())
+			return nil
+		}
+
+		var outputString = output.String()
+		var versionMatches = regexp.MustCompile(`nftables v([\d.]+)`).FindStringSubmatch(outputString)
+		if len(versionMatches) <= 1 {
+			this.replyFail(message.RequestId, "can not get nft version")
+			return nil
+		}
+		var version = versionMatches[1]
+
+		var result = maps.Map{
+			"version": version,
+		}
+
+		var protectionConfig = sharedNodeConfig.DDOSProtection
+		err = firewalls.SharedDDoSProtectionManager.Apply(protectionConfig)
+		if err != nil {
+			this.replyFail(message.RequestId, dataMessage.Name+"was installed, but apply DDoS protection config failed: "+err.Error())
+		} else {
+			this.replyOk(message.RequestId, string(result.AsJSON()))
+		}
+	} else {
+		this.replyFail(message.RequestId, "invalid firewall name '"+dataMessage.Name+"'")
+	}
+
 	return nil
 }
 
@@ -658,6 +722,11 @@ func (this *APIStream) replyFail(requestId int64, message string) {
 // 回复成功
 func (this *APIStream) replyOk(requestId int64, message string) {
 	_ = this.stream.Send(&pb.NodeStreamMessage{RequestId: requestId, IsOk: true, Message: message})
+}
+
+// 回复成功并包含数据
+func (this *APIStream) replyOkData(requestId int64, message string, dataJSON []byte) {
+	_ = this.stream.Send(&pb.NodeStreamMessage{RequestId: requestId, IsOk: true, Message: message, DataJSON: dataJSON})
 }
 
 // 获取缓存存取对象
