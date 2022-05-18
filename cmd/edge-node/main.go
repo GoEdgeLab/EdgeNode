@@ -22,7 +22,7 @@ func main() {
 	app := apps.NewAppCmd().
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
-		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof]").
+		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof|accesslog]").
 		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc]").
 		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove] IP")
 
@@ -255,6 +255,53 @@ func main() {
 				fmt.Println("[ERROR]" + errString)
 			} else {
 				fmt.Println("ok")
+			}
+		}
+	})
+	app.On("accesslog", func() {
+		// local sock
+		var tmpDir = os.TempDir()
+		var sockFile = tmpDir + "/" + teaconst.AccessLogSockName
+		_, err := os.Stat(sockFile)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				fmt.Println("[ERROR]" + err.Error())
+				return
+			}
+		}
+
+		var processSock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := processSock.Send(&gosock.Command{
+			Code: "accesslog",
+		})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+			return
+		}
+		if reply.Code == "error" {
+			var errString = maps.NewMap(reply.Params).GetString("error")
+			if len(errString) > 0 {
+				fmt.Println("[ERROR]" + errString)
+				return
+			}
+		}
+
+		conn, err := net.Dial("unix", sockFile)
+		if err != nil {
+			fmt.Println("[ERROR]start reading access log failed: " + err.Error())
+			return
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+		var buf = make([]byte, 1024)
+		for {
+			n, err := conn.Read(buf)
+			if n > 0 {
+				fmt.Print(string(buf[:n]))
+			}
+			if err != nil {
+				break
 			}
 		}
 	})

@@ -820,6 +820,18 @@ func (this *Node) listenSock() error {
 				} else {
 					_ = cmd.ReplyOk()
 				}
+			case "accesslog":
+				err := sharedHTTPAccessLogViewer.Start()
+				if err != nil {
+					_ = cmd.Reply(&gosock.Command{
+						Code: "error",
+						Params: map[string]interface{}{
+							"message": "start failed: " + err.Error(),
+						},
+					})
+				} else {
+					_ = cmd.ReplyOk()
+				}
 			}
 		})
 

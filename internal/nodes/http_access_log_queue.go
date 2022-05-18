@@ -80,6 +80,13 @@ Loop:
 		return nil
 	}
 
+	// 发送到本地
+	if sharedHTTPAccessLogViewer.HasConns() {
+		for _, accessLog := range accessLogs {
+			sharedHTTPAccessLogViewer.Send(accessLog)
+		}
+	}
+
 	// 发送到API
 	if this.rpcClient == nil {
 		client, err := rpc.SharedRPC()

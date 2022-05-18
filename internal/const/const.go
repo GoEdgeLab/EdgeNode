@@ -13,4 +13,6 @@ const (
 
 	// SystemdServiceName systemd
 	SystemdServiceName = "edge-node"
+
+	AccessLogSockName = "edge-node.accesslog.sock"
 )
