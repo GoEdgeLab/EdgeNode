@@ -21,8 +21,13 @@ func (this *HTTPRequest) doHealthCheck(key string, isHealthCheck *bool) (stop bo
 	}
 	*isHealthCheck = true
 
+	if !data.GetBool("accessLogIsOn") {
+		this.disableLog = true
+	}
+
 	if data.GetBool("onlyBasicRequest") {
 		return true
 	}
+
 	return
 }
