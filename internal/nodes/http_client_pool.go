@@ -104,39 +104,41 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		}
 	}
 
-	var transport = &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// 支持TOA的连接
-			conn, err := this.handleTOA(req, ctx, network, originAddr, connectionTimeout)
-			if conn != nil || err != nil {
-				return conn, err
-			}
+	var transport = &HTTPClientTransport{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				// 支持TOA的连接
+				conn, err := this.handleTOA(req, ctx, network, originAddr, connectionTimeout)
+				if conn != nil || err != nil {
+					return conn, err
+				}
 
-			// 普通的连接
-			conn, err = (&net.Dialer{
-				Timeout:   connectionTimeout,
-				KeepAlive: 1 * time.Minute,
-			}).DialContext(ctx, network, originAddr)
-			if err != nil {
-				return nil, err
-			}
+				// 普通的连接
+				conn, err = (&net.Dialer{
+					Timeout:   connectionTimeout,
+					KeepAlive: 1 * time.Minute,
+				}).DialContext(ctx, network, originAddr)
+				if err != nil {
+					return nil, err
+				}
 
-			// 处理PROXY protocol
-			err = this.handlePROXYProtocol(conn, req, proxyProtocol)
-			if err != nil {
-				return nil, err
-			}
+				// 处理PROXY protocol
+				err = this.handlePROXYProtocol(conn, req, proxyProtocol)
+				if err != nil {
+					return nil, err
+				}
 
-			return conn, nil
+				return conn, nil
+			},
+			MaxIdleConns:          0,
+			MaxIdleConnsPerHost:   idleConns,
+			MaxConnsPerHost:       maxConnections,
+			IdleConnTimeout:       idleTimeout,
+			ExpectContinueTimeout: 1 * time.Second,
+			TLSHandshakeTimeout:   3 * time.Second,
+			TLSClientConfig:       tlsConfig,
+			Proxy:                 nil,
 		},
-		MaxIdleConns:          0,
-		MaxIdleConnsPerHost:   idleConns,
-		MaxConnsPerHost:       maxConnections,
-		IdleConnTimeout:       idleTimeout,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSHandshakeTimeout:   3 * time.Second,
-		TLSClientConfig:       tlsConfig,
-		Proxy:                 nil,
 	}
 
 	rawClient = &http.Client{
