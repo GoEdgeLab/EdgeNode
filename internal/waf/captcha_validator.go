@@ -39,7 +39,7 @@ func (this *CaptchaValidator) Run(request requests.Request, writer http.Response
 		return
 	}
 
-	timestamp := m.GetInt64("timestamp")
+	var timestamp = m.GetInt64("timestamp")
 	if timestamp < time.Now().Unix()-600 { // 10分钟之后信息过期
 		http.Redirect(writer, request.WAFRaw(), m.GetString("url"), http.StatusTemporaryRedirect)
 		return
@@ -54,18 +54,23 @@ func (this *CaptchaValidator) Run(request requests.Request, writer http.Response
 
 	var setId = m.GetInt64("setId")
 	var originURL = m.GetString("url")
-
+	var maxFails = m.GetInt("maxFails")
+	var failBlockTimeout = m.GetInt("failBlockTimeout")
+	var policyId = m.GetInt64("policyId")
+	var groupId = m.GetInt64("groupId")
 	if request.WAFRaw().Method == http.MethodPost && len(request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")) > 0 {
-		this.validate(actionConfig, m.GetInt("maxFails"), m.GetInt("failBlockTimeout"), m.GetInt64("policyId"), m.GetInt64("groupId"), setId, originURL, request, writer)
+		this.validate(actionConfig, maxFails, failBlockTimeout, policyId, groupId, setId, originURL, request, writer)
 	} else {
+		// 增加计数
+		this.IncreaseFails(request, maxFails, failBlockTimeout, policyId, groupId, setId)
 		this.show(actionConfig, request, writer)
 	}
 }
 
 func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests.Request, writer http.ResponseWriter) {
 	// show captcha
-	captchaId := captcha.NewLen(6)
-	buf := bytes.NewBuffer([]byte{})
+	var captchaId = captcha.NewLen(6)
+	var buf = bytes.NewBuffer([]byte{})
 	err := captcha.WriteImage(buf, captchaId, 200, 100)
 	if err != nil {
 		logs.Error(err)
@@ -146,11 +151,11 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, request requests
 }
 
 func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, maxFails int, failBlockTimeout int, policyId int64, groupId int64, setId int64, originURL string, request requests.Request, writer http.ResponseWriter) (allow bool) {
-	captchaId := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
+	var captchaId = request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
 	if len(captchaId) > 0 {
-		captchaCode := request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
+		var captchaCode = request.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
 		if captcha.VerifyString(captchaId, captchaCode) {
-			// 删除计数
+			// 清除计数
 			ttlcache.SharedCache.Delete("CAPTCHA:FAILS:" + request.WAFRemoteIP())
 
 			var life = CaptchaSeconds
@@ -166,17 +171,29 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, maxFails int
 			return false
 		} else {
 			// 增加计数
-			if maxFails > 0 && failBlockTimeout > 0 {
-				var countFails = ttlcache.SharedCache.IncreaseInt64("CAPTCHA:FAILS:"+request.WAFRemoteIP(), 1, time.Now().Unix()+300, true)
-				if int(countFails) >= maxFails {
-					SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, false, groupId, setId, "CAPTCHA验证连续失败")
-					return false
-				}
+			if !this.IncreaseFails(request, maxFails, failBlockTimeout, policyId, groupId, setId) {
+				return false
 			}
 
 			http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusSeeOther)
 		}
 	}
 
+	return true
+}
+
+// IncreaseFails 增加失败次数，以便后续操作
+func (this *CaptchaValidator) IncreaseFails(request requests.Request, maxFails int, failBlockTimeout int, policyId int64, groupId int64, setId int64) (goNext bool) {
+	if maxFails > 0 && failBlockTimeout > 0 {
+		// 加上展示的计数
+		maxFails *= 2
+
+		var countFails = ttlcache.SharedCache.IncreaseInt64("CAPTCHA:FAILS:"+request.WAFRemoteIP(), 1, time.Now().Unix()+300, true)
+		if int(countFails) >= maxFails {
+			var useLocalFirewall = false
+			SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, useLocalFirewall, groupId, setId, "CAPTCHA验证连续失败")
+			return false
+		}
+	}
 	return true
 }
