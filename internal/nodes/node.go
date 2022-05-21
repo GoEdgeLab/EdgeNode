@@ -21,6 +21,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/andybalholm/brotli"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
@@ -865,7 +866,7 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 	}
 
 	// WAF策略
-	sharedWAFManager.UpdatePolicies(config.FindAllFirewallPolicies())
+	waf.SharedWAFManager.UpdatePolicies(config.FindAllFirewallPolicies())
 	iplibrary.SharedActionManager.UpdateActions(config.FirewallActions)
 
 	// 统计指标

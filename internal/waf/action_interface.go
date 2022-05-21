@@ -11,6 +11,12 @@ type ActionInterface interface {
 	// Init 初始化
 	Init(waf *WAF) error
 
+	// ActionId 读取ActionId
+	ActionId() int64
+
+	// SetActionId 设置ID
+	SetActionId(id int64)
+
 	// Code 代号
 	Code() string
 
@@ -20,6 +26,6 @@ type ActionInterface interface {
 	// WillChange determine if the action will change the request
 	WillChange() bool
 
-	// Perform perform the action
+	// Perform the action
 	Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool)
 }

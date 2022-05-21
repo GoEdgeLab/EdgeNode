@@ -6,6 +6,8 @@ import (
 )
 
 type TagAction struct {
+	BaseAction
+
 	Tags []string `yaml:"tags" json:"tags"`
 }
 

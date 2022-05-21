@@ -8,6 +8,8 @@ import (
 )
 
 type GoSetAction struct {
+	BaseAction
+
 	GroupId string `yaml:"groupId" json:"groupId"`
 	SetId   string `yaml:"setId" json:"setId"`
 }

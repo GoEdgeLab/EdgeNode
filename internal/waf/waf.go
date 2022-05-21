@@ -26,12 +26,14 @@ type WAF struct {
 	UseLocalFirewall bool                            `yaml:"useLocalFirewall" json:"useLocalFirewall"`
 	SYNFlood         *firewallconfigs.SYNFloodConfig `yaml:"synFlood" json:"synFlood"`
 
-	DefaultBlockAction *BlockAction
+	DefaultBlockAction   *BlockAction
+	DefaultCaptchaAction *CaptchaAction
 
 	hasInboundRules  bool
 	hasOutboundRules bool
 
 	checkpointsMap map[string]checkpoints.CheckpointInterface // prefix => checkpoint
+	actionMap      map[int64]ActionInterface                  // actionId => ActionInterface
 }
 
 func NewWAF() *WAF {
@@ -73,6 +75,9 @@ func (this *WAF) Init() (resultErrors []error) {
 		instance.Init()
 		this.checkpointsMap[def.Prefix] = instance
 	}
+
+	// action map
+	this.actionMap = map[int64]ActionInterface{}
 
 	// rules
 	this.hasInboundRules = len(this.Inbound) > 0
@@ -324,8 +329,16 @@ func (this *WAF) ContainsGroupCode(code string) bool {
 	return false
 }
 
+func (this *WAF) AddAction(action ActionInterface) {
+	this.actionMap[action.ActionId()] = action
+}
+
+func (this *WAF) FindAction(actionId int64) ActionInterface {
+	return this.actionMap[actionId]
+}
+
 func (this *WAF) Copy() *WAF {
-	waf := &WAF{
+	var waf = &WAF{
 		Id:       this.Id,
 		IsOn:     this.IsOn,
 		Name:     this.Name,

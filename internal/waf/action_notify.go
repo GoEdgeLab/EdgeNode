@@ -50,6 +50,7 @@ func init() {
 }
 
 type NotifyAction struct {
+	BaseAction
 }
 
 func (this *NotifyAction) Init(waf *WAF) error {
@@ -69,7 +70,7 @@ func (this *NotifyAction) WillChange() bool {
 	return false
 }
 
-// Perform perform the action
+// Perform the action
 func (this *NotifyAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
 	select {
 	case notifyChan <- &notifyTask{

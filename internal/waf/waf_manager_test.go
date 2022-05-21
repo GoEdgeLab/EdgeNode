@@ -1,7 +1,8 @@
-package nodes
+package waf_test
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/logs"
 	"testing"
 )
@@ -35,7 +36,7 @@ func TestWAFManager_convert(t *testing.T) {
 			},
 		},
 	}
-	w, err := sharedWAFManager.convertWAF(p)
+	w, err := waf.SharedWAFManager.ConvertWAF(p)
 	if err != nil {
 		t.Fatal(err)
 	}

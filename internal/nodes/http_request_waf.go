@@ -194,7 +194,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 
 	// 规则测试
-	w := sharedWAFManager.FindWAF(firewallPolicy.Id)
+	w := waf.SharedWAFManager.FindWAF(firewallPolicy.Id)
 	if w == nil {
 		return
 	}
@@ -261,7 +261,7 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 		return
 	}
 
-	w := sharedWAFManager.FindWAF(firewallPolicy.Id)
+	w := waf.SharedWAFManager.FindWAF(firewallPolicy.Id)
 	if w == nil {
 		return
 	}

@@ -5,15 +5,19 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/maps"
 	"reflect"
+	"sync/atomic"
 )
+
+var seedActionId int64 = 1
 
 func FindActionInstance(action ActionString, options maps.Map) ActionInterface {
 	for _, def := range AllActions {
 		if def.Code == action {
 			if def.Type != nil {
 				// create new instance
-				ptrValue := reflect.New(def.Type)
-				instance := ptrValue.Interface().(ActionInterface)
+				var ptrValue = reflect.New(def.Type)
+				var instance = ptrValue.Interface().(ActionInterface)
+				instance.SetActionId(atomic.AddInt64(&seedActionId, 1))
 
 				if len(options) > 0 {
 					optionsJSON, err := json.Marshal(options)

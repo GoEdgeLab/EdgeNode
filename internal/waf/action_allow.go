@@ -6,6 +6,7 @@ import (
 )
 
 type AllowAction struct {
+	BaseAction
 }
 
 func (this *AllowAction) Init(waf *WAF) error {

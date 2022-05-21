@@ -66,7 +66,7 @@ func (this *RuleSet) Init(waf *WAF) error {
 	// action instances
 	this.actionInstances = []ActionInterface{}
 	for _, action := range this.Actions {
-		instance := FindActionInstance(action.Code, action.Options)
+		var instance = FindActionInstance(action.Code, action.Options)
 		if instance == nil {
 			remotelogs.Error("WAF_RULE_SET", "can not find instance for action '"+action.Code+"'")
 			continue
@@ -79,6 +79,7 @@ func (this *RuleSet) Init(waf *WAF) error {
 		}
 
 		this.actionInstances = append(this.actionInstances, instance)
+		waf.AddAction(instance)
 	}
 
 	// sort actions

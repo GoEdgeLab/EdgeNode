@@ -1,26 +1,25 @@
-package nodes
+package waf
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"strconv"
 	"sync"
 )
 
-var sharedWAFManager = NewWAFManager()
+var SharedWAFManager = NewWAFManager()
 
 // WAFManager WAF管理器
 type WAFManager struct {
-	mapping map[int64]*waf.WAF // policyId => WAF
+	mapping map[int64]*WAF // policyId => WAF
 	locker  sync.RWMutex
 }
 
 // NewWAFManager 获取新对象
 func NewWAFManager() *WAFManager {
 	return &WAFManager{
-		mapping: map[int64]*waf.WAF{},
+		mapping: map[int64]*WAF{},
 	}
 }
 
@@ -29,9 +28,9 @@ func (this *WAFManager) UpdatePolicies(policies []*firewallconfigs.HTTPFirewallP
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
-	m := map[int64]*waf.WAF{}
+	m := map[int64]*WAF{}
 	for _, p := range policies {
-		w, err := this.convertWAF(p)
+		w, err := this.ConvertWAF(p)
 		if w != nil {
 			m[p.Id] = w
 		}
@@ -44,22 +43,22 @@ func (this *WAFManager) UpdatePolicies(policies []*firewallconfigs.HTTPFirewallP
 }
 
 // FindWAF 查找WAF
-func (this *WAFManager) FindWAF(policyId int64) *waf.WAF {
+func (this *WAFManager) FindWAF(policyId int64) *WAF {
 	this.locker.RLock()
 	w, _ := this.mapping[policyId]
 	this.locker.RUnlock()
 	return w
 }
 
-// 将Policy转换为WAF
-func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (*waf.WAF, error) {
+// ConvertWAF 将Policy转换为WAF
+func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (*WAF, error) {
 	if policy == nil {
 		return nil, errors.New("policy should not be nil")
 	}
 	if len(policy.Mode) == 0 {
 		policy.Mode = firewallconfigs.FirewallModeDefend
 	}
-	w := &waf.WAF{
+	var w = &WAF{
 		Id:               policy.Id,
 		IsOn:             policy.IsOn,
 		Name:             policy.Name,
@@ -71,7 +70,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 	// inbound
 	if policy.Inbound != nil && policy.Inbound.IsOn {
 		for _, group := range policy.Inbound.Groups {
-			g := &waf.RuleGroup{
+			g := &RuleGroup{
 				Id:          group.Id,
 				IsOn:        group.IsOn,
 				Name:        group.Name,
@@ -82,7 +81,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 
 			// rule sets
 			for _, set := range group.Sets {
-				s := &waf.RuleSet{
+				s := &RuleSet{
 					Id:          set.Id,
 					Code:        set.Code,
 					IsOn:        set.IsOn,
@@ -97,10 +96,10 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 
 				// rules
 				for _, rule := range set.Rules {
-					r := &waf.Rule{
+					r := &Rule{
 						Description:       rule.Description,
 						Param:             rule.Param,
-						ParamFilters:      []*waf.ParamFilter{},
+						ParamFilters:      []*ParamFilter{},
 						Operator:          rule.Operator,
 						Value:             rule.Value,
 						IsCaseInsensitive: rule.IsCaseInsensitive,
@@ -108,7 +107,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 					}
 
 					for _, paramFilter := range rule.ParamFilters {
-						r.ParamFilters = append(r.ParamFilters, &waf.ParamFilter{
+						r.ParamFilters = append(r.ParamFilters, &ParamFilter{
 							Code:    paramFilter.Code,
 							Options: paramFilter.Options,
 						})
@@ -127,7 +126,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 	// outbound
 	if policy.Outbound != nil && policy.Outbound.IsOn {
 		for _, group := range policy.Outbound.Groups {
-			g := &waf.RuleGroup{
+			g := &RuleGroup{
 				Id:          group.Id,
 				IsOn:        group.IsOn,
 				Name:        group.Name,
@@ -138,7 +137,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 
 			// rule sets
 			for _, set := range group.Sets {
-				s := &waf.RuleSet{
+				s := &RuleSet{
 					Id:          set.Id,
 					Code:        set.Code,
 					IsOn:        set.IsOn,
@@ -154,7 +153,7 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 
 				// rules
 				for _, rule := range set.Rules {
-					r := &waf.Rule{
+					r := &Rule{
 						Description:       rule.Description,
 						Param:             rule.Param,
 						Operator:          rule.Operator,
@@ -172,13 +171,33 @@ func (this *WAFManager) convertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 		}
 	}
 
-	// action
+	// block action
 	if policy.BlockOptions != nil {
-		w.DefaultBlockAction = &waf.BlockAction{
+		w.DefaultBlockAction = &BlockAction{
 			StatusCode: policy.BlockOptions.StatusCode,
 			Body:       policy.BlockOptions.Body,
 			URL:        policy.BlockOptions.URL,
 			Timeout:    policy.BlockOptions.Timeout,
+		}
+	}
+
+	// captcha action
+	if policy.CaptchaOptions != nil {
+		w.DefaultCaptchaAction = &CaptchaAction{
+			Life:              policy.CaptchaOptions.Life,
+			MaxFails:          policy.CaptchaOptions.MaxFails,
+			FailBlockTimeout:  policy.CaptchaOptions.FailBlockTimeout,
+			FailBlockScopeAll: policy.CaptchaOptions.FailBlockScopeAll,
+			CountLetters:      policy.CaptchaOptions.CountLetters,
+			UIIsOn:            policy.CaptchaOptions.UIIsOn,
+			UITitle:           policy.CaptchaOptions.UITitle,
+			UIPrompt:          policy.CaptchaOptions.UIPrompt,
+			UIButtonTitle:     policy.CaptchaOptions.UIButtonTitle,
+			UIShowRequestId:   policy.CaptchaOptions.UIShowRequestId,
+			UICss:             policy.CaptchaOptions.UICss,
+			UIFooter:          policy.CaptchaOptions.UIFooter,
+			UIBody:            policy.CaptchaOptions.UIBody,
+			Lang:              policy.CaptchaOptions.Lang,
 		}
 	}
 

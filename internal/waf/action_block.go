@@ -20,6 +20,8 @@ var urlPrefixReg = regexp.MustCompile("^(?i)(http|https)://")
 var httpClient = utils.SharedHttpClient(5 * time.Second)
 
 type BlockAction struct {
+	BaseAction
+
 	StatusCode int    `yaml:"statusCode" json:"statusCode"`
 	Body       string `yaml:"body" json:"body"` // supports HTML
 	URL        string `yaml:"url" json:"url"`

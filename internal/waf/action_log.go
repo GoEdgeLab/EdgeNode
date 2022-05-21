@@ -6,6 +6,7 @@ import (
 )
 
 type LogAction struct {
+	BaseAction
 }
 
 func (this *LogAction) Init(waf *WAF) error {
