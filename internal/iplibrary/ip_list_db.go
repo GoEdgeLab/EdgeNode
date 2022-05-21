@@ -48,7 +48,7 @@ func (this *IPListDB) init() error {
 		if err != nil {
 			return err
 		}
-		remotelogs.Println("CACHE", "create cache dir '"+this.dir+"'")
+		remotelogs.Println("IP_LIST_DB", "create data dir '"+this.dir+"'")
 	}
 
 	db, err := sql.Open("sqlite3", "file:"+this.dir+"/ip_list.db?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
