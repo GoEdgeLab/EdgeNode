@@ -116,6 +116,7 @@ func (this *Node) Start() {
 	this.checkDisk()
 
 	// 读取API配置
+	remotelogs.Println("NODE", "init config ...")
 	err = this.syncConfig(0)
 	if err != nil {
 		_, err := nodeconfigs.SharedNodeConfig()
@@ -429,7 +430,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 			clusterErr := this.checkClusterConfig()
 			if clusterErr != nil {
 				if os.IsNotExist(clusterErr) {
-					return err
+					return errors.New("can not find config file 'configs/api.yaml'")
 				}
 				return errors.New("check cluster config failed: " + clusterErr.Error())
 			}

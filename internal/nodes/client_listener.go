@@ -4,6 +4,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"net"
@@ -51,6 +52,13 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 			}
 
 			_ = conn.Close()
+
+			// 使用本地防火墙延长封禁
+			var fw = firewalls.Firewall()
+			if fw != nil && !fw.IsMock() {
+				_ = fw.DropSourceIP(ip, 60)
+			}
+
 			return this.Accept()
 		}
 	}

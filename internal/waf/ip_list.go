@@ -130,8 +130,8 @@ func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope,
 	}
 
 	this.locker.RLock()
-	defer this.locker.RUnlock()
 	_, ok := this.ipMap[ip]
+	this.locker.RUnlock()
 	return ok
 }
 

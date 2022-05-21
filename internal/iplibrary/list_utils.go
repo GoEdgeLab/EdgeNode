@@ -3,6 +3,7 @@
 package iplibrary
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 )
 
@@ -12,6 +13,12 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool) {
 	var ipLong = utils.IP2Long(ip)
 	if ipLong == 0 {
 		return false, false
+	}
+
+	// check node
+	nodeConfig, err := nodeconfigs.SharedNodeConfig()
+	if err == nil && nodeConfig.IPIsAutoAllowed(ip) {
+		return true, true
 	}
 
 	// check white lists
