@@ -13,7 +13,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/logs"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"os"
 	"os/exec"
@@ -64,7 +63,7 @@ func (this *UpgradeManager) Start() {
 	goman.New(func() {
 		err = this.restart()
 		if err != nil {
-			logs.Println("UPGRADE_MANAGER", err.Error())
+			remotelogs.Error("UPGRADE_MANAGER", err.Error())
 		}
 	})
 }

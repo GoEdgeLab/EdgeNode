@@ -98,17 +98,17 @@ func (this *CaptchaAction) WillChange() bool {
 	return true
 }
 
-func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req requests.Request, writer http.ResponseWriter) (allow bool) {
 	// 是否在白名单中
-	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
+	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, req.WAFServerId(), req.WAFRemoteIP()) {
 		return true
 	}
 
-	var refURL = request.WAFRaw().URL.String()
+	var refURL = req.WAFRaw().URL.String()
 
 	// 覆盖配置
 	if strings.HasPrefix(refURL, CaptchaPath) {
-		info := request.WAFRaw().URL.Query().Get("info")
+		info := req.WAFRaw().URL.Query().Get("info")
 		if len(info) > 0 {
 			m, err := utils.SimpleDecryptMap(info)
 			if err == nil && m != nil {
@@ -131,7 +131,10 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		return true
 	}
 
-	http.Redirect(writer, request.WAFRaw(), CaptchaPath+"?info="+url.QueryEscape(info), http.StatusTemporaryRedirect)
+	// 占用一次失败次数
+	CaptchaIncreaseFails(req, this, waf.Id, group.Id, set.Id, CaptchaPageCodeInit)
+
+	http.Redirect(writer, req.WAFRaw(), CaptchaPath+"?info="+url.QueryEscape(info), http.StatusTemporaryRedirect)
 
 	return false
 }

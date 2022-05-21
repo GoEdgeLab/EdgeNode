@@ -3,8 +3,6 @@ package waf
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/dchest/captcha"
@@ -70,7 +68,7 @@ func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWrit
 		this.validate(captchaActionConfig, policyId, groupId, setId, originURL, req, writer)
 	} else {
 		// 增加计数
-		this.IncreaseFails(req, captchaActionConfig, policyId, groupId, setId)
+		CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeShow)
 		this.show(captchaActionConfig, req, writer)
 	}
 }
@@ -129,6 +127,29 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 	var msgCss = ""
 	var requestIdBox = `<address>` + msgRequestId + `: ` + req.Format("${requestId}") + `</address>`
 	var msgFooter = ""
+
+	// 默认设置
+	if actionConfig.UIIsOn {
+		if len(actionConfig.UIPrompt) > 0 {
+			msgPrompt = actionConfig.UIPrompt
+		}
+		if len(actionConfig.UIButtonTitle) > 0 {
+			msgButtonTitle = actionConfig.UIButtonTitle
+		}
+		if len(actionConfig.UITitle) > 0 {
+			msgTitle = actionConfig.UITitle
+		}
+		if len(actionConfig.UICss) > 0 {
+			msgCss = actionConfig.UICss
+		}
+		if !actionConfig.UIShowRequestId {
+			requestIdBox = ""
+		}
+		if len(actionConfig.UIFooter) > 0 {
+			msgFooter = actionConfig.UIFooter
+		}
+	}
+
 	var body = `<form method="POST">
 	<input type="hidden" name="GOEDGE_WAF_CAPTCHA_ID" value="` + captchaId + `"/>
 	<div class="ui-image">
@@ -145,26 +166,8 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 ` + requestIdBox + `
 ` + msgFooter + ``
 
-	// 默认设置
+	// Body
 	if actionConfig.UIIsOn {
-		if len(actionConfig.UITitle) > 0 {
-			msgTitle = actionConfig.UITitle
-		}
-		if len(actionConfig.UIPrompt) > 0 {
-			msgPrompt = actionConfig.UIPrompt
-		}
-		if len(actionConfig.UIButtonTitle) > 0 {
-			msgButtonTitle = actionConfig.UIButtonTitle
-		}
-		if len(actionConfig.UICss) > 0 {
-			msgCss = actionConfig.UICss
-		}
-		if !actionConfig.UIShowRequestId {
-			requestIdBox = ""
-		}
-		if len(actionConfig.UIFooter) > 0 {
-			msgFooter = actionConfig.UIFooter
-		}
 		if len(actionConfig.UIBody) > 0 {
 			var index = strings.Index(actionConfig.UIBody, "${body}")
 			if index < 0 {
@@ -208,7 +211,7 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int
 		var captchaCode = req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
 		if captcha.VerifyString(captchaId, captchaCode) {
 			// 清除计数
-			ttlcache.SharedCache.Delete(this.cacheKey(req))
+			CaptchaDeleteCacheKey(req)
 
 			var life = CaptchaSeconds
 			if actionConfig.Life > 0 {
@@ -223,7 +226,7 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int
 			return false
 		} else {
 			// 增加计数
-			if !this.IncreaseFails(req, actionConfig, policyId, groupId, setId) {
+			if !CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit) {
 				return false
 			}
 
@@ -232,31 +235,4 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int
 	}
 
 	return true
-}
-
-// IncreaseFails 增加失败次数，以便后续操作
-func (this *CaptchaValidator) IncreaseFails(req requests.Request, actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64) (goNext bool) {
-	var maxFails = actionConfig.MaxFails
-	var failBlockTimeout = actionConfig.FailBlockTimeout
-	if maxFails > 0 && failBlockTimeout > 0 {
-		// 加上展示的计数
-		maxFails *= 2
-
-		var countFails = ttlcache.SharedCache.IncreaseInt64(this.cacheKey(req), 1, time.Now().Unix()+300, true)
-		if int(countFails) >= maxFails {
-			var useLocalFirewall = false
-
-			if actionConfig.FailBlockScopeAll {
-				useLocalFirewall = true
-			}
-
-			SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, useLocalFirewall, groupId, setId, "CAPTCHA验证连续失败")
-			return false
-		}
-	}
-	return true
-}
-
-func (this *CaptchaValidator) cacheKey(req requests.Request) string {
-	return "CAPTCHA:FAILS:" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId())
 }
