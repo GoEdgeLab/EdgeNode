@@ -172,44 +172,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 	server, serverName := this.findNamedServer(domain)
 	if server == nil {
 		if server == nil {
-			// TODO 需要记录访问记录和防止CC
-
-			// 是否为健康检查
-			var healthCheckKey = rawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
-			if len(healthCheckKey) > 0 {
-				_, err := nodeutils.Base64DecodeMap(healthCheckKey)
-				if err == nil {
-					rawWriter.WriteHeader(http.StatusOK)
-					return
-				}
-			}
-
-			// 严格匹配域名模式下，我们拒绝用户访问
-			if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
-				httpAllConfig := sharedNodeConfig.GlobalConfig.HTTPAll
-				mismatchAction := httpAllConfig.DomainMismatchAction
-				if mismatchAction != nil && mismatchAction.Code == "page" {
-					if mismatchAction.Options != nil {
-						rawWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
-						rawWriter.WriteHeader(mismatchAction.Options.GetInt("statusCode"))
-						_, _ = rawWriter.Write([]byte(mismatchAction.Options.GetString("contentHTML")))
-					} else {
-						http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
-					}
-					return
-				} else {
-					hijacker, ok := rawWriter.(http.Hijacker)
-					if ok {
-						conn, _, _ := hijacker.Hijack()
-						if conn != nil {
-							_ = conn.Close()
-							return
-						}
-					}
-				}
-			}
-
-			http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
+			this.handleMismatch(rawReq, rawWriter)
 			return
 		} else {
 			serverName = domain
@@ -230,6 +193,48 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		nodeConfig: sharedNodeConfig,
 	}
 	req.Do()
+}
+
+// 处理域名不匹配的情况
+func (this *HTTPListener) handleMismatch(rawReq *http.Request, rawWriter http.ResponseWriter) {
+	// TODO 需要记录访问记录和防止CC
+
+	// 是否为健康检查
+	var healthCheckKey = rawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
+	if len(healthCheckKey) > 0 {
+		_, err := nodeutils.Base64DecodeMap(healthCheckKey)
+		if err == nil {
+			rawWriter.WriteHeader(http.StatusOK)
+			return
+		}
+	}
+
+	// 严格匹配域名模式下，我们拒绝用户访问
+	if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
+		var httpAllConfig = sharedNodeConfig.GlobalConfig.HTTPAll
+		var mismatchAction = httpAllConfig.DomainMismatchAction
+		if mismatchAction != nil && mismatchAction.Code == "page" {
+			if mismatchAction.Options != nil {
+				rawWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
+				rawWriter.WriteHeader(mismatchAction.Options.GetInt("statusCode"))
+				_, _ = rawWriter.Write([]byte(mismatchAction.Options.GetString("contentHTML")))
+			} else {
+				http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
+			}
+			return
+		} else {
+			hijacker, ok := rawWriter.(http.Hijacker)
+			if ok {
+				conn, _, _ := hijacker.Hijack()
+				if conn != nil {
+					_ = conn.Close()
+					return
+				}
+			}
+		}
+	}
+
+	http.Error(rawWriter, "404 page not found: '"+rawReq.URL.String()+"'", http.StatusNotFound)
 }
 
 func (this *HTTPListener) isIP(host string) bool {
