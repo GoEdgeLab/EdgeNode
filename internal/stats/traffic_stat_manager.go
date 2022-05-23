@@ -80,7 +80,7 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 		remotelogs.Println("TRAFFIC_STAT_MANAGER", "quit")
 		ticker.Stop()
 	})
-	remotelogs.Println("TRAFFIC_STA_MANAGER", "start ...")
+	remotelogs.Println("TRAFFIC_STAT_MANAGER", "start ...")
 	for range ticker.C {
 		err := this.Upload()
 		if err != nil {
