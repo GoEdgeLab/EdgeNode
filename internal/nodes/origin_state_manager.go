@@ -45,6 +45,8 @@ func NewOriginStateManager() *OriginStateManager {
 // Start 启动
 func (this *OriginStateManager) Start() {
 	events.OnKey(events.EventReload, this, func() {
+		// TODO 检查源站是否有变化
+
 		this.locker.Lock()
 		this.stateMap = map[int64]*OriginState{}
 		this.locker.Unlock()
@@ -143,7 +145,7 @@ func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, reverse
 		state.UpdatedAt = timestamp
 
 		if origin.IsOk {
-			origin.IsOk = state.CountFails > 5 // 超过 N 次之后认为是异常
+			origin.IsOk = state.CountFails < 5 // 超过 N 次之后认为是异常
 
 			if !origin.IsOk {
 				if callback != nil {
