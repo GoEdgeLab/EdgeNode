@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"crypto/tls"
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
@@ -170,8 +171,19 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 
 	server, serverName := this.findNamedServer(domain)
 	if server == nil {
-		server = this.findServerWithCNAME(domain)
 		if server == nil {
+			// TODO 需要记录访问记录和防止CC
+
+			// 是否为健康检查
+			var healthCheckKey = rawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
+			if len(healthCheckKey) > 0 {
+				_, err := nodeutils.Base64DecodeMap(healthCheckKey)
+				if err == nil {
+					rawWriter.WriteHeader(http.StatusOK)
+					return
+				}
+			}
+
 			// 严格匹配域名模式下，我们拒绝用户访问
 			if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
 				httpAllConfig := sharedNodeConfig.GlobalConfig.HTTPAll
@@ -205,7 +217,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 	}
 
 	// 包装新请求对象
-	req := &HTTPRequest{
+	var req = &HTTPRequest{
 		RawReq:     rawReq,
 		RawWriter:  rawWriter,
 		ReqServer:  server,
