@@ -170,9 +170,10 @@ func (this *HTTPRequest) Do() {
 			// ACME
 			// TODO 需要配置是否启用ACME检测
 			if strings.HasPrefix(this.rawURI, "/.well-known/acme-challenge/") {
-				this.doACME()
-				this.doEnd()
-				return
+				if this.doACME() {
+					this.doEnd()
+					return
+				}
 			}
 		}
 

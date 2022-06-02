@@ -4,34 +4,36 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"net/http"
 	"path/filepath"
 )
 
-func (this *HTTPRequest) doACME() {
+func (this *HTTPRequest) doACME() (shouldStop bool) {
 	// TODO 对请求进行校验，防止恶意攻击
 
-	token := filepath.Base(this.RawReq.URL.Path)
+	var token = filepath.Base(this.RawReq.URL.Path)
 	if token == "acme-challenge" || len(token) <= 32 {
-		this.writer.WriteHeader(http.StatusNotFound)
-		return
+		return false
 	}
 
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
 		remotelogs.Error("RPC", "[ACME]rpc failed: "+err.Error())
-		return
+		return false
 	}
 
 	keyResp, err := rpcClient.ACMEAuthenticationRPC().FindACMEAuthenticationKeyWithToken(rpcClient.Context(), &pb.FindACMEAuthenticationKeyWithTokenRequest{Token: token})
 	if err != nil {
 		remotelogs.Error("RPC", "[ACME]read key for token failed: "+err.Error())
-		return
+		return false
 	}
 	if len(keyResp.Key) == 0 {
-		this.writer.WriteHeader(http.StatusNotFound)
-	} else {
-		this.writer.Header().Set("Content-Type", "text/plain")
-		_, _ = this.writer.WriteString(keyResp.Key)
+		return false
 	}
+
+	this.tags = append(this.tags, "ACME")
+
+	this.writer.Header().Set("Content-Type", "text/plain")
+	_, _ = this.writer.WriteString(keyResp.Key)
+
+	return true
 }
