@@ -3,12 +3,9 @@ package nodes
 import (
 	"bytes"
 	"errors"
-	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
-	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
@@ -30,11 +27,6 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	if this.web.Cache == nil || !this.web.Cache.IsOn || (len(cachePolicy.CacheRefs) == 0 && len(this.web.Cache.CacheRefs) == 0) {
-		return
-	}
-
-	// 判断是否在预热
-	if (strings.HasPrefix(this.RawReq.RemoteAddr, "127.") || strings.HasPrefix(this.RawReq.RemoteAddr, "[::1]")) && this.RawReq.Header.Get("X-Cache-Action") == "preheat" {
 		return
 	}
 
@@ -89,6 +81,12 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		return
 	}
 
+	// 是否正在Purge
+	var isPurging = this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey
+	if isPurging {
+		this.RawReq.Method = http.MethodGet
+	}
+
 	// 校验请求
 	if !this.cacheRef.MatchRequest(this.RawReq) {
 		this.cacheRef = nil
@@ -136,8 +134,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 	this.writer.cacheStorage = storage
 
+	// 如果正在预热，则不读取缓存，等待下一个步骤重新生成
+	if (strings.HasPrefix(this.RawReq.RemoteAddr, "127.") || strings.HasPrefix(this.RawReq.RemoteAddr, "[::1]")) && this.RawReq.Header.Get("X-Edge-Cache-Action") == "fetch" {
+		return
+	}
+
 	// 判断是否在Purge
-	if this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey {
+	if isPurging {
 		this.varMapping["cache.status"] = "PURGE"
 
 		var subKeys = []string{
@@ -159,22 +162,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		}
 
 		// 通过API节点清除别节点上的的Key
-		// TODO 改为队列，不需要每个请求都使用goroutine
-		goman.New(func() {
-			rpcClient, err := rpc.SharedRPC()
-			if err == nil {
-				for _, rpcServerService := range rpcClient.ServerRPCList() {
-					_, err = rpcServerService.PurgeServerCache(rpcClient.Context(), &pb.PurgeServerCacheRequest{
-						Domains:  []string{this.ReqHost},
-						Keys:     []string{key},
-						Prefixes: nil,
-					})
-					if err != nil {
-						remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
-					}
-				}
-			}
-		})
+		SharedHTTPCacheTaskManager.PushTaskKeys([]string{key})
 
 		return true
 	}

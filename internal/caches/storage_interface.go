@@ -35,6 +35,7 @@ type StorageInterface interface {
 	CleanAll() error
 
 	// Purge 批量删除缓存
+	// urlType 值为file|dir
 	Purge(keys []string, urlType string) error
 
 	// Stop 停止缓存策略

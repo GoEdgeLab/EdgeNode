@@ -10,6 +10,11 @@ import (
 // AllowIP 检查IP是否被允许访问
 // 如果一个IP不在任何名单中，则允许访问
 func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool) {
+	// 放行lo
+	if ip == "127.0.0.1" {
+		return true, true
+	}
+
 	var ipLong = utils.IP2Long(ip)
 	if ipLong == 0 {
 		return false, false

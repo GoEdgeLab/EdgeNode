@@ -214,3 +214,15 @@ func (this *Manager) FindAllCachePaths() []string {
 	}
 	return result
 }
+
+// FindAllStorages 读取所有缓存存储
+func (this *Manager) FindAllStorages() []StorageInterface {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	var storages = []StorageInterface{}
+	for _, storage := range this.storageMap {
+		storages = append(storages, storage)
+	}
+	return storages
+}

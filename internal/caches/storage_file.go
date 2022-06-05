@@ -769,9 +769,10 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 				return err
 			}
 		}
+		return nil
 	}
 
-	// 文件
+	// URL
 	for _, key := range keys {
 		hash, path := this.keyPath(key)
 		err := this.removeCacheFile(path)

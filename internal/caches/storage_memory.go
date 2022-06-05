@@ -267,8 +267,10 @@ func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 				return err
 			}
 		}
+		return nil
 	}
 
+	// URL
 	for _, key := range keys {
 		err := this.Delete(key)
 		if err != nil {

@@ -3,14 +3,12 @@ package nodes
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/messageconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
-	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/errors"
@@ -22,16 +20,11 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
-	"io"
-	"net"
-	"net/http"
 	"net/url"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strconv"
-	"strings"
-	"sync"
 	"time"
 )
 
@@ -116,10 +109,6 @@ func (this *APIStream) loop() error {
 			err = this.handleStatCache(message)
 		case messageconfigs.MessageCodeCleanCache: // 清理缓存
 			err = this.handleCleanCache(message)
-		case messageconfigs.MessageCodePurgeCache: // 删除缓存
-			err = this.handlePurgeCache(message)
-		case messageconfigs.MessageCodePreheatCache: // 预热缓存
-			err = this.handlePreheatCache(message)
 		case messageconfigs.MessageCodeNewNodeTask: // 有新的任务
 			err = this.handleNewNodeTask(message)
 		case messageconfigs.MessageCodeCheckSystemdService: // 检查Systemd服务
@@ -328,224 +317,6 @@ func (this *APIStream) handleCleanCache(message *pb.NodeStreamMessage) error {
 	if err != nil {
 		this.replyFail(message.RequestId, "clean cache failed: "+err.Error())
 		return err
-	}
-
-	this.replyOk(message.RequestId, "ok")
-
-	return nil
-}
-
-// 删除缓存
-func (this *APIStream) handlePurgeCache(message *pb.NodeStreamMessage) error {
-	msg := &messageconfigs.PurgeCacheMessage{}
-	err := json.Unmarshal(message.DataJSON, msg)
-	if err != nil {
-		this.replyFail(message.RequestId, "decode message data failed: "+err.Error())
-		return err
-	}
-
-	storage, shouldStop, err := this.cacheStorage(message, msg.CachePolicyJSON)
-	if err != nil {
-		return err
-	}
-	if shouldStop {
-		defer func() {
-			storage.Stop()
-		}()
-	}
-
-	// WEBP缓存
-	if msg.Type == "file" {
-		var keys = msg.Keys
-		for _, key := range keys {
-			keys = append(keys,
-				key+caches.SuffixMethod+"HEAD",
-				key+caches.SuffixWebP,
-				key+caches.SuffixPartial,
-			)
-			// TODO 根据实际缓存的内容进行组合
-			for _, encoding := range compressions.AllEncodings() {
-				keys = append(keys, key+caches.SuffixCompression+encoding)
-				keys = append(keys, key+caches.SuffixWebP+caches.SuffixCompression+encoding)
-			}
-		}
-		msg.Keys = keys
-	}
-
-	err = storage.Purge(msg.Keys, msg.Type)
-	if err != nil {
-		this.replyFail(message.RequestId, "purge keys failed: "+err.Error())
-		return err
-	}
-
-	this.replyOk(message.RequestId, "ok")
-
-	return nil
-}
-
-// 预热缓存
-func (this *APIStream) handlePreheatCache(message *pb.NodeStreamMessage) error {
-	msg := &messageconfigs.PreheatCacheMessage{}
-	err := json.Unmarshal(message.DataJSON, msg)
-	if err != nil {
-		this.replyFail(message.RequestId, "decode message data failed: "+err.Error())
-		return err
-	}
-
-	storage, shouldStop, err := this.cacheStorage(message, msg.CachePolicyJSON)
-	if err != nil {
-		return err
-	}
-	if shouldStop {
-		defer func() {
-			storage.Stop()
-		}()
-	}
-
-	if len(msg.Keys) == 0 {
-		this.replyOk(message.RequestId, "ok")
-		return nil
-	}
-
-	wg := sync.WaitGroup{}
-	wg.Add(len(msg.Keys))
-	client := &http.Client{
-		Timeout: 30 * time.Second, // TODO 可以设置请求超时时间
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				_, port, err := net.SplitHostPort(addr)
-				if err != nil {
-					return nil, err
-				}
-				return net.Dial(network, "127.0.0.1:"+port)
-			},
-			MaxIdleConns:          4096,
-			MaxIdleConnsPerHost:   32,
-			MaxConnsPerHost:       32,
-			IdleConnTimeout:       2 * time.Minute,
-			ExpectContinueTimeout: 1 * time.Second,
-			TLSHandshakeTimeout:   0,
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	defer client.CloseIdleConnections()
-	errorMessages := []string{}
-	locker := sync.Mutex{}
-	for _, key := range msg.Keys {
-		go func(key string) {
-			defer wg.Done()
-
-			req, err := http.NewRequest(http.MethodGet, key, nil)
-			if err != nil {
-				locker.Lock()
-				errorMessages = append(errorMessages, "invalid url: "+key+": "+err.Error())
-				locker.Unlock()
-				return
-			}
-
-			// TODO 可以在管理界面自定义Header
-			req.Header.Set("X-Cache-Action", "preheat")
-			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36")
-			req.Header.Set("Accept-Encoding", "gzip, deflate, br") // TODO 这里需要记录下缓存是否为gzip的
-			resp, err := client.Do(req)
-			if err != nil {
-				locker.Lock()
-				errorMessages = append(errorMessages, "request failed: "+key+": "+err.Error())
-				locker.Unlock()
-				return
-			}
-
-			if resp.StatusCode != 200 {
-				locker.Lock()
-				errorMessages = append(errorMessages, "request failed: "+key+": status code '"+strconv.Itoa(resp.StatusCode)+"'")
-				locker.Unlock()
-				return
-			}
-
-			defer func() {
-				_ = resp.Body.Close()
-			}()
-
-			// 检查最大内容长度
-			// TODO 需要解决Chunked Transfer Encoding的长度判断问题
-			maxSize := storage.Policy().MaxSizeBytes()
-			if maxSize > 0 && resp.ContentLength > maxSize {
-				locker.Lock()
-				errorMessages = append(errorMessages, "request failed: the content is too larger than policy setting")
-				locker.Unlock()
-				return
-			}
-
-			expiredAt := time.Now().Unix() + 8600
-			writer, err := storage.OpenWriter(key, expiredAt, 200, resp.ContentLength, -1, false) // TODO 可以设置缓存过期时间
-			if err != nil {
-				locker.Lock()
-				errorMessages = append(errorMessages, "open cache writer failed: "+key+": "+err.Error())
-				locker.Unlock()
-				return
-			}
-
-			buf := make([]byte, 16*1024)
-			isClosed := false
-
-			// 写入Header
-			for k, v := range resp.Header {
-				for _, v1 := range v {
-					_, err = writer.WriteHeader([]byte(k + ":" + v1 + "\n"))
-					if err != nil {
-						locker.Lock()
-						errorMessages = append(errorMessages, "write failed: "+key+": "+err.Error())
-						locker.Unlock()
-						return
-					}
-				}
-			}
-
-			// 写入Body
-			for {
-				n, err := resp.Body.Read(buf)
-				if n > 0 {
-					_, writerErr := writer.Write(buf[:n])
-					if writerErr != nil {
-						locker.Lock()
-						errorMessages = append(errorMessages, "write failed: "+key+": "+writerErr.Error())
-						locker.Unlock()
-						break
-					}
-				}
-				if err != nil {
-					if err == io.EOF {
-
-						err = writer.Close()
-						if err == nil {
-							storage.AddToList(&caches.Item{
-								Type:      writer.ItemType(),
-								Key:       key,
-								ExpiredAt: expiredAt,
-							})
-						}
-						isClosed = true
-					} else {
-						locker.Lock()
-						errorMessages = append(errorMessages, "read url failed: "+key+": "+err.Error())
-						locker.Unlock()
-					}
-					break
-				}
-			}
-
-			if !isClosed {
-				_ = writer.Close()
-			}
-		}(key)
-	}
-	wg.Wait()
-
-	if len(errorMessages) > 0 {
-		this.replyFail(message.RequestId, strings.Join(errorMessages, ", "))
-		return nil
 	}
 
 	this.replyOk(message.RequestId, "ok")
