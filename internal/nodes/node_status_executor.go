@@ -109,6 +109,7 @@ func (this *NodeStatusExecutor) update() {
 	cacheSpaceTR.End()
 
 	status.UpdatedAt = time.Now().Unix()
+	status.Timestamp = status.UpdatedAt
 
 	//  发送数据
 	jsonData, err := json.Marshal(status)
