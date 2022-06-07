@@ -927,12 +927,19 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 		var err error
 		switch config.DNSResolver.Type {
 		case nodeconfigs.DNSResolverTypeGoNative:
-			err = os.Setenv("GODEBUG", "netdns=go+2")
+			err = os.Setenv("GODEBUG", "netdns=go")
 		case nodeconfigs.DNSResolverTypeCGO:
-			err = os.Setenv("GODEBUG", "netdns=cgo+2")
+			err = os.Setenv("GODEBUG", "netdns=cgo")
 		default:
-			err = os.Unsetenv("GODEBUG")
+			// 默认使用go原生
+			err = os.Setenv("GODEBUG", "netdns=go")
 		}
+		if err != nil {
+			remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
+		}
+	} else {
+		// 默认使用go原生
+		err := os.Setenv("GODEBUG", "netdns=go")
 		if err != nil {
 			remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
 		}
