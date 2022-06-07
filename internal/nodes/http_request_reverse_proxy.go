@@ -290,13 +290,23 @@ func (this *HTTPRequest) doReverseProxy() {
 			locationURL, err := url.Parse(locationHeader)
 			if err == nil && locationURL.Host != this.ReqHost && (locationURL.Host == originAddr || strings.HasPrefix(originAddr, locationURL.Host+":")) {
 				locationURL.Host = this.ReqHost
+
+				var oldScheme = locationURL.Scheme
+
+				// 尝试和当前Scheme一致
 				if this.IsHTTP {
 					locationURL.Scheme = "http"
 				} else if this.IsHTTPS {
 					locationURL.Scheme = "https"
 				}
 
-				resp.Header.Set("Location", locationURL.String())
+				// 如果和当前URL一样，则可能是http -> https，防止无限循环
+				if locationURL.String() == this.URL() {
+					locationURL.Scheme = oldScheme
+					resp.Header.Set("Location", locationURL.String())
+				} else {
+					resp.Header.Set("Location", locationURL.String())
+				}
 			}
 		}
 	}
