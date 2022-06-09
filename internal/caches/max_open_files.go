@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	minOpenFilesValue int32 = 2
+	minOpenFilesValue int32 = 4
 	maxOpenFilesValue int32 = 65535
 
 	modeSlow int32 = 1
@@ -35,7 +35,7 @@ func NewMaxOpenFiles(step int32) *MaxOpenFiles {
 	}
 	var f = &MaxOpenFiles{
 		step:         step,
-		maxOpenFiles: 2,
+		maxOpenFiles: minOpenFilesValue,
 	}
 	if teaconst.DiskIsFast {
 		f.maxOpenFiles = 32
