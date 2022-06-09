@@ -23,12 +23,13 @@ func NewFirewalld() *Firewalld {
 
 	path, err := exec.LookPath("firewall-cmd")
 	if err == nil && len(path) > 0 {
-		var cmd = exec.Command(path, "-V")
+		var cmd = exec.Command(path, "--state")
 		err := cmd.Run()
 		if err == nil {
 			firewalld.exe = path
 			// TODO check firewalld status with 'firewall-cmd --state' (running or not running),
 			//      but we should recover the state when firewalld state changes, maybe check it every minutes
+
 			firewalld.isReady = true
 			firewalld.init()
 		}

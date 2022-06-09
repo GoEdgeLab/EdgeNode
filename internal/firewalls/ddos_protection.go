@@ -17,6 +17,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
+	stringutil "github.com/iwind/TeaGo/utils/string"
 	"net"
 	"os/exec"
 	"strings"
@@ -153,6 +154,11 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 
 // 添加TCP规则
 func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig) error {
+	// 检查nft版本不能小于0.9
+	if len(nftablesInstance.version) > 0 && stringutil.VersionCompare("0.9", nftablesInstance.version) > 0 {
+		return nil
+	}
+
 	var ports = []int32{}
 	for _, portConfig := range tcpConfig.Ports {
 		if !lists.ContainsInt32(ports, portConfig.Port) {
@@ -237,9 +243,11 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 		for _, port := range ports {
 			if maxConnections > 0 {
 				var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "count", "over", types.String(maxConnections), "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "maxConnections", types.String(maxConnections)}))
+				var stderr = &bytes.Buffer{}
+				cmd.Stderr = stderr
 				err := cmd.Run()
 				if err != nil {
-					return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error())
+					return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
 				}
 			}
 

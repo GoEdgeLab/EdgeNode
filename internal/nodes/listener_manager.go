@@ -257,6 +257,12 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 		return
 	}
 
+	// 检查状态
+	err = exec.Command(firewallCmd, "--state").Run()
+	if err != nil {
+		return
+	}
+
 	remotelogs.Println("FIREWALLD", "open ports automatically")
 	for _, port := range ports {
 		{

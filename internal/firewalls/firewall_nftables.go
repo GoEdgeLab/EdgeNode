@@ -5,6 +5,7 @@
 package firewalls
 
 import (
+	"bytes"
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls/nftables"
@@ -12,6 +13,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -87,6 +89,7 @@ func NewNFTablesFirewall() (*NFTablesFirewall, error) {
 type NFTablesFirewall struct {
 	conn    *nftables.Conn
 	isReady bool
+	version string
 
 	allowIPv4Set *nftables.Set
 	allowIPv6Set *nftables.Set
@@ -99,10 +102,11 @@ type NFTablesFirewall struct {
 
 func (this *NFTablesFirewall) init() error {
 	// check nft
-	_, err := exec.LookPath("nft")
+	nftPath, err := exec.LookPath("nft")
 	if err != nil {
 		return errors.New("nft not found")
 	}
+	this.version = this.readVersion(nftPath)
 
 	// table
 	for _, tableDef := range nftablesFilters {
@@ -370,4 +374,22 @@ func (this *NFTablesFirewall) RemoveSourceIP(ip string) error {
 	}
 
 	return nil
+}
+
+// 读取版本号
+func (this *NFTablesFirewall) readVersion(nftPath string) string {
+	var cmd = exec.Command(nftPath, "--version")
+	var output = &bytes.Buffer{}
+	cmd.Stdout = output
+	err := cmd.Run()
+	if err != nil {
+		return ""
+	}
+
+	var outputString = output.String()
+	var versionMatches = regexp.MustCompile(`nftables v([\d.]+)`).FindStringSubmatch(outputString)
+	if len(versionMatches) <= 1 {
+		return ""
+	}
+	return versionMatches[1]
 }
