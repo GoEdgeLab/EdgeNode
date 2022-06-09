@@ -2,7 +2,9 @@
 
 package readers
 
-import "io"
+import (
+	"io"
+)
 
 type TeeReaderCloser struct {
 	r io.Reader

@@ -836,7 +836,7 @@ func (this *HTTPWriter) HeaderData() []byte {
 		return nil
 	}
 
-	resp := &http.Response{}
+	var resp = &http.Response{}
 	resp.Header = this.Header()
 	if this.statusCode == 0 {
 		this.statusCode = http.StatusOK

@@ -328,7 +328,12 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	// 是否有内容
 	if resp.ContentLength == 0 && len(resp.TransferEncoding) == 0 {
+		// 即使内容为0，也需要读取一次，以便于触发相关事件
+		var buf = utils.BytePool4k.Get()
+		_, _ = io.CopyBuffer(this.writer, resp.Body, buf)
+		utils.BytePool4k.Put(buf)
 		_ = resp.Body.Close()
+
 		this.writer.SetOk()
 		return
 	}
