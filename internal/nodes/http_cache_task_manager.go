@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -18,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -41,7 +43,7 @@ type HTTPCacheTaskManager struct {
 }
 
 func NewHTTPCacheTaskManager() *HTTPCacheTaskManager {
-	var duration = 1 * time.Minute
+	var duration = 30 * time.Second
 	if Tea.IsTesting() {
 		duration = 10 * time.Second
 	}
@@ -155,12 +157,41 @@ func (this *HTTPCacheTaskManager) processKey(key *pb.HTTPCacheTaskKey) error {
 		for _, storage := range storages {
 			switch key.KeyType {
 			case "key":
-				err := storage.Purge([]string{key.Key}, "file")
-				if err != nil {
-					return err
+				var cacheKeys = []string{key.Key}
+				if strings.HasPrefix(key.Key, "http://") {
+					cacheKeys = append(cacheKeys, strings.Replace(key.Key, "http://", "https://", 1))
+				} else if strings.HasPrefix(key.Key, "https://") {
+					cacheKeys = append(cacheKeys, strings.Replace(key.Key, "https://", "http://", 1))
+				}
+
+				// TODO 提升效率
+				for _, cacheKey := range cacheKeys {
+					var subKeys = []string{
+						cacheKey,
+						cacheKey + caches.SuffixMethod + "HEAD",
+						cacheKey + caches.SuffixWebP,
+						cacheKey + caches.SuffixPartial,
+					}
+					// TODO 根据实际缓存的内容进行组合
+					for _, encoding := range compressions.AllEncodings() {
+						subKeys = append(subKeys, cacheKey+caches.SuffixCompression+encoding)
+						subKeys = append(subKeys, cacheKey+caches.SuffixWebP+caches.SuffixCompression+encoding)
+					}
+
+					err := storage.Purge(subKeys, "file")
+					if err != nil {
+						return err
+					}
 				}
 			case "prefix":
-				err := storage.Purge([]string{key.Key}, "dir")
+				var prefixes = []string{key.Key}
+				if strings.HasPrefix(key.Key, "http://") {
+					prefixes = append(prefixes, strings.Replace(key.Key, "http://", "https://", 1))
+				} else if strings.HasPrefix(key.Key, "https://") {
+					prefixes = append(prefixes, strings.Replace(key.Key, "https://", "http://", 1))
+				}
+
+				err := storage.Purge(prefixes, "dir")
 				if err != nil {
 					return err
 				}
