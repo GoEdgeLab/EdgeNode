@@ -50,7 +50,7 @@ func NewHTTPCacheTaskManager() *HTTPCacheTaskManager {
 	return &HTTPCacheTaskManager{
 		ticker: time.NewTicker(duration),
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second, // TODO 可以设置请求超时时间
+			Timeout: 10 * time.Minute, // TODO 可以设置请求超时时间
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 					_, port, err := net.SplitHostPort(addr)
