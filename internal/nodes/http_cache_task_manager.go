@@ -210,6 +210,7 @@ func (this *HTTPCacheTaskManager) processKey(key *pb.HTTPCacheTaskKey) error {
 }
 
 // TODO 增加失败重试
+// TODO 使用并发操作
 func (this *HTTPCacheTaskManager) fetchKey(key *pb.HTTPCacheTaskKey) error {
 	var fullKey = key.Key
 	if !this.protocolReg.MatchString(fullKey) {
