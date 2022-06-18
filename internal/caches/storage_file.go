@@ -481,11 +481,16 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		openFileCache.Close(cachePath)
 	}
 
+	// 查询当前已有缓存文件
 	stat, err := os.Stat(cachePath)
-	if err == nil && time.Now().Sub(stat.ModTime()) <= 1*time.Second {
+
+	// 检查两次写入缓存的时间是否过于相近，分片内容不受此限制
+	if err == nil && !isPartial && time.Now().Sub(stat.ModTime()) <= 1*time.Second {
 		// 防止并发连续写入
 		return nil, ErrFileIsWriting
 	}
+
+	// 构造文件名
 	var tmpPath = cachePath
 	var existsFile = false
 	if stat != nil {
