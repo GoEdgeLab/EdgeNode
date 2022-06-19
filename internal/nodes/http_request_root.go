@@ -51,7 +51,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		return true
 	}
 
-	rootDir := this.web.Root.Dir
+	var rootDir = this.web.Root.Dir
 	if this.web.Root.HasVariables() {
 		rootDir = this.Format(rootDir)
 	}
@@ -59,9 +59,9 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		rootDir = Tea.Root + Tea.DS + rootDir
 	}
 
-	requestPath := this.uri
+	var requestPath = this.uri
 
-	questionMarkIndex := strings.Index(this.uri, "?")
+	var questionMarkIndex = strings.Index(this.uri, "?")
 	if questionMarkIndex > -1 {
 		requestPath = this.uri[:questionMarkIndex]
 	}
@@ -75,7 +75,9 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		if err == nil {
 			requestPath = p
 		} else {
-			logs.Error(err)
+			if !this.canIgnore(err) {
+				logs.Error(err)
+			}
 		}
 	}
 
@@ -92,8 +94,8 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		}
 	}
 
-	filename := strings.Replace(requestPath, "/", Tea.DS, -1)
-	filePath := ""
+	var filename = strings.Replace(requestPath, "/", Tea.DS, -1)
+	var filePath = ""
 	if len(filename) > 0 && filename[0:1] == Tea.DS {
 		filePath = rootDir + filename
 	} else {
@@ -113,7 +115,9 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			return
 		} else {
 			this.write50x(err, http.StatusInternalServerError, true)
-			logs.Error(err)
+			if !this.canIgnore(err) {
+				logs.Error(err)
+			}
 			return true
 		}
 	}
@@ -142,7 +146,9 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 					return
 				} else {
 					this.write50x(err, http.StatusInternalServerError, true)
-					logs.Error(err)
+					if !this.canIgnore(err) {
+						logs.Error(err)
+					}
 					return true
 				}
 			}
@@ -152,24 +158,24 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	// 响应header
-	respHeader := this.writer.Header()
+	var respHeader = this.writer.Header()
 
 	// mime type
-	contentType := ""
+	var contentType = ""
 	if this.web.ResponseHeaderPolicy == nil || !this.web.ResponseHeaderPolicy.IsOn || !this.web.ResponseHeaderPolicy.ContainsHeader("CONTENT-TYPE") {
-		ext := filepath.Ext(filePath)
+		var ext = filepath.Ext(filePath)
 		if len(ext) > 0 {
 			mimeType := mime.TypeByExtension(ext)
 			if len(mimeType) > 0 {
-				semicolonIndex := strings.Index(mimeType, ";")
-				mimeTypeKey := mimeType
+				var semicolonIndex = strings.Index(mimeType, ";")
+				var mimeTypeKey = mimeType
 				if semicolonIndex > 0 {
 					mimeTypeKey = mimeType[:semicolonIndex]
 				}
 
 				if _, found := textMimeMap[mimeTypeKey]; found {
 					if this.web.Charset != nil && this.web.Charset.IsOn && len(this.web.Charset.Charset) > 0 {
-						charset := this.web.Charset.Charset
+						var charset = this.web.Charset.Charset
 						if this.web.Charset.IsUpper {
 							charset = strings.ToUpper(charset)
 						}
@@ -197,7 +203,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	// 支持 ETag
-	eTag := "\"e" + fmt.Sprintf("%0x", xxhash.Sum64String(filename+strconv.FormatInt(stat.ModTime().UnixNano(), 10)+strconv.FormatInt(stat.Size(), 10))) + "\""
+	var eTag = "\"e" + fmt.Sprintf("%0x", xxhash.Sum64String(filename+strconv.FormatInt(stat.ModTime().UnixNano(), 10)+strconv.FormatInt(stat.Size(), 10))) + "\""
 	if len(respHeader.Get("ETag")) == 0 {
 		respHeader.Set("ETag", eTag)
 	}
@@ -227,7 +233,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	// 支持Range
 	respHeader.Set("Accept-Ranges", "bytes")
 	ifRangeHeaders, ok := this.RawReq.Header["If-Range"]
-	supportRange := true
+	var supportRange = true
 	if ok {
 		supportRange = false
 		for _, v := range ifRangeHeaders {
@@ -244,7 +250,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	// 支持Range
 	var ranges = []rangeutils.Range{}
 	if supportRange {
-		contentRange := this.RawReq.Header.Get("Range")
+		var contentRange = this.RawReq.Header.Get("Range")
 		if len(contentRange) > 0 {
 			if fileSize == 0 {
 				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
@@ -277,7 +283,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		respHeader.Set("Content-Length", strconv.FormatInt(fileSize, 10))
 	}
 
-	reader, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
+	fileReader, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
 	if err != nil {
 		this.write50x(err, http.StatusInternalServerError, true)
 		return true
@@ -291,12 +297,16 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		this.cacheRef = nil // 不支持缓存
 	}
 
-	this.writer.Prepare(nil, fileSize, http.StatusOK, true)
+	var resp = &http.Response{
+		ContentLength: fileSize,
+		Body:          fileReader,
+		StatusCode:    http.StatusOK,
+	}
+	this.writer.Prepare(resp, fileSize, http.StatusOK, true)
 
-	pool := this.bytePool(fileSize)
-	buf := pool.Get()
+	var pool = this.bytePool(fileSize)
+	var buf = pool.Get()
 	defer func() {
-		_ = reader.Close()
 		pool.Put(buf)
 	}()
 
@@ -304,12 +314,14 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		respHeader.Set("Content-Range", ranges[0].ComposeContentRangeHeader(types.String(fileSize)))
 		this.writer.WriteHeader(http.StatusPartialContent)
 
-		ok, err := httpRequestReadRange(reader, buf, ranges[0].Start(), ranges[0].End(), func(buf []byte, n int) error {
+		ok, err := httpRequestReadRange(resp.Body, buf, ranges[0].Start(), ranges[0].End(), func(buf []byte, n int) error {
 			_, err := this.writer.Write(buf[:n])
 			return err
 		})
 		if err != nil {
-			logs.Error(err)
+			if !this.canIgnore(err) {
+				logs.Error(err)
+			}
 			return true
 		}
 		if !ok {
@@ -318,7 +330,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			return true
 		}
 	} else if len(ranges) > 1 {
-		boundary := httpRequestGenBoundary()
+		var boundary = httpRequestGenBoundary()
 		respHeader.Set("Content-Type", "multipart/byteranges; boundary="+boundary)
 
 		this.writer.WriteHeader(http.StatusPartialContent)
@@ -330,30 +342,38 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				_, err = this.writer.WriteString("\r\n--" + boundary + "\r\n")
 			}
 			if err != nil {
-				logs.Error(err)
+				if !this.canIgnore(err) {
+					logs.Error(err)
+				}
 				return true
 			}
 
 			_, err = this.writer.WriteString("Content-Range: " + r.ComposeContentRangeHeader(types.String(fileSize)) + "\r\n")
 			if err != nil {
-				logs.Error(err)
+				if !this.canIgnore(err) {
+					logs.Error(err)
+				}
 				return true
 			}
 
 			if len(contentType) > 0 {
 				_, err = this.writer.WriteString("Content-Type: " + contentType + "\r\n\r\n")
 				if err != nil {
-					logs.Error(err)
+					if !this.canIgnore(err) {
+						logs.Error(err)
+					}
 					return true
 				}
 			}
 
-			ok, err := httpRequestReadRange(reader, buf, r.Start(), r.End(), func(buf []byte, n int) error {
+			ok, err := httpRequestReadRange(resp.Body, buf, r.Start(), r.End(), func(buf []byte, n int) error {
 				_, err := this.writer.Write(buf[:n])
 				return err
 			})
 			if err != nil {
-				logs.Error(err)
+				if !this.canIgnore(err) {
+					logs.Error(err)
+				}
 				return true
 			}
 			if !ok {
@@ -365,14 +385,17 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 
 		_, err = this.writer.WriteString("\r\n--" + boundary + "--\r\n")
 		if err != nil {
-			logs.Error(err)
+			if !this.canIgnore(err) {
+				logs.Error(err)
+			}
 			return true
 		}
 	} else {
-		_, err = io.CopyBuffer(this.writer, reader, buf)
-
+		_, err = io.CopyBuffer(this.writer, resp.Body, buf)
 		if err != nil {
-			logs.Error(err)
+			if !this.canIgnore(err) {
+				logs.Error(err)
+			}
 			return true
 		}
 	}
@@ -400,7 +423,9 @@ func (this *HTTPRequest) findIndexFile(dir string) (filename string, stat os.Fil
 		if strings.Contains(index, "*") {
 			indexFiles, err := filepath.Glob(dir + Tea.DS + index)
 			if err != nil {
-				logs.Error(err)
+				if !this.canIgnore(err) {
+					logs.Error(err)
+				}
 				this.addError(err)
 				continue
 			}

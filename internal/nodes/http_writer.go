@@ -449,7 +449,9 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	this.rawReader = cacheReader
 
 	cacheReader.OnFail(func(err error) {
-		_ = this.cacheWriter.Discard()
+		if this.cacheWriter != nil {
+			_ = this.cacheWriter.Discard()
+		}
 		this.cacheWriter = nil
 	})
 	cacheReader.OnEOF(func() {
@@ -860,6 +862,70 @@ func (this *HTTPWriter) SetOk() {
 
 // Close 关闭
 func (this *HTTPWriter) Close() {
+	this.finishWebP()
+	this.finishRequest()
+	this.finishCache()
+	this.finishCompression()
+
+	// 统计
+	if this.sentBodyBytes == 0 {
+		this.sentBodyBytes = this.counterWriter.TotalBytes()
+	}
+}
+
+// Hijack Hijack
+func (this *HTTPWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err error) {
+	hijack, ok := this.rawWriter.(http.Hijacker)
+	if ok {
+		return hijack.Hijack()
+	}
+	return
+}
+
+// Flush Flush
+func (this *HTTPWriter) Flush() {
+	flusher, ok := this.rawWriter.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+}
+
+// DelayRead 是否延迟读取Reader
+func (this *HTTPWriter) DelayRead() bool {
+	return this.delayRead
+}
+
+// 计算stale时长
+func (this *HTTPWriter) calculateStaleLife() int {
+	var staleLife = 600 // TODO 可以在缓存策略里设置此时间
+	var staleConfig = this.req.web.Cache.Stale
+	if staleConfig != nil && staleConfig.IsOn {
+		// 从Header中读取stale-if-error
+		var isDefinedInHeader = false
+		if staleConfig.SupportStaleIfErrorHeader {
+			var cacheControl = this.GetHeader("Cache-Control")
+			var pieces = strings.Split(cacheControl, ",")
+			for _, piece := range pieces {
+				var eqIndex = strings.Index(piece, "=")
+				if eqIndex > 0 && strings.TrimSpace(piece[:eqIndex]) == "stale-if-error" {
+					// 这里预示着如果stale-if-error=0，可以关闭stale功能
+					staleLife = types.Int(strings.TrimSpace(piece[eqIndex+1:]))
+					isDefinedInHeader = true
+					break
+				}
+			}
+		}
+
+		// 自定义
+		if !isDefinedInHeader && staleConfig.Life != nil {
+			staleLife = types.Int(staleConfig.Life.Duration().Seconds())
+		}
+	}
+	return staleLife
+}
+
+// 结束WebP
+func (this *HTTPWriter) finishWebP() {
 	// 处理WebP
 	if this.webpIsEncoding {
 		var webpCacheWriter caches.Writer
@@ -920,6 +986,7 @@ func (this *HTTPWriter) Close() {
 		}
 
 		if err != nil {
+			// 发生了错误终止处理
 			return
 		}
 
@@ -949,7 +1016,7 @@ func (this *HTTPWriter) Close() {
 			//webpConfig.SetLossless(1)
 			webpConfig.SetQuality(f)
 
-			timeline := 0
+			var timeline = 0
 
 			for i, img := range gifImage.Image {
 				err = anim.AddFrame(img, timeline, webpConfig)
@@ -989,15 +1056,10 @@ func (this *HTTPWriter) Close() {
 			}
 		}
 	}
+}
 
-	if this.writer != nil {
-		_ = this.writer.Close()
-	}
-
-	if this.rawReader != nil {
-		_ = this.rawReader.Close()
-	}
-
+// 结束缓存相关处理
+func (this *HTTPWriter) finishCache() {
 	// 缓存
 	if this.cacheWriter != nil {
 		if this.isOk && this.cacheIsFinished {
@@ -1055,7 +1117,10 @@ func (this *HTTPWriter) Close() {
 			}
 		}
 	}
+}
 
+// 结束压缩相关处理
+func (this *HTTPWriter) finishCompression() {
 	if this.compressionCacheWriter != nil {
 		if this.isOk {
 			err := this.compressionCacheWriter.Close()
@@ -1076,59 +1141,15 @@ func (this *HTTPWriter) Close() {
 			_ = this.compressionCacheWriter.Discard()
 		}
 	}
-
-	if this.sentBodyBytes == 0 {
-		this.sentBodyBytes = this.counterWriter.TotalBytes()
-	}
 }
 
-// Hijack Hijack
-func (this *HTTPWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err error) {
-	hijack, ok := this.rawWriter.(http.Hijacker)
-	if ok {
-		return hijack.Hijack()
+// 最终关闭
+func (this *HTTPWriter) finishRequest() {
+	if this.writer != nil {
+		_ = this.writer.Close()
 	}
-	return
-}
 
-// Flush Flush
-func (this *HTTPWriter) Flush() {
-	flusher, ok := this.rawWriter.(http.Flusher)
-	if ok {
-		flusher.Flush()
+	if this.rawReader != nil {
+		_ = this.rawReader.Close()
 	}
-}
-
-// DelayRead 是否延迟读取Reader
-func (this *HTTPWriter) DelayRead() bool {
-	return this.delayRead
-}
-
-// 计算stale时长
-func (this *HTTPWriter) calculateStaleLife() int {
-	var staleLife = 600 // TODO 可以在缓存策略里设置此时间
-	var staleConfig = this.req.web.Cache.Stale
-	if staleConfig != nil && staleConfig.IsOn {
-		// 从Header中读取stale-if-error
-		var isDefinedInHeader = false
-		if staleConfig.SupportStaleIfErrorHeader {
-			var cacheControl = this.GetHeader("Cache-Control")
-			var pieces = strings.Split(cacheControl, ",")
-			for _, piece := range pieces {
-				var eqIndex = strings.Index(piece, "=")
-				if eqIndex > 0 && strings.TrimSpace(piece[:eqIndex]) == "stale-if-error" {
-					// 这里预示着如果stale-if-error=0，可以关闭stale功能
-					staleLife = types.Int(strings.TrimSpace(piece[eqIndex+1:]))
-					isDefinedInHeader = true
-					break
-				}
-			}
-		}
-
-		// 自定义
-		if !isDefinedInHeader && staleConfig.Life != nil {
-			staleLife = types.Int(staleConfig.Life.Duration().Seconds())
-		}
-	}
-	return staleLife
 }
