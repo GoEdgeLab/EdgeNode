@@ -203,12 +203,12 @@ func (this *UpgradeManager) unzip(zipPath string) error {
 	}
 
 	// 先改先前的可执行文件
-	err := os.Rename(target+"/bin/edge-node", target+"/bin/.edge-node.old")
+	err := os.Rename(target+"/bin/edge-node", target+"/bin/.edge-node.dist")
 	hasBackup := err == nil
 	defer func() {
 		if !isOk && hasBackup {
 			// 失败时还原
-			_ = os.Rename(target+"/bin/.edge-node.old", target+"/bin/edge-node")
+			_ = os.Rename(target+"/bin/.edge-node.dist", target+"/bin/edge-node")
 		}
 	}()
 
