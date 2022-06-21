@@ -33,7 +33,7 @@ func init() {
 
 		nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 		if nodeConfig != nil {
-			err := SharedDDoSProtectionManager.Apply(nodeConfig.DDOSProtection)
+			err := SharedDDoSProtectionManager.Apply(nodeConfig.DDoSProtection)
 			if err != nil {
 				remotelogs.Error("FIREWALL", "apply DDoS protection failed: "+err.Error())
 			}
@@ -43,7 +43,7 @@ func init() {
 	events.On(events.EventNFTablesReady, func() {
 		nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 		if nodeConfig != nil {
-			err := SharedDDoSProtectionManager.Apply(nodeConfig.DDOSProtection)
+			err := SharedDDoSProtectionManager.Apply(nodeConfig.DDoSProtection)
 			if err != nil {
 				remotelogs.Error("FIREWALL", "apply DDoS protection failed: "+err.Error())
 			}

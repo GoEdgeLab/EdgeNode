@@ -386,13 +386,17 @@ func (this *Node) loop() error {
 			}
 			if len(resp.DdosProtectionJSON) == 0 {
 				if sharedNodeConfig != nil {
-					sharedNodeConfig.DDOSProtection = nil
+					sharedNodeConfig.DDoSProtection = nil
 				}
 			} else {
 				var ddosProtectionConfig = &ddosconfigs.ProtectionConfig{}
 				err = json.Unmarshal(resp.DdosProtectionJSON, ddosProtectionConfig)
 				if err != nil {
 					return errors.New("decode DDoS protection config failed: " + err.Error())
+				}
+
+				if sharedNodeConfig != nil {
+					sharedNodeConfig.DDoSProtection = ddosProtectionConfig
 				}
 
 				err = firewalls.SharedDDoSProtectionManager.Apply(ddosProtectionConfig)
