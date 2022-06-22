@@ -5,25 +5,28 @@ package iplibrary
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/Tea"
 )
 
 // AllowIP 检查IP是否被允许访问
 // 如果一个IP不在任何名单中，则允许访问
 func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool) {
-	// 放行lo
-	if ip == "127.0.0.1" {
-		return true, true
+	if !Tea.IsTesting() { // 如果在测试环境，我们不加入一些白名单，以便于可以在本地和局域网正常测试
+		// 放行lo
+		if ip == "127.0.0.1" {
+			return true, true
+		}
+
+		// check node
+		nodeConfig, err := nodeconfigs.SharedNodeConfig()
+		if err == nil && nodeConfig.IPIsAutoAllowed(ip) {
+			return true, true
+		}
 	}
 
 	var ipLong = utils.IP2Long(ip)
 	if ipLong == 0 {
 		return false, false
-	}
-
-	// check node
-	nodeConfig, err := nodeconfigs.SharedNodeConfig()
-	if err == nil && nodeConfig.IPIsAutoAllowed(ip) {
-		return true, true
 	}
 
 	// check white lists
