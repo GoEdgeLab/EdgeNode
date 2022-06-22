@@ -233,6 +233,12 @@ func (this *HTTPRequest) Do() {
 
 // 开始调用
 func (this *HTTPRequest) doBegin() {
+	// 是否找不到域名匹配
+	if this.ReqServer.Id == 0 {
+		this.doMismatch()
+		return
+	}
+
 	if !this.isLnRequest {
 		// 处理request limit
 		if this.web.RequestLimit != nil &&
