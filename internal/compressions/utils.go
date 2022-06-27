@@ -14,13 +14,19 @@ const (
 	ContentEncodingBr      ContentEncoding = "br"
 	ContentEncodingGzip    ContentEncoding = "gzip"
 	ContentEncodingDeflate ContentEncoding = "deflate"
+	ContentEncodingZSTD    ContentEncoding = "zstd"
 )
 
 var ErrNotSupportedContentEncoding = errors.New("not supported content encoding")
 
 // AllEncodings 当前支持的所有编码
 func AllEncodings() []ContentEncoding {
-	return []ContentEncoding{ContentEncodingBr, ContentEncodingGzip, ContentEncodingDeflate}
+	return []ContentEncoding{
+		ContentEncodingBr,
+		ContentEncodingGzip,
+		ContentEncodingZSTD,
+		ContentEncodingDeflate,
+	}
 }
 
 // NewReader 获取Reader
@@ -32,6 +38,8 @@ func NewReader(reader io.Reader, contentEncoding ContentEncoding) (Reader, error
 		return NewGzipReader(reader)
 	case ContentEncodingDeflate:
 		return NewDeflateReader(reader)
+	case ContentEncodingZSTD:
+		return NewZSTDReader(reader)
 	}
 	return nil, ErrNotSupportedContentEncoding
 }
@@ -45,6 +53,8 @@ func NewWriter(writer io.Writer, compressType serverconfigs.HTTPCompressionType,
 		return NewDeflateWriter(writer, level)
 	case serverconfigs.HTTPCompressionTypeBrotli:
 		return NewBrotliWriter(writer, level)
+	case serverconfigs.HTTPCompressionTypeZSTD:
+		return NewZSTDWriter(writer, level)
 	}
 	return nil, errors.New("invalid compression type '" + compressType + "'")
 }

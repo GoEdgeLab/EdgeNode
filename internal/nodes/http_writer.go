@@ -509,7 +509,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 
 		var contentEncoding = this.GetHeader("Content-Encoding")
 		switch contentEncoding {
-		case "gzip", "deflate", "br":
+		case "gzip", "deflate", "br", "zstd":
 			reader, err := compressions.NewReader(resp.Body, contentEncoding)
 			if err != nil {
 				return
@@ -547,7 +547,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	var contentEncoding = this.GetHeader("Content-Encoding")
 
 	if this.compressionConfig == nil || !this.compressionConfig.IsOn {
-		if lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding) && !httpAcceptEncoding(acceptEncodings, contentEncoding) {
+		if lists.ContainsString([]string{"gzip", "deflate", "br", "zstd"}, contentEncoding) && !httpAcceptEncoding(acceptEncodings, contentEncoding) {
 			reader, err := compressions.NewReader(resp.Body, contentEncoding)
 			if err != nil {
 				return
@@ -564,7 +564,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	}
 
 	// 如果已经有编码则不处理
-	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !lists.ContainsString([]string{"gzip", "deflate", "br"}, contentEncoding)) {
+	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !lists.ContainsString([]string{"gzip", "deflate", "br", "zstd"}, contentEncoding)) {
 		return
 	}
 
