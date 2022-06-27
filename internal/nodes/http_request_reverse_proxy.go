@@ -172,7 +172,7 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	// 判断是否为Websocket请求
 	if this.RawReq.Header.Get("Upgrade") == "websocket" {
-		this.doWebsocket()
+		this.doWebsocket(requestHost)
 		return
 	}
 
@@ -196,13 +196,13 @@ func (this *HTTPRequest) doReverseProxy() {
 		// 客户端取消请求，则不提示
 		httpErr, ok := err.(*url.Error)
 		if !ok {
-			SharedOriginStateManager.Fail(origin, this.reverseProxy, func() {
+			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
 			})
 			this.write50x(err, http.StatusBadGateway, true)
 			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': "+err.Error())
 		} else if httpErr.Err != context.Canceled {
-			SharedOriginStateManager.Fail(origin, this.reverseProxy, func() {
+			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
 			})
 			if httpErr.Timeout() {

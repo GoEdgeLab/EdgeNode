@@ -8,5 +8,6 @@ type OriginState struct {
 	CountFails   int64
 	UpdatedAt    int64
 	Config       *serverconfigs.OriginConfig
+	TLSHost      string
 	ReverseProxy *serverconfigs.ReverseProxyConfig
 }

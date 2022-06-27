@@ -9,7 +9,7 @@ import (
 )
 
 // 处理Websocket请求
-func (this *HTTPRequest) doWebsocket() {
+func (this *HTTPRequest) doWebsocket(requestHost string) {
 	if this.web.WebsocketRef == nil || !this.web.WebsocketRef.IsOn || this.web.Websocket == nil || !this.web.Websocket.IsOn {
 		this.writer.WriteHeader(http.StatusForbidden)
 		this.addError(errors.New("websocket have not been enabled yet"))
@@ -41,12 +41,12 @@ func (this *HTTPRequest) doWebsocket() {
 	}
 
 	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
-	originConn, err := OriginConnect(this.origin, this.RawReq.RemoteAddr)
+	originConn, err := OriginConnect(this.origin, this.RawReq.RemoteAddr, requestHost)
 	if err != nil {
 		this.write50x(err, http.StatusBadGateway, false)
 
 		// 增加失败次数
-		SharedOriginStateManager.Fail(this.origin, this.reverseProxy, func() {
+		SharedOriginStateManager.Fail(this.origin, requestHost, this.reverseProxy, func() {
 			this.reverseProxy.ResetScheduling()
 		})
 

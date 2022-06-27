@@ -187,6 +187,7 @@ func (this *TCPListener) Close() error {
 	return this.Listener.Close()
 }
 
+// 连接源站
 func (this *TCPListener) connectOrigin(serverId int64, reverseProxy *serverconfigs.ReverseProxyConfig, remoteAddr string) (conn net.Conn, err error) {
 	if reverseProxy == nil {
 		return nil, errors.New("no reverse proxy config")
@@ -198,7 +199,17 @@ func (this *TCPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 		if origin == nil {
 			continue
 		}
-		conn, err = OriginConnect(origin, remoteAddr)
+
+		// 回源主机名
+		var requestHost = ""
+		if len(reverseProxy.RequestHost) > 0 {
+			requestHost = reverseProxy.RequestHost
+		}
+		if len(origin.RequestHost) > 0 {
+			requestHost = origin.RequestHost
+		}
+
+		conn, err = OriginConnect(origin, remoteAddr, requestHost)
 		if err != nil {
 			remotelogs.ServerError(serverId, "TCP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error(), "", nil)
 			continue

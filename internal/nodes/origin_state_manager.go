@@ -102,7 +102,7 @@ func (this *OriginStateManager) Loop() error {
 	for _, state := range currentStates {
 		go func(state *OriginState) {
 			defer wg.Done()
-			conn, err := OriginConnect(state.Config, "")
+			conn, err := OriginConnect(state.Config, "", state.TLSHost)
 			if err == nil {
 				_ = conn.Close()
 
@@ -125,7 +125,7 @@ func (this *OriginStateManager) Loop() error {
 }
 
 // Fail 添加失败的源站
-func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, reverseProxy *serverconfigs.ReverseProxyConfig, callback func()) {
+func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, tlsHost string, reverseProxy *serverconfigs.ReverseProxyConfig, callback func()) {
 	if origin == nil || origin.Id <= 0 {
 		return
 	}
@@ -139,6 +139,7 @@ func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, reverse
 			state.Config.IsOk = true
 		}
 
+		state.TLSHost = tlsHost
 		state.CountFails++
 		state.Config = origin
 		state.ReverseProxy = reverseProxy
@@ -157,6 +158,7 @@ func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, reverse
 		this.stateMap[origin.Id] = &OriginState{
 			CountFails:   1,
 			Config:       origin,
+			TLSHost:      tlsHost,
 			ReverseProxy: reverseProxy,
 			UpdatedAt:    timestamp,
 		}

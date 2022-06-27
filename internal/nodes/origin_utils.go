@@ -10,7 +10,7 @@ import (
 )
 
 // OriginConnect 连接源站
-func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.Conn, error) {
+func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string, tlsHost string) (net.Conn, error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin server address should not be empty")
 	}
@@ -58,6 +58,9 @@ func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.C
 								}
 							}
 						}
+						if len(tlsHost) > 0 {
+							tlsConfig.ServerName = tlsHost
+						}
 
 						conn, err = tls.DialWithDialer(&dialer, "tcp", origin.Addr.Host+":"+origin.Addr.PortRange, tlsConfig)
 					}
@@ -94,6 +97,9 @@ func OriginConnect(origin *serverconfigs.OriginConfig, remoteAddr string) (net.C
 					tlsConfig.ServerName = origin.Cert.ServerName
 				}
 			}
+		}
+		if len(tlsHost) > 0 {
+			tlsConfig.ServerName = tlsHost
 		}
 
 		return tls.Dial("tcp", origin.Addr.Host+":"+origin.Addr.PortRange, tlsConfig)
