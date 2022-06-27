@@ -26,6 +26,10 @@ func init() {
 	})
 }
 
+const (
+	maxOriginStates = 512 // 最多可以监控的源站状态数量
+)
+
 // OriginStateManager 源站状态管理
 type OriginStateManager struct {
 	stateMap map[int64]*OriginState // originId => *OriginState
@@ -44,14 +48,6 @@ func NewOriginStateManager() *OriginStateManager {
 
 // Start 启动
 func (this *OriginStateManager) Start() {
-	events.OnKey(events.EventReload, this, func() {
-		// TODO 检查源站是否有变化
-
-		this.locker.Lock()
-		this.stateMap = map[int64]*OriginState{}
-		this.locker.Unlock()
-	})
-
 	if Tea.IsTesting() {
 		this.ticker = time.NewTicker(10 * time.Second)
 	}
@@ -71,7 +67,8 @@ func (this *OriginStateManager) Stop() {
 
 // Loop 单次循环检查
 func (this *OriginStateManager) Loop() error {
-	if sharedNodeConfig == nil {
+	var nodeConfig = sharedNodeConfig // 复制
+	if nodeConfig == nil {
 		return nil
 	}
 
@@ -82,12 +79,12 @@ func (this *OriginStateManager) Loop() error {
 	this.locker.Lock()
 	for originId, state := range this.stateMap {
 		// 检查Origin是否正在使用
-		config := sharedNodeConfig.FindOrigin(originId)
-		if config == nil || !config.IsOn {
+		var originConfig = nodeConfig.FindOrigin(originId)
+		if originConfig == nil || !originConfig.IsOn {
 			delete(this.stateMap, originId)
 			continue
 		}
-		state.Config = config
+		state.Config = originConfig
 		currentStates = append(currentStates, state)
 	}
 	this.locker.Unlock()
@@ -97,7 +94,7 @@ func (this *OriginStateManager) Loop() error {
 	}
 
 	var count = len(currentStates)
-	wg := &sync.WaitGroup{}
+	var wg = &sync.WaitGroup{}
 	wg.Add(count)
 	for _, state := range currentStates {
 		go func(state *OriginState) {
@@ -155,13 +152,17 @@ func (this *OriginStateManager) Fail(origin *serverconfigs.OriginConfig, tlsHost
 			}
 		}
 	} else {
-		this.stateMap[origin.Id] = &OriginState{
-			CountFails:   1,
-			Config:       origin,
-			TLSHost:      tlsHost,
-			ReverseProxy: reverseProxy,
-			UpdatedAt:    timestamp,
+		// 同时最多监控 N 个源站地址
+		if len(this.stateMap) < maxOriginStates {
+			this.stateMap[origin.Id] = &OriginState{
+				CountFails:   1,
+				Config:       origin,
+				TLSHost:      tlsHost,
+				ReverseProxy: reverseProxy,
+				UpdatedAt:    timestamp,
+			}
 		}
+
 		origin.IsOk = true
 	}
 	this.locker.Unlock()
