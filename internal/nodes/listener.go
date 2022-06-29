@@ -153,7 +153,7 @@ func (this *Listener) Close() error {
 
 // 创建TCP监听器
 func (this *Listener) createTCPListener() (net.Listener, error) {
-	listenConfig := net.ListenConfig{
+	var listenConfig = net.ListenConfig{
 		Control:   nil,
 		KeepAlive: 0,
 	}

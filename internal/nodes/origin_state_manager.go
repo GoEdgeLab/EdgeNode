@@ -99,7 +99,7 @@ func (this *OriginStateManager) Loop() error {
 	for _, state := range currentStates {
 		go func(state *OriginState) {
 			defer wg.Done()
-			conn, err := OriginConnect(state.Config, "", state.TLSHost)
+			conn, _, err := OriginConnect(state.Config, 0, "", state.TLSHost)
 			if err == nil {
 				_ = conn.Close()
 

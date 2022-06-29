@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
 	"net/url"
@@ -123,6 +124,18 @@ func (this *HTTPRequest) doReverseProxy() {
 	var originAddr = origin.Addr.PickAddress()
 	if origin.Addr.HostHasVariables() {
 		originAddr = this.Format(originAddr)
+	}
+
+	// 端口跟随
+	if origin.FollowPort {
+		var originHostIndex = strings.Index(originAddr, ":")
+		if originHostIndex < 0 {
+			var originErr = errors.New("invalid origin address '" + originAddr + "', lacking port")
+			remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", originErr.Error())
+			this.write50x(originErr, http.StatusBadGateway, true)
+			return
+		}
+		originAddr = originAddr[:originHostIndex+1] + types.String(this.requestServerPort())
 	}
 	this.originAddr = originAddr
 

@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/types"
 	"github.com/pires/go-proxyproto"
 	"net"
 	"strings"
@@ -25,11 +26,21 @@ type UDPListener struct {
 
 	reverseProxy *serverconfigs.ReverseProxyConfig
 
+	port int
+
 	isClosed bool
 }
 
 func (this *UDPListener) Serve() error {
-	firstServer := this.Group.FirstServer()
+	// 获取分组端口
+	var groupAddr = this.Group.Addr()
+	var portIndex = strings.LastIndex(groupAddr, ":")
+	if portIndex >= 0 {
+		var port = groupAddr[portIndex+1:]
+		this.port = types.Int(port)
+	}
+
+	var firstServer = this.Group.FirstServer()
 	if firstServer == nil {
 		return errors.New("no server available")
 	}
@@ -110,7 +121,7 @@ func (this *UDPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Reset()
 
 	// 重置配置
-	firstServer := this.Group.FirstServer()
+	var firstServer = this.Group.FirstServer()
 	if firstServer == nil {
 		return
 	}
@@ -122,15 +133,16 @@ func (this *UDPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 		return nil, errors.New("no reverse proxy config")
 	}
 
-	retries := 3
+	var retries = 3
+	var addr string
 	for i := 0; i < retries; i++ {
-		origin := reverseProxy.NextOrigin(nil)
+		var origin = reverseProxy.NextOrigin(nil)
 		if origin == nil {
 			continue
 		}
-		conn, err = OriginConnect(origin, remoteAddr.String(), "")
+		conn, addr, err = OriginConnect(origin, this.port, remoteAddr.String(), "")
 		if err != nil {
-			remotelogs.ServerError(serverId, "UDP_LISTENER", "unable to connect origin: "+origin.Addr.Host+":"+origin.Addr.PortRange+": "+err.Error(), "", nil)
+			remotelogs.ServerError(serverId, "UDP_LISTENER", "unable to connect origin server: "+addr+": "+err.Error(), "", nil)
 			continue
 		} else {
 			// PROXY Protocol
@@ -159,7 +171,7 @@ func (this *UDPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 			return
 		}
 	}
-	err = errors.New("no origin can be used")
+	err = errors.New("no origin server can be used")
 	return
 }
 

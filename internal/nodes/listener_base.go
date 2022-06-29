@@ -107,7 +107,7 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 	}
 
 	// 证书是否匹配
-	sslConfig := server.SSLPolicy()
+	var sslConfig = server.SSLPolicy()
 	cert, ok := sslConfig.MatchDomain(domain)
 	if ok {
 		return sslConfig, cert, nil
@@ -127,7 +127,7 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 		return
 	}
 
-	matchDomainStrictly := sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
+	var matchDomainStrictly = sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
 
 	if sharedNodeConfig.GlobalConfig != nil &&
 		len(sharedNodeConfig.GlobalConfig.HTTPAll.DefaultDomain) > 0 &&
@@ -144,9 +144,9 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 	}
 
 	// 如果没有找到，则匹配到第一个
-	group := this.Group
-	currentServers := group.Servers()
-	countServers := len(currentServers)
+	var group = this.Group
+	var currentServers = group.Servers()
+	var countServers = len(currentServers)
 	if countServers == 0 {
 		return nil, ""
 	}
