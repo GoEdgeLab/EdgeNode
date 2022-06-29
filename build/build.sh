@@ -3,7 +3,7 @@
 function build() {
 	ROOT=$(dirname $0)
 	NAME="edge-node"
-	VERSION=$(lookup-version $ROOT/../internal/const/const.go)
+	VERSION=$(lookup-version "$ROOT"/../internal/const/const.go)
 	DIST=$ROOT/"../dist/${NAME}"
 	MUSL_DIR="/usr/local/opt/musl-cross/bin"
 	GCC_X86_64_DIR="/usr/local/Cellar/x86_64-unknown-linux-gnu/10.3.0/bin"
@@ -13,21 +13,21 @@ function build() {
 	ARCH=${2}
 	TAG=${3}
 
-	if [ -z $OS ]; then
+	if [ -z "$OS" ]; then
 		echo "usage: build.sh OS ARCH"
 		exit
 	fi
-	if [ -z $ARCH ]; then
+	if [ -z "$ARCH" ]; then
 		echo "usage: build.sh OS ARCH"
 		exit
 	fi
-	if [ -z $TAG ]; then
+	if [ -z "$TAG" ]; then
 		TAG="community"
 	fi
 
 	echo "checking ..."
 	ZIP_PATH=$(which zip)
-	if [ -z $ZIP_PATH ]; then
+	if [ -z "$ZIP_PATH" ]; then
 		echo "we need 'zip' command to compress files"
 		exit
 	fi
@@ -36,28 +36,28 @@ function build() {
 	ZIP="${NAME}-${OS}-${ARCH}-${TAG}-v${VERSION}.zip"
 
 	echo "copying ..."
-	if [ ! -d $DIST ]; then
-		mkdir $DIST
-		mkdir $DIST/bin
-		mkdir $DIST/configs
-		mkdir $DIST/logs
-		mkdir $DIST/data
+	if [ ! -d "$DIST" ]; then
+		mkdir "$DIST"
+		mkdir "$DIST"/bin
+		mkdir "$DIST"/configs
+		mkdir "$DIST"/logs
+		mkdir "$DIST"/data
 
 		if [ "$TAG" = "plus" ]; then
-			mkdir $DIST/scripts
-			mkdir $DIST/scripts/js
+			mkdir "$DIST"/scripts
+			mkdir "$DIST"/scripts/js
 		fi
 	fi
 
-	cp $ROOT/configs/api.template.yaml $DIST/configs
-	cp -R $ROOT/www $DIST/
-	cp -R $ROOT/pages $DIST/
-	cp -R $ROOT/resources $DIST/
+	cp "$ROOT"/configs/api.template.yaml "$DIST"/configs
+	cp -R "$ROOT"/www "$DIST"/
+	cp -R "$ROOT"/pages "$DIST"/
+	cp -R "$ROOT"/resources "$DIST"/
 
 	# we support TOA on linux/amd64 only
-	if [ $OS == "linux" -a $ARCH == "amd64" ]
+	if [ "$OS" == "linux" -a "$ARCH" == "amd64" ]
 	then
-		cp -R $ROOT/edge-toa $DIST
+		cp -R "$ROOT"/edge-toa "$DIST"
 	fi
 
 	echo "building ..."
@@ -112,14 +112,14 @@ function build() {
 		fi
 	fi
 	if [ ! -z $CC_PATH ]; then
-		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -trimpath -tags $BUILD_TAG -o $DIST/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" $ROOT/../cmd/edge-node/main.go
+		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" "$ROOT"/../cmd/edge-node/main.go
 	else
-		env GOOS=${OS} GOARCH=${ARCH} CGO_ENABLED=1 go build -trimpath -tags $TAG -o $DIST/bin/${NAME} -ldflags="-s -w" $ROOT/../cmd/edge-node/main.go
+		env GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $TAG -o "$DIST"/bin/${NAME} -ldflags="-s -w" "$ROOT"/../cmd/edge-node/main.go
 	fi
 
 	# delete hidden files
-	find $DIST -name ".DS_Store" -delete
-	find $DIST -name ".gitignore" -delete
+	find "$DIST" -name ".DS_Store" -delete
+	find "$DIST" -name ".gitignore" -delete
 
 	echo "zip files"
 	cd "${DIST}/../" || exit
@@ -135,15 +135,15 @@ function build() {
 
 function lookup-version() {
 	FILE=$1
-	VERSION_DATA=$(cat $FILE)
+	VERSION_DATA=$(cat "$FILE")
 	re="Version[ ]+=[ ]+\"([0-9.]+)\""
 	if [[ $VERSION_DATA =~ $re ]]; then
 		VERSION=${BASH_REMATCH[1]}
-		echo $VERSION
+		echo "$VERSION"
 	else
 		echo "could not match version"
 		exit
 	fi
 }
 
-build $1 $2 $3
+build "$1" "$2" "$3"
