@@ -208,20 +208,3 @@ func httpAcceptEncoding(acceptEncodings string, encoding string) bool {
 	}
 	return false
 }
-
-// 分隔编码
-func httpAcceptEncodings(acceptEncodings string) (encodings []string) {
-	if len(acceptEncodings) == 0 {
-		return
-	}
-	var pieces = strings.Split(acceptEncodings, ",")
-	for _, piece := range pieces {
-		var qualityIndex = strings.Index(piece, ";")
-		if qualityIndex >= 0 {
-			piece = piece[:qualityIndex]
-		}
-
-		encodings = append(encodings, strings.TrimSpace(piece))
-	}
-	return
-}

@@ -146,6 +146,12 @@ func (this *HTTPRequest) doReverseProxy() {
 		} else {
 			this.RawReq.Host = requestHost
 		}
+
+		// 是否移除端口
+		if this.reverseProxy.RequestHostExcludingPort {
+			this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
+		}
+
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeOrigin {
 		// 源站主机名
@@ -157,9 +163,21 @@ func (this *HTTPRequest) doReverseProxy() {
 		}
 
 		this.RawReq.Host = hostname
+
+		// 是否移除端口
+		if this.reverseProxy.RequestHostExcludingPort {
+			this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
+		}
+
 		this.RawReq.URL.Host = this.RawReq.Host
 	} else {
 		this.RawReq.URL.Host = this.ReqHost
+
+		// 是否移除端口
+		if this.reverseProxy.RequestHostExcludingPort {
+			this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
+			this.RawReq.URL.Host = utils.ParseAddrHost(this.RawReq.URL.Host)
+		}
 	}
 
 	// 重组请求URL

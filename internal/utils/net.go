@@ -25,3 +25,16 @@ func ListenReuseAddr(network string, addr string) (net.Listener, error) {
 	}
 	return config.Listen(context.Background(), network, addr)
 }
+
+// ParseAddrHost 分析地址中的主机名部分
+func ParseAddrHost(addr string) string {
+	if len(addr) == 0 {
+		return addr
+	}
+
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	return host
+}
