@@ -281,6 +281,7 @@ func (this *HTTPRequest) doBegin() {
 					}
 				}
 			} else if this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
+				this.web.UAM = this.ReqServer.UAM
 				if this.doUAM() {
 					this.doEnd()
 					return
