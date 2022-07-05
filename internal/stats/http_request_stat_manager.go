@@ -123,7 +123,7 @@ func (this *HTTPRequestStatManager) AddRemoteAddr(serverId int64, remoteAddr str
 	if remoteAddr[0] == '[' { // 排除IPv6
 		return
 	}
-	index := strings.Index(remoteAddr, ":")
+	var index = strings.Index(remoteAddr, ":")
 	var ip string
 	if index < 0 {
 		ip = remoteAddr
@@ -177,18 +177,18 @@ func (this *HTTPRequestStatManager) AddFirewallRuleGroupId(serverId int64, firew
 
 // Loop 单个循环
 func (this *HTTPRequestStatManager) Loop() error {
-	timeout := time.NewTimer(10 * time.Minute) // 执行的最大时间
+	var timeout = time.NewTimer(10 * time.Minute) // 执行的最大时间
 Loop:
 	for {
 		select {
 		case ipString := <-this.ipChan:
 			// serverId@ip@bytes@isAttack
-			pieces := strings.Split(ipString, "@")
+			var pieces = strings.Split(ipString, "@")
 			if len(pieces) < 4 {
 				continue
 			}
-			serverId := pieces[0]
-			ip := pieces[1]
+			var serverId = pieces[0]
+			var ip = pieces[1]
 
 			if iplibrary.SharedLibrary != nil {
 				result, err := iplibrary.SharedLibrary.Lookup(ip)
@@ -216,12 +216,12 @@ Loop:
 				}
 			}
 		case userAgentString := <-this.userAgentChan:
-			atIndex := strings.Index(userAgentString, "@")
+			var atIndex = strings.Index(userAgentString, "@")
 			if atIndex < 0 {
 				continue
 			}
-			serverId := userAgentString[:atIndex]
-			userAgent := userAgentString[atIndex+1:]
+			var serverId = userAgentString[:atIndex]
+			var userAgent = userAgentString[atIndex+1:]
 
 			var result = SharedUserAgentParser.Parse(userAgent)
 			var osInfo = result.OS
@@ -264,12 +264,12 @@ func (this *HTTPRequestStatManager) Upload() error {
 	}
 
 	// 月份相关
-	pbCities := []*pb.UploadServerHTTPRequestStatRequest_RegionCity{}
-	pbProviders := []*pb.UploadServerHTTPRequestStatRequest_RegionProvider{}
-	pbSystems := []*pb.UploadServerHTTPRequestStatRequest_System{}
-	pbBrowsers := []*pb.UploadServerHTTPRequestStatRequest_Browser{}
+	var pbCities = []*pb.UploadServerHTTPRequestStatRequest_RegionCity{}
+	var pbProviders = []*pb.UploadServerHTTPRequestStatRequest_RegionProvider{}
+	var pbSystems = []*pb.UploadServerHTTPRequestStatRequest_System{}
+	var pbBrowsers = []*pb.UploadServerHTTPRequestStatRequest_Browser{}
 	for k, stat := range this.cityMap {
-		pieces := strings.SplitN(k, "@", 4)
+		var pieces = strings.SplitN(k, "@", 4)
 		pbCities = append(pbCities, &pb.UploadServerHTTPRequestStatRequest_RegionCity{
 			ServerId:            types.Int64(pieces[0]),
 			CountryName:         pieces[1],
@@ -282,7 +282,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 		})
 	}
 	for k, count := range this.providerMap {
-		pieces := strings.SplitN(k, "@", 2)
+		var pieces = strings.SplitN(k, "@", 2)
 		pbProviders = append(pbProviders, &pb.UploadServerHTTPRequestStatRequest_RegionProvider{
 			ServerId: types.Int64(pieces[0]),
 			Name:     pieces[1],
@@ -290,7 +290,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 		})
 	}
 	for k, count := range this.systemMap {
-		pieces := strings.SplitN(k, "@", 3)
+		var pieces = strings.SplitN(k, "@", 3)
 		pbSystems = append(pbSystems, &pb.UploadServerHTTPRequestStatRequest_System{
 			ServerId: types.Int64(pieces[0]),
 			Name:     pieces[1],
@@ -299,7 +299,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 		})
 	}
 	for k, count := range this.browserMap {
-		pieces := strings.SplitN(k, "@", 3)
+		var pieces = strings.SplitN(k, "@", 3)
 		pbBrowsers = append(pbBrowsers, &pb.UploadServerHTTPRequestStatRequest_Browser{
 			ServerId: types.Int64(pieces[0]),
 			Name:     pieces[1],
@@ -309,9 +309,9 @@ func (this *HTTPRequestStatManager) Upload() error {
 	}
 
 	// 防火墙相关
-	pbFirewallRuleGroups := []*pb.UploadServerHTTPRequestStatRequest_HTTPFirewallRuleGroup{}
+	var pbFirewallRuleGroups = []*pb.UploadServerHTTPRequestStatRequest_HTTPFirewallRuleGroup{}
 	for k, count := range this.dailyFirewallRuleGroupMap {
-		pieces := strings.SplitN(k, "@", 3)
+		var pieces = strings.SplitN(k, "@", 3)
 		pbFirewallRuleGroups = append(pbFirewallRuleGroups, &pb.UploadServerHTTPRequestStatRequest_HTTPFirewallRuleGroup{
 			ServerId:                types.Int64(pieces[0]),
 			HttpFirewallRuleGroupId: types.Int64(pieces[1]),

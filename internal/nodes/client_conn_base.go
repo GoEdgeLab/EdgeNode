@@ -36,6 +36,16 @@ func (this *BaseClientConn) Bind(serverId int64, remoteAddr string, maxConnsPerS
 	return sharedClientConnLimiter.Add(this.rawConn.RemoteAddr().String(), serverId, remoteAddr, maxConnsPerServer, maxConnsPerIP)
 }
 
+// SetServerId 设置服务ID
+func (this *BaseClientConn) SetServerId(serverId int64) {
+	this.serverId = serverId
+}
+
+// ServerId 读取当前连接绑定的服务ID
+func (this *BaseClientConn) ServerId() int64 {
+	return this.serverId
+}
+
 // RawIP 原本IP
 func (this *BaseClientConn) RawIP() string {
 	ip, _, _ := net.SplitHostPort(this.rawConn.RemoteAddr().String())

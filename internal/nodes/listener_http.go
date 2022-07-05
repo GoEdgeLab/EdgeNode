@@ -178,6 +178,17 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		}
 	}
 
+	// 绑定连接
+	if server != nil && server.Id > 0 {
+		var requestConn = rawReq.Context().Value(HTTPConnContextKey)
+		if requestConn != nil {
+			clientConn, ok := requestConn.(ClientConnInterface)
+			if ok {
+				clientConn.SetServerId(server.Id)
+			}
+		}
+	}
+
 	// 包装新请求对象
 	var req = &HTTPRequest{
 		RawReq:     rawReq,

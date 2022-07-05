@@ -11,4 +11,10 @@ type ClientConnInterface interface {
 
 	// Bind 绑定服务
 	Bind(serverId int64, remoteAddr string, maxConnsPerServer int, maxConnsPerIP int) bool
+
+	// ServerId 获取服务ID
+	ServerId() int64
+
+	// SetServerId 设置服务ID
+	SetServerId(serverId int64)
 }

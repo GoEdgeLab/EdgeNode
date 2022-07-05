@@ -95,6 +95,10 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 
 // Add 添加流量
 func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64, checkingTrafficLimit bool, planId int64) {
+	if serverId == 0 {
+		return
+	}
+
 	if bytes == 0 && countRequests == 0 {
 		return
 	}
@@ -139,7 +143,7 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 
 // Upload 上传流量
 func (this *TrafficStatManager) Upload() error {
-	config := this.configFunc()
+	var config = this.configFunc()
 	if config == nil {
 		return nil
 	}
@@ -150,8 +154,8 @@ func (this *TrafficStatManager) Upload() error {
 	}
 
 	this.locker.Lock()
-	itemMap := this.itemMap
-	domainMap := this.domainsMap
+	var itemMap = this.itemMap
+	var domainMap = this.domainsMap
 	this.itemMap = map[string]*TrafficItem{}
 	this.domainsMap = map[string]*TrafficItem{}
 	this.locker.Unlock()

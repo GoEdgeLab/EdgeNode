@@ -63,13 +63,29 @@ func (this *TCPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 }
 
 func (this *TCPListener) handleConn(conn net.Conn) error {
-
 	var server = this.Group.FirstServer()
 	if server == nil {
 		return errors.New("no server available")
 	}
 	if server.ReverseProxy == nil {
 		return errors.New("no ReverseProxy configured for the server")
+	}
+
+	// 绑定连接和服务
+	clientConn, ok := conn.(ClientConnInterface)
+	if ok {
+		clientConn.SetServerId(server.Id)
+	} else {
+		tlsConn, ok := conn.(*tls.Conn)
+		if ok {
+			var internalConn = tlsConn.NetConn()
+			if internalConn != nil {
+				clientConn, ok = internalConn.(ClientConnInterface)
+				if ok {
+					clientConn.SetServerId(server.Id)
+				}
+			}
+		}
 	}
 
 	// 是否已达到流量限制

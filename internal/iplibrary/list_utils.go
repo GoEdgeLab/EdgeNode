@@ -13,7 +13,7 @@ import (
 func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool) {
 	if !Tea.IsTesting() { // 如果在测试环境，我们不加入一些白名单，以便于可以在本地和局域网正常测试
 		// 放行lo
-		if ip == "127.0.0.1" {
+		if ip == "127.0.0.1" || ip == "::1" {
 			return true, true
 		}
 

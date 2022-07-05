@@ -123,6 +123,10 @@ func (this *RPCClient) ServerDailyStatRPC() pb.ServerDailyStatServiceClient {
 	return pb.NewServerDailyStatServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) ServerBandwidthStatRPC() pb.ServerBandwidthStatServiceClient {
+	return pb.NewServerBandwidthStatServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) MetricStatRPC() pb.MetricStatServiceClient {
 	return pb.NewMetricStatServiceClient(this.pickConn())
 }

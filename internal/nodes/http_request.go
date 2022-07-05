@@ -356,7 +356,7 @@ func (this *HTTPRequest) doEnd() {
 
 	// 流量统计
 	// TODO 增加是否开启开关
-	if this.ReqServer != nil {
+	if this.ReqServer != nil && this.ReqServer.Id > 0 {
 		var countCached int64 = 0
 		var cachedBytes int64 = 0
 
@@ -373,17 +373,17 @@ func (this *HTTPRequest) doEnd() {
 		}
 
 		stats.SharedTrafficStatManager.Add(this.ReqServer.Id, this.ReqHost, this.writer.SentBodyBytes()+this.writer.SentHeaderBytes(), cachedBytes, 1, countCached, countAttacks, attackBytes, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
-	}
 
-	// 指标
-	if metrics.SharedManager.HasHTTPMetrics() {
-		this.doMetricsResponse()
-	}
+		// 指标
+		if metrics.SharedManager.HasHTTPMetrics() {
+			this.doMetricsResponse()
+		}
 
-	// 统计
-	if this.web.StatRef != nil && this.web.StatRef.IsOn {
-		// 放到最后执行
-		this.doStat()
+		// 统计
+		if this.web.StatRef != nil && this.web.StatRef.IsOn {
+			// 放到最后执行
+			this.doStat()
+		}
 	}
 }
 

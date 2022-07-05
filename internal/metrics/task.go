@@ -210,7 +210,7 @@ func (this *Task) Start() error {
 			var tr = trackers.Begin("[METRIC]UPLOAD_STATS")
 			err := this.Upload(1 * time.Second)
 			tr.End()
-			if err != nil {
+			if err != nil && !rpc.IsConnError(err) {
 				remotelogs.Error("METRIC", "upload stats failed: "+err.Error())
 			}
 		}

@@ -43,7 +43,7 @@ func (this *Listener) Listen() error {
 	if this.group == nil {
 		return nil
 	}
-	protocol := this.group.Protocol()
+	var protocol = this.group.Protocol()
 	if protocol.IsUDPFamily() {
 		return this.listenUDP()
 	}
@@ -54,7 +54,7 @@ func (this *Listener) listenTCP() error {
 	if this.group == nil {
 		return nil
 	}
-	protocol := this.group.Protocol()
+	var protocol = this.group.Protocol()
 
 	tcpListener, err := this.createTCPListener()
 	if err != nil {

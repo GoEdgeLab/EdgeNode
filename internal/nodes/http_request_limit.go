@@ -24,7 +24,7 @@ func (this *HTTPRequest) doRequestLimit() (shouldStop bool) {
 
 	// 设置连接相关参数
 	if this.web.RequestLimit.MaxConns > 0 || this.web.RequestLimit.MaxConnsPerIP > 0 {
-		requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
+		var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
 		if requestConn != nil {
 			clientConn, ok := requestConn.(ClientConnInterface)
 			if ok && !clientConn.IsBound() {
