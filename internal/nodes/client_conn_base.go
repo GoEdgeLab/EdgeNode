@@ -8,6 +8,7 @@ type BaseClientConn struct {
 	rawConn net.Conn
 
 	isBound    bool
+	userId     int64
 	serverId   int64
 	remoteAddr string
 
@@ -44,6 +45,16 @@ func (this *BaseClientConn) SetServerId(serverId int64) {
 // ServerId 读取当前连接绑定的服务ID
 func (this *BaseClientConn) ServerId() int64 {
 	return this.serverId
+}
+
+// SetUserId 设置所属服务的用户ID
+func (this *BaseClientConn) SetUserId(userId int64) {
+	this.userId = userId
+}
+
+// UserId 获取当前连接所属服务的用户ID
+func (this *BaseClientConn) UserId() int64 {
+	return this.userId
 }
 
 // RawIP 原本IP

@@ -185,6 +185,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 			clientConn, ok := requestConn.(ClientConnInterface)
 			if ok {
 				clientConn.SetServerId(server.Id)
+				clientConn.SetUserId(server.UserId)
 			}
 		}
 	}

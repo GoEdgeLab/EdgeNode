@@ -75,6 +75,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	clientConn, ok := conn.(ClientConnInterface)
 	if ok {
 		clientConn.SetServerId(server.Id)
+		clientConn.SetUserId(server.UserId)
 	} else {
 		tlsConn, ok := conn.(*tls.Conn)
 		if ok {
@@ -83,6 +84,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 				clientConn, ok = internalConn.(ClientConnInterface)
 				if ok {
 					clientConn.SetServerId(server.Id)
+					clientConn.SetUserId(server.UserId)
 				}
 			}
 		}

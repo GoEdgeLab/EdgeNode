@@ -112,7 +112,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 		// 统计当前服务带宽
 		if this.serverId > 0 {
 			if !this.isLO { // 环路不统计带宽，避免缓存预热等行为产生带宽
-				stats.SharedBandwidthStatManager.Add(this.serverId, int64(n))
+				stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n))
 			}
 		}
 	}

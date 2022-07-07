@@ -28,6 +28,7 @@ func init() {
 type BandwidthStat struct {
 	Day      string
 	TimeAt   string
+	UserId   int64
 	ServerId int64
 
 	CurrentBytes     int64
@@ -78,6 +79,7 @@ func (this *BandwidthStatManager) Loop() error {
 		if stat.Day < day || stat.TimeAt < currentTime {
 			pbStats = append(pbStats, &pb.ServerBandwidthStat{
 				Id:       0,
+				UserId:   stat.UserId,
 				ServerId: stat.ServerId,
 				Day:      stat.Day,
 				TimeAt:   stat.TimeAt,
@@ -104,7 +106,7 @@ func (this *BandwidthStatManager) Loop() error {
 }
 
 // Add 添加带宽数据
-func (this *BandwidthStatManager) Add(serverId int64, bytes int64) {
+func (this *BandwidthStatManager) Add(userId int64, serverId int64, bytes int64) {
 	if serverId <= 0 || bytes == 0 {
 		return
 	}
@@ -118,6 +120,8 @@ func (this *BandwidthStatManager) Add(serverId int64, bytes int64) {
 	this.locker.Lock()
 	stat, ok := this.m[key]
 	if ok {
+		// 此刻如果发生用户ID（userId）的变化也忽略，等N分钟后有新记录后再换
+
 		if stat.CurrentTimestamp == timestamp {
 			stat.CurrentBytes += bytes
 		} else {
@@ -131,6 +135,7 @@ func (this *BandwidthStatManager) Add(serverId int64, bytes int64) {
 		this.m[key] = &BandwidthStat{
 			Day:              day,
 			TimeAt:           timeAt,
+			UserId:           userId,
 			ServerId:         serverId,
 			CurrentBytes:     bytes,
 			MaxBytes:         bytes,
