@@ -375,6 +375,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	if !this.isLnRequest && !isPartialCache && len(eTag) > 0 && this.requestHeader("If-None-Match") == eTag {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
+		this.addExpiresHeader(reader.ExpiresAt())
 		this.writer.WriteHeader(http.StatusNotModified)
 		this.isCached = true
 		this.cacheRef = nil
@@ -386,6 +387,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	if !this.isLnRequest && !isPartialCache && len(modifiedTime) > 0 && this.requestHeader("If-Modified-Since") == modifiedTime {
 		// 自定义Header
 		this.processResponseHeaders(http.StatusNotModified)
+		this.addExpiresHeader(reader.ExpiresAt())
 		this.writer.WriteHeader(http.StatusNotModified)
 		this.isCached = true
 		this.cacheRef = nil
@@ -575,10 +577,12 @@ func (this *HTTPRequest) addExpiresHeader(expiresAt int64) {
 		if this.cacheRef.ExpiresTime.Overwrite || len(this.writer.Header().Get("Expires")) == 0 {
 			if this.cacheRef.ExpiresTime.AutoCalculate {
 				this.writer.Header().Set("Expires", time.Unix(utils.GMTUnixTime(expiresAt), 0).Format("Mon, 2 Jan 2006 15:04:05")+" GMT")
+				this.writer.Header().Del("Cache-Control")
 			} else if this.cacheRef.ExpiresTime.Duration != nil {
 				var duration = this.cacheRef.ExpiresTime.Duration.Duration()
 				if duration > 0 {
 					this.writer.Header().Set("Expires", utils.GMTTime(time.Now().Add(duration)).Format("Mon, 2 Jan 2006 15:04:05")+" GMT")
+					this.writer.Header().Del("Cache-Control")
 				}
 			}
 		}
