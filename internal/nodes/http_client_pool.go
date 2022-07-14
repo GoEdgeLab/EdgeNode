@@ -22,16 +22,18 @@ var SharedHTTPClientPool = NewHTTPClientPool()
 
 // HTTPClientPool 客户端池
 type HTTPClientPool struct {
-	clientExpiredDuration time.Duration
-	clientsMap            map[string]*HTTPClient // backend key => client
-	locker                sync.Mutex
+	clientsMap map[string]*HTTPClient // backend key => client
+
+	cleanTicker *time.Ticker
+
+	locker sync.RWMutex
 }
 
 // NewHTTPClientPool 获取新对象
 func NewHTTPClientPool() *HTTPClientPool {
 	var pool = &HTTPClientPool{
-		clientExpiredDuration: 3600 * time.Second,
-		clientsMap:            map[string]*HTTPClient{},
+		cleanTicker: time.NewTicker(1 * time.Hour),
+		clientsMap:  map[string]*HTTPClient{},
 	}
 
 	goman.New(func() {
@@ -53,10 +55,20 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 
 	var key = origin.UniqueKey() + "@" + originAddr
 
+	this.locker.RLock()
+	client, found := this.clientsMap[key]
+	this.locker.RUnlock()
+	if found {
+		client.UpdateAccessTime()
+		return client.RawClient(), nil
+	}
+
+	// 这里不能使用RLock，避免因为并发生成多个同样的client实例
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
-	client, found := this.clientsMap[key]
+	// 再次查找
+	client, found = this.clientsMap[key]
 	if found {
 		client.UpdateAccessTime()
 		return client.RawClient(), nil
@@ -135,7 +147,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 			MaxConnsPerHost:       maxConnections,
 			IdleConnTimeout:       idleTimeout,
 			ExpectContinueTimeout: 1 * time.Second,
-			TLSHandshakeTimeout:   3 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
 			TLSClientConfig:       tlsConfig,
 			Proxy:                 nil,
 		},
@@ -170,13 +182,12 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 
 // 清理不使用的Client
 func (this *HTTPClientPool) cleanClients() {
-	var ticker = time.NewTicker(this.clientExpiredDuration)
-	for range ticker.C {
-		currentAt := time.Now().Unix()
+	for range this.cleanTicker.C {
+		var nowTime = time.Now().Unix()
 
 		this.locker.Lock()
 		for k, client := range this.clientsMap {
-			if client.AccessTime() < currentAt+86400 { // 超过 N 秒没有调用就关闭
+			if client.AccessTime() < nowTime+86400 { // 超过 N 秒没有调用就关闭
 				delete(this.clientsMap, k)
 				client.Close()
 			}
