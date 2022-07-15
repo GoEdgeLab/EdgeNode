@@ -78,7 +78,7 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	// 处理Scheme
 	if origin.Addr == nil {
-		err := errors.New(this.URL() + ": origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
+		err := errors.New(this.URL() + ": Origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write50x(err, http.StatusBadGateway, true)
 		return
@@ -130,7 +130,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if origin.FollowPort {
 		var originHostIndex = strings.Index(originAddr, ":")
 		if originHostIndex < 0 {
-			var originErr = errors.New("invalid origin address '" + originAddr + "', lacking port")
+			var originErr = errors.New(this.URL() + ": Invalid origin address '" + originAddr + "', lacking port")
 			remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", originErr.Error())
 			this.write50x(originErr, http.StatusBadGateway, true)
 			return
@@ -210,7 +210,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	// 获取请求客户端
 	client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
 	if err != nil {
-		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": get client failed: "+err.Error())
+		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Create client failed: "+err.Error())
 		this.write50x(err, http.StatusBadGateway, true)
 		return
 	}
@@ -231,7 +231,7 @@ func (this *HTTPRequest) doReverseProxy() {
 				this.reverseProxy.ResetScheduling()
 			})
 			this.write50x(err, http.StatusBadGateway, true)
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+"': request failed: "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+err.Error())
 		} else if httpErr.Err != context.Canceled {
 			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
@@ -244,7 +244,7 @@ func (this *HTTPRequest) doReverseProxy() {
 				this.write50x(err, http.StatusBadGateway, true)
 			}
 			if httpErr.Err != io.EOF {
-				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": request failed: "+err.Error())
+				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
 			}
 		} else {
 			// 是否为客户端方面的错误
@@ -283,7 +283,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if this.doWAFResponse(resp) {
 			err = resp.Body.Close()
 			if err != nil {
-				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+err.Error())
+				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing Error (WAF): "+err.Error())
 			}
 			return
 		}
@@ -293,7 +293,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()
 		if err != nil {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error (Page): "+err.Error())
 		}
 		return
 	}
@@ -395,13 +395,13 @@ func (this *HTTPRequest) doReverseProxy() {
 	var closeErr = resp.Body.Close()
 	if closeErr != nil {
 		if !this.canIgnore(closeErr) {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": closing error: "+closeErr.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error: "+closeErr.Error())
 		}
 	}
 
 	if err != nil && err != io.EOF {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": writing error: "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Writing error: "+err.Error())
 			this.addError(err)
 		}
 	}

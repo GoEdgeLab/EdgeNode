@@ -11,6 +11,7 @@ type BaseClientConn struct {
 	userId     int64
 	serverId   int64
 	remoteAddr string
+	hasLimit   bool
 
 	isClosed bool
 }
@@ -32,6 +33,7 @@ func (this *BaseClientConn) Bind(serverId int64, remoteAddr string, maxConnsPerS
 	this.isBound = true
 	this.serverId = serverId
 	this.remoteAddr = remoteAddr
+	this.hasLimit = true
 
 	// 检查是否可以连接
 	return sharedClientConnLimiter.Add(this.rawConn.RemoteAddr().String(), serverId, remoteAddr, maxConnsPerServer, maxConnsPerIP)

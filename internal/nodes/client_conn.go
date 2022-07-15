@@ -86,18 +86,21 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 		}
 	}
 
-	// SYN Flood检测
 	var isHandshakeError = err != nil && os.IsTimeout(err) && !this.hasRead
 	if isHandshakeError {
 		_ = this.SetLinger(0)
 	}
-	var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
-	if synFloodConfig != nil && synFloodConfig.IsOn {
-		if isHandshakeError {
-			this.increaseSYNFlood(synFloodConfig)
-		} else if err == nil && !this.hasResetSYNFlood {
-			this.hasResetSYNFlood = true
-			this.resetSYNFlood()
+
+	// SYN Flood检测
+	if this.serverId == 0 || !this.hasResetSYNFlood {
+		var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
+		if synFloodConfig != nil && synFloodConfig.IsOn {
+			if isHandshakeError {
+				this.increaseSYNFlood(synFloodConfig)
+			} else if err == nil && !this.hasResetSYNFlood {
+				this.hasResetSYNFlood = true
+				this.resetSYNFlood()
+			}
 		}
 	}
 
@@ -126,7 +129,9 @@ func (this *ClientConn) Close() error {
 	err := this.rawConn.Close()
 
 	// 单个服务并发数限制
-	sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
+	if this.hasLimit {
+		sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
+	}
 
 	return err
 }
