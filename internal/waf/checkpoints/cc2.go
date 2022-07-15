@@ -5,13 +5,27 @@ package checkpoints
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 var ccCache = ttlcache.NewCache()
+
+var commonFileExtensionsMap = map[string]zero.Zero{
+	".ico":   zero.New(),
+	".jpg":   zero.New(),
+	".jpeg":  zero.New(),
+	".gif":   zero.New(),
+	".png":   zero.New(),
+	".webp":  zero.New(),
+	".woff2": zero.New(),
+	".js":    zero.New(),
+	".css":   zero.New(),
+}
 
 // CC2Checkpoint 新的CC
 type CC2Checkpoint struct {
@@ -36,6 +50,20 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 	var threshold = options.GetInt64("threshold")
 	if threshold <= 0 {
 		threshold = 1000
+	}
+
+	var ignoreCommonFiles = options.GetBool("ignoreCommonFiles")
+	if ignoreCommonFiles {
+		var rawReq = req.WAFRaw()
+		if len(rawReq.Referer()) > 0 {
+			var ext = filepath.Ext(rawReq.URL.Path)
+			if len(ext) > 0 {
+				_, ok := commonFileExtensionsMap[strings.ToLower(ext)]
+				if ok {
+					return
+				}
+			}
+		}
 	}
 
 	value = ccCache.IncreaseInt64("WAF-CC-"+strings.Join(keyValues, "@"), 1, time.Now().Unix()+period, false)
