@@ -164,6 +164,16 @@ func (this *HTTPRequest) Do() {
 		return
 	}
 
+	// 处理健康检查
+	var isHealthCheck = false
+	var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
+	if len(healthCheckKey) > 0 {
+		if this.doHealthCheck(healthCheckKey, &isHealthCheck) {
+			this.doEnd()
+			return
+		}
+	}
+
 	if !this.isLnRequest {
 		// 特殊URL处理
 		if len(this.rawURI) > 1 && this.rawURI[1] == '.' {
@@ -189,6 +199,24 @@ func (this *HTTPRequest) Do() {
 			this.doTrafficLimit()
 			this.doEnd()
 			return
+		}
+
+		// UAM
+		if !isHealthCheck {
+			if this.web.UAM != nil {
+				if this.web.UAM.IsOn {
+					if this.doUAM() {
+						this.doEnd()
+						return
+					}
+				}
+			} else if this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
+				this.web.UAM = this.ReqServer.UAM
+				if this.doUAM() {
+					this.doEnd()
+					return
+				}
+			}
 		}
 
 		// WAF
@@ -260,33 +288,6 @@ func (this *HTTPRequest) doBegin() {
 				return
 			}
 			this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))
-		}
-
-		// 处理健康检查
-		var isHealthCheck = false
-		var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
-		if len(healthCheckKey) > 0 {
-			if this.doHealthCheck(healthCheckKey, &isHealthCheck) {
-				return
-			}
-		}
-
-		// UAM
-		if !isHealthCheck {
-			if this.web.UAM != nil {
-				if this.web.UAM.IsOn {
-					if this.doUAM() {
-						this.doEnd()
-						return
-					}
-				}
-			} else if this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
-				this.web.UAM = this.ReqServer.UAM
-				if this.doUAM() {
-					this.doEnd()
-					return
-				}
-			}
 		}
 
 		// 跳转
