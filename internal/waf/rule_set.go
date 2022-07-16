@@ -167,89 +167,105 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 	return true
 }
 
-func (this *RuleSet) MatchRequest(req requests.Request) (b bool, err error) {
+func (this *RuleSet) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, err error) {
 	// 是否忽略局域网IP
 	if this.IgnoreLocal && utils.IsLocalIP(req.WAFRemoteIP()) {
-		return false, nil
+		return false, hasRequestBody, nil
 	}
 
 	if !this.hasRules {
-		return false, nil
+		return false, hasRequestBody, nil
 	}
 	switch this.Connector {
 	case RuleConnectorAnd:
 		for _, rule := range this.Rules {
-			b1, err1 := rule.MatchRequest(req)
+			b1, hasCheckRequestBody, err1 := rule.MatchRequest(req)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
-				return false, err1
+				return false, hasRequestBody, err1
 			}
 			if !b1 {
-				return false, nil
+				return false, hasRequestBody, nil
 			}
 		}
-		return true, nil
+		return true, hasRequestBody, nil
 	case RuleConnectorOr:
 		for _, rule := range this.Rules {
-			b1, err1 := rule.MatchRequest(req)
+			b1, hasCheckRequestBody, err1 := rule.MatchRequest(req)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
-				return false, err1
+				return false, hasRequestBody, err1
 			}
 			if b1 {
-				return true, nil
+				return true, hasRequestBody, nil
 			}
 		}
 	default: // same as And
 		for _, rule := range this.Rules {
-			b1, err1 := rule.MatchRequest(req)
+			b1, hasCheckRequestBody, err1 := rule.MatchRequest(req)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
-				return false, err1
+				return false, hasRequestBody, err1
 			}
 			if !b1 {
-				return false, nil
+				return false, hasRequestBody, nil
 			}
 		}
-		return true, nil
+		return true, hasRequestBody, nil
 	}
 	return
 }
 
-func (this *RuleSet) MatchResponse(req requests.Request, resp *requests.Response) (b bool, err error) {
+func (this *RuleSet) MatchResponse(req requests.Request, resp *requests.Response) (b bool, hasRequestBody bool, err error) {
 	if !this.hasRules {
-		return false, nil
+		return false, hasRequestBody, nil
 	}
 	switch this.Connector {
 	case RuleConnectorAnd:
 		for _, rule := range this.Rules {
-			b1, err1 := rule.MatchResponse(req, resp)
+			b1, hasCheckRequestBody, err1 := rule.MatchResponse(req, resp)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
-				return false, err1
+				return false, hasRequestBody, err1
 			}
 			if !b1 {
-				return false, nil
+				return false, hasRequestBody, nil
 			}
 		}
-		return true, nil
+		return true, hasRequestBody, nil
 	case RuleConnectorOr:
 		for _, rule := range this.Rules {
-			b1, err1 := rule.MatchResponse(req, resp)
+			// 对于OR连接符，只需要判断最先匹配的一条规则中的hasRequestBody即可
+			b1, hasCheckRequestBody, err1 := rule.MatchResponse(req, resp)
 			if err1 != nil {
-				return false, err1
+				return false, hasCheckRequestBody, err1
 			}
 			if b1 {
-				return true, nil
+				return true, hasCheckRequestBody, nil
 			}
 		}
 	default: // same as And
 		for _, rule := range this.Rules {
-			b1, err1 := rule.MatchResponse(req, resp)
+			b1, hasCheckRequestBody, err1 := rule.MatchResponse(req, resp)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
-				return false, err1
+				return false, hasRequestBody, err1
 			}
 			if !b1 {
-				return false, nil
+				return false, hasRequestBody, nil
 			}
 		}
-		return true, nil
+		return true, hasRequestBody, nil
 	}
 	return
 }

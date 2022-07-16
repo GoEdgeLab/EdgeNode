@@ -17,7 +17,7 @@ type RequestUploadCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.RequestBodyIsEmpty(req) {
 		value = ""
 		return
@@ -36,6 +36,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param st
 		return
 	}
 
+	hasRequestBody = true
 	if req.WAFRaw().MultipartForm == nil {
 		var bodyData = req.WAFGetCacheBody()
 		if len(bodyData) == 0 {
@@ -121,7 +122,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param st
 	return
 }
 
-func (this *RequestUploadCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestUploadCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

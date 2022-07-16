@@ -42,7 +42,7 @@ func TestWAF_MatchRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	goNext, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil)
+	goNext, _, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

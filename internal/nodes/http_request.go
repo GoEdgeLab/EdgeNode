@@ -89,7 +89,9 @@ type HTTPRequest struct {
 	firewallRuleSetId   int64
 	firewallRuleId      int64
 	firewallActions     []string
-	tags                []string
+	wafHasRequestBody   bool
+
+	tags []string
 
 	logAttrs map[string]string
 

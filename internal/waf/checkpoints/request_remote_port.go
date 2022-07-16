@@ -11,7 +11,7 @@ type RequestRemotePortCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestRemotePortCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestRemotePortCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	_, port, err := net.SplitHostPort(req.WAFRaw().RemoteAddr)
 	if err == nil {
 		value = types.Int(port)
@@ -21,7 +21,7 @@ func (this *RequestRemotePortCheckpoint) RequestValue(req requests.Request, para
 	return
 }
 
-func (this *RequestRemotePortCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestRemotePortCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

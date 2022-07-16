@@ -11,7 +11,7 @@ type RequestAllCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	valueBytes := []byte{}
 	if len(req.WAFRaw().RequestURI) > 0 {
 		valueBytes = append(valueBytes, req.WAFRaw().RequestURI...)
@@ -28,10 +28,11 @@ func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param strin
 		valueBytes = append(valueBytes, ' ')
 
 		var bodyData = req.WAFGetCacheBody()
+		hasRequestBody = true
 		if len(bodyData) == 0 {
 			data, err := req.WAFReadBody(utils.MaxBodySize) // read body
 			if err != nil {
-				return "", err, nil
+				return "", hasRequestBody, err, nil
 			}
 
 			bodyData = data
@@ -46,7 +47,7 @@ func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param strin
 	return
 }
 
-func (this *RequestAllCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestAllCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	value = ""
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)

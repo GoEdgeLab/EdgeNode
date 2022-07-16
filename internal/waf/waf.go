@@ -241,9 +241,9 @@ func (this *WAF) MoveOutboundRuleGroup(fromIndex int, toIndex int) {
 	this.Outbound = result
 }
 
-func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) (goNext bool, group *RuleGroup, set *RuleSet, err error) {
+func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, group *RuleGroup, set *RuleSet, err error) {
 	if !this.hasInboundRules {
-		return true, nil, nil, nil
+		return true, hasRequestBody, nil, nil, nil
 	}
 
 	// validate captcha
@@ -264,37 +264,43 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) 
 		if !group.IsOn {
 			continue
 		}
-		b, set, err := group.MatchRequest(req)
+		b, hasCheckedRequestBody, set, err := group.MatchRequest(req)
+		if hasCheckedRequestBody {
+			hasRequestBody = true
+		}
 		if err != nil {
-			return true, nil, nil, err
+			return true, hasRequestBody, nil, nil, err
 		}
 		if b {
-			goNext := set.PerformActions(this, group, req, writer)
-			return goNext, group, set, nil
+			goNext = set.PerformActions(this, group, req, writer)
+			return goNext, hasRequestBody, group, set, nil
 		}
 	}
-	return true, nil, nil, nil
+	return true, hasRequestBody, nil, nil, nil
 }
 
-func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, writer http.ResponseWriter) (goNext bool, group *RuleGroup, set *RuleSet, err error) {
+func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, group *RuleGroup, set *RuleSet, err error) {
 	if !this.hasOutboundRules {
-		return true, nil, nil, nil
+		return true, hasRequestBody, nil, nil, nil
 	}
 	resp := requests.NewResponse(rawResp)
 	for _, group := range this.Outbound {
 		if !group.IsOn {
 			continue
 		}
-		b, set, err := group.MatchResponse(req, resp)
+		b, hasCheckedRequestBody, set, err := group.MatchResponse(req, resp)
+		if hasCheckedRequestBody {
+			hasRequestBody = true
+		}
 		if err != nil {
-			return true, nil, nil, err
+			return true, hasRequestBody, nil, nil, err
 		}
 		if b {
-			goNext := set.PerformActions(this, group, req, writer)
-			return goNext, group, set, nil
+			goNext = set.PerformActions(this, group, req, writer)
+			return goNext, hasRequestBody, group, set, nil
 		}
 	}
-	return true, nil, nil, nil
+	return true, hasRequestBody, nil, nil, nil
 }
 
 // Save save to file path

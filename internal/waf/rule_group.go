@@ -75,7 +75,7 @@ func (this *RuleGroup) RemoveRuleSet(id int64) {
 	this.RuleSets = result
 }
 
-func (this *RuleGroup) MatchRequest(req requests.Request) (b bool, set *RuleSet, err error) {
+func (this *RuleGroup) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, set *RuleSet, err error) {
 	if !this.hasRuleSets {
 		return
 	}
@@ -83,18 +83,18 @@ func (this *RuleGroup) MatchRequest(req requests.Request) (b bool, set *RuleSet,
 		if !set.IsOn {
 			continue
 		}
-		b, err = set.MatchRequest(req)
+		b, hasRequestBody, err = set.MatchRequest(req)
 		if err != nil {
-			return false, nil, err
+			return false, hasRequestBody, nil, err
 		}
 		if b {
-			return true, set, nil
+			return true, hasRequestBody, set, nil
 		}
 	}
 	return
 }
 
-func (this *RuleGroup) MatchResponse(req requests.Request, resp *requests.Response) (b bool, set *RuleSet, err error) {
+func (this *RuleGroup) MatchResponse(req requests.Request, resp *requests.Response) (b bool, hasRequestBody bool, set *RuleSet, err error) {
 	if !this.hasRuleSets {
 		return
 	}
@@ -102,12 +102,12 @@ func (this *RuleGroup) MatchResponse(req requests.Request, resp *requests.Respon
 		if !set.IsOn {
 			continue
 		}
-		b, err = set.MatchResponse(req, resp)
+		b, hasRequestBody, err = set.MatchResponse(req, resp)
 		if err != nil {
-			return false, nil, err
+			return false, hasRequestBody, nil, err
 		}
 		if b {
-			return true, set, nil
+			return true, hasRequestBody, set, nil
 		}
 	}
 	return

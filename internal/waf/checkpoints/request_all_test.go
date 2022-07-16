@@ -18,7 +18,7 @@ func TestRequestAllCheckpoint_RequestValue(t *testing.T) {
 	}
 
 	checkpoint := new(RequestAllCheckpoint)
-	v, sysErr, userErr := checkpoint.RequestValue(requests.NewTestRequest(req), "", nil)
+	v, _, sysErr, userErr := checkpoint.RequestValue(requests.NewTestRequest(req), "", nil)
 	if sysErr != nil {
 		t.Fatal(sysErr)
 	}
@@ -42,7 +42,7 @@ func TestRequestAllCheckpoint_RequestValue_Max(t *testing.T) {
 	}
 
 	checkpoint := new(RequestBodyCheckpoint)
-	value, err, _ := checkpoint.RequestValue(requests.NewTestRequest(req), "", nil)
+	value, _, err, _ := checkpoint.RequestValue(requests.NewTestRequest(req), "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,6 +65,6 @@ func BenchmarkRequestAllCheckpoint_RequestValue(b *testing.B) {
 
 	checkpoint := new(RequestAllCheckpoint)
 	for i := 0; i < b.N; i++ {
-		_, _, _ = checkpoint.RequestValue(requests.NewTestRequest(req), "", nil)
+		_, _, _, _ = checkpoint.RequestValue(requests.NewTestRequest(req), "", nil)
 	}
 }

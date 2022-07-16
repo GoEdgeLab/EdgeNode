@@ -30,7 +30,7 @@ func (this *CCCheckpoint) Start() {
 	this.cache = ttlcache.NewCache()
 }
 
-func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	value = 0
 
 	if this.cache == nil {
@@ -120,7 +120,7 @@ func (this *CCCheckpoint) RequestValue(req requests.Request, param string, optio
 	return
 }
 
-func (this *CCCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *CCCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

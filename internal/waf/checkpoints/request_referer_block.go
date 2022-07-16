@@ -17,7 +17,7 @@ type RequestRefererBlockCheckpoint struct {
 
 // RequestValue 计算checkpoint值
 // 选项：allowEmpty, allowSameDomain, allowDomains
-func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	var referer = req.WAFRaw().Referer()
 
 	if len(referer) == 0 {
@@ -61,6 +61,6 @@ func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, pa
 	return
 }
 
-func (this *RequestRefererBlockCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestRefererBlockCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	return
 }

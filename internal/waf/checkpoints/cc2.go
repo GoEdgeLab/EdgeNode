@@ -32,7 +32,7 @@ type CC2Checkpoint struct {
 	Checkpoint
 }
 
-func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	var keys = options.GetSlice("keys")
 	var keyValues = []string{}
 	for _, key := range keys {
@@ -71,6 +71,6 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 	return
 }
 
-func (this *CC2Checkpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *CC2Checkpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	return
 }

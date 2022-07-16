@@ -17,10 +17,10 @@ type CheckpointInterface interface {
 	IsComposed() bool
 
 	// RequestValue get request value
-	RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error)
+	RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error)
 
 	// ResponseValue get response value
-	ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error)
+	ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error)
 
 	// ParamOptions param option list
 	ParamOptions() *ParamOptions

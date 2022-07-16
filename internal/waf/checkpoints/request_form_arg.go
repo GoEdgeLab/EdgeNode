@@ -12,7 +12,9 @@ type RequestFormArgCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+	hasRequestBody = true
+
 	if this.RequestBodyIsEmpty(req) {
 		value = ""
 		return
@@ -27,7 +29,7 @@ func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param s
 	if len(bodyData) == 0 {
 		data, err := req.WAFReadBody(utils.MaxBodySize) // read body
 		if err != nil {
-			return "", err, nil
+			return "", hasRequestBody, err, nil
 		}
 
 		bodyData = data
@@ -37,10 +39,10 @@ func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param s
 
 	// TODO improve performance
 	values, _ := url.ParseQuery(string(bodyData))
-	return values.Get(param), nil, nil
+	return values.Get(param), hasRequestBody, nil, nil
 }
 
-func (this *RequestFormArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestFormArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

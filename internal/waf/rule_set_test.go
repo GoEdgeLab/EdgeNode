@@ -113,7 +113,7 @@ func BenchmarkRuleSet_MatchRequest(b *testing.B) {
 	}
 	req := requests.NewTestRequest(rawReq)
 	for i := 0; i < b.N; i++ {
-		_, _ = set.MatchRequest(req)
+		_, _, _ = set.MatchRequest(req)
 	}
 }
 
@@ -143,7 +143,7 @@ func BenchmarkRuleSet_MatchRequest_Regexp(b *testing.B) {
 	}
 	req := requests.NewTestRequest(rawReq)
 	for i := 0; i < b.N; i++ {
-		_, _ = set.MatchRequest(req)
+		_, _, _ = set.MatchRequest(req)
 	}
 }
 

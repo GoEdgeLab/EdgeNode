@@ -184,11 +184,14 @@ func (this *Rule) Init() error {
 	return err
 }
 
-func (this *Rule) MatchRequest(req requests.Request) (b bool, err error) {
+func (this *Rule) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, err error) {
 	if this.singleCheckpoint != nil {
-		value, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions)
+		value, hasCheckedRequestBody, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions)
+		if hasCheckedRequestBody {
+			hasRequestBody = true
+		}
 		if err != nil {
-			return false, err
+			return false, hasRequestBody, err
 		}
 
 		// execute filters
@@ -198,10 +201,10 @@ func (this *Rule) MatchRequest(req requests.Request) (b bool, err error) {
 
 		// if is composed checkpoint, we just returns true or false
 		if this.singleCheckpoint.IsComposed() {
-			return types.Bool(value), nil
+			return types.Bool(value), hasRequestBody, nil
 		}
 
-		return this.Test(value), nil
+		return this.Test(value), hasRequestBody, nil
 	}
 
 	value := configutils.ParseVariables(this.Param, func(varName string) (value string) {
@@ -213,14 +216,20 @@ func (this *Rule) MatchRequest(req requests.Request) (b bool, err error) {
 		}
 
 		if len(pieces) == 1 {
-			value1, err1, _ := point.RequestValue(req, "", this.CheckpointOptions)
+			value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, "", this.CheckpointOptions)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
 				err = err1
 			}
 			return types.String(value1)
 		}
 
-		value1, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions)
+		value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions)
+		if hasCheckRequestBody {
+			hasRequestBody = true
+		}
 		if err1 != nil {
 			err = err1
 		}
@@ -228,19 +237,22 @@ func (this *Rule) MatchRequest(req requests.Request) (b bool, err error) {
 	})
 
 	if err != nil {
-		return false, err
+		return false, hasRequestBody, err
 	}
 
-	return this.Test(value), nil
+	return this.Test(value), hasRequestBody, nil
 }
 
-func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (b bool, err error) {
+func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (b bool, hasRequestBody bool, err error) {
 	if this.singleCheckpoint != nil {
 		// if is request param
 		if this.singleCheckpoint.IsRequest() {
-			value, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions)
+			value, hasCheckRequestBody, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err != nil {
-				return false, err
+				return false, hasRequestBody, err
 			}
 
 			// execute filters
@@ -248,21 +260,24 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 				value = this.execFilter(value)
 			}
 
-			return this.Test(value), nil
+			return this.Test(value), hasRequestBody, nil
 		}
 
 		// response param
-		value, err, _ := this.singleCheckpoint.ResponseValue(req, resp, this.singleParam, this.CheckpointOptions)
+		value, hasCheckRequestBody, err, _ := this.singleCheckpoint.ResponseValue(req, resp, this.singleParam, this.CheckpointOptions)
+		if hasCheckRequestBody {
+			hasRequestBody = true
+		}
 		if err != nil {
-			return false, err
+			return false, hasRequestBody, err
 		}
 
 		// if is composed checkpoint, we just returns true or false
 		if this.singleCheckpoint.IsComposed() {
-			return types.Bool(value), nil
+			return types.Bool(value), hasRequestBody, nil
 		}
 
-		return this.Test(value), nil
+		return this.Test(value), hasRequestBody, nil
 	}
 
 	value := configutils.ParseVariables(this.Param, func(varName string) (value string) {
@@ -275,13 +290,19 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 
 		if len(pieces) == 1 {
 			if point.IsRequest() {
-				value1, err1, _ := point.RequestValue(req, "", this.CheckpointOptions)
+				value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, "", this.CheckpointOptions)
+				if hasCheckRequestBody {
+					hasRequestBody = true
+				}
 				if err1 != nil {
 					err = err1
 				}
 				return types.String(value1)
 			} else {
-				value1, err1, _ := point.ResponseValue(req, resp, "", this.CheckpointOptions)
+				value1, hasCheckRequestBody, err1, _ := point.ResponseValue(req, resp, "", this.CheckpointOptions)
+				if hasCheckRequestBody {
+					hasRequestBody = true
+				}
 				if err1 != nil {
 					err = err1
 				}
@@ -290,13 +311,19 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 		}
 
 		if point.IsRequest() {
-			value1, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions)
+			value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
 				err = err1
 			}
 			return types.String(value1)
 		} else {
-			value1, err1, _ := point.ResponseValue(req, resp, pieces[1], this.CheckpointOptions)
+			value1, hasCheckRequestBody, err1, _ := point.ResponseValue(req, resp, pieces[1], this.CheckpointOptions)
+			if hasCheckRequestBody {
+				hasRequestBody = true
+			}
 			if err1 != nil {
 				err = err1
 			}
@@ -305,10 +332,10 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 	})
 
 	if err != nil {
-		return false, err
+		return false, hasRequestBody, err
 	}
 
-	return this.Test(value), nil
+	return this.Test(value), hasRequestBody, nil
 }
 
 func (this *Rule) Test(value interface{}) bool {

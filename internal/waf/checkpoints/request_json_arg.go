@@ -14,12 +14,13 @@ type RequestJSONArgCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	var bodyData = req.WAFGetCacheBody()
+	hasRequestBody = true
 	if len(bodyData) == 0 {
 		data, err := req.WAFReadBody(wafutils.MaxBodySize) // read body
 		if err != nil {
-			return "", err, nil
+			return "", hasRequestBody, err, nil
 		}
 
 		bodyData = data
@@ -31,17 +32,17 @@ func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param s
 	var m interface{} = nil
 	err := json.Unmarshal(bodyData, &m)
 	if err != nil || m == nil {
-		return "", nil, err
+		return "", hasRequestBody, nil, err
 	}
 
 	value = utils.Get(m, strings.Split(param, "."))
 	if value != nil {
-		return value, nil, err
+		return value, hasRequestBody, nil, err
 	}
-	return "", nil, nil
+	return "", hasRequestBody, nil, nil
 }
 
-func (this *RequestJSONArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, sysErr error, userErr error) {
+func (this *RequestJSONArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options)
 	}

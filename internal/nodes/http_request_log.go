@@ -149,8 +149,7 @@ func (this *HTTPRequest) log() {
 	}
 
 	// 请求Body
-	// TODO 考虑在被攻击时记录攻击的requestBody（如果requestBody匹配规则的话），但要考虑请求尺寸、数据库容量，避免因为日志而导致服务不稳定
-	if ref != nil && ref.ContainsField(serverconfigs.HTTPAccessLogFieldRequestBody) {
+	if (ref != nil && ref.ContainsField(serverconfigs.HTTPAccessLogFieldRequestBody)) || this.wafHasRequestBody {
 		accessLog.RequestBody = this.requestBodyData
 
 		if len(accessLog.RequestBody) > AccessLogMaxRequestBodySize {

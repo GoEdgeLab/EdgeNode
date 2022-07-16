@@ -40,7 +40,7 @@ func (this *GoSetAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 		return true
 	}
 
-	b, err := nextSet.MatchRequest(request)
+	b, _, err := nextSet.MatchRequest(request)
 	if err != nil {
 		logs.Error(err)
 		return true

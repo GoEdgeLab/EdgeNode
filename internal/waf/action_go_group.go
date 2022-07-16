@@ -35,7 +35,7 @@ func (this *GoGroupAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		return true
 	}
 
-	b, nextSet, err := nextGroup.MatchRequest(request)
+	b, _, nextSet, err := nextGroup.MatchRequest(request)
 	if err != nil {
 		logs.Error(err)
 		return true
