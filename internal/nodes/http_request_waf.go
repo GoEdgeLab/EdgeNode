@@ -55,17 +55,19 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 	var forceLog = false
 	var forceLogRequestBody = false
+	var forceLogRegionDenying = false
 	if this.ReqServer.HTTPFirewallPolicy != nil &&
 		this.ReqServer.HTTPFirewallPolicy.IsOn &&
 		this.ReqServer.HTTPFirewallPolicy.Log != nil &&
 		this.ReqServer.HTTPFirewallPolicy.Log.IsOn {
 		forceLog = true
 		forceLogRequestBody = this.ReqServer.HTTPFirewallPolicy.Log.RequestBody
+		forceLogRegionDenying = this.ReqServer.HTTPFirewallPolicy.Log.RegionDenying
 	}
 
 	// 当前服务的独立设置
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
-		blocked, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy, forceLog, forceLogRequestBody)
+		blocked, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying)
 		if blocked {
 			return true
 		}
@@ -76,7 +78,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 	// 公用的防火墙设置
 	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
-		blocked, breakChecking := this.checkWAFRequest(this.ReqServer.HTTPFirewallPolicy, forceLog, forceLogRequestBody)
+		blocked, breakChecking := this.checkWAFRequest(this.ReqServer.HTTPFirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying)
 		if blocked {
 			return true
 		}
@@ -88,15 +90,21 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	return
 }
 
-func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, forceLog bool, logRequestBody bool) (blocked bool, breakChecking bool) {
+func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, forceLog bool, logRequestBody bool, logDenying bool) (blocked bool, breakChecking bool) {
 	// 检查配置是否为空
 	if firewallPolicy == nil || !firewallPolicy.IsOn || firewallPolicy.Inbound == nil || !firewallPolicy.Inbound.IsOn || firewallPolicy.Mode == firewallconfigs.FirewallModeBypass {
 		return
 	}
 
 	// 检查IP白名单
-	remoteAddrs := this.requestRemoteAddrs()
-	inbound := firewallPolicy.Inbound
+	var remoteAddrs []string
+	if len(this.remoteAddr) > 0 {
+		remoteAddrs = []string{this.remoteAddr}
+	} else {
+		remoteAddrs = this.requestRemoteAddrs()
+	}
+
+	var inbound = firewallPolicy.Inbound
 	if inbound == nil {
 		return
 	}
@@ -167,13 +175,17 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 							if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
 								countryId := iplibrary.SharedCountryManager.Lookup(result.Country)
 								if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
-									// TODO 可以配置对封禁的处理方式等
-									// TODO 需要记录日志信息
+									this.firewallPolicyId = firewallPolicy.Id
+
 									this.writer.WriteHeader(http.StatusForbidden)
 									this.writer.Close()
 
 									// 停止日志
-									this.disableLog = true
+									if !logDenying {
+										this.disableLog = true
+									} else {
+										this.tags = append(this.tags, "denyCountry")
+									}
 
 									return true, false
 								}
@@ -181,15 +193,19 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 							// 检查省份封禁
 							if len(regionConfig.DenyProvinceIds) > 0 && len(result.Province) > 0 {
-								provinceId := iplibrary.SharedProvinceManager.Lookup(result.Province)
+								var provinceId = iplibrary.SharedProvinceManager.Lookup(result.Province)
 								if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
-									// TODO 可以配置对封禁的处理方式等
-									// TODO 需要记录日志信息
+									this.firewallPolicyId = firewallPolicy.Id
+
 									this.writer.WriteHeader(http.StatusForbidden)
 									this.writer.Close()
 
 									// 停止日志
-									this.disableLog = true
+									if !logDenying {
+										this.disableLog = true
+									} else {
+										this.tags = append(this.tags, "denyProvince")
+									}
 
 									return true, false
 								}

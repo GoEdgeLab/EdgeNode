@@ -1114,7 +1114,7 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 // 获取请求的客户端地址列表
 func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
 	// X-Forwarded-For
-	forwardedFor := this.RawReq.Header.Get("X-Forwarded-For")
+	var forwardedFor = this.RawReq.Header.Get("X-Forwarded-For")
 	if len(forwardedFor) > 0 {
 		commaIndex := strings.Index(forwardedFor, ",")
 		if commaIndex > 0 {
@@ -1139,13 +1139,16 @@ func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
 	}
 
 	// Remote-Addr
-	remoteAddr := this.RawReq.RemoteAddr
-	host, _, err := net.SplitHostPort(remoteAddr)
-	if err == nil {
-		result = append(result, host)
-	} else {
-		result = append(result, remoteAddr)
+	{
+		var remoteAddr = this.RawReq.RemoteAddr
+		host, _, err := net.SplitHostPort(remoteAddr)
+		if err == nil {
+			result = append(result, host)
+		} else {
+			result = append(result, remoteAddr)
+		}
 	}
+
 	return
 }
 
