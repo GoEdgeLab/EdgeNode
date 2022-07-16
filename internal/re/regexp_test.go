@@ -125,8 +125,33 @@ func BenchmarkRegexp_MatchString2(b *testing.B) {
 func BenchmarkRegexp_MatchString_CaseSensitive(b *testing.B) {
 	var r = re.MustCompile("(abc|def|ghi)")
 	b.Log("keywords:", r.Keywords())
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		r.MatchString("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
+	}
+}
+
+func BenchmarkRegexp_MatchString_CaseSensitive2(b *testing.B) {
+	var r = regexp.MustCompile("(abc|def|ghi)")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.MatchString("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
+	}
+}
+
+func BenchmarkRegexp_MatchString_VS_FindSubString1(b *testing.B) {
+	var r = re.MustCompile("(?i)(chrome)")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = r.Raw().MatchString("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
+	}
+}
+
+func BenchmarkRegexp_MatchString_VS_FindSubString2(b *testing.B) {
+	var r = re.MustCompile("(?i)(chrome)")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = r.Raw().FindStringSubmatch("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
 	}
 }
 

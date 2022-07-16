@@ -136,6 +136,10 @@ func (this *Regexp) Match(s []byte) bool {
 	return this.rawRegexp.Match(s)
 }
 
+func (this *Regexp) FindStringSubmatch(s string) []string {
+	return this.rawRegexp.FindStringSubmatch(s)
+}
+
 // ParseKeywords 提取表达式中的关键词
 func (this *Regexp) ParseKeywords(exp string) (keywords []string) {
 	if len(exp) == 0 {
