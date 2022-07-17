@@ -20,7 +20,7 @@ require (
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20211103081026-ee4652210ca4
 	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
-	github.com/klauspost/compress v1.15.6
+	github.com/klauspost/compress v1.15.8
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/mdlayher/netlink v1.4.2
 	github.com/miekg/dns v1.1.43
