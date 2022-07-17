@@ -9,20 +9,27 @@ import (
 )
 
 func TestNewMaxOpenFiles(t *testing.T) {
-	var maxOpenFiles = caches.NewMaxOpenFiles(2)
+	var maxOpenFiles = caches.NewMaxOpenFiles()
 	maxOpenFiles.Fast()
-	t.Log(maxOpenFiles.Max())
+	t.Log("fast:", maxOpenFiles.Next())
 
-	maxOpenFiles.Fast()
+	maxOpenFiles.Slow()
+	t.Log("slow:", maxOpenFiles.Next())
+	time.Sleep(1*time.Second + 1*time.Millisecond)
+	t.Log("slow 1 second:", maxOpenFiles.Next())
+
+	maxOpenFiles.Slow()
+	t.Log("slow:", maxOpenFiles.Next())
+
+	maxOpenFiles.Slow()
+	t.Log("slow:", maxOpenFiles.Next())
+
 	time.Sleep(1 * time.Second)
-	t.Log(maxOpenFiles.Max())
+	t.Log("slow 1 second:", maxOpenFiles.Next())
 
 	maxOpenFiles.Slow()
-	t.Log(maxOpenFiles.Max())
+	t.Log("slow:", maxOpenFiles.Next())
 
-	maxOpenFiles.Slow()
-	t.Log(maxOpenFiles.Max())
-
-	maxOpenFiles.Slow()
-	t.Log(maxOpenFiles.Max())
+	maxOpenFiles.Fast()
+	t.Log("fast:", maxOpenFiles.Next())
 }

@@ -63,7 +63,7 @@ const (
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
 var sharedWritingFileKeyLocker = sync.Mutex{}
 
-var maxOpenFiles = NewMaxOpenFiles(2)
+var maxOpenFiles = NewMaxOpenFiles()
 
 const maxOpenFilesSlowCost = 500 * time.Microsecond // 0.5ms
 
@@ -428,7 +428,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		return nil, ErrFileIsWriting
 	}
 
-	if !isFlushing && len(sharedWritingFileKeyMap) >= int(maxOpenFiles.Max()) {
+	if !isFlushing && !maxOpenFiles.Next() {
 		sharedWritingFileKeyLocker.Unlock()
 		return nil, ErrTooManyOpenFiles
 	}
@@ -439,6 +439,9 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		if !isOk {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
+			if len(sharedWritingFileKeyMap) == 0 {
+				maxOpenFiles.FinishAll()
+			}
 			sharedWritingFileKeyLocker.Unlock()
 		}
 	}()
@@ -608,12 +611,18 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		return NewPartialFileWriter(writer, key, expiredAt, isNewCreated, isPartial, partialBodyOffset, ranges, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
+			if len(sharedWritingFileKeyMap) == 0 {
+				maxOpenFiles.FinishAll()
+			}
 			sharedWritingFileKeyLocker.Unlock()
 		}), nil
 	} else {
 		return NewFileWriter(this, writer, key, expiredAt, -1, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
+			if len(sharedWritingFileKeyMap) == 0 {
+				maxOpenFiles.FinishAll()
+			}
 			sharedWritingFileKeyLocker.Unlock()
 		}), nil
 	}
