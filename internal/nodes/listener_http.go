@@ -139,10 +139,10 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 	// TLS域名
 	if this.isIP(reqHost) {
 		if rawReq.TLS != nil {
-			serverName := rawReq.TLS.ServerName
+			var serverName = rawReq.TLS.ServerName
 			if len(serverName) > 0 {
 				// 端口
-				index := strings.LastIndex(reqHost, ":")
+				var index = strings.LastIndex(reqHost, ":")
 				if index >= 0 {
 					reqHost = serverName + reqHost[index:]
 				} else {
@@ -154,7 +154,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 
 	// 防止空Host
 	if len(reqHost) == 0 {
-		ctx := rawReq.Context()
+		var ctx = rawReq.Context()
 		if ctx != nil {
 			addr := ctx.Value(http.LocalAddrContextKey)
 			if addr != nil {
@@ -176,6 +176,8 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		} else {
 			serverName = domain
 		}
+	} else if !server.CNameAsDomain && server.CNameDomain == domain {
+		server = this.emptyServer()
 	}
 
 	// 绑定连接

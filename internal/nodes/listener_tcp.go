@@ -248,7 +248,7 @@ func (this *TCPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 			return
 		}
 	}
-	err = errors.New("no origin server can be used")
+	err = errors.New("server '" + types.String(serverId) + "': no available origin server can be used")
 	return
 }
 

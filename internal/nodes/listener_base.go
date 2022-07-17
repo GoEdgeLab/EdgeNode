@@ -40,6 +40,10 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 				return nil, err
 			}
 
+			if tlsPolicy == nil {
+				return nil, nil
+			}
+
 			tlsPolicy.CheckOCSP()
 
 			return tlsPolicy.TLSConfig(), nil
@@ -62,7 +66,7 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 
 // 根据域名匹配证书
 func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.Certificate, error) {
-	group := this.Group
+	var group = this.Group
 
 	if group == nil {
 		return nil, nil, errors.New("no configure found")
