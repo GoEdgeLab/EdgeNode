@@ -343,9 +343,11 @@ func (this *HTTPRequestStatManager) Upload() error {
 		if strings.Contains(err.Error(), "string field contains invalid UTF-8") {
 			for _, system := range pbSystems {
 				system.Name = utils.ToValidUTF8string(system.Name)
+				system.Version = utils.ToValidUTF8string(system.Version)
 			}
 			for _, browser := range pbBrowsers {
 				browser.Name = utils.ToValidUTF8string(browser.Name)
+				browser.Version = utils.ToValidUTF8string(browser.Version)
 			}
 
 			// 再次尝试
