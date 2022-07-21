@@ -68,6 +68,8 @@ func (this *NodeStatusExecutor) update() {
 	status.BuildVersionCode = utils.VersionToLong(teaconst.Version)
 	status.OS = runtime.GOOS
 	status.Arch = runtime.GOARCH
+	exe, _ := os.Executable()
+	status.ExePath = exe
 	status.ConfigVersion = sharedNodeConfig.Version
 	status.IsActive = true
 	status.ConnectionCount = sharedListenerManager.TotalActiveConnections()
