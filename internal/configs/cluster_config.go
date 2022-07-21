@@ -1,10 +1,11 @@
 package configs
 
-// 集群配置
+// ClusterConfig 集群配置
 type ClusterConfig struct {
 	RPC struct {
-		Endpoints []string `yaml:"endpoints"`
+		Endpoints     []string `yaml:"endpoints"`
+		DisableUpdate bool     `yaml:"disableUpdate"`
 	} `yaml:"rpc"`
 	ClusterId string `yaml:"clusterId"`
-	Secret string `yaml:"secret"`
+	Secret    string `yaml:"secret"`
 }

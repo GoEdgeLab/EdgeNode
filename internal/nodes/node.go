@@ -635,11 +635,13 @@ func (this *Node) checkClusterConfig() error {
 	if len(resp.Endpoints) == 0 {
 		resp.Endpoints = []string{}
 	}
-	apiConfig := &configs.APIConfig{
+	var apiConfig = &configs.APIConfig{
 		RPC: struct {
-			Endpoints []string `yaml:"endpoints"`
+			Endpoints     []string `yaml:"endpoints"`
+			DisableUpdate bool     `yaml:"disableUpdate"`
 		}{
-			Endpoints: resp.Endpoints,
+			Endpoints:     resp.Endpoints,
+			DisableUpdate: false,
 		},
 		NodeId: resp.UniqueId,
 		Secret: resp.Secret,

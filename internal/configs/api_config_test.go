@@ -1,11 +1,15 @@
-package configs
+package configs_test
 
-import "testing"
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	_ "github.com/iwind/TeaGo/bootstrap"
+	"testing"
+)
 
 func TestLoadAPIConfig(t *testing.T) {
-	config, err := LoadAPIConfig()
+	config, err := configs.LoadAPIConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(config)
+	t.Logf("%+v", config)
 }

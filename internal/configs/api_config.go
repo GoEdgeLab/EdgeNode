@@ -9,7 +9,8 @@ import (
 // APIConfig 节点API配置
 type APIConfig struct {
 	RPC struct {
-		Endpoints []string `yaml:"endpoints"`
+		Endpoints     []string `yaml:"endpoints"`
+		DisableUpdate bool     `yaml:"disableUpdate"`
 	} `yaml:"rpc"`
 	NodeId string `yaml:"nodeId"`
 	Secret string `yaml:"secret"`
@@ -30,7 +31,7 @@ func LoadAPIConfig() (*APIConfig, error) {
 	return config, nil
 }
 
-// 保存到文件
+// WriteFile 保存到文件
 func (this *APIConfig) WriteFile(path string) error {
 	data, err := yaml.Marshal(this)
 	if err != nil {
