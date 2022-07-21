@@ -12,3 +12,15 @@ func TestParseAddrHost(t *testing.T) {
 		t.Log(addr + " => " + utils.ParseAddrHost(addr))
 	}
 }
+
+func TestMergePorts(t *testing.T) {
+	for _, ports := range [][]int{
+		{},
+		{80},
+		{80, 83, 85},
+		{80, 81, 83, 85, 86, 87, 88, 90},
+		{0, 0, 1, 1, 2, 2, 2, 3, 3, 3},
+	} {
+		t.Log(ports, "=>", utils.MergePorts(ports))
+	}
+}

@@ -75,6 +75,24 @@ func (this *Firewalld) AllowPort(port int, protocol string) error {
 	return nil
 }
 
+func (this *Firewalld) AllowPortRangesPermanently(portRanges [][2]int, protocol string) error {
+	for _, portRange := range portRanges {
+		var port = this.PortRangeString(portRange, protocol)
+
+		{
+			var cmd = exec.Command(this.exe, "--add-port="+port, "--permanent")
+			this.pushCmd(cmd)
+		}
+
+		{
+			var cmd = exec.Command(this.exe, "--add-port="+port)
+			this.pushCmd(cmd)
+		}
+	}
+
+	return nil
+}
+
 func (this *Firewalld) RemovePort(port int, protocol string) error {
 	if !this.isReady {
 		return nil
@@ -82,6 +100,30 @@ func (this *Firewalld) RemovePort(port int, protocol string) error {
 	var cmd = exec.Command(this.exe, "--remove-port="+types.String(port)+"/"+protocol)
 	this.pushCmd(cmd)
 	return nil
+}
+
+func (this *Firewalld) RemovePortRangePermanently(portRange [2]int, protocol string) error {
+	var port = this.PortRangeString(portRange, protocol)
+
+	{
+		var cmd = exec.Command(this.exe, "--remove-port="+port, "--permanent")
+		this.pushCmd(cmd)
+	}
+
+	{
+		var cmd = exec.Command(this.exe, "--remove-port="+port)
+		this.pushCmd(cmd)
+	}
+
+	return nil
+}
+
+func (this *Firewalld) PortRangeString(portRange [2]int, protocol string) string {
+	if portRange[0] == portRange[1] {
+		return types.String(portRange[0]) + "/" + protocol
+	} else {
+		return types.String(portRange[0]) + "-" + types.String(portRange[1]) + "/" + protocol
+	}
 }
 
 func (this *Firewalld) RejectSourceIP(ip string, timeoutSeconds int) error {

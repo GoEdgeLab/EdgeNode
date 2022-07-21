@@ -5,11 +5,14 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
+	"github.com/iwind/TeaGo/types"
 	"net/url"
 	"os/exec"
 	"regexp"
@@ -31,15 +34,19 @@ type ListenerManager struct {
 	retryListenerMap map[string]*Listener // 需要重试的监听器 addr => Listener
 	ticker           *time.Ticker
 
-	lastPortStrings string
+	firewalld         *firewalls.Firewalld
+	lastPortStrings   string
+	lastTCPPortRanges [][2]int
+	lastUDPPortRanges [][2]int
 }
 
 // NewListenerManager 获取新对象
 func NewListenerManager() *ListenerManager {
-	manager := &ListenerManager{
+	var manager = &ListenerManager{
 		listenersMap:     map[string]*Listener{},
 		retryListenerMap: map[string]*Listener{},
 		ticker:           time.NewTicker(1 * time.Minute),
+		firewalld:        firewalls.NewFirewalld(),
 	}
 
 	// 提升测试效率
@@ -147,7 +154,7 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	}
 
 	// 加入到firewalld
-	this.addToFirewalld(groupAddrs)
+	go this.addToFirewalld(groupAddrs)
 
 	return nil
 }
@@ -226,8 +233,14 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 		return
 	}
 
+	if this.firewalld == nil || !this.firewalld.IsReady() {
+		return
+	}
+
 	// 组合端口号
-	var ports = []string{}
+	var portStrings = []string{}
+	var udpPorts = []int{}
+	var tcpPorts = []int{}
 	for _, addr := range groupAddrs {
 		var protocol = "tcp"
 		if strings.HasPrefix(addr, "udp") {
@@ -237,52 +250,72 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 		var lastIndex = strings.LastIndex(addr, ":")
 		if lastIndex > 0 {
 			var portString = addr[lastIndex+1:]
-			ports = append(ports, portString+"/"+protocol)
+			portStrings = append(portStrings, portString+"/"+protocol)
+
+			switch protocol {
+			case "tcp":
+				tcpPorts = append(tcpPorts, types.Int(portString))
+			case "udp":
+				udpPorts = append(udpPorts, types.Int(portString))
+			}
 		}
 	}
-	if len(ports) == 0 {
+	if len(portStrings) == 0 {
 		return
 	}
 
 	// 检查是否有变化
-	sort.Strings(ports)
-	var newPortStrings = strings.Join(ports, ",")
+	sort.Strings(portStrings)
+	var newPortStrings = strings.Join(portStrings, ",")
 	if newPortStrings == this.lastPortStrings {
 		return
 	}
 	this.lastPortStrings = newPortStrings
 
-	firewallCmd, err := exec.LookPath("firewall-cmd")
-	if err != nil || len(firewallCmd) == 0 {
-		return
+	remotelogs.Println("FIREWALLD", "opening ports automatically ...")
+	defer func() {
+		remotelogs.Println("FIREWALLD", "open ports successfully")
+	}()
+
+	// 合并端口
+	var tcpPortRanges = utils.MergePorts(tcpPorts)
+	var udpPortRanges = utils.MergePorts(udpPorts)
+
+	defer func() {
+		this.lastTCPPortRanges = tcpPortRanges
+		this.lastUDPPortRanges = udpPortRanges
+	}()
+
+	// 删除老的不存在的端口
+	var tcpPortRangesMap = map[string]bool{}
+	var udpPortRangesMap = map[string]bool{}
+	for _, portRange := range tcpPortRanges {
+		tcpPortRangesMap[this.firewalld.PortRangeString(portRange, "tcp")] = true
+	}
+	for _, portRange := range udpPortRanges {
+		udpPortRangesMap[this.firewalld.PortRangeString(portRange, "udp")] = true
 	}
 
-	// 检查状态
-	err = exec.Command(firewallCmd, "--state").Run()
-	if err != nil {
-		return
-	}
-
-	remotelogs.Println("FIREWALLD", "open ports automatically")
-	for _, port := range ports {
-		{
-			// TODO 需要支持sudo
-			var cmd = exec.Command(firewallCmd, "--add-port="+port, "--permanent")
-			err = cmd.Run()
-			if err != nil {
-				remotelogs.Warn("FIREWALLD", "'"+cmd.String()+"': "+err.Error())
-				return
-			}
+	for _, portRange := range this.lastTCPPortRanges {
+		var s = this.firewalld.PortRangeString(portRange, "tcp")
+		_, ok := tcpPortRangesMap[s]
+		if ok {
+			continue
 		}
-
-		{
-			// TODO 需要支持sudo
-			var cmd = exec.Command(firewallCmd, "--add-port="+port)
-			err = cmd.Run()
-			if err != nil {
-				remotelogs.Warn("FIREWALLD", "'"+cmd.String()+"': "+err.Error())
-				return
-			}
-		}
+		remotelogs.Println("FIREWALLD", "remove port '"+s+"'")
+		_ = this.firewalld.RemovePortRangePermanently(portRange, "tcp")
 	}
+	for _, portRange := range this.lastUDPPortRanges {
+		var s = this.firewalld.PortRangeString(portRange, "udp")
+		_, ok := udpPortRangesMap[s]
+		if ok {
+			continue
+		}
+		remotelogs.Println("FIREWALLD", "remove port '"+s+"'")
+		_ = this.firewalld.RemovePortRangePermanently(portRange, "udp")
+	}
+
+	// 添加新的
+	_ = this.firewalld.AllowPortRangesPermanently(tcpPortRanges, "tcp")
+	_ = this.firewalld.AllowPortRangesPermanently(udpPortRanges, "udp")
 }
