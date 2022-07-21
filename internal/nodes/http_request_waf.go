@@ -177,7 +177,8 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 								if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
 									this.firewallPolicyId = firewallPolicy.Id
 
-									this.writer.WriteHeader(http.StatusForbidden)
+									this.writeCode(http.StatusForbidden)
+									this.writer.Flush()
 									this.writer.Close()
 
 									// 停止日志
@@ -197,7 +198,8 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 								if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
 									this.firewallPolicyId = firewallPolicy.Id
 
-									this.writer.WriteHeader(http.StatusForbidden)
+									this.writeCode(http.StatusForbidden)
+									this.writer.Flush()
 									this.writer.Close()
 
 									// 停止日志
