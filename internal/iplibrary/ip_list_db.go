@@ -28,6 +28,8 @@ type IPListDB struct {
 	cleanTicker *time.Ticker
 
 	dir string
+
+	isClosed bool
 }
 
 func NewIPListDB() (*IPListDB, error) {
@@ -56,6 +58,12 @@ func (this *IPListDB) init() error {
 		return err
 	}
 	db.SetMaxOpenConns(1)
+
+	//_, err = db.Exec("VACUUM")
+	//if err != nil {
+	//	return err
+	//}
+
 	this.db = db
 
 	// 初始化数据库
@@ -117,6 +125,7 @@ ON "` + this.itemTableName + `" (
 
 	goman.New(func() {
 		events.On(events.EventQuit, func() {
+			_ = this.Close()
 			this.cleanTicker.Stop()
 		})
 
@@ -133,11 +142,19 @@ ON "` + this.itemTableName + `" (
 
 // DeleteExpiredItems 删除过期的条目
 func (this *IPListDB) DeleteExpiredItems() error {
+	if this.isClosed {
+		return nil
+	}
+
 	_, err := this.deleteExpiredItemsStmt.Exec(time.Now().Unix() - 7*86400)
 	return err
 }
 
 func (this *IPListDB) AddItem(item *pb.IPItem) error {
+	if this.isClosed {
+		return nil
+	}
+
 	_, err := this.deleteItemStmt.Exec(item.Id)
 	if err != nil {
 		return err
@@ -147,6 +164,10 @@ func (this *IPListDB) AddItem(item *pb.IPItem) error {
 }
 
 func (this *IPListDB) ReadItems(offset int64, size int64) (items []*pb.IPItem, err error) {
+	if this.isClosed {
+		return
+	}
+
 	rows, err := this.selectItemsStmt.Query(offset, size)
 	if err != nil {
 		return nil, err
@@ -169,6 +190,10 @@ func (this *IPListDB) ReadItems(offset int64, size int64) (items []*pb.IPItem, e
 
 // ReadMaxVersion 读取当前最大版本号
 func (this *IPListDB) ReadMaxVersion() int64 {
+	if this.isClosed {
+		return 0
+	}
+
 	row := this.selectMaxVersionStmt.QueryRow()
 	if row == nil {
 		return 0
@@ -182,6 +207,8 @@ func (this *IPListDB) ReadMaxVersion() int64 {
 }
 
 func (this *IPListDB) Close() error {
+	this.isClosed = true
+
 	if this.db != nil {
 		_ = this.deleteExpiredItemsStmt.Close()
 		_ = this.deleteItemStmt.Close()

@@ -144,7 +144,7 @@ func TestIPList_Contains(t *testing.T) {
 	list := NewIPList()
 	for i := 0; i < 255; i++ {
 		list.AddDelay(&IPItem{
-			Id:        int64(i),
+			Id:        uint64(i),
 			IPFrom:    utils.IP2Long(strconv.Itoa(i) + ".168.0.1"),
 			IPTo:      utils.IP2Long(strconv.Itoa(i) + ".168.255.1"),
 			ExpiredAt: 0,
@@ -152,7 +152,7 @@ func TestIPList_Contains(t *testing.T) {
 	}
 	for i := 0; i < 255; i++ {
 		list.AddDelay(&IPItem{
-			Id:     int64(1000 + i),
+			Id:     uint64(1000 + i),
 			IPFrom: utils.IP2Long("192.167.2." + strconv.Itoa(i)),
 		})
 	}
@@ -172,7 +172,7 @@ func TestIPList_Contains_Many(t *testing.T) {
 	list := NewIPList()
 	for i := 0; i < 1_000_000; i++ {
 		list.AddDelay(&IPItem{
-			Id:        int64(i),
+			Id:        uint64(i),
 			IPFrom:    utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255))),
 			IPTo:      utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255))),
 			ExpiredAt: 0,
@@ -217,7 +217,7 @@ func TestIPList_ContainsIPStrings(t *testing.T) {
 	list := NewIPList()
 	for i := 0; i < 255; i++ {
 		list.Add(&IPItem{
-			Id:        int64(i),
+			Id:        uint64(i),
 			IPFrom:    utils.IP2Long(strconv.Itoa(i) + ".168.0.1"),
 			IPTo:      utils.IP2Long(strconv.Itoa(i) + ".168.255.1"),
 			ExpiredAt: 0,
@@ -305,7 +305,7 @@ func BenchmarkIPList_Contains(b *testing.B) {
 	var list = NewIPList()
 	for i := 1; i < 200_000; i++ {
 		list.AddDelay(&IPItem{
-			Id:        int64(i),
+			Id:        uint64(i),
 			IPFrom:    utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
 			IPTo:      utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
 			ExpiredAt: time.Now().Unix() + 60,

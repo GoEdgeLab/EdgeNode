@@ -53,6 +53,11 @@ func TestIPListDB_ReadItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		_ = db.Close()
+	}()
+
 	items, err := db.ReadItems(0, 2)
 	if err != nil {
 		t.Fatal(err)

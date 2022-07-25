@@ -79,7 +79,7 @@ func TestIPItem_Memory(t *testing.T) {
 	for i := 0; i < 2_000_000; i ++ {
 		list.Add(&IPItem{
 			Type:       "ip",
-			Id:         int64(i),
+			Id:         uint64(i),
 			IPFrom:     utils.IP2Long("192.168.1.1"),
 			IPTo:       0,
 			ExpiredAt:  time.Now().Unix(),
