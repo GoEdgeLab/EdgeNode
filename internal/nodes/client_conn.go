@@ -129,9 +129,8 @@ func (this *ClientConn) Close() error {
 	err := this.rawConn.Close()
 
 	// 单个服务并发数限制
-	if this.hasLimit {
-		sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
-	}
+	// 不能加条件限制，因为服务配置随时有变化
+	sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
 
 	return err
 }
