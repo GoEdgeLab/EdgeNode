@@ -12,7 +12,7 @@ type RequestFormArgCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	hasRequestBody = true
 
 	if this.RequestBodyIsEmpty(req) {
@@ -42,9 +42,9 @@ func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param s
 	return values.Get(param), hasRequestBody, nil, nil
 }
 
-func (this *RequestFormArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestFormArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
-		return this.RequestValue(req, param, options)
+		return this.RequestValue(req, param, options, ruleId)
 	}
 	return
 }

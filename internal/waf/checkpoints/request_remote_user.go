@@ -9,7 +9,7 @@ type RequestRemoteUserCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestRemoteUserCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestRemoteUserCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	username, _, ok := req.WAFRaw().BasicAuth()
 	if !ok {
 		value = ""
@@ -19,9 +19,9 @@ func (this *RequestRemoteUserCheckpoint) RequestValue(req requests.Request, para
 	return
 }
 
-func (this *RequestRemoteUserCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestRemoteUserCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
-		return this.RequestValue(req, param, options)
+		return this.RequestValue(req, param, options, ruleId)
 	}
 	return
 }

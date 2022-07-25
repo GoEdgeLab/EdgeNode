@@ -9,7 +9,7 @@ type RequestCookieCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestCookieCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestCookieCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	cookie, err := req.WAFRaw().Cookie(param)
 	if err != nil {
 		value = ""
@@ -20,9 +20,9 @@ func (this *RequestCookieCheckpoint) RequestValue(req requests.Request, param st
 	return
 }
 
-func (this *RequestCookieCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestCookieCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
-		return this.RequestValue(req, param, options)
+		return this.RequestValue(req, param, options, ruleId)
 	}
 	return
 }

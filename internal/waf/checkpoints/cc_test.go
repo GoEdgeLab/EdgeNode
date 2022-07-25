@@ -23,21 +23,21 @@ func TestCCCheckpoint_RequestValue(t *testing.T) {
 	options := maps.Map{
 		"period": "5",
 	}
-	t.Log(checkpoint.RequestValue(req, "requests", options))
-	t.Log(checkpoint.RequestValue(req, "requests", options))
+	t.Log(checkpoint.RequestValue(req, "requests", options, 1))
+	t.Log(checkpoint.RequestValue(req, "requests", options, 1))
 
 	req.WAFRaw().RemoteAddr = "127.0.0.2"
-	t.Log(checkpoint.RequestValue(req, "requests", options))
+	t.Log(checkpoint.RequestValue(req, "requests", options, 1))
 
 	req.WAFRaw().RemoteAddr = "127.0.0.1"
-	t.Log(checkpoint.RequestValue(req, "requests", options))
+	t.Log(checkpoint.RequestValue(req, "requests", options, 1))
 
 	req.WAFRaw().RemoteAddr = "127.0.0.2"
-	t.Log(checkpoint.RequestValue(req, "requests", options))
+	t.Log(checkpoint.RequestValue(req, "requests", options, 1))
 
 	req.WAFRaw().RemoteAddr = "127.0.0.2"
-	t.Log(checkpoint.RequestValue(req, "requests", options))
+	t.Log(checkpoint.RequestValue(req, "requests", options, 1))
 
 	req.WAFRaw().RemoteAddr = "127.0.0.2"
-	t.Log(checkpoint.RequestValue(req, "requests", options))
+	t.Log(checkpoint.RequestValue(req, "requests", options, 1))
 }

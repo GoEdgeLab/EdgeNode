@@ -32,7 +32,7 @@ type CC2Checkpoint struct {
 	Checkpoint
 }
 
-func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	var keys = options.GetSlice("keys")
 	var keyValues = []string{}
 	for _, key := range keys {
@@ -66,11 +66,16 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 		}
 	}
 
-	value = ccCache.IncreaseInt64("WAF-CC-"+strings.Join(keyValues, "@"), 1, time.Now().Unix()+period, false)
+	var ccKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(keyValues, "@")
+	value = ccCache.IncreaseInt64(ccKey, 1, time.Now().Unix()+period, false)
 
 	return
 }
 
-func (this *CC2Checkpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CC2Checkpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+	if this.IsRequest() {
+		return this.RequestValue(req, param, options, ruleId)
+	}
+
 	return
 }

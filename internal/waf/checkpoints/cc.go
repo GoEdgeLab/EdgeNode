@@ -30,7 +30,7 @@ func (this *CCCheckpoint) Start() {
 	this.cache = ttlcache.NewCache()
 }
 
-func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	value = 0
 
 	if this.cache == nil {
@@ -114,15 +114,15 @@ func (this *CCCheckpoint) RequestValue(req requests.Request, param string, optio
 		if len(key) == 0 {
 			key = req.WAFRemoteIP()
 		}
-		value = this.cache.IncreaseInt64(key, int64(1), time.Now().Unix()+period, false)
+		value = this.cache.IncreaseInt64(types.String(ruleId)+"@"+key, int64(1), time.Now().Unix()+period, false)
 	}
 
 	return
 }
 
-func (this *CCCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CCCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
-		return this.RequestValue(req, param, options)
+		return this.RequestValue(req, param, options, ruleId)
 	}
 	return
 }

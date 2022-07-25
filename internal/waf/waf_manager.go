@@ -97,6 +97,7 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 				// rules
 				for _, rule := range set.Rules {
 					r := &Rule{
+						Id:                rule.Id,
 						Description:       rule.Description,
 						Param:             rule.Param,
 						ParamFilters:      []*ParamFilter{},
@@ -154,6 +155,7 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 				// rules
 				for _, rule := range set.Rules {
 					r := &Rule{
+						Id:                rule.Id,
 						Description:       rule.Description,
 						Param:             rule.Param,
 						Operator:          rule.Operator,

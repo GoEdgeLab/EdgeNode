@@ -15,11 +15,11 @@ func (this *RequestGeoCountryNameCheckpoint) IsComposed() bool {
 	return false
 }
 
-func (this *RequestGeoCountryNameCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestGeoCountryNameCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	value = req.Format("${geo.country.name}")
 	return
 }
 
-func (this *RequestGeoCountryNameCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
-	return this.RequestValue(req, param, options)
+func (this *RequestGeoCountryNameCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+	return this.RequestValue(req, param, options, ruleId)
 }

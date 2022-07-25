@@ -16,5 +16,5 @@ func TestRequestHostCheckpoint_RequestValue(t *testing.T) {
 	req.WAFRaw().Header.Set("Host", "cloud.teaos.cn")
 
 	checkpoint := new(RequestHostCheckpoint)
-	t.Log(checkpoint.RequestValue(req, "", nil))
+	t.Log(checkpoint.RequestValue(req, "", nil, 1))
 }

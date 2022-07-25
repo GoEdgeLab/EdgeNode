@@ -14,7 +14,7 @@ type RequestJSONArgCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	var bodyData = req.WAFGetCacheBody()
 	hasRequestBody = true
 	if len(bodyData) == 0 {
@@ -42,9 +42,9 @@ func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param s
 	return "", hasRequestBody, nil, nil
 }
 
-func (this *RequestJSONArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestJSONArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
-		return this.RequestValue(req, param, options)
+		return this.RequestValue(req, param, options, ruleId)
 	}
 	return
 }

@@ -17,7 +17,7 @@ func TestRequestBodyCheckpoint_RequestValue(t *testing.T) {
 	}
 	var req = requests.NewTestRequest(rawReq)
 	checkpoint := new(RequestBodyCheckpoint)
-	t.Log(checkpoint.RequestValue(req, "", nil))
+	t.Log(checkpoint.RequestValue(req, "", nil, 1))
 
 	body, err := ioutil.ReadAll(rawReq.Body)
 	if err != nil {
@@ -34,7 +34,7 @@ func TestRequestBodyCheckpoint_RequestValue_Max(t *testing.T) {
 	}
 
 	checkpoint := new(RequestBodyCheckpoint)
-	value, _, err, _ := checkpoint.RequestValue(requests.NewTestRequest(req), "", nil)
+	value, _, err, _ := checkpoint.RequestValue(requests.NewTestRequest(req), "", nil, 1)
 	if err != nil {
 		t.Fatal(err)
 	}

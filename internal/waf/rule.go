@@ -26,6 +26,8 @@ var singleParamRegexp = regexp.MustCompile("^\\${[\\w.-]+}$")
 
 // Rule
 type Rule struct {
+	Id int64
+
 	Description       string                 `yaml:"description" json:"description"`
 	Param             string                 `yaml:"param" json:"param"` // such as ${arg.name} or ${args}, can be composite as ${arg.firstName}${arg.lastName}
 	ParamFilters      []*ParamFilter         `yaml:"paramFilters" json:"paramFilters"`
@@ -186,7 +188,7 @@ func (this *Rule) Init() error {
 
 func (this *Rule) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, err error) {
 	if this.singleCheckpoint != nil {
-		value, hasCheckedRequestBody, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions)
+		value, hasCheckedRequestBody, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions, this.Id)
 		if hasCheckedRequestBody {
 			hasRequestBody = true
 		}
@@ -216,7 +218,7 @@ func (this *Rule) MatchRequest(req requests.Request) (b bool, hasRequestBody boo
 		}
 
 		if len(pieces) == 1 {
-			value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, "", this.CheckpointOptions)
+			value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, "", this.CheckpointOptions, this.Id)
 			if hasCheckRequestBody {
 				hasRequestBody = true
 			}
@@ -226,7 +228,7 @@ func (this *Rule) MatchRequest(req requests.Request) (b bool, hasRequestBody boo
 			return types.String(value1)
 		}
 
-		value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions)
+		value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions, this.Id)
 		if hasCheckRequestBody {
 			hasRequestBody = true
 		}
@@ -247,7 +249,7 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 	if this.singleCheckpoint != nil {
 		// if is request param
 		if this.singleCheckpoint.IsRequest() {
-			value, hasCheckRequestBody, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions)
+			value, hasCheckRequestBody, err, _ := this.singleCheckpoint.RequestValue(req, this.singleParam, this.CheckpointOptions, this.Id)
 			if hasCheckRequestBody {
 				hasRequestBody = true
 			}
@@ -264,7 +266,7 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 		}
 
 		// response param
-		value, hasCheckRequestBody, err, _ := this.singleCheckpoint.ResponseValue(req, resp, this.singleParam, this.CheckpointOptions)
+		value, hasCheckRequestBody, err, _ := this.singleCheckpoint.ResponseValue(req, resp, this.singleParam, this.CheckpointOptions, this.Id)
 		if hasCheckRequestBody {
 			hasRequestBody = true
 		}
@@ -290,7 +292,7 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 
 		if len(pieces) == 1 {
 			if point.IsRequest() {
-				value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, "", this.CheckpointOptions)
+				value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, "", this.CheckpointOptions, this.Id)
 				if hasCheckRequestBody {
 					hasRequestBody = true
 				}
@@ -299,7 +301,7 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 				}
 				return types.String(value1)
 			} else {
-				value1, hasCheckRequestBody, err1, _ := point.ResponseValue(req, resp, "", this.CheckpointOptions)
+				value1, hasCheckRequestBody, err1, _ := point.ResponseValue(req, resp, "", this.CheckpointOptions, this.Id)
 				if hasCheckRequestBody {
 					hasRequestBody = true
 				}
@@ -311,7 +313,7 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 		}
 
 		if point.IsRequest() {
-			value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions)
+			value1, hasCheckRequestBody, err1, _ := point.RequestValue(req, pieces[1], this.CheckpointOptions, this.Id)
 			if hasCheckRequestBody {
 				hasRequestBody = true
 			}
@@ -320,7 +322,7 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 			}
 			return types.String(value1)
 		} else {
-			value1, hasCheckRequestBody, err1, _ := point.ResponseValue(req, resp, pieces[1], this.CheckpointOptions)
+			value1, hasCheckRequestBody, err1, _ := point.ResponseValue(req, resp, pieces[1], this.CheckpointOptions, this.Id)
 			if hasCheckRequestBody {
 				hasRequestBody = true
 			}

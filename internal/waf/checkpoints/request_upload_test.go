@@ -88,11 +88,11 @@ func TestRequestUploadCheckpoint_RequestValue(t *testing.T) {
 	req.WAFRaw().Header.Add("Content-Type", writer.FormDataContentType())
 
 	checkpoint := new(RequestUploadCheckpoint)
-	t.Log(checkpoint.RequestValue(req, "field", nil))
-	t.Log(checkpoint.RequestValue(req, "minSize", nil))
-	t.Log(checkpoint.RequestValue(req, "maxSize", nil))
-	t.Log(checkpoint.RequestValue(req, "name", nil))
-	t.Log(checkpoint.RequestValue(req, "ext", nil))
+	t.Log(checkpoint.RequestValue(req, "field", nil, 1))
+	t.Log(checkpoint.RequestValue(req, "minSize", nil, 1))
+	t.Log(checkpoint.RequestValue(req, "maxSize", nil, 1))
+	t.Log(checkpoint.RequestValue(req, "name", nil, 1))
+	t.Log(checkpoint.RequestValue(req, "ext", nil, 1))
 
 	data, err := ioutil.ReadAll(req.WAFRaw().Body)
 	if err != nil {
