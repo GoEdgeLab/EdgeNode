@@ -9,7 +9,7 @@ var unixTime = time.Now().Unix()
 var unixTimeMilli = time.Now().UnixMilli()
 
 func init() {
-	ticker := time.NewTicker(200 * time.Millisecond)
+	var ticker = time.NewTicker(200 * time.Millisecond)
 	goman.New(func() {
 		for range ticker.C {
 			unixTime = time.Now().Unix()

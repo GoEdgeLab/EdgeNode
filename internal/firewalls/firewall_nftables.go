@@ -7,6 +7,7 @@ package firewalls
 import (
 	"bytes"
 	"errors"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls/nftables"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -21,6 +22,10 @@ import (
 
 // check nft status, if being enabled we load it automatically
 func init() {
+	if teaconst.IsDaemon {
+		return
+	}
+
 	if runtime.GOOS == "linux" {
 		var ticker = time.NewTicker(3 * time.Minute)
 		go func() {

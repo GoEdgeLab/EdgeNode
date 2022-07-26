@@ -4,6 +4,7 @@ package compressions
 
 import (
 	"compress/gzip"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
 )
@@ -11,6 +12,10 @@ import (
 var sharedGzipWriterPool *WriterPool
 
 func init() {
+	if teaconst.IsDaemon {
+		return
+	}
+
 	var maxSize = utils.SystemMemoryGB() * 256
 	if maxSize == 0 {
 		maxSize = 256

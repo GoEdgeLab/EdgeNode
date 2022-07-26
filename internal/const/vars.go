@@ -12,6 +12,7 @@ var (
 
 	NodeId       int64 = 0
 	NodeIdString       = ""
+	IsDaemon           = false
 
 	GlobalProductName = nodeconfigs.DefaultProductName
 

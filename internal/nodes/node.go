@@ -207,8 +207,9 @@ func (this *Node) Start() {
 
 // Daemon 实现守护进程
 func (this *Node) Daemon() {
-	isDebug := lists.ContainsString(os.Args, "debug")
-	isDebug = true
+	teaconst.IsDaemon = true
+
+	var isDebug = lists.ContainsString(os.Args, "debug")
 	for {
 		conn, err := this.sock.Dial()
 		if err != nil {
@@ -227,7 +228,7 @@ func (this *Node) Daemon() {
 				_ = os.Setenv("EdgeDaemon", "on")
 				_ = os.Setenv("EdgeBackground", "on")
 
-				cmd := exec.Command(exe)
+				var cmd = exec.Command(exe)
 				err = cmd.Start()
 				if err != nil {
 					return err

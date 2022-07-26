@@ -3,6 +3,7 @@
 package compressions
 
 import (
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/klauspost/compress/zstd"
 	"io"
@@ -11,6 +12,10 @@ import (
 var sharedZSTDWriterPool *WriterPool
 
 func init() {
+	if teaconst.IsDaemon {
+		return
+	}
+
 	var maxSize = utils.SystemMemoryGB() * 256
 	if maxSize == 0 {
 		maxSize = 256
