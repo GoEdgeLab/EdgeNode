@@ -438,16 +438,18 @@ func (this *MemoryStorage) startFlush() {
 		if statCount == 100 {
 			statCount = 0
 
-			loadStat, err := load.Avg()
-			if err == nil && loadStat != nil {
-				if loadStat.Load1 > 10 {
-					writeDelayMS = 100
-				} else if loadStat.Load1 > 3 {
-					writeDelayMS = 50
-				} else if loadStat.Load1 > 2 {
-					writeDelayMS = 10
-				} else {
-					writeDelayMS = 0
+			if protectingLoadWhenDump {
+				loadStat, err := load.Avg()
+				if err == nil && loadStat != nil {
+					if loadStat.Load1 > 10 {
+						writeDelayMS = 100
+					} else if loadStat.Load1 > 3 {
+						writeDelayMS = 50
+					} else if loadStat.Load1 > 2 {
+						writeDelayMS = 10
+					} else {
+						writeDelayMS = 0
+					}
 				}
 			}
 		}
