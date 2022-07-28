@@ -714,6 +714,7 @@ func (this *Node) listenSock() error {
 				_ = this.sock.Close()
 
 				events.Notify(events.EventQuit)
+				events.Notify(events.EventTerminated)
 
 				// 监控连接数，如果连接数为0，则退出进程
 				goman.New(func() {

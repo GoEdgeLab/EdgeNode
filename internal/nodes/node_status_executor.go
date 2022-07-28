@@ -30,10 +30,14 @@ type NodeStatusExecutor struct {
 	cpuUpdatedTime   time.Time
 	cpuLogicalCount  int
 	cpuPhysicalCount int
+
+	ticker *time.Ticker
 }
 
 func NewNodeStatusExecutor() *NodeStatusExecutor {
-	return &NodeStatusExecutor{}
+	return &NodeStatusExecutor{
+		ticker: time.NewTicker(30 * time.Second),
+	}
 }
 
 func (this *NodeStatusExecutor) Listen() {
@@ -41,15 +45,12 @@ func (this *NodeStatusExecutor) Listen() {
 	this.cpuUpdatedTime = time.Now()
 	this.update()
 
-	// TODO 这个时间间隔可以配置
-	var ticker = time.NewTicker(30 * time.Second)
-
 	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("NODE_STATUS", "quit executor")
-		ticker.Stop()
+		this.ticker.Stop()
 	})
 
-	for range ticker.C {
+	for range this.ticker.C {
 		this.isFirstTime = false
 		this.update()
 	}

@@ -14,8 +14,10 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	stringutil "github.com/iwind/TeaGo/utils/string"
+	"github.com/iwind/gosock/pkg/gosock"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"time"
 )
@@ -46,15 +48,12 @@ func (this *UpgradeManager) Start() {
 	}
 	this.isInstalling = true
 
-	// 还原安装状态
-	defer func() {
-		this.isInstalling = false
-	}()
-
 	remotelogs.Println("UPGRADE_MANAGER", "upgrading node ...")
 	err := this.install()
 	if err != nil {
 		remotelogs.Error("UPGRADE_MANAGER", "download failed: "+err.Error())
+
+		this.isInstalling = false
 		return
 	}
 
@@ -65,6 +64,8 @@ func (this *UpgradeManager) Start() {
 		if err != nil {
 			remotelogs.Error("UPGRADE_MANAGER", err.Error())
 		}
+
+		this.isInstalling = false
 	})
 }
 
@@ -83,7 +84,7 @@ func (this *UpgradeManager) install() error {
 	}
 
 	// 创建临时文件
-	dir := Tea.Root + "/tmp"
+	var dir = Tea.Root + "/tmp"
 	_, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -98,7 +99,7 @@ func (this *UpgradeManager) install() error {
 
 	remotelogs.Println("UPGRADE_MANAGER", "downloading new node ...")
 
-	path := dir + "/edge-node" + ".tmp"
+	var path = dir + "/edge-node" + ".tmp"
 	fp, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
 		return err
@@ -203,16 +204,16 @@ func (this *UpgradeManager) unzip(zipPath string) error {
 	}
 
 	// 先改先前的可执行文件
-	err := os.Rename(target+"/bin/edge-node", target+"/bin/.edge-node.dist")
-	hasBackup := err == nil
+	err := os.Rename(target+"/bin/"+teaconst.ProcessName, target+"/bin/."+teaconst.ProcessName+".dist")
+	var hasBackup = err == nil
 	defer func() {
 		if !isOk && hasBackup {
 			// 失败时还原
-			_ = os.Rename(target+"/bin/.edge-node.dist", target+"/bin/edge-node")
+			_ = os.Rename(target+"/bin/."+teaconst.ProcessName+".dist", target+"/bin/"+teaconst.ProcessName)
 		}
 	}()
 
-	unzip := utils.NewUnzip(zipPath, target, "edge-node/")
+	var unzip = utils.NewUnzip(zipPath, target, "edge-node/")
 	err = unzip.Run()
 	if err != nil {
 		return err
@@ -225,6 +226,9 @@ func (this *UpgradeManager) unzip(zipPath string) error {
 
 // 重启
 func (this *UpgradeManager) restart() error {
+	// 关闭当前sock，防止无法重启
+	_ = gosock.NewTmpSock(teaconst.ProcessName).Close()
+
 	// 重新启动
 	if DaemonIsOn && DaemonPid == os.Getppid() {
 		utils.Exit() // TODO 试着更优雅重启
@@ -241,7 +245,9 @@ func (this *UpgradeManager) restart() error {
 		events.Notify(events.EventTerminated)
 
 		// 启动
-		cmd := exec.Command(exe, "start")
+		exe = filepath.Dir(exe) + "/" + teaconst.ProcessName
+
+		var cmd = exec.Command(exe, "start")
 		err = cmd.Start()
 		if err != nil {
 			return err
