@@ -56,7 +56,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if origin == nil {
 			err := errors.New(this.URL() + ": no available origin sites for reverse proxy")
 			remotelogs.ServerError(this.ReqServer.Id, "HTTP_REQUEST_REVERSE_PROXY", err.Error(), "", nil)
-			this.write50x(err, http.StatusBadGateway, true)
+			this.write50x(err, http.StatusBadGateway, "No origin site yet", "尚未配置源站", true)
 			return
 		}
 
@@ -80,7 +80,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	if origin.Addr == nil {
 		err := errors.New(this.URL() + ": Origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
-		this.write50x(err, http.StatusBadGateway, true)
+		this.write50x(err, http.StatusBadGateway, "Origin site did not has a valid address", "源站尚未配置地址", true)
 		return
 	}
 	this.RawReq.URL.Scheme = origin.Addr.Protocol.Primary().Scheme()
@@ -132,7 +132,7 @@ func (this *HTTPRequest) doReverseProxy() {
 		if originHostIndex < 0 {
 			var originErr = errors.New(this.URL() + ": Invalid origin address '" + originAddr + "', lacking port")
 			remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", originErr.Error())
-			this.write50x(originErr, http.StatusBadGateway, true)
+			this.write50x(originErr, http.StatusBadGateway, "No port in origin site address", "源站地址中没有配置端口", true)
 			return
 		}
 		originAddr = originAddr[:originHostIndex+1] + types.String(this.requestServerPort())
@@ -211,7 +211,7 @@ func (this *HTTPRequest) doReverseProxy() {
 	client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
 	if err != nil {
 		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Create client failed: "+err.Error())
-		this.write50x(err, http.StatusBadGateway, true)
+		this.write50x(err, http.StatusBadGateway, "Failed to create origin site client", "构造源站客户端失败", true)
 		return
 	}
 
@@ -230,18 +230,18 @@ func (this *HTTPRequest) doReverseProxy() {
 			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
 			})
-			this.write50x(err, http.StatusBadGateway, true)
+			this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+err.Error())
 		} else if httpErr.Err != context.Canceled {
 			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
 			})
 			if httpErr.Timeout() {
-				this.write50x(err, http.StatusGatewayTimeout, true)
+				this.write50x(err, http.StatusGatewayTimeout, "Read origin site timeout", "源站读取超时", true)
 			} else if httpErr.Temporary() {
-				this.write50x(err, http.StatusServiceUnavailable, true)
+				this.write50x(err, http.StatusServiceUnavailable, "Origin site unavailable now", "源站当前不可用", true)
 			} else {
-				this.write50x(err, http.StatusBadGateway, true)
+				this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 			if httpErr.Err != io.EOF {
 				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
@@ -264,7 +264,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			}
 
 			if !isClientError {
-				this.write50x(err, http.StatusBadGateway, true)
+				this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 		}
 		if resp != nil && resp.Body != nil {

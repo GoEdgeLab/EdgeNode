@@ -43,7 +43,7 @@ func (this *HTTPRequest) doWebsocket(requestHost string) {
 	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
 	originConn, _, err := OriginConnect(this.origin, this.requestServerPort(), this.RawReq.RemoteAddr, requestHost)
 	if err != nil {
-		this.write50x(err, http.StatusBadGateway, false)
+		this.write50x(err, http.StatusBadGateway, "Failed to connect origin site", "源站连接失败", false)
 
 		// 增加失败次数
 		SharedOriginStateManager.Fail(this.origin, requestHost, this.reverseProxy, func() {
@@ -65,13 +65,13 @@ func (this *HTTPRequest) doWebsocket(requestHost string) {
 
 	err = this.RawReq.Write(originConn)
 	if err != nil {
-		this.write50x(err, http.StatusBadGateway, false)
+		this.write50x(err, http.StatusBadGateway, "Failed to write request to origin site", "源站请求初始化失败", false)
 		return
 	}
 
 	clientConn, _, err := this.writer.Hijack()
 	if err != nil || clientConn == nil {
-		this.write50x(err, http.StatusInternalServerError, false)
+		this.write50x(err, http.StatusInternalServerError, "Failed to get origin site connection", "获取源站连接失败", false)
 		return
 	}
 	defer func() {

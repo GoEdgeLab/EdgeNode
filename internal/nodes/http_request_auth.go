@@ -33,7 +33,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 			return writer.StatusCode(), nil
 		}, this.Format)
 		if err != nil {
-			this.write50x(err, http.StatusInternalServerError, false)
+			this.write50x(err, http.StatusInternalServerError, "Failed to execute the AuthPolicy", "认证策略执行失败", false)
 			return
 		}
 		if b {

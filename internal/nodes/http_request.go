@@ -151,7 +151,7 @@ func (this *HTTPRequest) Do() {
 	// Web配置
 	err := this.configureWeb(this.ReqServer.Web, true, 0)
 	if err != nil {
-		this.write50x(err, http.StatusInternalServerError, false)
+		this.write50x(err, http.StatusInternalServerError, "Failed to configure the server", "配置服务失败", false)
 		this.doEnd()
 		return
 	}
@@ -286,7 +286,7 @@ func (this *HTTPRequest) doBegin() {
 			var err error
 			this.requestBodyData, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, AccessLogMaxRequestBodySize))
 			if err != nil {
-				this.write50x(err, http.StatusBadGateway, false)
+				this.write50x(err, http.StatusBadGateway, "Failed to read request body for access log", "为访问日志读取请求Body失败", false)
 				return
 			}
 			this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))

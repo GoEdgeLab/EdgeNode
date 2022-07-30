@@ -1,32 +1,59 @@
 package nodes
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"net/http"
+	"strings"
 )
 
+const httpStatusPageTemplate = `<!DOCTYPE html>
+<html>
+<head>
+	<title>${status} ${statusMessage}</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+</head>
+<body>
+
+<h1>${status} ${statusMessage}</h1>
+<p>${message}</p>
+
+<address>Request ID: ${requestId}.</address>
+
+</body>
+</html>`
+
 func (this *HTTPRequest) write404() {
-	if this.doPage(http.StatusNotFound) {
+	this.writeCode(http.StatusNotFound)
+}
+
+func (this *HTTPRequest) writeCode(statusCode int) {
+	if this.doPage(statusCode) {
 		return
 	}
 
-	this.processResponseHeaders(http.StatusNotFound)
-	this.writer.WriteHeader(http.StatusNotFound)
-	_, _ = this.writer.Write([]byte("404 page not found: '" + this.URL() + "'" + " (Request Id: " + this.requestId + ")"))
+	var pageContent = configutils.ParseVariables(httpStatusPageTemplate, func(varName string) (value string) {
+		switch varName {
+		case "status":
+			return types.String(statusCode)
+		case "statusMessage":
+			return http.StatusText(statusCode)
+		case "requestId":
+			return this.requestId
+		case "message":
+			return "" // 空
+		}
+		return "${" + varName + "}"
+	})
+
+	this.processResponseHeaders(statusCode)
+	this.writer.WriteHeader(statusCode)
+
+	_, _ = this.writer.Write([]byte(pageContent))
 }
 
-func (this *HTTPRequest) writeCode(code int) {
-	if this.doPage(code) {
-		return
-	}
-
-	this.processResponseHeaders(code)
-	this.writer.WriteHeader(code)
-	_, _ = this.writer.Write([]byte(types.String(code) + " " + http.StatusText(code) + ": '" + this.URL() + "'" + " (Request Id: " + this.requestId + ")"))
-}
-
-func (this *HTTPRequest) write50x(err error, statusCode int, canTryStale bool) {
+func (this *HTTPRequest) write50x(err error, statusCode int, enMessage string, zhMessage string, canTryStale bool) {
 	if err != nil {
 		this.addError(err)
 	}
@@ -37,7 +64,7 @@ func (this *HTTPRequest) write50x(err error, statusCode int, canTryStale bool) {
 		this.web.Cache.Stale != nil &&
 		this.web.Cache.Stale.IsOn &&
 		(len(this.web.Cache.Stale.Status) == 0 || lists.ContainsInt(this.web.Cache.Stale.Status, statusCode)) {
-		ok := this.doCacheRead(true)
+		var ok = this.doCacheRead(true)
 		if ok {
 			return
 		}
@@ -47,7 +74,34 @@ func (this *HTTPRequest) write50x(err error, statusCode int, canTryStale bool) {
 	if this.doPage(statusCode) {
 		return
 	}
+
+	// 内置HTML模板
+	var pageContent = configutils.ParseVariables(httpStatusPageTemplate, func(varName string) (value string) {
+		switch varName {
+		case "status":
+			return types.String(statusCode)
+		case "statusMessage":
+			return http.StatusText(statusCode)
+		case "requestId":
+			return this.requestId
+		case "message":
+			var acceptLanguages = this.RawReq.Header.Get("Accept-Language")
+			if len(acceptLanguages) > 0 {
+				var index = strings.Index(acceptLanguages, ",")
+				if index > 0 {
+					var firstLanguage = acceptLanguages[:index]
+					if firstLanguage == "zh-CN" {
+						return "网站出了一点小问题，原因：" + zhMessage + "。"
+					}
+				}
+			}
+			return "The site is unavailable now, cause: " + enMessage + "."
+		}
+		return "${" + varName + "}"
+	})
+
 	this.processResponseHeaders(statusCode)
 	this.writer.WriteHeader(statusCode)
-	_, _ = this.writer.Write([]byte(types.String(statusCode) + " " + http.StatusText(statusCode) + " (Request Id: " + this.requestId + ")"))
+
+	_, _ = this.writer.Write([]byte(pageContent))
 }

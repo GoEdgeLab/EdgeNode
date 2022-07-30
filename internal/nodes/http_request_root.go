@@ -114,7 +114,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			}
 			return
 		} else {
-			this.write50x(err, http.StatusInternalServerError, true)
+			this.write50x(err, http.StatusInternalServerError, "Failed to stat the file", "查看文件统计信息失败", true)
 			if !this.canIgnore(err) {
 				logs.Error(err)
 			}
@@ -145,7 +145,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 					}
 					return
 				} else {
-					this.write50x(err, http.StatusInternalServerError, true)
+					this.write50x(err, http.StatusInternalServerError, "Failed to stat the file", "查看文件统计信息失败", true)
 					if !this.canIgnore(err) {
 						logs.Error(err)
 					}
@@ -285,7 +285,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 
 	fileReader, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
 	if err != nil {
-		this.write50x(err, http.StatusInternalServerError, true)
+		this.write50x(err, http.StatusInternalServerError, "Failed to open the file", "试图打开文件失败", true)
 		return true
 	}
 
