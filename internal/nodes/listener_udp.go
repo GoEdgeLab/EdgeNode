@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+const (
+	UDPConnLifeSeconds = 30
+)
+
 type UDPListener struct {
 	BaseListener
 
@@ -178,7 +182,7 @@ func (this *UDPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 // 回收连接
 func (this *UDPListener) gcConns() {
 	this.connLocker.Lock()
-	closingConns := []*UDPConn{}
+	var closingConns = []*UDPConn{}
 	for addr, conn := range this.connMap {
 		if !conn.IsOk() {
 			closingConns = append(closingConns, conn)
@@ -203,7 +207,7 @@ type UDPConn struct {
 }
 
 func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyConn *net.UDPConn, serverConn *net.UDPConn) *UDPConn {
-	conn := &UDPConn{
+	var conn = &UDPConn{
 		addr:        addr,
 		proxyConn:   proxyConn,
 		serverConn:  serverConn,
@@ -217,7 +221,7 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyConn *ne
 	}
 
 	goman.New(func() {
-		buffer := utils.BytePool4k.Get()
+		var buffer = utils.BytePool4k.Get()
 		defer func() {
 			utils.BytePool4k.Put(buffer)
 		}()
@@ -232,9 +236,13 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyConn *ne
 					break
 				}
 
-				// 记录流量
+				// 记录流量和带宽
 				if server != nil {
+					// 流量
 					stats.SharedTrafficStatManager.Add(server.Id, "", int64(n), 0, 0, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
+
+					// 带宽
+					stats.SharedBandwidthStatManager.Add(server.UserId, server.Id, int64(n))
 				}
 			}
 			if err != nil {
@@ -268,5 +276,5 @@ func (this *UDPConn) IsOk() bool {
 	if !this.isOk {
 		return false
 	}
-	return time.Now().Unix()-this.activatedAt < 30 // 如果超过 N 秒没有活动我们认为是超时
+	return time.Now().Unix()-this.activatedAt < UDPConnLifeSeconds // 如果超过 N 秒没有活动我们认为是超时
 }
