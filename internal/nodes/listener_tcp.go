@@ -124,6 +124,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 
 	originConn, err := this.connectOrigin(server.Id, server.ReverseProxy, conn.RemoteAddr().String())
 	if err != nil {
+		_ = conn.Close()
 		return err
 	}
 
@@ -243,8 +244,19 @@ func (this *TCPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 		conn, addr, err = OriginConnect(origin, this.port, remoteAddr, requestHost)
 		if err != nil {
 			remotelogs.ServerError(serverId, "TCP_LISTENER", "unable to connect origin server: "+addr+": "+err.Error(), "", nil)
+
+			SharedOriginStateManager.Fail(origin, requestHost, reverseProxy, func() {
+				reverseProxy.ResetScheduling()
+			})
+
 			continue
 		} else {
+			if !origin.IsOk {
+				SharedOriginStateManager.Success(origin, func() {
+					reverseProxy.ResetScheduling()
+				})
+			}
+
 			return
 		}
 	}
