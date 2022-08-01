@@ -297,7 +297,12 @@ func (this *Node) loop() error {
 	for _, task := range tasksResp.NodeTasks {
 		switch task.Type {
 		case "ipItemChanged":
-			iplibrary.IPListUpdateNotify <- true
+			// 防止阻塞
+			select {
+			case iplibrary.IPListUpdateNotify <- true:
+			default:
+
+			}
 
 			// 修改为已同步
 			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
@@ -334,11 +339,12 @@ func (this *Node) loop() error {
 			if err != nil {
 				return err
 			}
-
 		case "nodeVersionChanged":
-			goman.New(func() {
-				sharedUpgradeManager.Start()
-			})
+			if !sharedUpgradeManager.IsInstalling() {
+				goman.New(func() {
+					sharedUpgradeManager.Start()
+				})
+			}
 		case "scriptsChanged":
 			err = this.reloadCommonScripts()
 			if err != nil {

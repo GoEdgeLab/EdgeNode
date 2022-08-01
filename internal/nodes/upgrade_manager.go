@@ -69,6 +69,11 @@ func (this *UpgradeManager) Start() {
 	})
 }
 
+// IsInstalling 检查是否正在安装
+func (this *UpgradeManager) IsInstalling() bool {
+	return this.isInstalling
+}
+
 func (this *UpgradeManager) install() error {
 	// 检查是否有已下载但未安装成功的
 	if len(this.lastFile) > 0 {
