@@ -231,8 +231,17 @@ func (this *TCPListener) connectOrigin(serverId int64, requestHost string, rever
 
 	var retries = 3
 	var addr string
+
+	var failedOriginIds []int64
+
 	for i := 0; i < retries; i++ {
-		var origin = reverseProxy.NextOrigin(requestCall)
+		var origin *serverconfigs.OriginConfig
+		if len(failedOriginIds) > 0 {
+			origin = reverseProxy.AnyOrigin(requestCall, failedOriginIds)
+		}
+		if origin == nil {
+			origin = reverseProxy.NextOrigin(requestCall)
+		}
 		if origin == nil {
 			continue
 		}
@@ -246,6 +255,8 @@ func (this *TCPListener) connectOrigin(serverId int64, requestHost string, rever
 
 		conn, addr, err = OriginConnect(origin, this.port, remoteAddr, requestHost)
 		if err != nil {
+			failedOriginIds = append(failedOriginIds, origin.Id)
+
 			remotelogs.ServerError(serverId, "TCP_LISTENER", "unable to connect origin server: "+addr+": "+err.Error(), "", nil)
 
 			SharedOriginStateManager.Fail(origin, requestHost, reverseProxy, func() {
@@ -263,7 +274,10 @@ func (this *TCPListener) connectOrigin(serverId int64, requestHost string, rever
 			return
 		}
 	}
-	err = errors.New("server '" + types.String(serverId) + "': no available origin server can be used")
+
+	if err == nil {
+		err = errors.New("server '" + types.String(serverId) + "': no available origin server can be used")
+	}
 	return
 }
 

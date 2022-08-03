@@ -139,16 +139,39 @@ func (this *UDPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 
 	var retries = 3
 	var addr string
+
+	var failedOriginIds []int64
+
 	for i := 0; i < retries; i++ {
-		var origin = reverseProxy.NextOrigin(nil)
+		var origin *serverconfigs.OriginConfig
+		if len(failedOriginIds) > 0 {
+			origin = reverseProxy.AnyOrigin(nil, failedOriginIds)
+		}
+		if origin == nil {
+			origin = reverseProxy.NextOrigin(nil)
+		}
 		if origin == nil {
 			continue
 		}
+
 		conn, addr, err = OriginConnect(origin, this.port, remoteAddr.String(), "")
 		if err != nil {
+			failedOriginIds = append(failedOriginIds, origin.Id)
+
 			remotelogs.ServerError(serverId, "UDP_LISTENER", "unable to connect origin server: "+addr+": "+err.Error(), "", nil)
+
+			SharedOriginStateManager.Fail(origin, "", reverseProxy, func() {
+				reverseProxy.ResetScheduling()
+			})
+
 			continue
 		} else {
+			if !origin.IsOk {
+				SharedOriginStateManager.Success(origin, func() {
+					reverseProxy.ResetScheduling()
+				})
+			}
+
 			// PROXY Protocol
 			if reverseProxy != nil &&
 				reverseProxy.ProxyProtocol != nil &&
@@ -175,7 +198,10 @@ func (this *UDPListener) connectOrigin(serverId int64, reverseProxy *serverconfi
 			return
 		}
 	}
-	err = errors.New("server '" + types.String(serverId) + "': no available origin server can be used")
+
+	if err == nil {
+		err = errors.New("server '" + types.String(serverId) + "': no available origin server can be used")
+	}
 	return
 }
 
