@@ -16,6 +16,6 @@ func (this *HTTPRequest) checkLnRequest() bool {
 	return false
 }
 
-func (this *HTTPRequest) getLnOrigin() *serverconfigs.OriginConfig {
-	return nil
+func (this *HTTPRequest) getLnOrigin(excludingNodeIds []int64) (originConfig *serverconfigs.OriginConfig, lnNodeId int64, hasMultipleNodes bool) {
+	return nil, 0, false
 }

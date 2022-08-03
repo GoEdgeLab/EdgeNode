@@ -24,20 +24,24 @@ func (this *HTTPRequest) doReverseProxy() {
 	var retries = 3
 
 	var failedOriginIds []int64
+	var failedLnNodeIds []int64
 
 	for i := 0; i < retries; i++ {
-		originId, shouldRetry := this.doOriginRequest(failedOriginIds, i == 0, i == retries-1)
+		originId, lnNodeId, shouldRetry := this.doOriginRequest(failedOriginIds, failedLnNodeIds, i == 0, i == retries-1)
 		if !shouldRetry {
 			break
 		}
 		if originId > 0 {
 			failedOriginIds = append(failedOriginIds, originId)
 		}
+		if lnNodeId > 0 {
+			failedLnNodeIds = append(failedLnNodeIds, lnNodeId)
+		}
 	}
 }
 
 // 请求源站
-func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, isFirstTry bool, isLastRetry bool) (originId int64, shouldRetry bool) {
+func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeIds []int64, isFirstTry bool, isLastRetry bool) (originId int64, lnNodeId int64, shouldRetry bool) {
 	// 对URL的处理
 	var stripPrefix = this.reverseProxy.StripPrefix
 	var requestURI = this.reverseProxy.RequestURI
@@ -59,8 +63,9 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, isFirstTry boo
 	var origin *serverconfigs.OriginConfig
 
 	// 二级节点
+	var hasMultipleLnNodes = false
 	if this.cacheRef != nil {
-		origin = this.getLnOrigin()
+		origin, lnNodeId, hasMultipleLnNodes = this.getLnOrigin(failedLnNodeIds)
 		if origin != nil {
 			// 强制变更原来访问的域名
 			requestHost = this.ReqHost
@@ -262,7 +267,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, isFirstTry boo
 			})
 
 			// 是否需要重试
-			if originId > 0 && !isLastRetry {
+			if (originId > 0 || (lnNodeId > 0 && hasMultipleLnNodes)) && !isLastRetry {
 				shouldRetry = true
 				this.uri = oldURI // 恢复备份
 
