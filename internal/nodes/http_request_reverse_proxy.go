@@ -21,10 +21,28 @@ func (this *HTTPRequest) doReverseProxy() {
 		return
 	}
 
+	var retries = 3
+
+	var failedOriginIds []int64
+
+	for i := 0; i < retries; i++ {
+		originId, shouldRetry := this.doOriginRequest(failedOriginIds, i == 0, i == retries-1)
+		if !shouldRetry {
+			break
+		}
+		if originId > 0 {
+			failedOriginIds = append(failedOriginIds, originId)
+		}
+	}
+}
+
+// 请求源站
+func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, isFirstTry bool, isLastRetry bool) (originId int64, shouldRetry bool) {
 	// 对URL的处理
 	var stripPrefix = this.reverseProxy.StripPrefix
 	var requestURI = this.reverseProxy.RequestURI
 	var requestURIHasVariables = this.reverseProxy.RequestURIHasVariables()
+	var oldURI = this.uri
 
 	var requestHost = ""
 	if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeCustomized {
@@ -51,7 +69,12 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	// 自定义源站
 	if origin == nil {
-		origin = this.reverseProxy.NextOrigin(requestCall)
+		if !isFirstTry {
+			origin = this.reverseProxy.AnyOrigin(requestCall, failedOriginIds)
+		}
+		if origin == nil {
+			origin = this.reverseProxy.NextOrigin(requestCall)
+		}
 		requestCall.CallResponseCallbacks(this.writer)
 		if origin == nil {
 			err := errors.New(this.URL() + ": no available origin sites for reverse proxy")
@@ -59,6 +82,7 @@ func (this *HTTPRequest) doReverseProxy() {
 			this.write50x(err, http.StatusBadGateway, "No origin site yet", "尚未配置源站", true)
 			return
 		}
+		originId = origin.Id
 
 		if len(origin.StripPrefix) > 0 {
 			stripPrefix = origin.StripPrefix
@@ -236,6 +260,23 @@ func (this *HTTPRequest) doReverseProxy() {
 			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
 			})
+
+			// 是否需要重试
+			if originId > 0 && !isLastRetry {
+				shouldRetry = true
+				this.uri = oldURI // 恢复备份
+
+				if resp != nil && resp.Body != nil {
+					_ = resp.Body.Close()
+				}
+
+				if httpErr.Err != io.EOF {
+					remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
+				}
+
+				return
+			}
+
 			if httpErr.Timeout() {
 				this.write50x(err, http.StatusGatewayTimeout, "Read origin site timeout", "源站读取超时", true)
 			} else if httpErr.Temporary() {
@@ -410,4 +451,6 @@ func (this *HTTPRequest) doReverseProxy() {
 	if (err == nil || err == io.EOF) && (closeErr == nil || closeErr == io.EOF) {
 		this.writer.SetOk()
 	}
+
+	return
 }
