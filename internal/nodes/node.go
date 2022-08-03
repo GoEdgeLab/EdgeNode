@@ -682,7 +682,7 @@ func (this *Node) listenSock() error {
 	if this.sock.IsListening() {
 		reply, err := this.sock.Send(&gosock.Command{Code: "pid"})
 		if err == nil {
-			return errors.New("error: the process is already running, pid: " + maps.NewMap(reply.Params).GetString("pid"))
+			return errors.New("error: the process is already running, pid: " + types.String(maps.NewMap(reply.Params).GetInt("pid")))
 		} else {
 			return errors.New("error: the process is already running")
 		}
