@@ -54,6 +54,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 	}
 
 	var key = origin.UniqueKey() + "@" + originAddr
+	var isLnRequest = origin.Id == 0
 
 	this.locker.RLock()
 	client, found := this.clientsMap[key]
@@ -99,6 +100,13 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 
 	if idleConns <= 0 {
 		idleConns = numberCPU * 8
+	}
+
+	// 可以判断为Ln节点请求
+	if isLnRequest {
+		maxConnections *= 8
+		idleConns *= 8
+		idleTimeout *= 4
 	}
 
 	// TLS通讯
