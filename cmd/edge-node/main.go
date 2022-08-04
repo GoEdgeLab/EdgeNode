@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -19,7 +20,7 @@ import (
 )
 
 func main() {
-	app := apps.NewAppCmd().
+	var app = apps.NewAppCmd().
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
 		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof|accesslog]").
@@ -67,24 +68,30 @@ func main() {
 		fmt.Println("done")
 	})
 	app.On("pprof", func() {
-		// TODO 自己指定端口
-		addr := "127.0.0.1:6060"
+		var flagSet = flag.NewFlagSet("pprof", flag.ExitOnError)
+		var addr string
+		flagSet.StringVar(&addr, "addr", "", "")
+		_ = flagSet.Parse(os.Args[2:])
+
+		if len(addr) == 0 {
+			addr = "127.0.0.1:6060"
+		}
 		logs.Println("starting with pprof '" + addr + "'...")
 
 		go func() {
 			err := http.ListenAndServe(addr, nil)
 			if err != nil {
-				logs.Println("[error]" + err.Error())
+				logs.Println("[ERROR]" + err.Error())
 			}
 		}()
 
-		node := nodes.NewNode()
+		var node = nodes.NewNode()
 		node.Start()
 	})
 	app.On("dbstat", func() {
 		teaconst.EnableDBStat = true
 
-		node := nodes.NewNode()
+		var node = nodes.NewNode()
 		node.Start()
 	})
 	app.On("trackers", func() {
@@ -306,7 +313,7 @@ func main() {
 		}
 	})
 	app.Run(func() {
-		node := nodes.NewNode()
+		var node = nodes.NewNode()
 		node.Start()
 	})
 }
