@@ -12,7 +12,6 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/types"
-	"io/ioutil"
 	"os"
 	"sync"
 	"time"
@@ -90,7 +89,7 @@ func (this *CityManager) Lookup(provinceId int64, cityName string) (cityId int64
 
 // 从缓存中读取
 func (this *CityManager) load() error {
-	data, err := ioutil.ReadFile(this.cacheFile)
+	data, err := os.ReadFile(this.cacheFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -151,6 +150,6 @@ func (this *CityManager) loop() error {
 
 	// 保存到本地缓存
 
-	err = ioutil.WriteFile(this.cacheFile, data, 0666)
+	err = os.WriteFile(this.cacheFile, data, 0666)
 	return err
 }

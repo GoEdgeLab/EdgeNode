@@ -3,7 +3,7 @@ package checkpoints
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 )
@@ -13,7 +13,7 @@ func TestResponseBodyCheckpoint_ResponseValue(t *testing.T) {
 	resp.StatusCode = 200
 	resp.Header = http.Header{}
 	resp.Header.Set("Hello", "World")
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer([]byte("Hello, World")))
+	resp.Body = io.NopCloser(bytes.NewBuffer([]byte("Hello, World")))
 
 	checkpoint := new(ResponseBodyCheckpoint)
 	t.Log(checkpoint.ResponseValue(nil, resp, "", nil, 1))
@@ -21,7 +21,7 @@ func TestResponseBodyCheckpoint_ResponseValue(t *testing.T) {
 	t.Log(checkpoint.ResponseValue(nil, resp, "", nil, 1))
 	t.Log(checkpoint.ResponseValue(nil, resp, "", nil, 1))
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

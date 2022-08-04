@@ -11,7 +11,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
-	"io/ioutil"
 	"os"
 	"sync"
 	"time"
@@ -93,7 +92,7 @@ func (this *ProvinceManager) Lookup(provinceName string) (provinceId int64) {
 
 // 从缓存中读取
 func (this *ProvinceManager) load() error {
-	data, err := ioutil.ReadFile(this.cacheFile)
+	data, err := os.ReadFile(this.cacheFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -156,6 +155,6 @@ func (this *ProvinceManager) loop() error {
 
 	// 保存到本地缓存
 
-	err = ioutil.WriteFile(this.cacheFile, data, 0666)
+	err = os.WriteFile(this.cacheFile, data, 0666)
 	return err
 }

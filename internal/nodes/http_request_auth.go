@@ -5,7 +5,7 @@ package nodes
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -26,7 +26,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 			subReq.Proto = this.RawReq.Proto
 			subReq.ProtoMinor = this.RawReq.ProtoMinor
 			subReq.ProtoMajor = this.RawReq.ProtoMajor
-			subReq.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
+			subReq.Body = io.NopCloser(bytes.NewReader([]byte{}))
 			subReq.Header.Set("Referer", this.URL())
 			var writer = NewEmptyResponseWriter(this.writer)
 			this.doSubRequest(writer, subReq)

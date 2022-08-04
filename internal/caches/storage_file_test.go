@@ -8,7 +8,7 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -152,7 +152,7 @@ func TestFileStorage_OpenWriter_HTTP(t *testing.T) {
 			"Last-Modified": []string{"Wed, 06 Jan 2021 10:03:29 GMT"},
 			"Server":        []string{"CDN-Server"},
 		},
-		Body: ioutil.NopCloser(bytes.NewBuffer([]byte("THIS IS HTTP BODY"))),
+		Body: io.NopCloser(bytes.NewBuffer([]byte("THIS IS HTTP BODY"))),
 	}
 
 	for k, v := range resp.Header {

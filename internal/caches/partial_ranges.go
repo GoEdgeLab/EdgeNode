@@ -5,7 +5,7 @@ package caches
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"os"
 )
 
 // PartialRanges 内容分区范围定义
@@ -30,7 +30,7 @@ func NewPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
 }
 
 func NewPartialRangesFromFile(path string) (*PartialRanges, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -116,12 +116,12 @@ func (this *PartialRanges) WriteToFile(path string) error {
 	if err != nil {
 		return errors.New("convert to json failed: " + err.Error())
 	}
-	return ioutil.WriteFile(path, data, 0666)
+	return os.WriteFile(path, data, 0666)
 }
 
 // ReadFromFile 从文件中读取
 func (this *PartialRanges) ReadFromFile(path string) (*PartialRanges, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

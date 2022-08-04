@@ -3,7 +3,7 @@ package checkpoints
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 )
@@ -31,7 +31,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Map(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "books", nil, 1))
 	t.Log(checkpoint.RequestValue(req, "books.1", nil, 1))
 
-	body, err := ioutil.ReadAll(req.WAFRaw().Body)
+	body, err := io.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Array(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "0.books", nil, 1))
 	t.Log(checkpoint.RequestValue(req, "0.books.1", nil, 1))
 
-	body, err := ioutil.ReadAll(req.WAFRaw().Body)
+	body, err := io.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestRequestJSONArgCheckpoint_RequestValue_Error(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "0.books", nil, 1))
 	t.Log(checkpoint.RequestValue(req, "0.books.1", nil, 1))
 
-	body, err := ioutil.ReadAll(req.WAFRaw().Body)
+	body, err := io.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,8 +10,8 @@ import (
 	"github.com/iwind/TeaGo/files"
 	"github.com/iwind/TeaGo/types"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 )
 
@@ -315,7 +315,7 @@ func (this *WAF) Save(path string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0644)
 }
 
 func (this *WAF) ContainsGroupCode(code string) bool {

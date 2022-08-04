@@ -26,7 +26,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/textproto"
@@ -524,7 +523,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 
 		this.webpOriginContentType = contentType
 		this.webpIsEncoding = true
-		resp.Body = ioutil.NopCloser(&bytes.Buffer{})
+		resp.Body = io.NopCloser(&bytes.Buffer{})
 		this.delayRead = true
 
 		this.Header().Del("Content-Length")

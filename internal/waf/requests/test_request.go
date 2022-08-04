@@ -5,7 +5,6 @@ package requests
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 )
@@ -48,7 +47,7 @@ func (this *TestRequest) WAFRemoteIP() string {
 
 func (this *TestRequest) WAFReadBody(max int64) (data []byte, err error) {
 	if this.req.ContentLength > 0 {
-		data, err = ioutil.ReadAll(io.LimitReader(this.req.Body, max))
+		data, err = io.ReadAll(io.LimitReader(this.req.Body, max))
 	}
 	return
 }
@@ -58,7 +57,7 @@ func (this *TestRequest) WAFRestoreBody(data []byte) {
 		rawReader := bytes.NewBuffer(data)
 		buf := make([]byte, 1024)
 		_, _ = io.CopyBuffer(rawReader, this.req.Body, buf)
-		this.req.Body = ioutil.NopCloser(rawReader)
+		this.req.Body = io.NopCloser(rawReader)
 	}
 }
 

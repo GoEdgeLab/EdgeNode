@@ -3,7 +3,7 @@ package checkpoints
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"testing"
@@ -94,7 +94,7 @@ func TestRequestUploadCheckpoint_RequestValue(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "name", nil, 1))
 	t.Log(checkpoint.RequestValue(req, "ext", nil, 1))
 
-	data, err := ioutil.ReadAll(req.WAFRaw().Body)
+	data, err := io.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}

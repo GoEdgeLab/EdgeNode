@@ -11,7 +11,6 @@ import (
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -359,7 +358,7 @@ func (this *HTTPRequest) WAFSetCacheBody(body []byte) {
 // WAFReadBody 读取Body
 func (this *HTTPRequest) WAFReadBody(max int64) (data []byte, err error) {
 	if this.RawReq.ContentLength > 0 {
-		data, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, max))
+		data, err = io.ReadAll(io.LimitReader(this.RawReq.Body, max))
 	}
 
 	return
@@ -368,7 +367,7 @@ func (this *HTTPRequest) WAFReadBody(max int64) (data []byte, err error) {
 // WAFRestoreBody 恢复Body
 func (this *HTTPRequest) WAFRestoreBody(data []byte) {
 	if len(data) > 0 {
-		this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(data), this.RawReq.Body))
+		this.RawReq.Body = io.NopCloser(io.MultiReader(bytes.NewBuffer(data), this.RawReq.Body))
 	}
 }
 

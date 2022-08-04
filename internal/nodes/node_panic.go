@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
-	"io/ioutil"
 	"os"
 	"syscall"
 )
@@ -25,7 +24,7 @@ func (this *Node) handlePanic() {
 	var panicFile = Tea.Root + "/logs/panic.log"
 
 	// 分析panic
-	data, err := ioutil.ReadFile(panicFile)
+	data, err := os.ReadFile(panicFile)
 	if err == nil {
 		var index = bytes.Index(data, []byte("panic:"))
 		if index >= 0 {

@@ -3,7 +3,7 @@ package configs
 import (
 	"github.com/iwind/TeaGo/Tea"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
+	"os"
 )
 
 // APIConfig 节点API配置
@@ -17,7 +17,7 @@ type APIConfig struct {
 }
 
 func LoadAPIConfig() (*APIConfig, error) {
-	data, err := ioutil.ReadFile(Tea.ConfigFile("api.yaml"))
+	data, err := os.ReadFile(Tea.ConfigFile("api.yaml"))
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +37,6 @@ func (this *APIConfig) WriteFile(path string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(path, data, 0666)
+	err = os.WriteFile(path, data, 0666)
 	return err
 }

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/types"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"runtime"
 	"strings"
@@ -28,7 +28,7 @@ func TestRequestAllCheckpoint_RequestValue(t *testing.T) {
 	t.Log(v)
 	t.Log(types.String(v))
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestRequestAllCheckpoint_RequestValue_Max(t *testing.T) {
 	}
 	t.Log("value bytes:", len(types.String(value)))
 
-	body, err := ioutil.ReadAll(req.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

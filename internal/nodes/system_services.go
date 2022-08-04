@@ -11,7 +11,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/maps"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -104,7 +103,7 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 
 		if output == "enabled" {
 			// 检查文件路径是否变化
-			data, err := ioutil.ReadFile("/etc/systemd/system/" + teaconst.SystemdServiceName + ".service")
+			data, err := os.ReadFile("/etc/systemd/system/" + teaconst.SystemdServiceName + ".service")
 			if err == nil && bytes.Index(data, []byte(exe)) > 0 {
 				return nil
 			}

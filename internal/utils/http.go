@@ -2,7 +2,7 @@ package utils
 
 import (
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"sync"
@@ -19,7 +19,7 @@ func DumpResponse(resp *http.Response) (header []byte, body []byte, err error) {
 	if err != nil {
 		return
 	}
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	return
 }
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/maps"
-	"io/ioutil"
+	"io"
 )
 
 // ResponseBodyCheckpoint ${responseBody}
@@ -33,7 +33,7 @@ func (this *ResponseBodyCheckpoint) ResponseValue(req requests.Request, resp *re
 			value = string(resp.BodyData)
 			return
 		}
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			sysErr = err
 			return
@@ -41,7 +41,7 @@ func (this *ResponseBodyCheckpoint) ResponseValue(req requests.Request, resp *re
 		resp.BodyData = body
 		_ = resp.Body.Close()
 		value = body
-		resp.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+		resp.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 	return
 }

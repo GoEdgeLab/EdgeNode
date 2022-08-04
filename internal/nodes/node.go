@@ -30,7 +30,6 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"github.com/iwind/gosock/pkg/gosock"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -612,7 +611,7 @@ func (this *Node) startSyncTimer() {
 // 检查集群设置
 func (this *Node) checkClusterConfig() error {
 	configFile := Tea.ConfigFile("cluster.yaml")
-	data, err := ioutil.ReadFile(configFile)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return err
 	}
@@ -1008,7 +1007,7 @@ func (this *Node) checkDisk() {
 			"/sys/block/vda/queue/rotational",
 			"/sys/block/sda/queue/rotational",
 		} {
-			data, err := ioutil.ReadFile(path)
+			data, err := os.ReadFile(path)
 			if err != nil {
 				continue
 			}

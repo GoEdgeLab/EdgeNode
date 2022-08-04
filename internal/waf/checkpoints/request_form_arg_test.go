@@ -3,7 +3,7 @@ package checkpoints
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -24,7 +24,7 @@ func TestRequestFormArgCheckpoint_RequestValue(t *testing.T) {
 	t.Log(checkpoint.RequestValue(req, "Hello", nil, 1))
 	t.Log(checkpoint.RequestValue(req, "encoded", nil, 1))
 
-	body, err := ioutil.ReadAll(req.WAFRaw().Body)
+	body, err := io.ReadAll(req.WAFRaw().Body)
 	if err != nil {
 		t.Fatal(err)
 	}

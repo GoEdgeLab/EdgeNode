@@ -6,7 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -51,7 +51,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param st
 			defer req.WAFRestoreBody(data)
 		}
 		oldBody := req.WAFRaw().Body
-		req.WAFRaw().Body = ioutil.NopCloser(bytes.NewBuffer(bodyData))
+		req.WAFRaw().Body = io.NopCloser(bytes.NewBuffer(bodyData))
 
 		err := req.WAFRaw().ParseMultipartForm(utils.MaxBodySize)
 

@@ -4,7 +4,7 @@ package iplibrary
 
 import (
 	"errors"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -62,7 +62,7 @@ func getIpInfo(cityId int64, line []byte) *IpInfo {
 
 func NewIP2Region(path string) (*IP2Region, error) {
 	var region = &IP2Region{}
-	region.dbData, err = ioutil.ReadFile(path)
+	region.dbData, err = os.ReadFile(path)
 
 	if err != nil {
 		return nil, err

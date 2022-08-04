@@ -17,7 +17,6 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -284,12 +283,12 @@ func (this *HTTPRequest) doBegin() {
 			this.web.AccessLogRef.IsOn &&
 			this.web.AccessLogRef.ContainsField(serverconfigs.HTTPAccessLogFieldRequestBody) {
 			var err error
-			this.requestBodyData, err = ioutil.ReadAll(io.LimitReader(this.RawReq.Body, AccessLogMaxRequestBodySize))
+			this.requestBodyData, err = io.ReadAll(io.LimitReader(this.RawReq.Body, AccessLogMaxRequestBodySize))
 			if err != nil {
 				this.write50x(err, http.StatusBadGateway, "Failed to read request body for access log", "为访问日志读取请求Body失败", false)
 				return
 			}
-			this.RawReq.Body = ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))
+			this.RawReq.Body = io.NopCloser(io.MultiReader(bytes.NewBuffer(this.requestBodyData), this.RawReq.Body))
 		}
 
 		// 跳转
