@@ -1712,7 +1712,12 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	// 客户端主动取消
-	if err == errWritingToClient || err == context.Canceled || err == io.ErrShortWrite || strings.Contains(err.Error(), "write: connection") || strings.Contains(err.Error(), "write: broken pipe") {
+	if err == errWritingToClient ||
+		err == context.Canceled ||
+		err == io.ErrShortWrite ||
+		strings.Contains(err.Error(), "write: connection") ||
+		strings.Contains(err.Error(), "write: broken pipe") ||
+		strings.Contains(err.Error(), "write tcp") {
 		return true
 	}
 
