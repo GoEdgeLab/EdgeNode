@@ -784,7 +784,8 @@ func (this *Node) listenSock() error {
 				var m = maps.NewMap(cmd.Params)
 				var ip = m.GetString("ip")
 				var timeSeconds = m.GetInt("timeoutSeconds")
-				err := firewalls.Firewall().DropSourceIP(ip, timeSeconds)
+				var async = m.GetBool("async")
+				err := firewalls.Firewall().DropSourceIP(ip, timeSeconds, async)
 				if err != nil {
 					_ = cmd.Reply(&gosock.Command{
 						Params: map[string]interface{}{

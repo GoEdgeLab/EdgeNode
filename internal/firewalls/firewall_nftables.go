@@ -10,6 +10,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls/nftables"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/types"
 	"net"
@@ -28,7 +29,7 @@ func init() {
 
 	if runtime.GOOS == "linux" {
 		var ticker = time.NewTicker(3 * time.Minute)
-		go func() {
+		goman.New(func() {
 			for range ticker.C {
 				// if already ready, we break
 				if nftablesIsReady {
@@ -53,7 +54,7 @@ func init() {
 					break
 				}
 			}
-		}()
+		})
 	}
 }
 
@@ -79,9 +80,16 @@ func (this *nftablesTableDefinition) protocol() string {
 	return "ip"
 }
 
+type blockIPItem struct {
+	action         string
+	ip             string
+	timeoutSeconds int
+}
+
 func NewNFTablesFirewall() (*NFTablesFirewall, error) {
 	var firewall = &NFTablesFirewall{
-		conn: nftables.NewConn(),
+		conn:        nftables.NewConn(),
+		dropIPQueue: make(chan *blockIPItem, 4096),
 	}
 	err := firewall.init()
 	if err != nil {
@@ -103,6 +111,8 @@ type NFTablesFirewall struct {
 	denyIPv6Set *nftables.Set
 
 	firewalld *Firewalld
+
+	dropIPQueue chan *blockIPItem
 }
 
 func (this *NFTablesFirewall) init() error {
@@ -248,6 +258,18 @@ func (this *NFTablesFirewall) init() error {
 	nftablesIsReady = true
 	nftablesInstance = this
 
+	goman.New(func() {
+		for ipItem := range this.dropIPQueue {
+			switch ipItem.action {
+			case "drop":
+				err = this.DropSourceIP(ipItem.ip, ipItem.timeoutSeconds, false)
+				if err != nil {
+					remotelogs.Warn("NFTABLES", "drop ip '"+ipItem.ip+"' failed: "+err.Error())
+				}
+			}
+		}
+	})
+
 	// load firewalld
 	var firewalld = NewFirewalld()
 	if firewalld.IsReady() {
@@ -312,14 +334,27 @@ func (this *NFTablesFirewall) AllowSourceIP(ip string) error {
 // RejectSourceIP 拒绝某个源IP连接
 // we did not create set for drop ip, so we reuse DropSourceIP() method here
 func (this *NFTablesFirewall) RejectSourceIP(ip string, timeoutSeconds int) error {
-	return this.DropSourceIP(ip, timeoutSeconds)
+	return this.DropSourceIP(ip, timeoutSeconds, true)
 }
 
 // DropSourceIP 丢弃某个源IP数据
-func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int) error {
+func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int, async bool) error {
 	var data = net.ParseIP(ip)
 	if data == nil {
 		return errors.New("invalid ip '" + ip + "'")
+	}
+
+	if async {
+		select {
+		case this.dropIPQueue <- &blockIPItem{
+			action:         "drop",
+			ip:             ip,
+			timeoutSeconds: timeoutSeconds,
+		}:
+		default:
+			return errors.New("drop ip queue is full")
+		}
+		return nil
 	}
 
 	if strings.Contains(ip, ":") { // ipv6

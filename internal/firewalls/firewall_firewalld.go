@@ -3,6 +3,7 @@
 package firewalls
 
 import (
+	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/types"
@@ -143,7 +144,7 @@ func (this *Firewalld) RejectSourceIP(ip string, timeoutSeconds int) error {
 	return nil
 }
 
-func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int) error {
+func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int, async bool) error {
 	if !this.isReady {
 		return nil
 	}
@@ -156,7 +157,15 @@ func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int) error {
 		args = append(args, "--timeout="+types.String(timeoutSeconds)+"s")
 	}
 	var cmd = exec.Command(this.exe, args...)
-	this.pushCmd(cmd)
+	if async {
+		this.pushCmd(cmd)
+		return nil
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		return errors.New("run command failed '" + cmd.String() + "': " + err.Error())
+	}
 	return nil
 }
 

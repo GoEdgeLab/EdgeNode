@@ -51,7 +51,7 @@ func (this *NFTablesFirewall) RejectSourceIP(ip string, timeoutSeconds int) erro
 }
 
 // DropSourceIP 丢弃某个源IP数据
-func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int) error {
+func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int, async bool) error {
 	return nil
 }
 

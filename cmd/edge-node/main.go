@@ -161,7 +161,7 @@ func main() {
 	app.On("ip.drop", func() {
 		var args = os.Args[2:]
 		if len(args) == 0 {
-			fmt.Println("Usage: edge-node ip.drop IP [--timeout=SECONDS]")
+			fmt.Println("Usage: edge-node ip.drop IP [--timeout=SECONDS] [--async]")
 			return
 		}
 		var ip = args[0]
@@ -175,6 +175,11 @@ func main() {
 		if ok {
 			timeoutSeconds = types.Int(timeout[0])
 		}
+		var async = false
+		_, ok = options["async"]
+		if ok {
+			async = true
+		}
 
 		fmt.Println("drop ip '" + ip + "' for '" + types.String(timeoutSeconds) + "' seconds")
 		var sock = gosock.NewTmpSock(teaconst.ProcessName)
@@ -183,6 +188,7 @@ func main() {
 			Params: map[string]interface{}{
 				"ip":             ip,
 				"timeoutSeconds": timeoutSeconds,
+				"async":          async,
 			},
 		})
 		if err != nil {

@@ -112,7 +112,7 @@ func (this *IPList) RecordIP(ipType string,
 				if seconds > 3600 {
 					seconds = 3600
 				}
-				_ = firewalls.Firewall().DropSourceIP(ip, int(seconds))
+				_ = firewalls.Firewall().DropSourceIP(ip, int(seconds), true)
 			}
 		}
 	}

@@ -57,7 +57,7 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 			if beingDenied {
 				var fw = firewalls.Firewall()
 				if fw != nil && !fw.IsMock() {
-					_ = fw.DropSourceIP(ip, 60)
+					_ = fw.DropSourceIP(ip, 120, true)
 				}
 			}
 

@@ -47,7 +47,7 @@ func (this *MockFirewall) RejectSourceIP(ip string, timeoutSeconds int) error {
 }
 
 // DropSourceIP 丢弃某个源IP数据
-func (this *MockFirewall) DropSourceIP(ip string, timeoutSeconds int) error {
+func (this *MockFirewall) DropSourceIP(ip string, timeoutSeconds int, async bool) error {
 	_ = ip
 	_ = timeoutSeconds
 	return nil

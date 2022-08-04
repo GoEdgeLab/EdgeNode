@@ -23,7 +23,10 @@ type FirewallInterface interface {
 	RejectSourceIP(ip string, timeoutSeconds int) error
 
 	// DropSourceIP 丢弃某个源IP数据
-	DropSourceIP(ip string, timeoutSeconds int) error
+	// ip 要封禁的IP
+	// timeoutSeconds 过期时间
+	// async 是否异步
+	DropSourceIP(ip string, timeoutSeconds int, async bool) error
 
 	// RemoveSourceIP 删除某个源IP
 	RemoveSourceIP(ip string) error
