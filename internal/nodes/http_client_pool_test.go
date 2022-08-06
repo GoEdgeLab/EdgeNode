@@ -38,7 +38,7 @@ func TestHTTPClientPool_Client(t *testing.T) {
 }
 
 func TestHTTPClientPool_cleanClients(t *testing.T) {
-	origin := &serverconfigs.OriginConfig{
+	var origin = &serverconfigs.OriginConfig{
 		Id:      1,
 		Version: 2,
 		Addr:    &serverconfigs.NetworkAddressConfig{Host: "127.0.0.1", PortRange: "1234"},
@@ -48,8 +48,7 @@ func TestHTTPClientPool_cleanClients(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pool := NewHTTPClientPool()
-	pool.clientExpiredDuration = 2 * time.Second
+	var pool = NewHTTPClientPool()
 
 	for i := 0; i < 10; i++ {
 		t.Log("get", i)
