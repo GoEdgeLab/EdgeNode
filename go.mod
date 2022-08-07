@@ -2,9 +2,7 @@ module github.com/TeaOSLab/EdgeNode
 
 go 1.18
 
-replace (
-	github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
-)
+replace github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
 
 require (
 	github.com/TeaOSLab/EdgeCommon v0.0.0-00010101000000-000000000000
@@ -16,7 +14,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang/protobuf v1.5.2
 	github.com/google/nftables v0.0.0-20220407195405-950e408d48c6
-	github.com/iwind/TeaGo v0.0.0-20220304043459-0dd944a5b475
+	github.com/iwind/TeaGo v0.0.0-20220807030847-31de8e1cbe55
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20211103081026-ee4652210ca4
 	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
@@ -32,7 +30,8 @@ require (
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.45.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
+	rogchap.com/v8go v0.7.0
 )
 
 require (
@@ -41,6 +40,7 @@ require (
 	github.com/chai2010/webp v1.1.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect

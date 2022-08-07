@@ -180,14 +180,14 @@ var httpRequestTimestamp int64
 var httpRequestId int32 = 1_000_000
 
 func httpRequestNextId() string {
-	var unixTime = utils.UnixTimeMilli()
+	unixTime, unixTimeString := utils.UnixTimeMilliString()
 	if unixTime > httpRequestTimestamp {
 		atomic.StoreInt32(&httpRequestId, 1_000_000)
 		httpRequestTimestamp = unixTime
 	}
 
 	// timestamp + requestId + nodeId
-	return strconv.FormatInt(unixTime, 10) + teaconst.NodeIdString + strconv.Itoa(int(atomic.AddInt32(&httpRequestId, 1)))
+	return unixTimeString + teaconst.NodeIdString + strconv.Itoa(int(atomic.AddInt32(&httpRequestId, 1)))
 }
 
 // 检查是否可以接受某个编码

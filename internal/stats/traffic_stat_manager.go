@@ -106,7 +106,7 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 	this.totalRequests++
 
 	var timestamp = utils.FloorUnixTime(300)
-	key := strconv.FormatInt(timestamp, 10) + strconv.FormatInt(serverId, 10)
+	var key = strconv.FormatInt(timestamp, 10) + strconv.FormatInt(serverId, 10)
 	this.locker.Lock()
 
 	// 总的流量

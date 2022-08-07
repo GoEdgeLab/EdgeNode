@@ -2,11 +2,13 @@ package utils
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/iwind/TeaGo/types"
 	"time"
 )
 
 var unixTime = time.Now().Unix()
 var unixTimeMilli = time.Now().UnixMilli()
+var unixTimeMilliString = types.String(unixTimeMilli)
 
 func init() {
 	var ticker = time.NewTicker(200 * time.Millisecond)
@@ -14,6 +16,7 @@ func init() {
 		for range ticker.C {
 			unixTime = time.Now().Unix()
 			unixTimeMilli = time.Now().UnixMilli()
+			unixTimeMilliString = types.String(unixTimeMilli)
 		}
 	})
 }
@@ -41,6 +44,10 @@ func NextMinuteUnixTime() int64 {
 // UnixTimeMilli 获取时间戳，精确到毫秒
 func UnixTimeMilli() int64 {
 	return unixTimeMilli
+}
+
+func UnixTimeMilliString() (int64, string) {
+	return unixTimeMilli, unixTimeMilliString
 }
 
 // GMTUnixTime 计算GMT时间戳
