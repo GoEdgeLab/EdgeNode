@@ -291,6 +291,9 @@ func (this *Node) loop() error {
 	var nodeCtx = rpcClient.Context()
 	tasksResp, err := rpcClient.NodeTaskRPC().FindNodeTasks(nodeCtx, &pb.FindNodeTasksRequest{})
 	if err != nil {
+		if rpc.IsConnError(err) && !Tea.IsTesting() {
+			return nil
+		}
 		return errors.New("read node tasks failed: " + err.Error())
 	}
 	for _, task := range tasksResp.NodeTasks {
