@@ -186,7 +186,7 @@ func httpRequestNextId() string {
 		httpRequestTimestamp = unixTime
 	}
 
-	// timestamp + requestId + nodeId
+	// timestamp + nodeId + requestId
 	return unixTimeString + teaconst.NodeIdString + strconv.Itoa(int(atomic.AddInt32(&httpRequestId, 1)))
 }
 

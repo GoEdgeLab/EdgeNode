@@ -2,7 +2,11 @@ module github.com/TeaOSLab/EdgeNode
 
 go 1.18
 
-replace github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
+replace (
+	github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
+	github.com/fsnotify/fsnotify => /Users/WorkSpace/Projects/fsnotify
+	rogchap.com/v8go => /Users/Workspace/Projects/v8go
+)
 
 require (
 	github.com/TeaOSLab/EdgeCommon v0.0.0-00010101000000-000000000000
