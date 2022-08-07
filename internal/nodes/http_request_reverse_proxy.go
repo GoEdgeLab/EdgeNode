@@ -70,6 +70,14 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			// 强制变更原来访问的域名
 			requestHost = this.ReqHost
 		}
+
+		// 回源Header中去除If-None-Match和If-Modified-Since
+		if !this.cacheRef.EnableIfNoneMatch {
+			this.DeleteHeader("If-None-Match")
+		}
+		if !this.cacheRef.EnableIfModifiedSince {
+			this.DeleteHeader("If-Modified-Since")
+		}
 	}
 
 	// 自定义源站

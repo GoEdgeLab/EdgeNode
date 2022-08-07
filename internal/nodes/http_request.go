@@ -1389,12 +1389,12 @@ func (this *HTTPRequest) Cookie(name string) string {
 	return c.Value
 }
 
-// DeleteHeader 删除Header
+// DeleteHeader 删除请求Header
 func (this *HTTPRequest) DeleteHeader(name string) {
 	this.RawReq.Header.Del(name)
 }
 
-// SetHeader 设置Header
+// SetHeader 设置请求Header
 func (this *HTTPRequest) SetHeader(name string, values []string) {
 	this.RawReq.Header[name] = values
 }
