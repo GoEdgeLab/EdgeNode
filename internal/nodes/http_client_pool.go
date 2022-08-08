@@ -107,6 +107,10 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		maxConnections *= 8
 		idleConns *= 8
 		idleTimeout *= 4
+	} else if sharedNodeConfig != nil && sharedNodeConfig.Level > 1 {
+		// Ln节点可以适当增加连接数
+		maxConnections *= 2
+		idleConns *= 2
 	}
 
 	// TLS通讯
