@@ -2,7 +2,10 @@
 
 package teaconst
 
-import "github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	"os"
+)
 
 var (
 	// 流量统计
@@ -12,7 +15,7 @@ var (
 
 	NodeId       int64 = 0
 	NodeIdString       = ""
-	IsDaemon           = false
+	IsDaemon           = len(os.Args) > 1 && os.Args[1] == "daemon"
 
 	GlobalProductName = nodeconfigs.DefaultProductName
 

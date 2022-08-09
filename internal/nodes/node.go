@@ -228,12 +228,17 @@ func (this *Node) Daemon() {
 				_ = os.Setenv("EdgeBackground", "on")
 
 				var cmd = exec.Command(exe)
+				var buf = &bytes.Buffer{}
+				cmd.Stderr = buf
 				err = cmd.Start()
 				if err != nil {
 					return err
 				}
 				err = cmd.Wait()
 				if err != nil {
+					if isDebug {
+						log.Println("[DAEMON]" + buf.String())
+					}
 					return err
 				}
 				return nil

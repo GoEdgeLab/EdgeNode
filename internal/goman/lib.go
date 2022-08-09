@@ -3,6 +3,7 @@
 package goman
 
 import (
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"runtime"
 	"sync"
 	"time"
@@ -14,6 +15,10 @@ var instanceId = uint64(0)
 
 // New 新创建goroutine
 func New(f func()) {
+	if teaconst.IsDaemon {
+		return
+	}
+
 	_, file, line, _ := runtime.Caller(1)
 
 	go func() {
@@ -42,6 +47,10 @@ func New(f func()) {
 
 // NewWithArgs 创建带有参数的goroutine
 func NewWithArgs(f func(args ...interface{}), args ...interface{}) {
+	if teaconst.IsDaemon {
+		return
+	}
+
 	_, file, line, _ := runtime.Caller(1)
 
 	go func() {
