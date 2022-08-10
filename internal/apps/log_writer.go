@@ -89,7 +89,10 @@ func (this *LogWriter) Write(message string) {
 		}
 	}
 
-	this.c <- message
+	select {
+	case this.c <- message:
+	default:
+	}
 }
 
 func (this *LogWriter) Close() {
