@@ -117,7 +117,7 @@ func (this *ProviderManager) loop() error {
 	if err != nil {
 		return err
 	}
-	resp, err := rpcClient.RegionProviderRPC().FindAllEnabledRegionProviders(rpcClient.Context(), &pb.FindAllEnabledRegionProvidersRequest{})
+	resp, err := rpcClient.RegionProviderRPC().FindAllRegionProviders(rpcClient.Context(), &pb.FindAllRegionProvidersRequest{})
 	if err != nil {
 		return err
 	}

@@ -118,7 +118,7 @@ func (this *CityManager) loop() error {
 	if err != nil {
 		return err
 	}
-	resp, err := rpcClient.RegionCityRPC().FindAllEnabledRegionCities(rpcClient.Context(), &pb.FindAllEnabledRegionCitiesRequest{})
+	resp, err := rpcClient.RegionCityRPC().FindAllRegionCities(rpcClient.Context(), &pb.FindAllRegionCitiesRequest{})
 	if err != nil {
 		return err
 	}

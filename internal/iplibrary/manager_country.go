@@ -117,7 +117,7 @@ func (this *CountryManager) loop() error {
 	if err != nil {
 		return err
 	}
-	resp, err := rpcClient.RegionCountryRPC().FindAllEnabledRegionCountries(rpcClient.Context(), &pb.FindAllEnabledRegionCountriesRequest{})
+	resp, err := rpcClient.RegionCountryRPC().FindAllRegionCountries(rpcClient.Context(), &pb.FindAllRegionCountriesRequest{})
 	if err != nil {
 		return err
 	}

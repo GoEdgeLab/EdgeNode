@@ -121,7 +121,7 @@ func (this *ProvinceManager) loop() error {
 	if err != nil {
 		return err
 	}
-	resp, err := rpcClient.RegionProvinceRPC().FindAllEnabledRegionProvincesWithCountryId(rpcClient.Context(), &pb.FindAllEnabledRegionProvincesWithCountryIdRequest{
+	resp, err := rpcClient.RegionProvinceRPC().FindAllRegionProvincesWithCountryId(rpcClient.Context(), &pb.FindAllRegionProvincesWithCountryIdRequest{
 		RegionCountryId: ChinaCountryId,
 	})
 	if err != nil {

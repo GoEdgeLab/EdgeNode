@@ -106,6 +106,7 @@ func BenchmarkIP2RegionLibrary_Lookup(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		_, _ = library.Lookup("8.8.8.8")
