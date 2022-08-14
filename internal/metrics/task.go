@@ -23,18 +23,19 @@ import (
 	"time"
 )
 
-const MaxQueueSize = 2048
+const MaxQueueSize = 256 // TODO 可以配置，可以在单个任务里配置
 
 // Task 单个指标任务
 // 数据库存储：
-//  data/
-//     metric.$ID.db
-//        stats
-//           id, keys, value, time, serverId, hash
-//  原理：
-//     添加或者有变更时 isUploaded = false
-//     上传时检查 isUploaded 状态
-//     只上传每个服务中排序最前面的 N 个数据
+//
+//	data/
+//	   metric.$ID.db
+//	      stats
+//	         id, keys, value, time, serverId, hash
+//	原理：
+//	   添加或者有变更时 isUploaded = false
+//	   上传时检查 isUploaded 状态
+//	   只上传每个服务中排序最前面的 N 个数据
 type Task struct {
 	item     *serverconfigs.MetricItemConfig
 	isLoaded bool
@@ -372,7 +373,9 @@ func (this *Task) Upload(pauseDuration time.Duration) error {
 	for _, serverId := range serverIds {
 		for _, currentTime := range times {
 			idStrings, err := func(serverId int64, currentTime string) (ids []string, err error) {
+				var t = trackers.Begin("[METRIC]SELECT_TOP_STMT")
 				rows, err := this.selectTopStmt.Query(serverId, this.item.Version, currentTime)
+				t.End()
 				if err != nil {
 					return nil, err
 				}

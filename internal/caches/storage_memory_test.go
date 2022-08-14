@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -303,4 +304,31 @@ func TestMemoryStorage_Stop(t *testing.T) {
 	}
 
 	t.Log(len(m))
+}
+
+func BenchmarkValuesMap(b *testing.B) {
+	var m = map[uint64]*MemoryItem{}
+	var count = 1_000_000
+	for i := 0; i < count; i++ {
+		m[uint64(i)] = &MemoryItem{
+			ExpiresAt: time.Now().Unix(),
+		}
+	}
+	b.Log(len(m))
+
+	var locker = sync.Mutex{}
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			locker.Lock()
+			_, ok := m[uint64(rands.Int(0, 1_000_000))]
+			_ = ok
+			locker.Unlock()
+
+			locker.Lock()
+			delete(m, uint64(rands.Int(2, 1000000)))
+			locker.Unlock()
+		}
+	})
 }

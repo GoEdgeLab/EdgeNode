@@ -95,7 +95,8 @@ func (this *MemoryStorage) Init() error {
 	// 启动定时Flush memory to disk任务
 	if this.parentStorage != nil {
 		// TODO 应该根据磁盘性能决定线程数
-		var threads = 1
+		// TODO 线程数应该可以在缓存策略和节点中设定
+		var threads = runtime.NumCPU()
 
 		for i := 0; i < threads; i++ {
 			goman.New(func() {

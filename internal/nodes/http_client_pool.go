@@ -161,6 +161,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 			ExpectContinueTimeout: 1 * time.Second,
 			TLSHandshakeTimeout:   5 * time.Second,
 			TLSClientConfig:       tlsConfig,
+			ReadBufferSize:        8 * 1024,
 			Proxy:                 nil,
 		},
 	}

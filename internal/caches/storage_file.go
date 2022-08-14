@@ -65,12 +65,13 @@ var sharedWritingFileKeyLocker = sync.Mutex{}
 
 var maxOpenFiles = NewMaxOpenFiles()
 
-const maxOpenFilesSlowCost = 5000 * time.Microsecond // 0.5ms
+const maxOpenFilesSlowCost = 1000 * time.Microsecond // us
 const protectingLoadWhenDump = false
 
 // FileStorage 文件缓存
-//   文件结构：
-//    [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
+//
+//	文件结构：
+//	 [expires time] | [ status ] | [url length] | [header length] | [body length] | [url] [header data] [body data]
 type FileStorage struct {
 	policy        *serverconfigs.HTTPCachePolicy
 	options       *serverconfigs.HTTPFileCacheStorage // 二级缓存
