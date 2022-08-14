@@ -227,7 +227,7 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 			if notFound {
 				_, err = db.deleteHitByHashStmt.Exec(hash)
 				if err != nil {
-					return err
+					return db.WrapError(err)
 				}
 			}
 
@@ -359,14 +359,14 @@ func (this *FileList) remove(hash string) (notFound bool, err error) {
 
 	_, err = db.deleteByHashStmt.Exec(hash)
 	if err != nil {
-		return false, err
+		return false, db.WrapError(err)
 	}
 
 	atomic.AddInt64(&this.total, -1)
 
 	_, err = db.deleteHitByHashStmt.Exec(hash)
 	if err != nil {
-		return false, err
+		return false, db.WrapError(err)
 	}
 
 	if this.onRemove != nil {

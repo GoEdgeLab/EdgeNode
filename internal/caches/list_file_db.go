@@ -16,6 +16,8 @@ import (
 )
 
 type FileListDB struct {
+	dbPath string
+
 	readDB  *dbs.DB
 	writeDB *dbs.DB
 
@@ -49,6 +51,8 @@ func NewFileListDB() *FileListDB {
 }
 
 func (this *FileListDB) Open(dbPath string) error {
+	this.dbPath = dbPath
+
 	// write db
 	writeDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=32000&_secure_delete=FAST")
 	if err != nil {
@@ -185,7 +189,7 @@ func (this *FileListDB) Add(hash string, item *Item) error {
 	// 放入队列
 	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime())
 	if err != nil {
-		return err
+		return this.WrapError(err)
 	}
 
 	return nil
@@ -249,7 +253,7 @@ func (this *FileListDB) ListLFUItems(count int) (hashList []string, err error) {
 func (this *FileListDB) IncreaseHit(hash string) error {
 	var week = timeutil.Format("YW")
 	_, err := this.increaseHitStmt.Exec(hash, week, week, week, week)
-	return err
+	return this.WrapError(err)
 }
 
 func (this *FileListDB) CleanPrefix(prefix string) error {
@@ -262,7 +266,7 @@ func (this *FileListDB) CleanPrefix(prefix string) error {
 	for {
 		result, err := this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, unixTime+int64(staleLife), unixTime, prefix)
 		if err != nil {
-			return err
+			return this.WrapError(err)
 		}
 		affectedRows, err := result.RowsAffected()
 		if err != nil {
@@ -281,7 +285,7 @@ func (this *FileListDB) CleanAll() error {
 
 	_, err := this.deleteAllStmt.Exec()
 	if err != nil {
-		return err
+		return this.WrapError(err)
 	}
 
 	return nil
@@ -351,6 +355,13 @@ func (this *FileListDB) Close() error {
 	return errors.New("close database failed: " + strings.Join(errStrings, ", "))
 }
 
+func (this *FileListDB) WrapError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return errors.New(err.Error() + "(file: " + this.dbPath + ")")
+}
+
 // 初始化
 func (this *FileListDB) initTables(times int) error {
 	{
@@ -393,10 +404,10 @@ ON "` + this.itemsTableName + `" (
 				if dropErr == nil {
 					return this.initTables(times + 1)
 				}
-				return err
+				return this.WrapError(err)
 			}
 
-			return err
+			return this.WrapError(err)
 		}
 	}
 
@@ -421,10 +432,10 @@ ON "` + this.hitsTableName + `" (
 				if dropErr == nil {
 					return this.initTables(times + 1)
 				}
-				return err
+				return this.WrapError(err)
 			}
 
-			return err
+			return this.WrapError(err)
 		}
 	}
 
