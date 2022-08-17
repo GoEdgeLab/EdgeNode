@@ -4,8 +4,7 @@ go 1.18
 
 replace (
 	github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
-	github.com/fsnotify/fsnotify => /Users/WorkSpace/Projects/fsnotify
-	rogchap.com/v8go => /Users/Workspace/Projects/v8go
+	github.com/fsnotify/fsnotify => github.com/iwind/fsnotify v1.5.2-0.20220817040843-193be2051ff4
 )
 
 require (
@@ -21,7 +20,7 @@ require (
 	github.com/iwind/TeaGo v0.0.0-20220807030847-31de8e1cbe55
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20211103081026-ee4652210ca4
-	github.com/iwind/gowebp v0.0.0-20211029040624-7331ecc78ed8
+	github.com/iwind/gowebp v0.0.0-20220808073410-ac25a4258cf3
 	github.com/klauspost/compress v1.15.8
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/mdlayher/netlink v1.4.2
@@ -29,9 +28,9 @@ require (
 	github.com/mssola/user_agent v0.5.3
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/shirou/gopsutil/v3 v3.22.2
-	golang.org/x/image v0.0.0-20211028202545-6944b10bf410
+	golang.org/x/image v0.0.0-20220722155232-062f8c9fd539
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
+	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.45.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -41,7 +40,7 @@ require (
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/chai2010/webp v1.1.0 // indirect
+	github.com/chai2010/webp v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
