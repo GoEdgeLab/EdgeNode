@@ -80,3 +80,7 @@ func (this *DB) Close() error {
 	events.Remove(fmt.Sprintf("db_%p", this))
 	return this.rawDB.Close()
 }
+
+func (this *DB) RawDB() *sql.DB {
+	return this.rawDB
+}

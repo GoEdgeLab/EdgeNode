@@ -102,7 +102,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 		return nil
 	}
 
-	err := db.Add(hash, item)
+	err := db.AddAsync(hash, item)
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
 		// 这里不设置过期时间、不使用 check 函数，目的是让查询更快速一些
 		_ = check
 
-		row := db.statStmt.QueryRow()
+		var row = db.statStmt.QueryRow()
 		if row.Err() != nil {
 			return nil, row.Err()
 		}
@@ -357,7 +357,7 @@ func (this *FileList) remove(hash string) (notFound bool, err error) {
 		return false, err
 	}
 
-	_, err = db.deleteByHashStmt.Exec(hash)
+	err = db.DeleteAsync(hash)
 	if err != nil {
 		return false, db.WrapError(err)
 	}

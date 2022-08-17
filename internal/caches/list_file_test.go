@@ -69,8 +69,8 @@ func TestFileList_Add_Many(t *testing.T) {
 		_ = list.Close()
 	}()
 
-	before := time.Now()
-	for i := 0; i < 100_000; i++ {
+	var before = time.Now()
+	for i := 0; i < 10_000_000; i++ {
 		u := "https://edge.teaos.cn/123456" + strconv.Itoa(i)
 		_ = list.Add(stringutil.Md5(u), &caches.Item{
 			Key:        u,
@@ -290,12 +290,12 @@ func TestFileList_Stat(t *testing.T) {
 }
 
 func TestFileList_Count(t *testing.T) {
-	list := caches.NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data")
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := time.Now()
+	var before = time.Now()
 	count, err := list.Count()
 	if err != nil {
 		t.Fatal(err)
@@ -361,12 +361,26 @@ func TestFileList_UpgradeV3(t *testing.T) {
 	t.Log("ok")
 }
 
+func TestFileList_HashList(t *testing.T) {
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefixes, err := list.(*caches.FileList).FindAllPrefixes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(len(prefixes))
+}
+
 func BenchmarkFileList_Exist(b *testing.B) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
 	if err != nil {
 		b.Fatal(err)
 	}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = list.Exist("f0eb5b87e0b0041f3917002c0707475f" + types.String(i))
 	}

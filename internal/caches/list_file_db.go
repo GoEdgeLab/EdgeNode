@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"errors"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/iwind/TeaGo/types"
@@ -21,6 +23,8 @@ type FileListDB struct {
 	readDB  *dbs.DB
 	writeDB *dbs.DB
 
+	writeBatch *dbs.Batch
+
 	itemsTableName string
 	hitsTableName  string
 
@@ -30,10 +34,16 @@ type FileListDB struct {
 	isReady  bool
 
 	// cacheItems
-	existsByHashStmt   *dbs.Stmt // 根据hash检查是否存在
-	insertStmt         *dbs.Stmt // 写入数据
-	selectByHashStmt   *dbs.Stmt // 使用hash查询数据
-	deleteByHashStmt   *dbs.Stmt // 根据hash删除数据
+	existsByHashStmt *dbs.Stmt // 根据hash检查是否存在
+
+	insertStmt *dbs.Stmt // 写入数据
+	insertSQL  string
+
+	selectByHashStmt *dbs.Stmt // 使用hash查询数据
+
+	deleteByHashStmt *dbs.Stmt // 根据hash删除数据
+	deleteByHashSQL  string
+
 	statStmt           *dbs.Stmt // 统计
 	purgeStmt          *dbs.Stmt // 清理
 	deleteAllStmt      *dbs.Stmt // 删除所有数据
@@ -69,8 +79,17 @@ func (this *FileListDB) Open(dbPath string) error {
 	}**/
 
 	this.writeDB = dbs.NewDB(writeDB)
+	this.writeBatch = dbs.NewBatch(writeDB, 4)
+	this.writeBatch.OnFail(func(err error) {
+		remotelogs.Warn("LIST_FILE_DB", "run batch failed: "+err.Error())
+	})
+
+	goman.New(func() {
+		this.writeBatch.Exec()
+	})
 
 	if teaconst.EnableDBStat {
+		this.writeBatch.EnableStat(true)
 		this.writeDB.EnableStat(true)
 	}
 
@@ -119,7 +138,8 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.insertStmt, err = this.writeDB.Prepare(`INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	this.insertSQL = `INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	this.insertStmt, err = this.writeDB.Prepare(this.insertSQL)
 	if err != nil {
 		return err
 	}
@@ -129,7 +149,8 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.deleteByHashStmt, err = this.writeDB.Prepare(`DELETE FROM "` + this.itemsTableName + `" WHERE "hash"=?`)
+	this.deleteByHashSQL = `DELETE FROM "` + this.itemsTableName + `" WHERE "hash"=?`
+	this.deleteByHashStmt, err = this.writeDB.Prepare(this.deleteByHashSQL)
 	if err != nil {
 		return err
 	}
@@ -181,17 +202,39 @@ func (this *FileListDB) Total() int64 {
 	return this.total
 }
 
-func (this *FileListDB) Add(hash string, item *Item) error {
+func (this *FileListDB) AddAsync(hash string, item *Item) error {
 	if item.StaleAt == 0 {
 		item.StaleAt = item.ExpiredAt
 	}
 
-	// 放入队列
+	this.writeBatch.Add(this.insertSQL, hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime())
+	return nil
+
+}
+
+func (this *FileListDB) AddSync(hash string, item *Item) error {
+	if item.StaleAt == 0 {
+		item.StaleAt = item.ExpiredAt
+	}
+
 	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime())
 	if err != nil {
 		return this.WrapError(err)
 	}
 
+	return nil
+}
+
+func (this *FileListDB) DeleteAsync(hash string) error {
+	this.writeBatch.Add(this.deleteByHashSQL, hash)
+	return nil
+}
+
+func (this *FileListDB) DeleteSync(hash string) error {
+	_, err := this.deleteByHashStmt.Exec(hash)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -347,6 +390,11 @@ func (this *FileListDB) Close() error {
 		if err != nil {
 			errStrings = append(errStrings, err.Error())
 		}
+	}
+
+
+	if this.writeBatch != nil {
+		this.writeBatch.Close()
 	}
 
 	if len(errStrings) == 0 {
