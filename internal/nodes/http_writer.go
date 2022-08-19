@@ -1011,7 +1011,6 @@ func (this *HTTPWriter) finishWebP() {
 
 			anim.WebPAnimEncoderOptions.SetKmin(9)
 			anim.WebPAnimEncoderOptions.SetKmax(17)
-			defer anim.ReleaseMemory()
 			var webpConfig = gowebp.NewWebpConfig()
 			//webpConfig.SetLossless(1)
 			webpConfig.SetQuality(f)
@@ -1030,13 +1029,13 @@ func (this *HTTPWriter) finishWebP() {
 			if lastErr != nil {
 				remotelogs.Error("HTTP_WRITER", "'"+this.req.URL()+"' encode webp failed: "+lastErr.Error())
 			}
-			if err == nil {
-				err = anim.AddFrame(nil, timeline, webpConfig)
+			err = anim.AddFrame(nil, timeline, webpConfig)
 
-				if err == nil {
-					err = anim.Encode(this.writer)
-				}
+			if err == nil {
+				err = anim.Encode(this.writer)
 			}
+
+			anim.ReleaseMemory()
 		}
 
 		if err != nil && !this.req.canIgnore(err) {
