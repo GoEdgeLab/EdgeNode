@@ -20,7 +20,7 @@ require (
 	github.com/iwind/TeaGo v0.0.0-20220807030847-31de8e1cbe55
 	github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11
 	github.com/iwind/gosock v0.0.0-20211103081026-ee4652210ca4
-	github.com/iwind/gowebp v0.0.0-20220808073410-ac25a4258cf3
+	github.com/iwind/gowebp v0.0.0-20220819053541-c235395277b5
 	github.com/klauspost/compress v1.15.8
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/mdlayher/netlink v1.4.2

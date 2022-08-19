@@ -88,8 +88,8 @@ github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11 h1:DaQjoWZhLNxjhIXedV
 github.com/iwind/gofcgi v0.0.0-20210528023741-a92711d45f11/go.mod h1:JtbX20untAjUVjZs1ZBtq80f5rJWvwtQNRL6EnuYRnY=
 github.com/iwind/gosock v0.0.0-20211103081026-ee4652210ca4 h1:VWGsCqTzObdlbf7UUE3oceIpcEKi4C/YBUszQXk118A=
 github.com/iwind/gosock v0.0.0-20211103081026-ee4652210ca4/go.mod h1:H5Q7SXwbx3a97ecJkaS2sD77gspzE7HFUafBO0peEyA=
-github.com/iwind/gowebp v0.0.0-20220808073410-ac25a4258cf3 h1:2azv4MO3Y4/1bxlx4eLMp/h8Mmq4banSjvgyBpc53Kc=
-github.com/iwind/gowebp v0.0.0-20220808073410-ac25a4258cf3/go.mod h1:Re7TEhwL+ygnxFg52fC0PWy01ULAIZp2QR0q5WwEOQA=
+github.com/iwind/gowebp v0.0.0-20220819053541-c235395277b5 h1:SgKhrqRhWVpu0ZKxQM8MGjdhy7hlH3Xax8snwsZWSic=
+github.com/iwind/gowebp v0.0.0-20220819053541-c235395277b5/go.mod h1:Re7TEhwL+ygnxFg52fC0PWy01ULAIZp2QR0q5WwEOQA=
 github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 h1:uhL5Gw7BINiiPAo24A2sxkcDI0Jt/sqp1v5xQCniEFA=
 github.com/josharian/native v0.0.0-20200817173448-b6b71def0850/go.mod h1:7X/raswPFr05uY3HiLlYeyQntB6OO7E/d2Cu7qoaN2w=
 github.com/jsimonetti/rtnetlink v0.0.0-20190606172950-9527aa82566a/go.mod h1:Oz+70psSo5OFh8DBl0Zv2ACw7Esh6pPUphlvZG9x7uw=
