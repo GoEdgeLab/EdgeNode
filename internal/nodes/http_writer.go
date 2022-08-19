@@ -1007,22 +1007,28 @@ func (this *HTTPWriter) finishWebP() {
 				Exact:    true,
 			})
 		} else if gifImage != nil {
-			anim := gowebp.NewWebpAnimation(gifImage.Config.Width, gifImage.Config.Height, gifImage.LoopCount)
+			var anim = gowebp.NewWebpAnimation(gifImage.Config.Width, gifImage.Config.Height, gifImage.LoopCount)
+
 			anim.WebPAnimEncoderOptions.SetKmin(9)
 			anim.WebPAnimEncoderOptions.SetKmax(17)
 			defer anim.ReleaseMemory()
-			webpConfig := gowebp.NewWebpConfig()
+			var webpConfig = gowebp.NewWebpConfig()
 			//webpConfig.SetLossless(1)
 			webpConfig.SetQuality(f)
 
 			var timeline = 0
-
+			var lastErr error
 			for i, img := range gifImage.Image {
 				err = anim.AddFrame(img, timeline, webpConfig)
 				if err != nil {
-					break
+					// 有错误直接跳过
+					lastErr = err
+					err = nil
 				}
 				timeline += gifImage.Delay[i] * 10
+			}
+			if lastErr != nil {
+				remotelogs.Error("HTTP_WRITER", "'"+this.req.URL()+"' encode webp failed: "+lastErr.Error())
 			}
 			if err == nil {
 				err = anim.AddFrame(nil, timeline, webpConfig)
