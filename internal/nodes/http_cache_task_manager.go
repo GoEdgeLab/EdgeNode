@@ -106,6 +106,10 @@ func (this *HTTPCacheTaskManager) Loop() error {
 
 	resp, err := rpcClient.HTTPCacheTaskKeyRPC().FindDoingHTTPCacheTaskKeys(rpcClient.Context(), &pb.FindDoingHTTPCacheTaskKeysRequest{})
 	if err != nil {
+		// 忽略连接错误
+		if rpc.IsConnError(err) {
+			return nil
+		}
 		return err
 	}
 
