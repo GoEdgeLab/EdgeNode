@@ -25,6 +25,8 @@ type FileListDB struct {
 
 	writeBatch *dbs.Batch
 
+	hashMap *FileListHashMap
+
 	itemsTableName string
 	hitsTableName  string
 
@@ -41,6 +43,8 @@ type FileListDB struct {
 
 	selectByHashStmt *dbs.Stmt // 使用hash查询数据
 
+	selectHashListStmt *dbs.Stmt
+
 	deleteByHashStmt *dbs.Stmt // 根据hash删除数据
 	deleteByHashSQL  string
 
@@ -50,21 +54,30 @@ type FileListDB struct {
 	listOlderItemsStmt *dbs.Stmt // 读取较早存储的缓存
 
 	// hits
-	insertHitStmt       *dbs.Stmt // 写入数据
-	increaseHitStmt     *dbs.Stmt // 增加点击量
-	deleteHitByHashStmt *dbs.Stmt // 根据hash删除数据
-	lfuHitsStmt         *dbs.Stmt // 读取老的数据
+	insertHitSQL       string    // 写入数据
+	increaseHitSQL     string    // 增加点击量
+	deleteHitByHashSQL string    // 根据hash删除数据
+	lfuHitsStmt        *dbs.Stmt // 读取老的数据
 }
 
 func NewFileListDB() *FileListDB {
-	return &FileListDB{}
+	return &FileListDB{
+		hashMap: NewFileListHashMap(),
+	}
 }
 
 func (this *FileListDB) Open(dbPath string) error {
 	this.dbPath = dbPath
 
+	// 动态调整Cache值
+	var cacheSize = 32000
+	var memoryGB = utils.SystemMemoryGB()
+	if memoryGB >= 8 {
+		cacheSize += 32000 * memoryGB / 8
+	}
+
 	// write db
-	writeDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=32000&_secure_delete=FAST")
+	writeDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size="+types.String(cacheSize)+"&_secure_delete=FAST")
 	if err != nil {
 		return errors.New("open write database failed: " + err.Error())
 	}
@@ -94,7 +107,7 @@ func (this *FileListDB) Open(dbPath string) error {
 	}
 
 	// read db
-	readDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=ro&_journal_mode=WAL&_sync=OFF&_cache_size=32000")
+	readDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=ro&_journal_mode=WAL&_sync=OFF&_cache_size="+types.String(cacheSize))
 	if err != nil {
 		return errors.New("open read database failed: " + err.Error())
 	}
@@ -149,6 +162,8 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
+	this.selectHashListStmt, err = this.readDB.Prepare(`SELECT "id", "hash" FROM "` + this.itemsTableName + `" WHERE id>:id ORDER BY id ASC LIMIT 2000`)
+
 	this.deleteByHashSQL = `DELETE FROM "` + this.itemsTableName + `" WHERE "hash"=?`
 	this.deleteByHashStmt, err = this.writeDB.Prepare(this.deleteByHashSQL)
 	if err != nil {
@@ -172,17 +187,11 @@ func (this *FileListDB) Init() error {
 
 	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "id" ASC LIMIT ?`)
 
-	this.insertHitStmt, err = this.writeDB.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?)`)
+	this.insertHitSQL = `INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?)`
 
-	this.increaseHitStmt, err = this.writeDB.Prepare(`INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?) ON CONFLICT("hash") DO UPDATE SET "week1Hits"=IIF("week"=?, "week1Hits", "week2Hits"), "week2Hits"=IIF("week"=?, "week2Hits"+1, 1), "week"=?`)
-	if err != nil {
-		return err
-	}
+	this.increaseHitSQL = `INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?) ON CONFLICT("hash") DO UPDATE SET "week1Hits"=IIF("week"=?, "week1Hits", "week2Hits"), "week2Hits"=IIF("week"=?, "week2Hits"+1, 1), "week"=?`
 
-	this.deleteHitByHashStmt, err = this.writeDB.Prepare(`DELETE FROM "` + this.hitsTableName + `" WHERE "hash"=?`)
-	if err != nil {
-		return err
-	}
+	this.deleteHitByHashSQL = `DELETE FROM "` + this.hitsTableName + `" WHERE "hash"=?`
 
 	this.lfuHitsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.hitsTableName + `" ORDER BY "week" ASC, "week1Hits"+"week2Hits" ASC LIMIT ?`)
 	if err != nil {
@@ -190,6 +199,14 @@ func (this *FileListDB) Init() error {
 	}
 
 	this.isReady = true
+
+	// 加载HashMap
+	go func() {
+		err := this.hashMap.Load(this)
+		if err != nil {
+			remotelogs.Error("LIST_FILE_DB", "load hash map failed: "+err.Error()+"(file: "+this.dbPath+")")
+		}
+	}()
 
 	return nil
 }
@@ -203,6 +220,8 @@ func (this *FileListDB) Total() int64 {
 }
 
 func (this *FileListDB) AddAsync(hash string, item *Item) error {
+	this.hashMap.Add(hash)
+
 	if item.StaleAt == 0 {
 		item.StaleAt = item.ExpiredAt
 	}
@@ -213,6 +232,8 @@ func (this *FileListDB) AddAsync(hash string, item *Item) error {
 }
 
 func (this *FileListDB) AddSync(hash string, item *Item) error {
+	this.hashMap.Add(hash)
+
 	if item.StaleAt == 0 {
 		item.StaleAt = item.ExpiredAt
 	}
@@ -226,11 +247,15 @@ func (this *FileListDB) AddSync(hash string, item *Item) error {
 }
 
 func (this *FileListDB) DeleteAsync(hash string) error {
+	this.hashMap.Delete(hash)
+
 	this.writeBatch.Add(this.deleteByHashSQL, hash)
 	return nil
 }
 
 func (this *FileListDB) DeleteSync(hash string) error {
+	this.hashMap.Delete(hash)
+
 	_, err := this.deleteByHashStmt.Exec(hash)
 	if err != nil {
 		return err
@@ -293,10 +318,34 @@ func (this *FileListDB) ListLFUItems(count int) (hashList []string, err error) {
 	return
 }
 
-func (this *FileListDB) IncreaseHit(hash string) error {
+func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64, err error) {
+	rows, err := this.selectHashListStmt.Query(lastId)
+	if err != nil {
+		return nil, 0, err
+	}
+	for rows.Next() {
+		var id int64
+		var hash string
+		err = rows.Scan(&id, &hash)
+		if err != nil {
+			_ = rows.Close()
+			return
+		}
+		maxId = id
+		hashList = append(hashList, hash)
+	}
+	return
+}
+
+func (this *FileListDB) IncreaseHitAsync(hash string) error {
 	var week = timeutil.Format("YW")
-	_, err := this.increaseHitStmt.Exec(hash, week, week, week, week)
-	return this.WrapError(err)
+	this.writeBatch.Add(this.increaseHitSQL, hash, week, week, week, week)
+	return nil
+}
+
+func (this *FileListDB) DeleteHitAsync(hash string) error {
+	this.writeBatch.Add(this.deleteHitByHashSQL, hash)
+	return nil
 }
 
 func (this *FileListDB) CleanPrefix(prefix string) error {
@@ -331,6 +380,8 @@ func (this *FileListDB) CleanAll() error {
 		return this.WrapError(err)
 	}
 
+	this.hashMap.Clean()
+
 	return nil
 }
 
@@ -347,6 +398,9 @@ func (this *FileListDB) Close() error {
 	if this.selectByHashStmt != nil {
 		_ = this.selectByHashStmt.Close()
 	}
+	if this.selectHashListStmt != nil {
+		_ = this.selectHashListStmt.Close()
+	}
 	if this.deleteByHashStmt != nil {
 		_ = this.deleteByHashStmt.Close()
 	}
@@ -361,16 +415,6 @@ func (this *FileListDB) Close() error {
 	}
 	if this.listOlderItemsStmt != nil {
 		_ = this.listOlderItemsStmt.Close()
-	}
-
-	if this.insertHitStmt != nil {
-		_ = this.insertHitStmt.Close()
-	}
-	if this.increaseHitStmt != nil {
-		_ = this.increaseHitStmt.Close()
-	}
-	if this.deleteHitByHashStmt != nil {
-		_ = this.deleteHitByHashStmt.Close()
 	}
 	if this.lfuHitsStmt != nil {
 		_ = this.lfuHitsStmt.Close()
@@ -391,7 +435,6 @@ func (this *FileListDB) Close() error {
 			errStrings = append(errStrings, err.Error())
 		}
 	}
-
 
 	if this.writeBatch != nil {
 		this.writeBatch.Close()

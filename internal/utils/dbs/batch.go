@@ -103,6 +103,12 @@ For:
 			}
 		case <-this.close:
 			// closed
+
+			if lastTx != nil {
+				_ = lastTx.Commit()
+				lastTx = nil
+			}
+
 			return
 		}
 	}

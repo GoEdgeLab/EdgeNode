@@ -96,7 +96,7 @@ func (this *FileList) Reset() error {
 }
 
 func (this *FileList) Add(hash string, item *Item) error {
-	var db = this.getDB(hash)
+	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
 		return nil
@@ -120,9 +120,14 @@ func (this *FileList) Add(hash string, item *Item) error {
 }
 
 func (this *FileList) Exist(hash string) (bool, error) {
-	var db = this.getDB(hash)
+	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
+		return false, nil
+	}
+
+	// 如果Hash列表里不存在，那么必然不存在
+	if !db.hashMap.Exist(hash) {
 		return false, nil
 	}
 
@@ -225,7 +230,7 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 				return err
 			}
 			if notFound {
-				_, err = db.deleteHitByHashStmt.Exec(hash)
+				err = db.DeleteHitAsync(hash)
 				if err != nil {
 					return db.WrapError(err)
 				}
@@ -291,13 +296,13 @@ func (this *FileList) Count() (int64, error) {
 
 // IncreaseHit 增加点击量
 func (this *FileList) IncreaseHit(hash string) error {
-	var db = this.getDB(hash)
+	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
 		return nil
 	}
 
-	return db.IncreaseHit(hash)
+	return db.IncreaseHitAsync(hash)
 }
 
 // OnAdd 添加事件
@@ -326,16 +331,22 @@ func (this *FileList) GetDBIndex(hash string) uint64 {
 	return fnv.HashString(hash) % CountFileDB
 }
 
-func (this *FileList) getDB(hash string) *FileListDB {
+func (this *FileList) GetDB(hash string) *FileListDB {
 	return this.dbList[fnv.HashString(hash)%CountFileDB]
 }
 
 func (this *FileList) remove(hash string) (notFound bool, err error) {
-	var db = this.getDB(hash)
+	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
 		return false, nil
 	}
+
+	// HashMap中不存在，则确定不存在
+	if !db.hashMap.Exist(hash) {
+		return true, nil
+	}
+	defer db.hashMap.Delete(hash)
 
 	// 从缓存中删除
 	this.memoryCache.Delete(hash)
@@ -364,7 +375,7 @@ func (this *FileList) remove(hash string) (notFound bool, err error) {
 
 	atomic.AddInt64(&this.total, -1)
 
-	_, err = db.deleteHitByHashStmt.Exec(hash)
+	err = db.DeleteHitAsync(hash)
 	if err != nil {
 		return false, db.WrapError(err)
 	}

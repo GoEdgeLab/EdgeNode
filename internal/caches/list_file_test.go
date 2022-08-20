@@ -361,19 +361,6 @@ func TestFileList_UpgradeV3(t *testing.T) {
 	t.Log("ok")
 }
 
-func TestFileList_HashList(t *testing.T) {
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-	prefixes, err := list.(*caches.FileList).FindAllPrefixes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(len(prefixes))
-}
-
 func BenchmarkFileList_Exist(b *testing.B) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 	err := list.Init()
