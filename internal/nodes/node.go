@@ -1010,10 +1010,13 @@ func (this *Node) reloadServer() {
 }
 
 func (this *Node) checkDisk() {
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS != "linux" {
+		return
+	}
+	for n := 'a'; n <= 'z'; n++ {
 		for _, path := range []string{
-			"/sys/block/vda/queue/rotational",
-			"/sys/block/sda/queue/rotational",
+			"/sys/block/vd" + string(n) + "/queue/rotational",
+			"/sys/block/sd" + string(n) + "/queue/rotational",
 		} {
 			data, err := os.ReadFile(path)
 			if err != nil {
@@ -1022,7 +1025,7 @@ func (this *Node) checkDisk() {
 			if string(data) == "0" {
 				teaconst.DiskIsFast = true
 			}
-			break
+			return
 		}
 	}
 }
