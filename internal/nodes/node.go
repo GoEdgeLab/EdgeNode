@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	iplib "github.com/TeaOSLab/EdgeCommon/pkg/iplibrary"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
@@ -101,9 +102,6 @@ func (this *Node) Start() {
 	// 监听signal
 	this.listenSignals()
 
-	// 启动事件
-	events.Notify(events.EventStart)
-
 	// 本地Sock
 	err := this.listenSock()
 	if err != nil {
@@ -111,8 +109,18 @@ func (this *Node) Start() {
 		return
 	}
 
+	// 启动IP库
+	remotelogs.Println("NODE", "initializing ip library ...")
+	err = iplib.Init()
+	if err != nil {
+		remotelogs.Error("NODE", "initialize ip library failed: "+err.Error())
+	}
+
 	// 检查硬盘类型
 	this.checkDisk()
+
+	// 启动事件
+	events.Notify(events.EventStart)
 
 	// 读取API配置
 	remotelogs.Println("NODE", "init config ...")
