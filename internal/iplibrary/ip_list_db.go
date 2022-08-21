@@ -194,12 +194,12 @@ func (this *IPListDB) ReadMaxVersion() int64 {
 		return 0
 	}
 
-	row := this.selectMaxVersionStmt.QueryRow()
+	var row = this.selectMaxVersionStmt.QueryRow()
 	if row == nil {
 		return 0
 	}
 	var version int64
-	err = row.Scan(&version)
+	err := row.Scan(&version)
 	if err != nil {
 		return 0
 	}

@@ -52,7 +52,6 @@ function build() {
 	cp "$ROOT"/configs/api.template.yaml "$DIST"/configs
 	cp -R "$ROOT"/www "$DIST"/
 	cp -R "$ROOT"/pages "$DIST"/
-	cp -R "$ROOT"/resources "$DIST"/
 
 	# we support TOA on linux/amd64 only
 	if [ "$OS" == "linux" -a "$ARCH" == "amd64" ]

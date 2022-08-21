@@ -1,11 +1,11 @@
 package stats
 
 import (
+	iplib "github.com/TeaOSLab/EdgeCommon/pkg/iplibrary"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
@@ -190,31 +190,26 @@ Loop:
 			var serverId = pieces[0]
 			var ip = pieces[1]
 
-			if iplibrary.SharedLibrary != nil {
-				result, err := iplibrary.SharedLibrary.Lookup(ip)
-				if err == nil && result != nil {
-					if len(result.Country) == 0 {
-						continue
-					}
+			var result = iplib.LookupIP(ip)
+			if result != nil && result.IsOk() {
+				var key = serverId + "@" + result.CountryName() + "@" + result.ProvinceName() + "@" + result.CityName()
+				stat, ok := this.cityMap[key]
+				if !ok {
+					stat = &StatItem{}
+					this.cityMap[key] = stat
+				}
+				stat.Bytes += types.Int64(pieces[2])
+				stat.CountRequests++
+				if types.Int8(pieces[3]) == 1 {
+					stat.AttackBytes += types.Int64(pieces[2])
+					stat.CountAttackRequests++
+				}
 
-					var key = serverId + "@" + result.Country + "@" + result.Province + "@" + result.City
-					stat, ok := this.cityMap[key]
-					if !ok {
-						stat = &StatItem{}
-						this.cityMap[key] = stat
-					}
-					stat.Bytes += types.Int64(pieces[2])
-					stat.CountRequests++
-					if types.Int8(pieces[3]) == 1 {
-						stat.AttackBytes += types.Int64(pieces[2])
-						stat.CountAttackRequests++
-					}
-
-					if len(result.ISP) > 0 {
-						this.providerMap[serverId+"@"+result.ISP]++
-					}
+				if len(result.ProviderName()) > 0 {
+					this.providerMap[serverId+"@"+result.ProviderName()]++
 				}
 			}
+
 		case userAgentString := <-this.userAgentChan:
 			var atIndex = strings.Index(userAgentString, "@")
 			if atIndex < 0 {

@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"bytes"
+	iplib "github.com/TeaOSLab/EdgeCommon/pkg/iplibrary"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -161,56 +162,48 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 	// 检查地区封禁
 	if firewallPolicy.Mode == firewallconfigs.FirewallModeDefend {
-		if iplibrary.SharedLibrary != nil {
-			if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
-				regionConfig := firewallPolicy.Inbound.Region
-				if regionConfig.IsNotEmpty() {
-					for _, remoteAddr := range remoteAddrs {
-						result, err := iplibrary.SharedLibrary.Lookup(remoteAddr)
-						if err != nil {
-							remotelogs.Error("HTTP_REQUEST_WAF", "iplibrary lookup failed: "+err.Error())
-						} else if result != nil {
-							// 检查国家级别封禁
-							if len(regionConfig.DenyCountryIds) > 0 && len(result.Country) > 0 {
-								countryId := iplibrary.SharedCountryManager.Lookup(result.Country)
-								if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
-									this.firewallPolicyId = firewallPolicy.Id
+		if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
+			regionConfig := firewallPolicy.Inbound.Region
+			if regionConfig.IsNotEmpty() {
+				for _, remoteAddr := range remoteAddrs {
+					var result = iplib.LookupIP(remoteAddr)
+					if result != nil && result.IsOk() {
+						// 检查国家/地区级别封禁
+						var countryId = result.CountryId()
+						if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
+							this.firewallPolicyId = firewallPolicy.Id
 
-									this.writeCode(http.StatusForbidden)
-									this.writer.Flush()
-									this.writer.Close()
+							this.writeCode(http.StatusForbidden)
+							this.writer.Flush()
+							this.writer.Close()
 
-									// 停止日志
-									if !logDenying {
-										this.disableLog = true
-									} else {
-										this.tags = append(this.tags, "denyCountry")
-									}
-
-									return true, false
-								}
+							// 停止日志
+							if !logDenying {
+								this.disableLog = true
+							} else {
+								this.tags = append(this.tags, "denyCountry")
 							}
 
-							// 检查省份封禁
-							if len(regionConfig.DenyProvinceIds) > 0 && len(result.Province) > 0 {
-								var provinceId = iplibrary.SharedProvinceManager.Lookup(result.Province)
-								if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
-									this.firewallPolicyId = firewallPolicy.Id
+							return true, false
+						}
 
-									this.writeCode(http.StatusForbidden)
-									this.writer.Flush()
-									this.writer.Close()
+						// 检查省份封禁
+						var provinceId = result.ProvinceId()
+						if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
+							this.firewallPolicyId = firewallPolicy.Id
 
-									// 停止日志
-									if !logDenying {
-										this.disableLog = true
-									} else {
-										this.tags = append(this.tags, "denyProvince")
-									}
+							this.writeCode(http.StatusForbidden)
+							this.writer.Flush()
+							this.writer.Close()
 
-									return true, false
-								}
+							// 停止日志
+							if !logDenying {
+								this.disableLog = true
+							} else {
+								this.tags = append(this.tags, "denyProvince")
 							}
+
+							return true, false
 						}
 					}
 				}

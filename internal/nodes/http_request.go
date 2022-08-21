@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
+	iplib "github.com/TeaOSLab/EdgeCommon/pkg/iplibrary"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -928,42 +928,47 @@ func (this *HTTPRequest) Format(source string) string {
 
 		// geo
 		if prefix == "geo" {
-			result, _ := iplibrary.SharedLibrary.Lookup(this.requestRemoteAddr(true))
+			var result = iplib.LookupIP(this.requestRemoteAddr(true))
 
 			switch suffix {
 			case "country.name":
-				if result != nil {
-					return result.Country
+				if result != nil && result.IsOk() {
+					return result.CountryName()
 				}
 				return ""
 			case "country.id":
-				if result != nil {
-					return types.String(iplibrary.SharedCountryManager.Lookup(result.Country))
+				if result != nil && result.IsOk() {
+					return types.String(result.CountryId())
 				}
 				return "0"
 			case "province.name":
-				if result != nil {
-					return result.Province
+				if result != nil && result.IsOk() {
+					return result.ProvinceName()
 				}
 				return ""
 			case "province.id":
-				if result != nil {
-					return types.String(iplibrary.SharedProvinceManager.Lookup(result.Province))
+				if result != nil && result.IsOk() {
+					return types.String(result.ProvinceId())
 				}
 				return "0"
 			case "city.name":
-				if result != nil {
-					return result.City
+				if result != nil && result.IsOk() {
+					return result.CityName()
 				}
 				return ""
 			case "city.id":
-				if result != nil {
-					var provinceId = iplibrary.SharedProvinceManager.Lookup(result.Province)
-					if provinceId > 0 {
-						return types.String(iplibrary.SharedCityManager.Lookup(provinceId, result.City))
-					} else {
-						return "0"
-					}
+				if result != nil && result.IsOk() {
+					return types.String(result.CityId())
+				}
+				return "0"
+			case "town.name":
+				if result != nil && result.IsOk() {
+					return result.TownName()
+				}
+				return ""
+			case "town.id":
+				if result != nil && result.IsOk() {
+					return types.String(result.TownId())
 				}
 				return "0"
 			}
@@ -971,16 +976,16 @@ func (this *HTTPRequest) Format(source string) string {
 
 		// ips
 		if prefix == "isp" {
-			result, _ := iplibrary.SharedLibrary.Lookup(this.requestRemoteAddr(true))
+			var result = iplib.LookupIP(this.requestRemoteAddr(true))
 
 			switch suffix {
 			case "name":
-				if result != nil {
-					return result.ISP
+				if result != nil && result.IsOk() {
+					return result.ProviderName()
 				}
 			case "id":
-				if result != nil {
-					return types.String(iplibrary.SharedProviderManager.Lookup(result.ISP))
+				if result != nil && result.IsOk() {
+					return types.String(result.ProviderId())
 				}
 				return "0"
 			}
