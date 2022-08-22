@@ -323,9 +323,9 @@ func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64
 	if err != nil {
 		return nil, 0, err
 	}
+	var id int64
+	var hash string
 	for rows.Next() {
-		var id int64
-		var hash string
 		err = rows.Scan(&id, &hash)
 		if err != nil {
 			_ = rows.Close()
@@ -334,6 +334,8 @@ func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64
 		maxId = id
 		hashList = append(hashList, hash)
 	}
+
+	_ = rows.Close()
 	return
 }
 
