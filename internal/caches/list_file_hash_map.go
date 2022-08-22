@@ -5,12 +5,13 @@ package caches
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
+	"math/big"
 	"sync"
 )
 
 // FileListHashMap 文件Hash列表
 type FileListHashMap struct {
-	m map[string]zero.Zero
+	m map[uint64]zero.Zero
 
 	locker      sync.RWMutex
 	isAvailable bool
@@ -19,7 +20,7 @@ type FileListHashMap struct {
 
 func NewFileListHashMap() *FileListHashMap {
 	return &FileListHashMap{
-		m:           map[string]zero.Zero{},
+		m:           map[uint64]zero.Zero{},
 		isAvailable: false,
 		isReady:     false,
 	}
@@ -42,9 +43,7 @@ func (this *FileListHashMap) Load(db *FileListDB) error {
 		if len(hashList) == 0 {
 			break
 		}
-		for _, hash := range hashList {
-			this.Add(hash)
-		}
+		this.AddHashes(hashList)
 		lastId = maxId
 	}
 
@@ -58,7 +57,19 @@ func (this *FileListHashMap) Add(hash string) {
 	}
 
 	this.locker.Lock()
-	this.m[hash] = zero.New()
+	this.m[this.bigInt(hash)] = zero.New()
+	this.locker.Unlock()
+}
+
+func (this *FileListHashMap) AddHashes(hashes []string) {
+	if !this.isAvailable {
+		return
+	}
+
+	this.locker.Lock()
+	for _, hash := range hashes {
+		this.m[this.bigInt(hash)] = zero.New()
+	}
 	this.locker.Unlock()
 }
 
@@ -68,7 +79,7 @@ func (this *FileListHashMap) Delete(hash string) {
 	}
 
 	this.locker.Lock()
-	delete(this.m, hash)
+	delete(this.m, this.bigInt(hash))
 	this.locker.Unlock()
 }
 
@@ -81,17 +92,23 @@ func (this *FileListHashMap) Exist(hash string) bool {
 		return true
 	}
 	this.locker.RLock()
-	_, ok := this.m[hash]
+	_, ok := this.m[this.bigInt(hash)]
 	this.locker.RUnlock()
 	return ok
 }
 
 func (this *FileListHashMap) Clean() {
 	this.locker.Lock()
-	this.m = map[string]zero.Zero{}
+	this.m = map[uint64]zero.Zero{}
 	this.locker.Unlock()
 }
 
 func (this *FileListHashMap) IsReady() bool {
 	return this.isReady
+}
+
+func (this *FileListHashMap) bigInt(hash string) uint64 {
+	var bigInt = big.NewInt(0)
+	bigInt.SetString(hash, 16)
+	return bigInt.Uint64()
 }
