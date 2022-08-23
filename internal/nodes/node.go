@@ -115,9 +115,6 @@ func (this *Node) Start() {
 	if err != nil {
 		remotelogs.Error("NODE", "initialize ip library failed: "+err.Error())
 	}
-	goman.New(func() {
-		iplib.NewUpdater(NewIPLibraryUpdater(), 10*time.Minute).Start()
-	})
 
 	// 检查硬盘类型
 	this.checkDisk()
@@ -157,7 +154,12 @@ func (this *Node) Start() {
 	// 启动同步计时器
 	this.startSyncTimer()
 
-	// 状态变更计时器
+	// 更新IP库
+	goman.New(func() {
+		iplib.NewUpdater(NewIPLibraryUpdater(), 10*time.Minute).Start()
+	})
+
+	// 监控节点运行状态
 	goman.New(func() {
 		NewNodeStatusExecutor().Listen()
 	})
