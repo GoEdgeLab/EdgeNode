@@ -111,10 +111,13 @@ func (this *Node) Start() {
 
 	// 启动IP库
 	remotelogs.Println("NODE", "initializing ip library ...")
-	err = iplib.Init()
+	err = iplib.InitDefault()
 	if err != nil {
 		remotelogs.Error("NODE", "initialize ip library failed: "+err.Error())
 	}
+	goman.New(func() {
+		iplib.NewUpdater(NewIPLibraryUpdater(), 10*time.Minute).Start()
+	})
 
 	// 检查硬盘类型
 	this.checkDisk()

@@ -79,6 +79,10 @@ func (this *RPCClient) IPLibraryRPC() pb.IPLibraryServiceClient {
 	return pb.NewIPLibraryServiceClient(this.pickConn())
 }
 
+func (this *RPCClient) IPLibraryArtifactRPC() pb.IPLibraryArtifactServiceClient {
+	return pb.NewIPLibraryArtifactServiceClient(this.pickConn())
+}
+
 func (this *RPCClient) RegionCountryRPC() pb.RegionCountryServiceClient {
 	return pb.NewRegionCountryServiceClient(this.pickConn())
 }
@@ -141,7 +145,7 @@ func (this *RPCClient) SSLCertRPC() pb.SSLCertServiceClient {
 
 // Context 节点上下文信息
 func (this *RPCClient) Context() context.Context {
-	ctx := context.Background()
+	var ctx = context.Background()
 	m := maps.Map{
 		"timestamp": time.Now().Unix(),
 		"type":      "node",
@@ -157,7 +161,7 @@ func (this *RPCClient) Context() context.Context {
 		utils.PrintError(err)
 		return context.Background()
 	}
-	token := base64.StdEncoding.EncodeToString(data)
+	var token = base64.StdEncoding.EncodeToString(data)
 	ctx = metadata.AppendToOutgoingContext(ctx, "nodeId", this.apiConfig.NodeId, "token", token)
 	return ctx
 }
