@@ -252,12 +252,6 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		return
 	}
 
-	// 在HTTP/2下需要防止因为requestBody而导致Content-Length为空的问题
-	if this.RawReq.ProtoMajor == 2 && this.RawReq.ContentLength == 0 && this.RawReq.Body != nil {
-		_ = this.RawReq.Body.Close()
-		this.RawReq.Body = nil
-	}
-
 	// 开始请求
 	resp, err := client.Do(this.RawReq)
 	if err != nil {
