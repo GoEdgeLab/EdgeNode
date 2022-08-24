@@ -1726,7 +1726,7 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	// HTTP/2流错误
-	if err.Error() == "http2: stream closed" || err.Error() == "client disconnected" { // errStreamClosed, errClientDisconnected
+	if err.Error() == "http2: stream closed" || strings.Contains(err.Error(), "stream error") || err.Error() == "client disconnected" { // errStreamClosed, errClientDisconnected
 		return true
 	}
 
