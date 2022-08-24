@@ -96,7 +96,7 @@ func (this *BandwidthStatManager) Loop() error {
 		if err != nil {
 			return err
 		}
-		_, err = rpcClient.ServerBandwidthStatRPC().UploadServerBandwidthStats(rpcClient.Context(), &pb.UploadServerBandwidthStatsRequest{ServerBandwidthStats: pbStats})
+		_, err = rpcClient.ServerBandwidthStatRPC.UploadServerBandwidthStats(rpcClient.Context(), &pb.UploadServerBandwidthStatsRequest{ServerBandwidthStats: pbStats})
 		if err != nil {
 			return err
 		}

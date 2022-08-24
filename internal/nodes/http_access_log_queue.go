@@ -96,7 +96,7 @@ Loop:
 		this.rpcClient = client
 	}
 
-	_, err := this.rpcClient.HTTPAccessLogRPC().CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
+	_, err := this.rpcClient.HTTPAccessLogRPC.CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
 	if err != nil {
 		// 是否包含了invalid UTF-8
 		if strings.Contains(err.Error(), "string field contains invalid UTF-8") {
@@ -105,7 +105,7 @@ Loop:
 			}
 
 			// 重新提交
-			_, err = this.rpcClient.HTTPAccessLogRPC().CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
+			_, err = this.rpcClient.HTTPAccessLogRPC.CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
 			return err
 		}
 

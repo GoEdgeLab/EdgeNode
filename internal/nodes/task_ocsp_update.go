@@ -60,7 +60,7 @@ func (this *OCSPUpdateTask) Loop() error {
 		return err
 	}
 
-	resp, err := rpcClient.SSLCertRPC().ListUpdatedSSLCertOCSP(rpcClient.Context(), &pb.ListUpdatedSSLCertOCSPRequest{
+	resp, err := rpcClient.SSLCertRPC.ListUpdatedSSLCertOCSP(rpcClient.Context(), &pb.ListUpdatedSSLCertOCSPRequest{
 		Version: this.version,
 		Size:    100,
 	})

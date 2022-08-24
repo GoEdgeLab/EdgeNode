@@ -46,7 +46,7 @@ func (this *IPLibraryUpdater) FindLatestFile() (code string, fileId int64, err e
 	if err != nil {
 		return "", 0, err
 	}
-	resp, err := rpcClient.IPLibraryArtifactRPC().FindPublicIPLibraryArtifact(rpcClient.Context(), &pb.FindPublicIPLibraryArtifactRequest{})
+	resp, err := rpcClient.IPLibraryArtifactRPC.FindPublicIPLibraryArtifact(rpcClient.Context(), &pb.FindPublicIPLibraryArtifactRequest{})
 	if err != nil {
 		return "", 0, err
 	}
@@ -68,12 +68,12 @@ func (this *IPLibraryUpdater) DownloadFile(fileId int64, writer io.Writer) error
 		return err
 	}
 
-	chunkIdsResp, err := rpcClient.FileChunkRPC().FindAllFileChunkIds(rpcClient.Context(), &pb.FindAllFileChunkIdsRequest{FileId: fileId})
+	chunkIdsResp, err := rpcClient.FileChunkRPC.FindAllFileChunkIds(rpcClient.Context(), &pb.FindAllFileChunkIdsRequest{FileId: fileId})
 	if err != nil {
 		return err
 	}
 	for _, chunkId := range chunkIdsResp.FileChunkIds {
-		chunkResp, err := rpcClient.FileChunkRPC().DownloadFileChunk(rpcClient.Context(), &pb.DownloadFileChunkRequest{FileChunkId: chunkId})
+		chunkResp, err := rpcClient.FileChunkRPC.DownloadFileChunk(rpcClient.Context(), &pb.DownloadFileChunkRequest{FileChunkId: chunkId})
 		if err != nil {
 			return err
 		}

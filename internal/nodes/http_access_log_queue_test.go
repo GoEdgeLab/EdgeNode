@@ -55,7 +55,7 @@ func TestHTTPAccessLogQueue_Push(t *testing.T) {
 	//	logs.PrintAsJSON(accessLog)
 
 	//t.Log(strings.ToValidUTF8(string(utf8Bytes), ""))
-	_, err = client.HTTPAccessLogRPC().CreateHTTPAccessLogs(client.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: []*pb.HTTPAccessLog{
+	_, err = client.HTTPAccessLogRPC.CreateHTTPAccessLogs(client.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: []*pb.HTTPAccessLog{
 		accessLog,
 	}})
 	if err != nil {
@@ -99,7 +99,7 @@ func TestHTTPAccessLogQueue_Push2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.HTTPAccessLogRPC().CreateHTTPAccessLogs(client.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: []*pb.HTTPAccessLog{
+	_, err = client.HTTPAccessLogRPC.CreateHTTPAccessLogs(client.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: []*pb.HTTPAccessLog{
 		accessLog,
 	}})
 	if err != nil {

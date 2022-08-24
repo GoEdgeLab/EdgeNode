@@ -144,7 +144,7 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	itemsResp, err := rpcClient.IPItemRPC().ListIPItemsAfterVersion(rpcClient.Context(), &pb.ListIPItemsAfterVersionRequest{
+	itemsResp, err := rpcClient.IPItemRPC.ListIPItemsAfterVersion(rpcClient.Context(), &pb.ListIPItemsAfterVersionRequest{
 		Version: this.version,
 		Size:    this.pageSize,
 	})

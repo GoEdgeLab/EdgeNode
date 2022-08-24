@@ -50,7 +50,7 @@ func init() {
 				if len(reason) == 0 {
 					reason = "触发WAF规则自动加入"
 				}
-				_, err = rpcClient.IPItemRPC().CreateIPItem(rpcClient.Context(), &pb.CreateIPItemRequest{
+				_, err = rpcClient.IPItemRPC.CreateIPItem(rpcClient.Context(), &pb.CreateIPItemRequest{
 					IpListId:                      task.listId,
 					IpFrom:                        task.ip,
 					IpTo:                          "",

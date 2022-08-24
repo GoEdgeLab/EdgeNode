@@ -210,7 +210,7 @@ func (this *TrafficStatManager) Upload() error {
 		})
 	}
 
-	_, err = client.ServerDailyStatRPC().UploadServerDailyStats(client.Context(), &pb.UploadServerDailyStatsRequest{
+	_, err = client.ServerDailyStatRPC.UploadServerDailyStats(client.Context(), &pb.UploadServerDailyStatsRequest{
 		Stats:       pbServerStats,
 		DomainStats: pbDomainStats,
 	})

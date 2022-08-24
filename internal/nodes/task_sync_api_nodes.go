@@ -81,7 +81,7 @@ func (this *SyncAPINodesTask) Loop() error {
 	if err != nil {
 		return err
 	}
-	resp, err := rpcClient.APINodeRPC().FindAllEnabledAPINodes(rpcClient.Context(), &pb.FindAllEnabledAPINodesRequest{})
+	resp, err := rpcClient.APINodeRPC.FindAllEnabledAPINodes(rpcClient.Context(), &pb.FindAllEnabledAPINodesRequest{})
 	if err != nil {
 		return err
 	}

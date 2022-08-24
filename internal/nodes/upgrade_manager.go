@@ -126,7 +126,7 @@ func (this *UpgradeManager) install() error {
 	var sum = ""
 	var filename = ""
 	for {
-		resp, err := client.NodeRPC().DownloadNodeInstallationFile(client.Context(), &pb.DownloadNodeInstallationFileRequest{
+		resp, err := client.NodeRPC.DownloadNodeInstallationFile(client.Context(), &pb.DownloadNodeInstallationFileRequest{
 			Os:          runtime.GOOS,
 			Arch:        runtime.GOARCH,
 			ChunkOffset: offset,

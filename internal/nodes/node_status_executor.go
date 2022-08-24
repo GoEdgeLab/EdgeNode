@@ -125,7 +125,7 @@ func (this *NodeStatusExecutor) update() {
 		remotelogs.Error("NODE_STATUS", "failed to open rpc: "+err.Error())
 		return
 	}
-	_, err = rpcClient.NodeRPC().UpdateNodeStatus(rpcClient.Context(), &pb.UpdateNodeStatusRequest{
+	_, err = rpcClient.NodeRPC.UpdateNodeStatus(rpcClient.Context(), &pb.UpdateNodeStatusRequest{
 		StatusJSON: jsonData,
 	})
 	if err != nil {

@@ -424,7 +424,7 @@ func (this *Task) Upload(pauseDuration time.Duration) error {
 						return nil, err
 					}
 
-					_, err = rpcClient.MetricStatRPC().UploadMetricStats(rpcClient.Context(), &pb.UploadMetricStatsRequest{
+					_, err = rpcClient.MetricStatRPC.UploadMetricStats(rpcClient.Context(), &pb.UploadMetricStatsRequest{
 						MetricStats: pbStats,
 						Time:        currentTime,
 						ServerId:    serverId,

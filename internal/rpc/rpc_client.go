@@ -28,6 +28,27 @@ type RPCClient struct {
 	conns     []*grpc.ClientConn
 
 	locker sync.RWMutex
+
+	NodeRPC                pb.NodeServiceClient
+	NodeLogRPC             pb.NodeLogServiceClient
+	NodeTaskRPC            pb.NodeTaskServiceClient
+	NodeValueRPC           pb.NodeValueServiceClient
+	HTTPAccessLogRPC       pb.HTTPAccessLogServiceClient
+	HTTPCacheTaskKeyRPC    pb.HTTPCacheTaskKeyServiceClient
+	APINodeRPC             pb.APINodeServiceClient
+	IPLibraryArtifactRPC   pb.IPLibraryArtifactServiceClient
+	IPListRPC              pb.IPListServiceClient
+	IPItemRPC              pb.IPItemServiceClient
+	FileRPC                pb.FileServiceClient
+	FileChunkRPC           pb.FileChunkServiceClient
+	ACMEAuthenticationRPC  pb.ACMEAuthenticationServiceClient
+	ServerRPC              pb.ServerServiceClient
+	ServerDailyStatRPC     pb.ServerDailyStatServiceClient
+	ServerBandwidthStatRPC pb.ServerBandwidthStatServiceClient
+	MetricStatRPC          pb.MetricStatServiceClient
+	FirewallRPC            pb.FirewallServiceClient
+	SSLCertRPC             pb.SSLCertServiceClient
+	ScriptRPC              pb.ScriptServiceClient
 }
 
 func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
@@ -35,9 +56,31 @@ func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
 		return nil, errors.New("api config should not be nil")
 	}
 
-	client := &RPCClient{
+	var client = &RPCClient{
 		apiConfig: apiConfig,
 	}
+
+	// 初始化RPC实例
+	client.NodeRPC = pb.NewNodeServiceClient(client)
+	client.NodeLogRPC = pb.NewNodeLogServiceClient(client)
+	client.NodeTaskRPC = pb.NewNodeTaskServiceClient(client)
+	client.NodeValueRPC = pb.NewNodeValueServiceClient(client)
+	client.HTTPAccessLogRPC = pb.NewHTTPAccessLogServiceClient(client)
+	client.HTTPCacheTaskKeyRPC = pb.NewHTTPCacheTaskKeyServiceClient(client)
+	client.APINodeRPC = pb.NewAPINodeServiceClient(client)
+	client.IPLibraryArtifactRPC = pb.NewIPLibraryArtifactServiceClient(client)
+	client.IPListRPC = pb.NewIPListServiceClient(client)
+	client.IPItemRPC = pb.NewIPItemServiceClient(client)
+	client.FileRPC = pb.NewFileServiceClient(client)
+	client.FileChunkRPC = pb.NewFileChunkServiceClient(client)
+	client.ACMEAuthenticationRPC = pb.NewACMEAuthenticationServiceClient(client)
+	client.ServerRPC = pb.NewServerServiceClient(client)
+	client.ServerDailyStatRPC = pb.NewServerDailyStatServiceClient(client)
+	client.ServerBandwidthStatRPC = pb.NewServerBandwidthStatServiceClient(client)
+	client.MetricStatRPC = pb.NewMetricStatServiceClient(client)
+	client.FirewallRPC = pb.NewFirewallServiceClient(client)
+	client.SSLCertRPC = pb.NewSSLCertServiceClient(client)
+	client.ScriptRPC = pb.NewScriptServiceClient(client)
 
 	err := client.init()
 	if err != nil {
@@ -47,106 +90,10 @@ func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
 	return client, nil
 }
 
-func (this *RPCClient) NodeRPC() pb.NodeServiceClient {
-	return pb.NewNodeServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) NodeLogRPC() pb.NodeLogServiceClient {
-	return pb.NewNodeLogServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) NodeTaskRPC() pb.NodeTaskServiceClient {
-	return pb.NewNodeTaskServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) NodeValueRPC() pb.NodeValueServiceClient {
-	return pb.NewNodeValueServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) HTTPAccessLogRPC() pb.HTTPAccessLogServiceClient {
-	return pb.NewHTTPAccessLogServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) HTTPCacheTaskKeyRPC() pb.HTTPCacheTaskKeyServiceClient {
-	return pb.NewHTTPCacheTaskKeyServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) APINodeRPC() pb.APINodeServiceClient {
-	return pb.NewAPINodeServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) IPLibraryRPC() pb.IPLibraryServiceClient {
-	return pb.NewIPLibraryServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) IPLibraryArtifactRPC() pb.IPLibraryArtifactServiceClient {
-	return pb.NewIPLibraryArtifactServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) RegionCountryRPC() pb.RegionCountryServiceClient {
-	return pb.NewRegionCountryServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) RegionProvinceRPC() pb.RegionProvinceServiceClient {
-	return pb.NewRegionProvinceServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) RegionCityRPC() pb.RegionCityServiceClient {
-	return pb.NewRegionCityServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) RegionProviderRPC() pb.RegionProviderServiceClient {
-	return pb.NewRegionProviderServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) IPListRPC() pb.IPListServiceClient {
-	return pb.NewIPListServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) IPItemRPC() pb.IPItemServiceClient {
-	return pb.NewIPItemServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) FileRPC() pb.FileServiceClient {
-	return pb.NewFileServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) FileChunkRPC() pb.FileChunkServiceClient {
-	return pb.NewFileChunkServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) ACMEAuthenticationRPC() pb.ACMEAuthenticationServiceClient {
-	return pb.NewACMEAuthenticationServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) ServerRPC() pb.ServerServiceClient {
-	return pb.NewServerServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) ServerDailyStatRPC() pb.ServerDailyStatServiceClient {
-	return pb.NewServerDailyStatServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) ServerBandwidthStatRPC() pb.ServerBandwidthStatServiceClient {
-	return pb.NewServerBandwidthStatServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) MetricStatRPC() pb.MetricStatServiceClient {
-	return pb.NewMetricStatServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) FirewallRPC() pb.FirewallServiceClient {
-	return pb.NewFirewallServiceClient(this.pickConn())
-}
-
-func (this *RPCClient) SSLCertRPC() pb.SSLCertServiceClient {
-	return pb.NewSSLCertServiceClient(this.pickConn())
-}
-
 // Context 节点上下文信息
 func (this *RPCClient) Context() context.Context {
 	var ctx = context.Background()
-	m := maps.Map{
+	var m = maps.Map{
 		"timestamp": time.Now().Unix(),
 		"type":      "node",
 		"userId":    0,
@@ -213,7 +160,7 @@ func (this *RPCClient) UpdateConfig(config *configs.APIConfig) error {
 // 初始化
 func (this *RPCClient) init() error {
 	// 重新连接
-	conns := []*grpc.ClientConn{}
+	var conns = []*grpc.ClientConn{}
 	for _, endpoint := range this.apiConfig.RPC.Endpoints {
 		u, err := url.Parse(endpoint)
 		if err != nil {
@@ -252,20 +199,24 @@ func (this *RPCClient) pickConn() *grpc.ClientConn {
 
 	// 检查连接状态
 	if len(this.conns) > 0 {
-		availableConns := []*grpc.ClientConn{}
-		for _, state := range []connectivity.State{connectivity.Ready, connectivity.Idle, connectivity.Connecting} {
+		var availableConns = []*grpc.ClientConn{}
+		for _, stateArray := range [][2]connectivity.State{
+			{connectivity.Ready, connectivity.Idle}, // 优先Ready和Idle
+			{connectivity.Connecting, connectivity.Connecting},
+		} {
 			for _, conn := range this.conns {
-				if conn.GetState() == state {
+				var state = conn.GetState()
+				if state == stateArray[0] || state == stateArray[1] {
 					availableConns = append(availableConns, conn)
 				}
 			}
 			if len(availableConns) > 0 {
-				break
+				return this.randConn(availableConns)
 			}
 		}
 
 		if len(availableConns) > 0 {
-			return availableConns[rands.Int(0, len(availableConns)-1)]
+			return this.randConn(availableConns)
 		}
 
 		// 关闭
@@ -285,5 +236,31 @@ func (this *RPCClient) pickConn() *grpc.ClientConn {
 		return nil
 	}
 
-	return this.conns[rands.Int(0, len(this.conns)-1)]
+	return this.randConn(this.conns)
+}
+
+func (this *RPCClient) Invoke(ctx context.Context, method string, args interface{}, reply interface{}, opts ...grpc.CallOption) error {
+	var conn = this.pickConn()
+	if conn == nil {
+		return errors.New("can not get available grpc connection")
+	}
+	return conn.Invoke(ctx, method, args, reply, opts...)
+}
+func (this *RPCClient) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	var conn = this.pickConn()
+	if conn == nil {
+		return nil, errors.New("can not get available grpc connection")
+	}
+	return conn.NewStream(ctx, desc, method, opts...)
+}
+
+func (this *RPCClient) randConn(conns []*grpc.ClientConn) *grpc.ClientConn {
+	var l = len(conns)
+	if l == 0 {
+		return nil
+	}
+	if l == 1 {
+		return conns[0]
+	}
+	return conns[rands.Int(0, l-1)]
 }

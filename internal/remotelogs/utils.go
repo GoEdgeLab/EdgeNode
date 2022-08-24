@@ -173,7 +173,6 @@ func ServerSuccess(serverId int64, tag string, description string, logType nodec
 	}
 }
 
-
 // ServerLog 打印服务相关日志信息
 func ServerLog(serverId int64, tag string, description string, logType nodeconfigs.NodeLogType, params maps.Map) {
 	logs.Println("[" + tag + "]" + description)
@@ -253,6 +252,6 @@ Loop:
 		return nil
 	}
 
-	_, err = rpcClient.NodeLogRPC().CreateNodeLogs(rpcClient.Context(), &pb.CreateNodeLogsRequest{NodeLogs: logList})
+	_, err = rpcClient.NodeLogRPC.CreateNodeLogs(rpcClient.Context(), &pb.CreateNodeLogsRequest{NodeLogs: logList})
 	return err
 }

@@ -69,7 +69,7 @@ func (this *ValueQueue) Loop() error {
 	}
 
 	for value := range this.valuesChan {
-		_, err = rpcClient.NodeValueRPC().CreateNodeValue(rpcClient.Context(), &pb.CreateNodeValueRequest{
+		_, err = rpcClient.NodeValueRPC.CreateNodeValue(rpcClient.Context(), &pb.CreateNodeValueRequest{
 			Item:      value.Item,
 			ValueJSON: value.ValueJSON,
 			CreatedAt: value.CreatedAt,

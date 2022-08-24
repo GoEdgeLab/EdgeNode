@@ -79,7 +79,7 @@ func (this *Node) Test() error {
 	if err != nil {
 		return errors.New("test rpc failed: " + err.Error())
 	}
-	_, err = rpcClient.APINodeRPC().FindCurrentAPINodeVersion(rpcClient.Context(), &pb.FindCurrentAPINodeVersionRequest{})
+	_, err = rpcClient.APINodeRPC.FindCurrentAPINodeVersion(rpcClient.Context(), &pb.FindCurrentAPINodeVersionRequest{})
 	if err != nil {
 		return errors.New("test rpc failed: " + err.Error())
 	}
@@ -307,7 +307,7 @@ func (this *Node) loop() error {
 	}
 
 	var nodeCtx = rpcClient.Context()
-	tasksResp, err := rpcClient.NodeTaskRPC().FindNodeTasks(nodeCtx, &pb.FindNodeTasksRequest{})
+	tasksResp, err := rpcClient.NodeTaskRPC.FindNodeTasks(nodeCtx, &pb.FindNodeTasksRequest{})
 	if err != nil {
 		if rpc.IsConnError(err) && !Tea.IsTesting() {
 			return nil
@@ -325,7 +325,7 @@ func (this *Node) loop() error {
 			}
 
 			// 修改为已同步
-			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+			_, err = rpcClient.NodeTaskRPC.ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
 				NodeTaskId: task.Id,
 				IsOk:       true,
 				Error:      "",
@@ -344,13 +344,13 @@ func (this *Node) loop() error {
 				err = this.syncConfig(task.Version)
 			}
 			if err != nil {
-				_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+				_, err = rpcClient.NodeTaskRPC.ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
 					NodeTaskId: task.Id,
 					IsOk:       false,
 					Error:      err.Error(),
 				})
 			} else {
-				_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+				_, err = rpcClient.NodeTaskRPC.ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
 					NodeTaskId: task.Id,
 					IsOk:       true,
 					Error:      "",
@@ -372,7 +372,7 @@ func (this *Node) loop() error {
 			}
 
 			// 修改为已同步
-			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+			_, err = rpcClient.NodeTaskRPC.ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
 				NodeTaskId: task.Id,
 				IsOk:       true,
 				Error:      "",
@@ -381,7 +381,7 @@ func (this *Node) loop() error {
 				return err
 			}
 		case "nodeLevelChanged":
-			levelInfoResp, err := rpcClient.NodeRPC().FindNodeLevelInfo(nodeCtx, &pb.FindNodeLevelInfoRequest{})
+			levelInfoResp, err := rpcClient.NodeRPC.FindNodeLevelInfo(nodeCtx, &pb.FindNodeLevelInfoRequest{})
 			if err != nil {
 				return err
 			}
@@ -398,7 +398,7 @@ func (this *Node) loop() error {
 			sharedNodeConfig.ParentNodes = parentNodes
 
 			// 修改为已同步
-			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+			_, err = rpcClient.NodeTaskRPC.ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
 				NodeTaskId: task.Id,
 				IsOk:       true,
 				Error:      "",
@@ -407,7 +407,7 @@ func (this *Node) loop() error {
 				return err
 			}
 		case "ddosProtectionChanged":
-			resp, err := rpcClient.NodeRPC().FindNodeDDoSProtection(nodeCtx, &pb.FindNodeDDoSProtectionRequest{})
+			resp, err := rpcClient.NodeRPC.FindNodeDDoSProtection(nodeCtx, &pb.FindNodeDDoSProtectionRequest{})
 			if err != nil {
 				return err
 			}
@@ -434,7 +434,7 @@ func (this *Node) loop() error {
 			}
 
 			// 修改为已同步
-			_, err = rpcClient.NodeTaskRPC().ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
+			_, err = rpcClient.NodeTaskRPC.ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
 				NodeTaskId: task.Id,
 				IsOk:       true,
 				Error:      "",
@@ -479,7 +479,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 	nodeCtx := rpcClient.Context()
 
 	// TODO 这里考虑只同步版本号有变更的
-	configResp, err := rpcClient.NodeRPC().FindCurrentNodeConfig(nodeCtx, &pb.FindCurrentNodeConfigRequest{
+	configResp, err := rpcClient.NodeRPC.FindCurrentNodeConfig(nodeCtx, &pb.FindCurrentNodeConfigRequest{
 		Version:         -1, // 更新所有版本
 		Compress:        true,
 		NodeTaskVersion: taskVersion,
@@ -570,7 +570,7 @@ func (this *Node) syncServerConfig(serverId int64) error {
 	if err != nil {
 		return err
 	}
-	resp, err := rpcClient.ServerRPC().ComposeServerConfig(rpcClient.Context(), &pb.ComposeServerConfigRequest{ServerId: serverId})
+	resp, err := rpcClient.ServerRPC.ComposeServerConfig(rpcClient.Context(), &pb.ComposeServerConfigRequest{ServerId: serverId})
 	if err != nil {
 		return err
 	}
@@ -652,7 +652,7 @@ func (this *Node) checkClusterConfig() error {
 	}
 
 	logs.Println("[NODE]registering node to cluster ...")
-	resp, err := rpcClient.NodeRPC().RegisterClusterNode(rpcClient.ClusterContext(config.ClusterId, config.Secret), &pb.RegisterClusterNodeRequest{Name: HOSTNAME})
+	resp, err := rpcClient.NodeRPC.RegisterClusterNode(rpcClient.ClusterContext(config.ClusterId, config.Secret), &pb.RegisterClusterNodeRequest{Name: HOSTNAME})
 	if err != nil {
 		return err
 	}

@@ -81,7 +81,7 @@ func (this *HTTPCacheTaskManager) Start() {
 
 		if rpcClient != nil {
 			for taskReq := range this.taskQueue {
-				_, err := rpcClient.ServerRPC().PurgeServerCache(rpcClient.Context(), taskReq)
+				_, err := rpcClient.ServerRPC.PurgeServerCache(rpcClient.Context(), taskReq)
 				if err != nil {
 					remotelogs.Error("HTTP_CACHE_TASK_MANAGER", "create purge task failed: "+err.Error())
 				}
@@ -104,7 +104,7 @@ func (this *HTTPCacheTaskManager) Loop() error {
 		return err
 	}
 
-	resp, err := rpcClient.HTTPCacheTaskKeyRPC().FindDoingHTTPCacheTaskKeys(rpcClient.Context(), &pb.FindDoingHTTPCacheTaskKeysRequest{})
+	resp, err := rpcClient.HTTPCacheTaskKeyRPC.FindDoingHTTPCacheTaskKeys(rpcClient.Context(), &pb.FindDoingHTTPCacheTaskKeysRequest{})
 	if err != nil {
 		// 忽略连接错误
 		if rpc.IsConnError(err) {
@@ -135,7 +135,7 @@ func (this *HTTPCacheTaskManager) Loop() error {
 		pbResults = append(pbResults, pbResult)
 	}
 
-	_, err = rpcClient.HTTPCacheTaskKeyRPC().UpdateHTTPCacheTaskKeysStatus(rpcClient.Context(), &pb.UpdateHTTPCacheTaskKeysStatusRequest{KeyResults: pbResults})
+	_, err = rpcClient.HTTPCacheTaskKeyRPC.UpdateHTTPCacheTaskKeysStatus(rpcClient.Context(), &pb.UpdateHTTPCacheTaskKeysStatusRequest{KeyResults: pbResults})
 	if err != nil {
 		return err
 	}

@@ -16,9 +16,9 @@ func TestValueQueue_RPC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = rpcClient.NodeValueRPC().CreateNodeValue(rpcClient.Context(), &pb.CreateNodeValueRequest{})
+	_, err = rpcClient.NodeValueRPC.CreateNodeValue(rpcClient.Context(), &pb.CreateNodeValueRequest{})
 	if err != nil {
-		statusErr, ok:= status.FromError(err)
+		statusErr, ok := status.FromError(err)
 		if ok {
 			logs.Println(statusErr.Code())
 		}

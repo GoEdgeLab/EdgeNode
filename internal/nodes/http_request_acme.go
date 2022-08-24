@@ -21,7 +21,7 @@ func (this *HTTPRequest) doACME() (shouldStop bool) {
 		return false
 	}
 
-	keyResp, err := rpcClient.ACMEAuthenticationRPC().FindACMEAuthenticationKeyWithToken(rpcClient.Context(), &pb.FindACMEAuthenticationKeyWithTokenRequest{Token: token})
+	keyResp, err := rpcClient.ACMEAuthenticationRPC.FindACMEAuthenticationKeyWithToken(rpcClient.Context(), &pb.FindACMEAuthenticationKeyWithTokenRequest{Token: token})
 	if err != nil {
 		remotelogs.Error("RPC", "[ACME]read key for token failed: "+err.Error())
 		return false

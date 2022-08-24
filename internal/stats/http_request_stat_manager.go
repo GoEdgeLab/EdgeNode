@@ -324,7 +324,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 	this.dailyFirewallRuleGroupMap = map[string]int64{}
 
 	// 上传数据
-	_, err = rpcClient.ServerRPC().UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
+	_, err = rpcClient.ServerRPC.UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
 		Month:                  timeutil.Format("Ym"),
 		Day:                    timeutil.Format("Ymd"),
 		RegionCities:           pbCities,
@@ -346,7 +346,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 			}
 
 			// 再次尝试
-			_, err = rpcClient.ServerRPC().UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
+			_, err = rpcClient.ServerRPC.UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
 				Month:                  timeutil.Format("Ym"),
 				Day:                    timeutil.Format("Ymd"),
 				RegionCities:           pbCities,

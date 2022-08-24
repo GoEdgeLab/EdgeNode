@@ -73,7 +73,7 @@ func (this *APIStream) loop() error {
 		cancelFunc()
 	}()
 
-	nodeStream, err := rpcClient.NodeRPC().NodeStream(ctx)
+	nodeStream, err := rpcClient.NodeRPC.NodeStream(ctx)
 	if err != nil {
 		if this.isQuiting {
 			return nil
