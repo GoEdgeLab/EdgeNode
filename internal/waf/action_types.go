@@ -5,18 +5,19 @@ import "reflect"
 type ActionString = string
 
 const (
-	ActionLog      ActionString = "log"       // allow and log
-	ActionBlock    ActionString = "block"     // block
-	ActionCaptcha  ActionString = "captcha"   // block and show captcha
-	ActionNotify   ActionString = "notify"    // 告警
-	ActionGet302   ActionString = "get_302"   // 针对GET的302重定向认证
-	ActionPost307  ActionString = "post_307"  // 针对POST的307重定向认证
-	ActionRecordIP ActionString = "record_ip" // 记录IP
-	ActionTag      ActionString = "tag"       // 标签
-	ActionPage     ActionString = "page"      // 显示网页
-	ActionAllow    ActionString = "allow"     // allow
-	ActionGoGroup  ActionString = "go_group"  // go to next rule group
-	ActionGoSet    ActionString = "go_set"    // go to next rule set
+	ActionLog              ActionString = "log"       // allow and log
+	ActionBlock            ActionString = "block"     // block
+	ActionCaptcha          ActionString = "captcha"   // block and show captcha
+	ActionJavascriptCookie ActionString = "js_cookie" // js cookie
+	ActionNotify           ActionString = "notify"    // 告警
+	ActionGet302           ActionString = "get_302"   // 针对GET的302重定向认证
+	ActionPost307          ActionString = "post_307"  // 针对POST的307重定向认证
+	ActionRecordIP         ActionString = "record_ip" // 记录IP
+	ActionTag              ActionString = "tag"       // 标签
+	ActionPage             ActionString = "page"      // 显示网页
+	ActionAllow            ActionString = "allow"     // allow
+	ActionGoGroup          ActionString = "go_group"  // go to next rule group
+	ActionGoSet            ActionString = "go_set"    // go to next rule set
 )
 
 var AllActions = []*ActionDefinition{
@@ -43,6 +44,12 @@ var AllActions = []*ActionDefinition{
 		Code:     ActionCaptcha,
 		Instance: new(CaptchaAction),
 		Type:     reflect.TypeOf(new(CaptchaAction)).Elem(),
+	},
+	{
+		Name:     "JS Cookie验证",
+		Code:     ActionJavascriptCookie,
+		Instance: new(JSCookieAction),
+		Type:     reflect.TypeOf(new(JSCookieAction)).Elem(),
 	},
 	{
 		Name:     "告警",
