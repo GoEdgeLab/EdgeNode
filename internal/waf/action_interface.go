@@ -27,5 +27,5 @@ type ActionInterface interface {
 	WillChange() bool
 
 	// Perform the action
-	Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool)
+	Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool)
 }

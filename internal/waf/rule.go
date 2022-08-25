@@ -667,7 +667,7 @@ func (this *Rule) execFilter(value interface{}) interface{} {
 		}
 		value, goNext, err = filterInstance.Do(value, filter.Options)
 		if err != nil {
-			remotelogs.Println("WAF", "filter error: "+err.Error())
+			remotelogs.Error("WAF", "filter error: "+err.Error())
 			break
 		}
 		if !goNext {

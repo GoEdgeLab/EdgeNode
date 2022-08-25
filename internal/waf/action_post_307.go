@@ -33,17 +33,17 @@ func (this *Post307Action) WillChange() bool {
 	return true
 }
 
-func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	var cookieName = "WAF_VALIDATOR_ID"
 
 	// 仅限于POST
 	if request.WAFRaw().Method != http.MethodPost {
-		return true
+		return true, false
 	}
 
 	// 是否已经在白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
-		return true
+		return true, false
 	}
 
 	// 判断是否有Cookie
@@ -57,7 +57,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 			}
 			var setId = m.GetString("setId")
 			SharedIPWhiteList.RecordIP("set:"+setId, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life, m.GetInt64("policyId"), false, m.GetInt64("groupId"), m.GetInt64("setId"), "")
-			return true
+			return true, false
 		}
 	}
 
@@ -73,7 +73,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	info, err := utils.SimpleEncryptMap(m)
 	if err != nil {
 		remotelogs.Error("WAF_POST_302_ACTION", "encode info failed: "+err.Error())
-		return true
+		return true, false
 	}
 
 	// 设置Cookie
@@ -90,5 +90,5 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		_ = this.CloseConn(writer)
 	}
 
-	return false
+	return false, false
 }

@@ -241,7 +241,7 @@ func (this *WAF) MoveOutboundRuleGroup(fromIndex int, toIndex int) {
 	this.Outbound = result
 }
 
-func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, group *RuleGroup, set *RuleSet, err error) {
+func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, group *RuleGroup, sets *RuleSet, err error) {
 	if !this.hasInboundRules {
 		return true, hasRequestBody, nil, nil, nil
 	}
@@ -272,8 +272,10 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) 
 			return true, hasRequestBody, nil, nil, err
 		}
 		if b {
-			goNext = set.PerformActions(this, group, req, writer)
-			return goNext, hasRequestBody, group, set, nil
+			continueRequest, goNextSet := set.PerformActions(this, group, req, writer)
+			if !goNextSet {
+				return continueRequest, hasRequestBody, group, set, nil
+			}
 		}
 	}
 	return true, hasRequestBody, nil, nil, nil
@@ -296,8 +298,10 @@ func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, wri
 			return true, hasRequestBody, nil, nil, err
 		}
 		if b {
-			goNext = set.PerformActions(this, group, req, writer)
-			return goNext, hasRequestBody, group, set, nil
+			continueRequest, goNextSet := set.PerformActions(this, group, req, writer)
+			if !goNextSet {
+				return continueRequest, hasRequestBody, group, set, nil
+			}
 		}
 	}
 	return true, hasRequestBody, nil, nil, nil

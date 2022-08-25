@@ -41,15 +41,15 @@ func (this *JSCookieAction) WillChange() bool {
 	return true
 }
 
-func (this *JSCookieAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *JSCookieAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	// 是否在白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, req.WAFServerId(), req.WAFRemoteIP()) {
-		return true
+		return true, false
 	}
 
 	nodeConfig, err := nodeconfigs.SharedNodeConfig()
 	if err != nil {
-		return true
+		return true, false
 	}
 
 	var life = this.Life
@@ -65,7 +65,7 @@ func (this *JSCookieAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		if len(cookieValue) > 10 {
 			var timestamp = cookieValue[:10]
 			if types.Int64(timestamp) >= time.Now().Unix()-int64(life) && fmt.Sprintf("%x", md5.Sum([]byte(timestamp+"@"+nodeConfig.NodeId))) == cookieValue[10:] {
-				return true
+				return true, false
 			}
 		}
 	}
@@ -94,7 +94,7 @@ window.location.reload();
 	// 记录失败次数
 	this.increaseFails(req, waf.Id, group.Id, set.Id)
 
-	return false
+	return false, false
 }
 
 func (this *JSCookieAction) increaseFails(req requests.Request, policyId int64, groupId int64, setId int64) (goNext bool) {

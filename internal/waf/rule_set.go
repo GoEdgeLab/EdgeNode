@@ -136,19 +136,19 @@ func (this *RuleSet) ActionCodes() []string {
 	return this.actionCodes
 }
 
-func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Request, writer http.ResponseWriter) bool {
+func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	if len(waf.Mode) != 0 && waf.Mode != firewallconfigs.FirewallModeDefend {
-		return true
+		return true, false
 	}
 
 	// 先执行allow
 	for _, instance := range this.actionInstances {
 		if !instance.WillChange() {
-			goNext := req.WAFOnAction(instance)
-			if !goNext {
-				return false
+			continueRequest = req.WAFOnAction(instance)
+			if !continueRequest {
+				return false, false
 			}
-			instance.Perform(waf, group, this, req, writer)
+			_, goNextSet = instance.Perform(waf, group, this, req, writer)
 		}
 	}
 
@@ -156,15 +156,15 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 	for _, instance := range this.actionInstances {
 		// 只执行第一个可能改变请求的动作，其余的都会被忽略
 		if instance.WillChange() {
-			goNext := req.WAFOnAction(instance)
-			if !goNext {
-				return false
+			continueRequest = req.WAFOnAction(instance)
+			if !continueRequest {
+				return false, false
 			}
 			return instance.Perform(waf, group, this, req, writer)
 		}
 	}
 
-	return true
+	return true, goNextSet
 }
 
 func (this *RuleSet) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, err error) {

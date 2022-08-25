@@ -58,11 +58,11 @@ func (this *BlockAction) WillChange() bool {
 	return true
 }
 
-func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	// 加入到黑名单
 	var timeout = this.Timeout
 	if timeout <= 0 {
-		timeout = 60 // 默认封锁60秒
+		timeout = 300 // 默认封锁300秒
 	}
 
 	SharedIPBlackList.RecordIP(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(timeout), waf.Id, waf.UseLocalFirewall, group.Id, set.Id, "")
@@ -82,14 +82,14 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 				req, err := http.NewRequest(http.MethodGet, this.URL, nil)
 				if err != nil {
 					logs.Error(err)
-					return false
+					return false, false
 				}
 				req.Header.Set("User-Agent", teaconst.GlobalProductName+"/"+teaconst.Version)
 
 				resp, err := httpClient.Do(req)
 				if err != nil {
 					logs.Error(err)
-					return false
+					return false, false
 				}
 				defer func() {
 					_ = resp.Body.Close()
@@ -113,11 +113,11 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 				data, err := os.ReadFile(path)
 				if err != nil {
 					logs.Error(err)
-					return false
+					return false, false
 				}
 				_, _ = writer.Write(data)
 			}
-			return false
+			return false, false
 		}
 		if len(this.Body) > 0 {
 			_, _ = writer.Write([]byte(this.Body))
@@ -126,5 +126,5 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 		}
 	}
 
-	return false
+	return false, false
 }

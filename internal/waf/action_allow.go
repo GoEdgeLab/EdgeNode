@@ -25,7 +25,7 @@ func (this *AllowAction) WillChange() bool {
 	return true
 }
 
-func (this *AllowAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *AllowAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	// do nothing
-	return true
+	return true, false
 }

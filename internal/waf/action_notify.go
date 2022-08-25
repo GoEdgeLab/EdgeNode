@@ -71,7 +71,7 @@ func (this *NotifyAction) WillChange() bool {
 }
 
 // Perform the action
-func (this *NotifyAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *NotifyAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	select {
 	case notifyChan <- &notifyTask{
 		ServerId:                request.WAFServerId(),
@@ -84,5 +84,5 @@ func (this *NotifyAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 
 	}
 
-	return true
+	return true, false
 }

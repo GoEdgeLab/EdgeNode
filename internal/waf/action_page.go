@@ -32,10 +32,10 @@ func (this *PageAction) WillChange() bool {
 }
 
 // Perform the action
-func (this *PageAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *PageAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	writer.WriteHeader(this.Status)
 	_, _ = writer.Write([]byte(request.Format(this.Body)))
 
-	return false
+	return false, false
 }

@@ -99,10 +99,10 @@ func (this *RecordIPAction) WillChange() bool {
 	return this.Type == "black"
 }
 
-func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	// 是否在本地白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
-		return true
+		return true, false
 	}
 
 	timeout := this.Timeout
@@ -147,5 +147,5 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		}
 	}
 
-	return this.Type != "black"
+	return this.Type != "black", false
 }

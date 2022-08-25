@@ -1,8 +1,8 @@
 package waf
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"net/http"
 )
@@ -29,20 +29,20 @@ func (this *GoGroupAction) WillChange() bool {
 	return true
 }
 
-func (this *GoGroupAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *GoGroupAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	nextGroup := waf.FindRuleGroup(types.Int64(this.GroupId))
 	if nextGroup == nil || !nextGroup.IsOn {
-		return true
+		return true, true
 	}
 
 	b, _, nextSet, err := nextGroup.MatchRequest(request)
 	if err != nil {
-		logs.Error(err)
-		return true
+		remotelogs.Error("WAF", "GO_GROUP_ACTION: "+err.Error())
+		return true, false
 	}
 
 	if !b {
-		return true
+		return true, false
 	}
 
 	return nextSet.PerformActions(waf, nextGroup, request, writer)

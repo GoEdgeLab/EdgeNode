@@ -25,6 +25,6 @@ func (this *LogAction) WillChange() bool {
 	return false
 }
 
-func (this *LogAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
-	return true
+func (this *LogAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+	return true, false
 }

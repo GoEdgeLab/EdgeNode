@@ -41,15 +41,15 @@ func (this *Get302Action) WillChange() bool {
 	return true
 }
 
-func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	// 仅限于Get
 	if request.WAFRaw().Method != http.MethodGet {
-		return true
+		return true, false
 	}
 
 	// 是否已经在白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
-		return true
+		return true, false
 	}
 
 	var m = maps.Map{
@@ -64,7 +64,7 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 	info, err := utils.SimpleEncryptMap(m)
 	if err != nil {
 		remotelogs.Error("WAF_GET_302_ACTION", "encode info failed: "+err.Error())
-		return true
+		return true, false
 	}
 
 	http.Redirect(writer, request.WAFRaw(), Get302Path+"?info="+url.QueryEscape(info), http.StatusFound)
@@ -73,5 +73,5 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 		_ = this.CloseConn(writer)
 	}
 
-	return false
+	return false, false
 }
