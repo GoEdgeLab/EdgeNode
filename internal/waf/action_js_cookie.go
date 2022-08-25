@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/types"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -63,9 +64,13 @@ func (this *JSCookieAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 	if err == nil && cookie != nil {
 		var cookieValue = cookie.Value
 		if len(cookieValue) > 10 {
-			var timestamp = cookieValue[:10]
-			if types.Int64(timestamp) >= time.Now().Unix()-int64(life) && fmt.Sprintf("%x", md5.Sum([]byte(timestamp+"@"+nodeConfig.NodeId))) == cookieValue[10:] {
-				return true, false
+			var pieces = strings.Split(cookieValue, "@")
+			if len(pieces) == 3 {
+				var timestamp = pieces[0]
+				var sum = pieces[2]
+				if types.Int64(timestamp) >= time.Now().Unix()-int64(life) && fmt.Sprintf("%x", md5.Sum([]byte(timestamp+"@"+types.String(set.Id)+"@"+nodeConfig.NodeId))) == sum {
+					return true, false
+				}
 			}
 		}
 	}
@@ -75,7 +80,7 @@ func (this *JSCookieAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 
 	var timestamp = types.String(time.Now().Unix())
 
-	var cookieValue = timestamp + fmt.Sprintf("%x", md5.Sum([]byte(timestamp+"@"+nodeConfig.NodeId)))
+	var cookieValue = timestamp + "@" + types.String(set.Id) + "@" + fmt.Sprintf("%x", md5.Sum([]byte(timestamp+"@"+types.String(set.Id)+"@"+nodeConfig.NodeId)))
 
 	_, _ = writer.Write([]byte(`<!DOCTYPE html>
 <html>
@@ -110,7 +115,7 @@ func (this *JSCookieAction) increaseFails(req requests.Request, policyId int64, 
 		failBlockTimeout = 1800 // 默认1800s
 	}
 
-	var key = "JS_COOKIE:FAILS:" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId())
+	var key = "JS_COOKIE:FAILS:" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId()) + ":" + req.WAFRaw().URL.String()
 
 	var countFails = ttlcache.SharedCache.IncreaseInt64(key, 1, time.Now().Unix()+300, true)
 	if int(countFails) >= maxFails {

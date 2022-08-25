@@ -50,5 +50,5 @@ func CaptchaDeleteCacheKey(req requests.Request) {
 
 // CaptchaCacheKey 获取Captcha缓存Key
 func CaptchaCacheKey(req requests.Request, pageCode CaptchaPageCode) string {
-	return "CAPTCHA:FAILS:" + pageCode + ":" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId())
+	return "CAPTCHA:FAILS:" + pageCode + ":" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId()) + ":" + req.WAFRaw().URL.String()
 }
