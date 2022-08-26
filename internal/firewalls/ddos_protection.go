@@ -204,6 +204,22 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 			}
 		}
 
+		// deny new connections rate
+		var denyNewConnectionsRate = tcpConfig.DenyNewConnectionsRate
+		var denyNewConnectionsRateTimeout = tcpConfig.DenyNewConnectionsRateTimeout
+		if denyNewConnectionsRate <= 0 {
+			denyNewConnectionsRate = nodeconfigs.DefaultTCPDenyNewConnectionsRate
+			if denyNewConnectionsRate <= 0 {
+				denyNewConnectionsRate = 100000
+			}
+		}
+		if denyNewConnectionsRateTimeout <= 0 {
+			denyNewConnectionsRateTimeout = nodeconfigs.DefaultTCPDenyNewConnectionsRateTimeout
+			if denyNewConnectionsRateTimeout <= 0 {
+				denyNewConnectionsRateTimeout = 1800
+			}
+		}
+
 		// 检查是否有变化
 		var hasChanges = false
 		for _, port := range ports {
@@ -216,6 +232,10 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 				break
 			}
 			if !this.existsRule(oldRules, []string{"tcp", types.String(port), "newConnectionsRate", types.String(newConnectionsRate)}) {
+				hasChanges = true
+				break
+			}
+			if !this.existsRule(oldRules, []string{"tcp", types.String(port), "denyNewConnectionsRate", types.String(denyNewConnectionsRate), types.String(denyNewConnectionsRateTimeout)}) {
 				hasChanges = true
 				break
 			}
@@ -251,6 +271,7 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 				}
 			}
 
+			// TODO 让用户选择是drop还是reject
 			if maxConnectionsPerIP > 0 {
 				var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "meter", "meter-"+protocol+"-"+types.String(port)+"-max-connections", "{ "+protocol+" saddr ct count over "+types.String(maxConnectionsPerIP)+" }", "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "maxConnectionsPerIP", types.String(maxConnectionsPerIP)}))
 				var stderr = &bytes.Buffer{}
@@ -261,9 +282,21 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 				}
 			}
 
+			// 超过一定速率就drop
+			// TODO 让用户选择是drop还是reject
 			if newConnectionsRate > 0 {
-				// TODO 思考是否有惩罚机制
 				var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsRate)+"/minute burst "+types.String(newConnectionsRate+3)+" packets }" /**"add", "@deny_set", "{"+protocol+" saddr}",**/, "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsRate", types.String(newConnectionsRate)}))
+				var stderr = &bytes.Buffer{}
+				cmd.Stderr = stderr
+				err := cmd.Run()
+				if err != nil {
+					return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
+				}
+			}
+
+			// 超过一定速率就自动加入到黑名单
+			if denyNewConnectionsRate > 0 {
+				var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-deny-new-connections-rate", "{ "+protocol+" saddr limit rate over "+types.String(denyNewConnectionsRate)+"/minute burst "+types.String(denyNewConnectionsRate+3)+" packets }", "add", "@deny_set", "{"+protocol+" saddr timeout "+types.String(denyNewConnectionsRateTimeout)+"s}", "comment", this.encodeUserData([]string{"tcp", types.String(port), "denyNewConnectionsRate", types.String(denyNewConnectionsRate), types.String(denyNewConnectionsRateTimeout)}))
 				var stderr = &bytes.Buffer{}
 				cmd.Stderr = stderr
 				err := cmd.Run()
@@ -335,14 +368,14 @@ func (this *DDoSProtectionManager) decodeUserData(data []byte) []string {
 func (this *DDoSProtectionManager) removeOldTCPRules(chain *nftables.Chain, rules []*nftables.Rule) error {
 	for _, rule := range rules {
 		var pieces = this.decodeUserData(rule.UserData())
-		if len(pieces) != 4 {
+		if len(pieces) < 4 {
 			continue
 		}
 		if pieces[0] != "tcp" {
 			continue
 		}
 		switch pieces[2] {
-		case "maxConnections", "maxConnectionsPerIP", "newConnectionsRate":
+		case "maxConnections", "maxConnectionsPerIP", "newConnectionsRate", "denyNewConnectionsRate":
 			err := chain.DeleteRule(rule)
 			if err != nil {
 				return err
