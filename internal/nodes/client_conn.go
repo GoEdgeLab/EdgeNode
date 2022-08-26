@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
+	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"os"
@@ -22,6 +23,8 @@ import (
 
 // ClientConn 客户端连接
 type ClientConn struct {
+	BaseClientConn
+
 	once sync.Once
 
 	isTLS       bool
@@ -31,8 +34,6 @@ type ClientConn struct {
 	isLO bool // 是否为环路
 
 	hasResetSYNFlood bool
-
-	BaseClientConn
 }
 
 func NewClientConn(conn net.Conn, isTLS bool, quickClose bool) net.Conn {
@@ -110,11 +111,10 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 func (this *ClientConn) Write(b []byte) (n int, err error) {
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
-		atomic.AddUint64(&teaconst.OutTrafficBytes, uint64(n))
-
 		// 统计当前服务带宽
 		if this.serverId > 0 {
-			if !this.isLO { // 环路不统计带宽，避免缓存预热等行为产生带宽
+			if !this.isLO || Tea.IsTesting() { // 环路不统计带宽，避免缓存预热等行为产生带宽
+				atomic.AddUint64(&teaconst.OutTrafficBytes, uint64(n))
 				stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n))
 			}
 		}

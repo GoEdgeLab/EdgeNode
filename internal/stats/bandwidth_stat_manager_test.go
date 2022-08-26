@@ -14,7 +14,7 @@ func TestBandwidthStatManager_Add(t *testing.T) {
 	manager.Add(1, 1, 10)
 	manager.Add(1, 1, 10)
 	time.Sleep(1 * time.Second)
-	manager.Add(1, 1, 15)
+	manager.Add(1, 1, 85)
 	time.Sleep(1 * time.Second)
 	manager.Add(1, 1, 25)
 	manager.Add(1, 1, 75)

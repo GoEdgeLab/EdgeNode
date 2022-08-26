@@ -869,6 +869,11 @@ func (this *Node) listenSock() error {
 				} else {
 					_ = cmd.ReplyOk()
 				}
+			case "bandwidth":
+				var m = stats.SharedBandwidthStatManager.Map()
+				_ = cmd.Reply(&gosock.Command{Params: maps.Map{
+					"stats": m,
+				}})
 			}
 		})
 

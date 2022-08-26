@@ -2,7 +2,10 @@
 
 package nodes
 
-import "net"
+import (
+	"crypto/tls"
+	"net"
+)
 
 type BaseClientConn struct {
 	rawConn net.Conn
@@ -42,6 +45,17 @@ func (this *BaseClientConn) Bind(serverId int64, remoteAddr string, maxConnsPerS
 // SetServerId 设置服务ID
 func (this *BaseClientConn) SetServerId(serverId int64) {
 	this.serverId = serverId
+
+	// 设置包装前连接
+	switch conn := this.rawConn.(type) {
+	case *tls.Conn:
+		nativeConn, ok := conn.NetConn().(ClientConnInterface)
+		if ok {
+			nativeConn.SetServerId(serverId)
+		}
+	case *ClientConn:
+		conn.SetServerId(serverId)
+	}
 }
 
 // ServerId 读取当前连接绑定的服务ID
@@ -52,6 +66,17 @@ func (this *BaseClientConn) ServerId() int64 {
 // SetUserId 设置所属服务的用户ID
 func (this *BaseClientConn) SetUserId(userId int64) {
 	this.userId = userId
+
+	// 设置包装前连接
+	switch conn := this.rawConn.(type) {
+	case *tls.Conn:
+		nativeConn, ok := conn.NetConn().(ClientConnInterface)
+		if ok {
+			nativeConn.SetUserId(userId)
+		}
+	case *ClientConn:
+		conn.SetUserId(userId)
+	}
 }
 
 // UserId 获取当前连接所属服务的用户ID
@@ -66,9 +91,15 @@ func (this *BaseClientConn) RawIP() string {
 }
 
 // TCPConn 转换为TCPConn
-func (this *BaseClientConn) TCPConn() (*net.TCPConn, bool) {
-	conn, ok := this.rawConn.(*net.TCPConn)
-	return conn, ok
+func (this *BaseClientConn) TCPConn() (tcpConn *net.TCPConn, ok bool) {
+	// 设置包装前连接
+	switch conn := this.rawConn.(type) {
+	case *tls.Conn:
+		tcpConn, ok = conn.NetConn().(*net.TCPConn)
+	default:
+		tcpConn, ok = this.rawConn.(*net.TCPConn)
+	}
+	return
 }
 
 // SetLinger 设置Linger

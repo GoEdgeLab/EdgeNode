@@ -17,6 +17,8 @@ import (
 
 var SharedBandwidthStatManager = NewBandwidthStatManager()
 
+const bandwidthTimestampDelim = 2 // N秒平均，更为精确
+
 func init() {
 	events.On(events.EventLoaded, func() {
 		goman.New(func() {
@@ -83,7 +85,7 @@ func (this *BandwidthStatManager) Loop() error {
 				ServerId: stat.ServerId,
 				Day:      stat.Day,
 				TimeAt:   stat.TimeAt,
-				Bytes:    stat.MaxBytes,
+				Bytes:    stat.MaxBytes / bandwidthTimestampDelim,
 			})
 			delete(this.m, key)
 		}
@@ -112,10 +114,17 @@ func (this *BandwidthStatManager) Add(userId int64, serverId int64, bytes int64)
 	}
 
 	var now = time.Now()
-	var timestamp = now.Unix()
+	var timestamp = now.Unix() / bandwidthTimestampDelim * bandwidthTimestampDelim // 将时间戳均分成N等份
 	var day = timeutil.Format("Ymd", now)
 	var timeAt = timeutil.FormatTime("Hi", now.Unix()/300*300)
 	var key = types.String(serverId) + "@" + day + "@" + timeAt
+
+	// 增加TCP Header尺寸，这里默认MTU为1500，且默认为IPv4
+	const mtu = 1500
+	const tcpHeaderSize = 20
+	if bytes > mtu {
+		bytes += bytes * tcpHeaderSize / mtu
+	}
 
 	this.locker.Lock()
 	stat, ok := this.m[key]
@@ -149,4 +158,16 @@ func (this *BandwidthStatManager) Inspect() {
 	this.locker.Lock()
 	logs.PrintAsJSON(this.m)
 	this.locker.Unlock()
+}
+
+func (this *BandwidthStatManager) Map() map[int64]int64 /** serverId => max bytes **/ {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	var m = map[int64]int64{}
+	for _, v := range this.m {
+		m[v.ServerId] = v.MaxBytes / bandwidthTimestampDelim
+	}
+
+	return m
 }
