@@ -318,6 +318,21 @@ func main() {
 			}
 		}
 	})
+	app.On("bandwidth", func() {
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{Code: "bandwidth"})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+			return
+		}
+		var statsMap = maps.NewMap(reply.Params).Get("stats")
+		statsJSON, err := json.MarshalIndent(statsMap, "", "  ")
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+			return
+		}
+		fmt.Println(string(statsJSON))
+	})
 	app.Run(func() {
 		var node = nodes.NewNode()
 		node.Start()
