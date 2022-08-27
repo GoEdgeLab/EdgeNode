@@ -1428,9 +1428,14 @@ func (this *HTTPRequest) Done() {
 func (this *HTTPRequest) Close() {
 	this.Done()
 
-	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
+	var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
 	if requestConn == nil {
 		return
+	}
+
+	lingerConn, ok := requestConn.(LingerConn)
+	if ok {
+		_ = lingerConn.SetLinger(0)
 	}
 
 	conn, ok := requestConn.(net.Conn)

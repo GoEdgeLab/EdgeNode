@@ -95,7 +95,12 @@ func (this *BaseClientConn) TCPConn() (tcpConn *net.TCPConn, ok bool) {
 	// 设置包装前连接
 	switch conn := this.rawConn.(type) {
 	case *tls.Conn:
-		tcpConn, ok = conn.NetConn().(*net.TCPConn)
+		var internalConn = conn.NetConn()
+		clientConn, ok := internalConn.(*ClientConn)
+		if ok {
+			return clientConn.TCPConn()
+		}
+		tcpConn, ok = internalConn.(*net.TCPConn)
 	default:
 		tcpConn, ok = this.rawConn.(*net.TCPConn)
 	}

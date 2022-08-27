@@ -36,25 +36,23 @@ type ClientConn struct {
 	hasResetSYNFlood bool
 }
 
-func NewClientConn(conn net.Conn, isTLS bool, quickClose bool) net.Conn {
-	if quickClose {
-		// TCP
-		tcpConn, ok := conn.(*net.TCPConn)
-		if ok {
-			// TODO 可以在配置中设置此值
-			_ = tcpConn.SetLinger(nodeconfigs.DefaultTCPLinger)
-		}
-	}
-
+func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool) net.Conn {
 	// 是否为环路
-	var remoteAddr = conn.RemoteAddr().String()
+	var remoteAddr = rawConn.RemoteAddr().String()
 	var isLO = strings.HasPrefix(remoteAddr, "127.0.0.1:") || strings.HasPrefix(remoteAddr, "[::1]:")
 
-	return &ClientConn{
-		BaseClientConn: BaseClientConn{rawConn: conn},
+	var conn = &ClientConn{
+		BaseClientConn: BaseClientConn{rawConn: rawConn},
 		isTLS:          isTLS,
 		isLO:           isLO,
 	}
+
+	if quickClose {
+		// TODO 可以在配置中设置此值
+		_ = conn.SetLinger(nodeconfigs.DefaultTCPLinger)
+	}
+
+	return conn
 }
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
@@ -177,6 +175,11 @@ func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloo
 			if timeout <= 0 {
 				timeout = 600
 			}
+
+			// 关闭当前连接
+			_ = this.SetLinger(0)
+			_ = this.Close()
+
 			waf.SharedIPBlackList.RecordIP(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip, time.Now().Unix()+int64(timeout), 0, true, 0, 0, "疑似SYN Flood攻击，当前1分钟"+types.String(result)+"次空连接")
 		}
 	}
