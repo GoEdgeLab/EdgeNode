@@ -43,7 +43,7 @@ type IPListManager struct {
 
 func NewIPListManager() *IPListManager {
 	return &IPListManager{
-		pageSize: 500,
+		pageSize: 1000,
 		listMap:  map[int64]*IPList{},
 	}
 }
@@ -111,15 +111,19 @@ func (this *IPListManager) init() {
 		var size int64 = 1000
 		for {
 			items, err := db.ReadItems(offset, size)
+			var l = len(items)
 			if err != nil {
 				remotelogs.Error("IP_LIST_MANAGER", "read ip list from local database failed: "+err.Error())
 			} else {
-				if len(items) == 0 {
+				if l == 0 {
 					break
 				}
 				this.processItems(items, false)
+				if int64(l) < size {
+					break
+				}
 			}
-			offset += int64(len(items))
+			offset += int64(l)
 		}
 	}
 }
@@ -155,7 +159,7 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		}
 		return false, err
 	}
-	items := itemsResp.IpItems
+	var items = itemsResp.IpItems
 	if len(items) == 0 {
 		return false, nil
 	}
