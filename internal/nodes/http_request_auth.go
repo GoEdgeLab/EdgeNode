@@ -19,7 +19,10 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 		if !ref.IsOn || ref.AuthPolicy == nil || !ref.AuthPolicy.IsOn {
 			continue
 		}
-		b, err := ref.AuthPolicy.Filter(this.RawReq, func(subReq *http.Request) (status int, err error) {
+		if !ref.AuthPolicy.MatchRequest(this.RawReq) {
+			continue
+		}
+		ok, newURI, uriChanged, err := ref.AuthPolicy.Filter(this.RawReq, func(subReq *http.Request) (status int, err error) {
 			subReq.TLS = this.RawReq.TLS
 			subReq.RemoteAddr = this.RawReq.RemoteAddr
 			subReq.Host = this.RawReq.Host
@@ -36,24 +39,31 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 			this.write50x(err, http.StatusInternalServerError, "Failed to execute the AuthPolicy", "认证策略执行失败", false)
 			return
 		}
-		if b {
+		if ok {
+			if uriChanged {
+				this.uri = newURI
+			}
 			return
 		} else {
+			// Basic Auth比较特殊
 			if ref.AuthPolicy.Type == serverconfigs.HTTPAuthTypeBasicAuth {
-				var method = ref.AuthPolicy.Method().(*serverconfigs.HTTPAuthBasicMethod)
-				var headerValue = "Basic realm=\""
-				if len(method.Realm) > 0 {
-					headerValue += method.Realm
-				} else {
-					headerValue += this.ReqHost
+				method, ok := ref.AuthPolicy.Method().(*serverconfigs.HTTPAuthBasicMethod)
+				if ok {
+					var headerValue = "Basic realm=\""
+					if len(method.Realm) > 0 {
+						headerValue += method.Realm
+					} else {
+						headerValue += this.ReqHost
+					}
+					headerValue += "\""
+					if len(method.Charset) > 0 {
+						headerValue += ", charset=\"" + method.Charset + "\""
+					}
+					this.writer.Header()["WWW-Authenticate"] = []string{headerValue}
 				}
-				headerValue += "\""
-				if len(method.Charset) > 0 {
-					headerValue += ", charset=\"" + method.Charset + "\""
-				}
-				this.writer.Header()["WWW-Authenticate"] = []string{headerValue}
 			}
 			this.writer.WriteHeader(http.StatusUnauthorized)
+			this.tags = append(this.tags, ref.AuthPolicy.Type)
 			return true
 		}
 	}
