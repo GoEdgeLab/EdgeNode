@@ -43,6 +43,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 			if uriChanged {
 				this.uri = newURI
 			}
+			this.tags = append(this.tags, ref.AuthPolicy.Type)
 			return
 		} else {
 			// Basic Auth比较特殊
