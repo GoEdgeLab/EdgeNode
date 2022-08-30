@@ -1172,7 +1172,7 @@ func (this *HTTPRequest) requestRemoteUser() string {
 
 // Path 请求的URL中路径部分
 func (this *HTTPRequest) Path() string {
-	uri, err := url.ParseRequestURI(this.rawURI)
+	uri, err := url.ParseRequestURI(this.uri)
 	if err != nil {
 		return ""
 	}
