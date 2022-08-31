@@ -195,29 +195,30 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 			}
 		}
 
-		// new connections rate
-		var newConnectionsRate = tcpConfig.NewConnectionsRate
-		if newConnectionsRate <= 0 {
-			newConnectionsRate = nodeconfigs.DefaultTCPNewConnectionsRate
-			if newConnectionsRate <= 0 {
-				newConnectionsRate = 100000
+		// new connections rate (minutely)
+		var newConnectionsMinutelyRate = tcpConfig.NewConnectionsMinutelyRate
+		if newConnectionsMinutelyRate <= 0 {
+			newConnectionsMinutelyRate = nodeconfigs.DefaultTCPNewConnectionsMinutelyRate
+			if newConnectionsMinutelyRate <= 0 {
+				newConnectionsMinutelyRate = 100000
 			}
+		}
+		var newConnectionsMinutelyRateBlockTimeout = tcpConfig.NewConnectionsMinutelyRateBlockTimeout
+		if newConnectionsMinutelyRateBlockTimeout < 0 {
+			newConnectionsMinutelyRateBlockTimeout = 0
 		}
 
-		// deny new connections rate
-		var denyNewConnectionsRate = tcpConfig.DenyNewConnectionsRate
-		var denyNewConnectionsRateTimeout = tcpConfig.DenyNewConnectionsRateTimeout
-		if denyNewConnectionsRate <= 0 {
-			denyNewConnectionsRate = nodeconfigs.DefaultTCPDenyNewConnectionsRate
-			if denyNewConnectionsRate <= 0 {
-				denyNewConnectionsRate = 100000
+		// new connections rate (secondly)
+		var newConnectionsSecondlyRate = tcpConfig.NewConnectionsSecondlyRate
+		if newConnectionsSecondlyRate <= 0 {
+			newConnectionsSecondlyRate = nodeconfigs.DefaultTCPNewConnectionsSecondlyRate
+			if newConnectionsSecondlyRate <= 0 {
+				newConnectionsSecondlyRate = 10000
 			}
 		}
-		if denyNewConnectionsRateTimeout <= 0 {
-			denyNewConnectionsRateTimeout = nodeconfigs.DefaultTCPDenyNewConnectionsRateTimeout
-			if denyNewConnectionsRateTimeout <= 0 {
-				denyNewConnectionsRateTimeout = 1800
-			}
+		var newConnectionsSecondlyRateBlockTimeout = tcpConfig.NewConnectionsSecondlyRateBlockTimeout
+		if newConnectionsSecondlyRateBlockTimeout < 0 {
+			newConnectionsSecondlyRateBlockTimeout = 0
 		}
 
 		// 检查是否有变化
@@ -231,11 +232,11 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 				hasChanges = true
 				break
 			}
-			if !this.existsRule(oldRules, []string{"tcp", types.String(port), "newConnectionsRate", types.String(newConnectionsRate)}) {
+			if !this.existsRule(oldRules, []string{"tcp", types.String(port), "newConnectionsRate", types.String(newConnectionsMinutelyRate), types.String(newConnectionsMinutelyRateBlockTimeout)}) {
 				hasChanges = true
 				break
 			}
-			if !this.existsRule(oldRules, []string{"tcp", types.String(port), "denyNewConnectionsRate", types.String(denyNewConnectionsRate), types.String(denyNewConnectionsRateTimeout)}) {
+			if !this.existsRule(oldRules, []string{"tcp", types.String(port), "newConnectionsSecondlyRate", types.String(newConnectionsSecondlyRate), types.String(newConnectionsSecondlyRateBlockTimeout)}) {
 				hasChanges = true
 				break
 			}
@@ -282,26 +283,47 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 				}
 			}
 
-			// 超过一定速率就drop
+			// 超过一定速率就drop或者加入黑名单（分钟）
 			// TODO 让用户选择是drop还是reject
-			if newConnectionsRate > 0 {
-				var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsRate)+"/minute burst "+types.String(newConnectionsRate+3)+" packets }" /**"add", "@deny_set", "{"+protocol+" saddr}",**/, "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsRate", types.String(newConnectionsRate)}))
-				var stderr = &bytes.Buffer{}
-				cmd.Stderr = stderr
-				err := cmd.Run()
-				if err != nil {
-					return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
+			if newConnectionsMinutelyRate > 0 {
+				if newConnectionsMinutelyRateBlockTimeout > 0 {
+					var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsMinutelyRate)+"/minute burst "+types.String(newConnectionsMinutelyRate+3)+" packets }", "add", "@deny_set", "{"+protocol+" saddr timeout "+types.String(newConnectionsMinutelyRateBlockTimeout)+"s}", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsRate", types.String(newConnectionsMinutelyRate), types.String(newConnectionsMinutelyRateBlockTimeout)}))
+					var stderr = &bytes.Buffer{}
+					cmd.Stderr = stderr
+					err := cmd.Run()
+					if err != nil {
+						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
+					}
+				} else {
+					var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsMinutelyRate)+"/minute burst "+types.String(newConnectionsMinutelyRate+3)+" packets }" /**"add", "@deny_set", "{"+protocol+" saddr}",**/, "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsRate", "0"}))
+					var stderr = &bytes.Buffer{}
+					cmd.Stderr = stderr
+					err := cmd.Run()
+					if err != nil {
+						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
+					}
 				}
 			}
 
-			// 超过一定速率就自动加入到黑名单
-			if denyNewConnectionsRate > 0 {
-				var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-deny-new-connections-rate", "{ "+protocol+" saddr limit rate over "+types.String(denyNewConnectionsRate)+"/minute burst "+types.String(denyNewConnectionsRate+3)+" packets }", "add", "@deny_set", "{"+protocol+" saddr timeout "+types.String(denyNewConnectionsRateTimeout)+"s}", "comment", this.encodeUserData([]string{"tcp", types.String(port), "denyNewConnectionsRate", types.String(denyNewConnectionsRate), types.String(denyNewConnectionsRateTimeout)}))
-				var stderr = &bytes.Buffer{}
-				cmd.Stderr = stderr
-				err := cmd.Run()
-				if err != nil {
-					return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
+			// 超过一定速率就drop或者加入黑名单（秒）
+			// TODO 让用户选择是drop还是reject
+			if newConnectionsSecondlyRate > 0 {
+				if newConnectionsSecondlyRateBlockTimeout > 0 {
+					var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-secondly-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsSecondlyRate)+"/second burst "+types.String(newConnectionsSecondlyRate+3)+" packets }", "add", "@deny_set", "{"+protocol+" saddr timeout "+types.String(newConnectionsSecondlyRateBlockTimeout)+"s}", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsSecondlyRate", types.String(newConnectionsSecondlyRate), types.String(newConnectionsSecondlyRateBlockTimeout)}))
+					var stderr = &bytes.Buffer{}
+					cmd.Stderr = stderr
+					err := cmd.Run()
+					if err != nil {
+						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
+					}
+				} else {
+					var cmd = exec.Command(this.nftPath, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-secondly-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsSecondlyRate)+"/second burst "+types.String(newConnectionsSecondlyRate+3)+" packets }" /**"add", "@deny_set", "{"+protocol+" saddr}",**/, "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsSecondlyRate", "0"}))
+					var stderr = &bytes.Buffer{}
+					cmd.Stderr = stderr
+					err := cmd.Run()
+					if err != nil {
+						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + stderr.String() + ")")
+					}
 				}
 			}
 		}
@@ -375,7 +397,7 @@ func (this *DDoSProtectionManager) removeOldTCPRules(chain *nftables.Chain, rule
 			continue
 		}
 		switch pieces[2] {
-		case "maxConnections", "maxConnectionsPerIP", "newConnectionsRate", "denyNewConnectionsRate":
+		case "maxConnections", "maxConnectionsPerIP", "newConnectionsRate", "newConnectionsSecondlyRate":
 			err := chain.DeleteRule(rule)
 			if err != nil {
 				return err

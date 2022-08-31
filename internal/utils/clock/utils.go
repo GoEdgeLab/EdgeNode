@@ -35,7 +35,7 @@ func Sync() error {
 
 	ntpdate, err := exec.LookPath("ntpdate")
 	if err != nil {
-		return err
+		return nil
 	}
 	if len(ntpdate) > 0 {
 		return syncNtpdate(ntpdate)
