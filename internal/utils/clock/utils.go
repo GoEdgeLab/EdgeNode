@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// Start TODO 需要可以在集群中配置
 func Start() {
 	// sync once
 	err := Sync()
