@@ -18,7 +18,8 @@ import (
 type IPListDB struct {
 	db *sql.DB
 
-	itemTableName          string
+	itemTableName string
+
 	deleteExpiredItemsStmt *sql.Stmt
 	deleteItemStmt         *sql.Stmt
 	insertItemStmt         *sql.Stmt
@@ -53,7 +54,11 @@ func (this *IPListDB) init() error {
 		remotelogs.Println("IP_LIST_DB", "create data dir '"+this.dir+"'")
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+this.dir+"/ip_list.db?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
+	var path = this.dir + "/ip_list.db"
+	_ = os.Remove(path + "-shm")
+	_ = os.Remove(path + "-wal")
+
+	db, err := sql.Open("sqlite3", "file:"+path+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
 	if err != nil {
 		return err
 	}

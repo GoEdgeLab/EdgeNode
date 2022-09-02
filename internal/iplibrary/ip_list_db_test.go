@@ -16,6 +16,7 @@ func TestIPListDB_AddItem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	err = db.AddItem(&pb.IPItem{
 		Id:                            1,
 		IpFrom:                        "192.168.1.101",
@@ -45,6 +46,12 @@ func TestIPListDB_AddItem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	err = db.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Log("ok")
 }
 

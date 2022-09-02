@@ -4,6 +4,7 @@ package metrics
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"strconv"
 	"sync"
@@ -11,7 +12,15 @@ import (
 
 var SharedManager = NewManager()
 
+func init() {
+	events.On(events.EventQuit, func() {
+		SharedManager.Quit()
+	})
+}
+
 type Manager struct {
+	isQuiting bool
+
 	tasks         map[int64]*Task    // itemId => *Task
 	categoryTasks map[string][]*Task // category => []*Task
 	locker        sync.RWMutex
@@ -29,6 +38,10 @@ func NewManager() *Manager {
 }
 
 func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
+	if this.isQuiting {
+		return
+	}
+
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
@@ -101,6 +114,10 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 
 // Add 添加数据
 func (this *Manager) Add(obj MetricInterface) {
+	if this.isQuiting {
+		return
+	}
+
 	this.locker.RLock()
 	for _, task := range this.categoryTasks[obj.MetricCategory()] {
 		task.Add(obj)
@@ -118,4 +135,18 @@ func (this *Manager) HasTCPMetrics() bool {
 
 func (this *Manager) HasUDPMetrics() bool {
 	return this.hasUDPMetrics
+}
+
+// Quit 退出管理器
+func (this *Manager) Quit() {
+	this.isQuiting = true
+
+	remotelogs.Println("METRIC_MANAGER", "quit")
+
+	this.locker.Lock()
+	for _, task := range this.tasks {
+		_ = task.Stop()
+	}
+	this.tasks = map[int64]*Task{}
+	this.locker.Unlock()
 }

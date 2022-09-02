@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
-	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"strconv"
 	"sync"
@@ -16,7 +15,7 @@ var SharedManager = NewManager()
 
 func init() {
 	events.On(events.EventQuit, func() {
-		logs.Println("CACHE", "quiting cache manager")
+		remotelogs.Println("CACHE", "quiting cache manager")
 		SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
 	})
 }

@@ -894,7 +894,7 @@ func (this *Node) listenSock() error {
 	})
 
 	events.OnKey(events.EventQuit, this, func() {
-		logs.Println("NODE", "quit unix sock")
+		remotelogs.Println("NODE", "quit unix sock")
 		_ = this.sock.Close()
 	})
 

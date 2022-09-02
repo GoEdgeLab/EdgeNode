@@ -16,6 +16,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/types"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"strconv"
@@ -89,7 +90,11 @@ func (this *Task) Init() error {
 		remotelogs.Println("METRIC", "create data dir '"+dir+"'")
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dir+"/metric."+strconv.FormatInt(this.item.Id, 10)+".db?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
+	var path = dir + "/metric." + types.String(this.item.Id) + ".db"
+	_ = os.Remove(path + "-shm")
+	_ = os.Remove(path + "-wal")
+
+	db, err := sql.Open("sqlite3", "file:"+path+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
 	if err != nil {
 		return err
 	}
