@@ -34,17 +34,7 @@ func (this *HTTPRequest) MetricValue(value string) (result int64, ok bool) {
 		}
 		return this.RawReq.ContentLength + hl, true
 	case "${countConnection}":
-		metricNewConnMapLocker.Lock()
-		_, ok := metricNewConnMap[this.RawReq.RemoteAddr]
-		if ok {
-			delete(metricNewConnMap, this.RawReq.RemoteAddr)
-		}
-		metricNewConnMapLocker.Unlock()
-		if ok {
-			return 1, true
-		} else {
-			return 0, false
-		}
+		return 1, true
 	}
 	return 0, false
 }

@@ -677,7 +677,7 @@ func (this *HTTPRequest) Format(source string) string {
 		case "remoteAddrValue":
 			return this.requestRemoteAddr(false)
 		case "rawRemoteAddr":
-			addr := this.RawReq.RemoteAddr
+			var addr = this.RawReq.RemoteAddr
 			host, _, err := net.SplitHostPort(addr)
 			if err == nil {
 				addr = host
@@ -1103,7 +1103,7 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 	}
 
 	// Remote-Addr
-	remoteAddr := this.RawReq.RemoteAddr
+	var remoteAddr = this.RawReq.RemoteAddr
 	host, _, err := net.SplitHostPort(remoteAddr)
 	if err == nil {
 		if supportVar {
@@ -1320,7 +1320,7 @@ func (this *HTTPRequest) RemoteAddr() string {
 }
 
 func (this *HTTPRequest) RawRemoteAddr() string {
-	addr := this.RawReq.RemoteAddr
+	var addr = this.RawReq.RemoteAddr
 	host, _, err := net.SplitHostPort(addr)
 	if err == nil {
 		addr = host

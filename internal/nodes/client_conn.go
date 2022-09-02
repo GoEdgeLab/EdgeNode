@@ -5,6 +5,7 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
@@ -51,6 +52,9 @@ func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool) net.Conn {
 		// TODO 可以在配置中设置此值
 		_ = conn.SetLinger(nodeconfigs.DefaultTCPLinger)
 	}
+
+	// 加入到Map
+	conns.SharedMap.Add(conn)
 
 	return conn
 }
@@ -129,6 +133,9 @@ func (this *ClientConn) Close() error {
 	// 单个服务并发数限制
 	// 不能加条件限制，因为服务配置随时有变化
 	sharedClientConnLimiter.Remove(this.rawConn.RemoteAddr().String())
+
+	// 从conn map中移除
+	conns.SharedMap.Remove(this)
 
 	return err
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/ddosconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
@@ -797,13 +798,16 @@ func (this *Node) listenSock() error {
 					},
 				})
 			case "conns":
-				ipConns, serverConns := sharedClientConnLimiter.Conns()
+				var addrs = []string{}
+				var connMap = conns.SharedMap.AllConns()
+				for _, conn := range connMap {
+					addrs = append(addrs, conn.RemoteAddr().String())
+				}
 
 				_ = cmd.Reply(&gosock.Command{
 					Params: map[string]interface{}{
-						"ipConns":     ipConns,
-						"serverConns": serverConns,
-						"total":       sharedListenerManager.TotalActiveConnections(),
+						"addrs": addrs,
+						"total": len(addrs),
 					},
 				})
 			case "dropIP":

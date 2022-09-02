@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"golang.org/x/net/http2"
 	"io"
@@ -13,14 +12,11 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 )
 
 var httpErrorLogger = log.New(io.Discard, "", 0)
-var metricNewConnMap = map[string]zero.Zero{} // remoteAddr => bool
-var metricNewConnMapLocker = &sync.Mutex{}
 
 type contextKey struct {
 	key string
@@ -55,23 +51,10 @@ func (this *HTTPListener) Serve() error {
 			switch state {
 			case http.StateNew:
 				atomic.AddInt64(&this.countActiveConnections, 1)
-
-				// 为指标存储连接信息
-				if sharedNodeConfig.HasHTTPConnectionMetrics() {
-					metricNewConnMapLocker.Lock()
-					metricNewConnMap[conn.RemoteAddr().String()] = zero.New()
-					metricNewConnMapLocker.Unlock()
-				}
 			case http.StateActive, http.StateIdle, http.StateHijacked:
 				// Nothing to do
 			case http.StateClosed:
 				atomic.AddInt64(&this.countActiveConnections, -1)
-
-				// 移除指标存储连接信息
-				// 因为中途配置可能有改变，所以暂时不添加条件
-				metricNewConnMapLocker.Lock()
-				delete(metricNewConnMap, conn.RemoteAddr().String())
-				metricNewConnMapLocker.Unlock()
 			}
 		},
 		ConnContext: func(ctx context.Context, conn net.Conn) context.Context {

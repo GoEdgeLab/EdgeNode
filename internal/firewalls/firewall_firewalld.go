@@ -4,6 +4,7 @@ package firewalls
 
 import (
 	"errors"
+	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/types"
@@ -11,15 +12,22 @@ import (
 	"strings"
 )
 
+type firewalldCmd struct {
+	cmd    *exec.Cmd
+	denyIP string
+}
+
 type Firewalld struct {
+	BaseFirewall
+
 	isReady  bool
 	exe      string
-	cmdQueue chan *exec.Cmd
+	cmdQueue chan *firewalldCmd
 }
 
 func NewFirewalld() *Firewalld {
 	var firewalld = &Firewalld{
-		cmdQueue: make(chan *exec.Cmd, 4096),
+		cmdQueue: make(chan *firewalldCmd, 4096),
 	}
 
 	path, err := exec.LookPath("firewall-cmd")
@@ -41,13 +49,19 @@ func NewFirewalld() *Firewalld {
 
 func (this *Firewalld) init() {
 	goman.New(func() {
-		for cmd := range this.cmdQueue {
+		for c := range this.cmdQueue {
+			var cmd = c.cmd
 			err := cmd.Run()
 			if err != nil {
 				if strings.HasPrefix(err.Error(), "Warning:") {
 					continue
 				}
 				remotelogs.Warn("FIREWALL", "run command failed '"+cmd.String()+"': "+err.Error())
+			} else {
+				// 关闭连接
+				if len(c.denyIP) > 0 {
+					conns.SharedMap.CloseIPConns(c.denyIP)
+				}
 			}
 		}
 	})
@@ -72,7 +86,7 @@ func (this *Firewalld) AllowPort(port int, protocol string) error {
 		return nil
 	}
 	var cmd = exec.Command(this.exe, "--add-port="+types.String(port)+"/"+protocol)
-	this.pushCmd(cmd)
+	this.pushCmd(cmd, "")
 	return nil
 }
 
@@ -82,12 +96,12 @@ func (this *Firewalld) AllowPortRangesPermanently(portRanges [][2]int, protocol 
 
 		{
 			var cmd = exec.Command(this.exe, "--add-port="+port, "--permanent")
-			this.pushCmd(cmd)
+			this.pushCmd(cmd, "")
 		}
 
 		{
 			var cmd = exec.Command(this.exe, "--add-port="+port)
-			this.pushCmd(cmd)
+			this.pushCmd(cmd, "")
 		}
 	}
 
@@ -99,7 +113,7 @@ func (this *Firewalld) RemovePort(port int, protocol string) error {
 		return nil
 	}
 	var cmd = exec.Command(this.exe, "--remove-port="+types.String(port)+"/"+protocol)
-	this.pushCmd(cmd)
+	this.pushCmd(cmd, "")
 	return nil
 }
 
@@ -108,12 +122,12 @@ func (this *Firewalld) RemovePortRangePermanently(portRange [2]int, protocol str
 
 	{
 		var cmd = exec.Command(this.exe, "--remove-port="+port, "--permanent")
-		this.pushCmd(cmd)
+		this.pushCmd(cmd, "")
 	}
 
 	{
 		var cmd = exec.Command(this.exe, "--remove-port="+port)
-		this.pushCmd(cmd)
+		this.pushCmd(cmd, "")
 	}
 
 	return nil
@@ -131,6 +145,12 @@ func (this *Firewalld) RejectSourceIP(ip string, timeoutSeconds int) error {
 	if !this.isReady {
 		return nil
 	}
+
+	// 避免短时间内重复添加
+	if this.checkLatestIP(ip) {
+		return nil
+	}
+
 	var family = "ipv4"
 	if strings.Contains(ip, ":") {
 		family = "ipv6"
@@ -140,7 +160,7 @@ func (this *Firewalld) RejectSourceIP(ip string, timeoutSeconds int) error {
 		args = append(args, "--timeout="+types.String(timeoutSeconds)+"s")
 	}
 	var cmd = exec.Command(this.exe, args...)
-	this.pushCmd(cmd)
+	this.pushCmd(cmd, ip)
 	return nil
 }
 
@@ -148,6 +168,12 @@ func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int, async bool) e
 	if !this.isReady {
 		return nil
 	}
+
+	// 避免短时间内重复添加
+	if this.checkLatestIP(ip) {
+		return nil
+	}
+
 	var family = "ipv4"
 	if strings.Contains(ip, ":") {
 		family = "ipv6"
@@ -158,9 +184,12 @@ func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int, async bool) e
 	}
 	var cmd = exec.Command(this.exe, args...)
 	if async {
-		this.pushCmd(cmd)
+		this.pushCmd(cmd, ip)
 		return nil
 	}
+
+	// 关闭连接
+	defer conns.SharedMap.CloseIPConns(ip)
 
 	err := cmd.Run()
 	if err != nil {
@@ -173,6 +202,7 @@ func (this *Firewalld) RemoveSourceIP(ip string) error {
 	if !this.isReady {
 		return nil
 	}
+
 	var family = "ipv4"
 	if strings.Contains(ip, ":") {
 		family = "ipv6"
@@ -180,14 +210,14 @@ func (this *Firewalld) RemoveSourceIP(ip string) error {
 	for _, action := range []string{"reject", "drop"} {
 		var args = []string{"--remove-rich-rule=rule family='" + family + "' source address='" + ip + "' " + action}
 		var cmd = exec.Command(this.exe, args...)
-		this.pushCmd(cmd)
+		this.pushCmd(cmd, "")
 	}
 	return nil
 }
 
-func (this *Firewalld) pushCmd(cmd *exec.Cmd) {
+func (this *Firewalld) pushCmd(cmd *exec.Cmd, denyIP string) {
 	select {
-	case this.cmdQueue <- cmd:
+	case this.cmdQueue <- &firewalldCmd{cmd: cmd, denyIP: denyIP}:
 	default:
 		// we discard the command
 	}

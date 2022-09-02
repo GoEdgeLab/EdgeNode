@@ -4,6 +4,7 @@ package waf
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/iwind/TeaGo/types"
@@ -47,7 +48,7 @@ func NewIPList(listType IPListType) *IPList {
 	list.expireList = e
 
 	e.OnGC(func(itemId uint64) {
-		list.remove(itemId)
+		list.remove(itemId) // TODO 使用异步，防止阻塞GC
 	})
 
 	return list
@@ -115,6 +116,9 @@ func (this *IPList) RecordIP(ipType string,
 				_ = firewalls.Firewall().DropSourceIP(ip, int(seconds), true)
 			}
 		}
+
+		// 关闭所有连接
+		conns.SharedMap.CloseIPConns(ip)
 	}
 }
 

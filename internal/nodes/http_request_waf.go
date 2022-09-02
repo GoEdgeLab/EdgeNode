@@ -372,6 +372,8 @@ func (this *HTTPRequest) WAFServerId() int64 {
 // WAFClose 关闭连接
 func (this *HTTPRequest) WAFClose() {
 	this.Close()
+
+	// 这里不要强关IP所有连接，避免因为单个服务而影响所有
 }
 
 func (this *HTTPRequest) WAFOnAction(action interface{}) (goNext bool) {
