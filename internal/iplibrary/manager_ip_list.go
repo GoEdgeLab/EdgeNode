@@ -187,7 +187,6 @@ func (this *IPListManager) FindList(listId int64) *IPList {
 }
 
 func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
-	this.locker.Lock()
 	var changedLists = map[*IPList]zero.Zero{}
 	for _, item := range items {
 		var list *IPList
@@ -207,11 +206,15 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 				list = GlobalWhiteIPList
 			}
 		} else { // 其他List
+			this.locker.Lock()
 			list = this.listMap[item.ListId]
+			this.locker.Unlock()
 		}
 		if list == nil {
 			list = NewIPList()
+			this.locker.Lock()
 			this.listMap[item.ListId] = list
+			this.locker.Unlock()
 		}
 
 		changedLists[list] = zero.New()
@@ -249,8 +252,6 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 	for changedList := range changedLists {
 		changedList.Sort()
 	}
-
-	this.locker.Unlock()
 
 	if fromRemote {
 		var latestVersion = items[len(items)-1].Version
