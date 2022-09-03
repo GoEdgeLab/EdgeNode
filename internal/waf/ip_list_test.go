@@ -38,8 +38,10 @@ func TestIPList_Expire(t *testing.T) {
 	var ticker = time.NewTicker(1 * time.Second)
 	for range ticker.C {
 		t.Log("====")
+		list.locker.Lock()
 		logs.PrintAsJSON(list.ipMap, t)
 		logs.PrintAsJSON(list.idMap, t)
+		list.locker.Unlock()
 		if len(list.idMap) == 0 {
 			break
 		}
