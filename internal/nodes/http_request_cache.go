@@ -44,12 +44,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	// 检查服务独立的缓存条件
 	refType := ""
 	for _, cacheRef := range this.web.Cache.CacheRefs {
-		if !cacheRef.IsOn ||
-			cacheRef.Conds == nil ||
-			!cacheRef.Conds.HasRequestConds() {
+		if !cacheRef.IsOn {
 			continue
 		}
-		if cacheRef.Conds.MatchRequest(this.Format) {
+		if (cacheRef.Conds != nil && cacheRef.Conds.HasRequestConds() && cacheRef.Conds.MatchRequest(this.Format)) ||
+			(cacheRef.SimpleCond != nil && cacheRef.SimpleCond.Match(this.Format)) {
 			if cacheRef.IsReverse {
 				return
 			}
@@ -61,12 +60,11 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	if this.cacheRef == nil && !this.web.Cache.DisablePolicyRefs {
 		// 检查策略默认的缓存条件
 		for _, cacheRef := range cachePolicy.CacheRefs {
-			if !cacheRef.IsOn ||
-				cacheRef.Conds == nil ||
-				!cacheRef.Conds.HasRequestConds() {
+			if !cacheRef.IsOn {
 				continue
 			}
-			if cacheRef.Conds.MatchRequest(this.Format) {
+			if (cacheRef.Conds != nil && cacheRef.Conds.HasRequestConds() && cacheRef.Conds.MatchRequest(this.Format)) ||
+				(cacheRef.SimpleCond != nil && cacheRef.SimpleCond.Match(this.Format)) {
 				if cacheRef.IsReverse {
 					return
 				}
