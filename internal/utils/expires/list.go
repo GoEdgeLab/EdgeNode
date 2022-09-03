@@ -77,6 +77,12 @@ func (this *List) Remove(itemId uint64) {
 	this.removeItem(itemId)
 }
 
+func (this *List) ExpiresAt(itemId uint64) int64 {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+	return this.itemsMap[itemId]
+}
+
 func (this *List) GC(timestamp int64) ItemMap {
 	if this.lastTimestamp > timestamp+1 {
 		return nil

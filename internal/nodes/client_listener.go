@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"net"
+	"time"
 )
 
 // ClientListener 客户端网络监听
@@ -42,24 +43,34 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err == nil {
 		canGoNext, _ := iplibrary.AllowIP(ip, 0)
-		var beingDenied = !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) &&
-			waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)
+		if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) {
+			expiresAt, ok := waf.SharedIPBlackList.ContainsExpires(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)
+			if ok {
+				var timeout = expiresAt - time.Now().Unix()
+				if timeout > 0 {
+					canGoNext = false
 
-		if !canGoNext || beingDenied {
+					if timeout > 3600 {
+						timeout = 3600
+					}
+
+					// 使用本地防火墙延长封禁
+					var fw = firewalls.Firewall()
+					if fw != nil && !fw.IsMock() {
+						// 这里 int(int64) 转换的前提是限制了 timeout <= 3600，否则将有整型溢出的风险
+						_ = fw.DropSourceIP(ip, int(timeout), true)
+					}
+				}
+			}
+		}
+
+		if !canGoNext {
 			tcpConn, ok := conn.(*net.TCPConn)
 			if ok {
 				_ = tcpConn.SetLinger(0)
 			}
 
 			_ = conn.Close()
-
-			// 使用本地防火墙延长封禁
-			if beingDenied {
-				var fw = firewalls.Firewall()
-				if fw != nil && !fw.IsMock() {
-					_ = fw.DropSourceIP(ip, 120, true)
-				}
-			}
 
 			return this.Accept()
 		}

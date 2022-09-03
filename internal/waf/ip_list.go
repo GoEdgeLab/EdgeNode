@@ -68,6 +68,14 @@ func (this *IPList) Add(ipType string, scope firewallconfigs.FirewallScope, serv
 	var id = this.nextId()
 	this.expireList.Add(id, expiresAt)
 	this.locker.Lock()
+
+	// 删除以前
+	oldId, ok := this.ipMap[ip]
+	if ok {
+		delete(this.idMap, oldId)
+		this.expireList.Remove(oldId)
+	}
+
 	this.ipMap[ip] = id
 	this.idMap[id] = ip
 	this.locker.Unlock()
@@ -117,7 +125,7 @@ func (this *IPList) RecordIP(ipType string,
 			}
 		}
 
-		// 关闭所有连接
+		// 关闭此IP相关连接
 		conns.SharedMap.CloseIPConns(ip)
 	}
 }
@@ -139,13 +147,52 @@ func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope,
 	return ok
 }
 
+// ContainsExpires 判断是否有某个IP，并返回过期时间
+func (this *IPList) ContainsExpires(ipType string, scope firewallconfigs.FirewallScope, serverId int64, ip string) (expiresAt int64, ok bool) {
+	switch scope {
+	case firewallconfigs.FirewallScopeGlobal:
+		ip = "*@" + ip + "@" + ipType
+	case firewallconfigs.FirewallScopeService:
+		ip = types.String(serverId) + "@" + ip + "@" + ipType
+	default:
+		ip = "*@" + ip + "@" + ipType
+	}
+
+	this.locker.RLock()
+	id, ok := this.ipMap[ip]
+	if ok {
+		expiresAt = this.expireList.ExpiresAt(id)
+	}
+	this.locker.RUnlock()
+	return expiresAt, ok
+}
+
 // RemoveIP 删除IP
 func (this *IPList) RemoveIP(ip string, serverId int64, shouldExecute bool) {
 	this.locker.Lock()
-	delete(this.ipMap, "*@"+ip+"@"+IPTypeAll)
-	if serverId > 0 {
-		delete(this.ipMap, types.String(serverId)+"@"+ip+"@"+IPTypeAll)
+
+	{
+		var key = "*@" + ip + "@" + IPTypeAll
+		id, ok := this.ipMap[key]
+		if ok {
+			delete(this.ipMap, key)
+			delete(this.idMap, id)
+
+			this.expireList.Remove(id)
+		}
 	}
+
+	if serverId > 0 {
+		var key = types.String(serverId) + "@" + ip + "@" + IPTypeAll
+		id, ok := this.ipMap[key]
+		if ok {
+			delete(this.ipMap, key)
+			delete(this.idMap, id)
+
+			this.expireList.Remove(id)
+		}
+	}
+
 	this.locker.Unlock()
 
 	// 从本地防火墙中删除
