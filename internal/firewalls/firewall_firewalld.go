@@ -170,7 +170,7 @@ func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int, async bool) e
 	}
 
 	// 避免短时间内重复添加
-	if this.checkLatestIP(ip) {
+	if async && this.checkLatestIP(ip) {
 		return nil
 	}
 

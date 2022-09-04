@@ -347,13 +347,13 @@ func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int, async 
 		return errors.New("invalid ip '" + ip + "'")
 	}
 
-	// 避免短时间内重复添加
-	if this.checkLatestIP(ip) {
-		return nil
-	}
-
 	// 尝试关闭连接
 	conns.SharedMap.CloseIPConns(ip)
+
+	// 避免短时间内重复添加
+	if async && this.checkLatestIP(ip) {
+		return nil
+	}
 
 	if async {
 		select {
