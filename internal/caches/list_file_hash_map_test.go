@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestFileListHashMap_Memory(t *testing.T) {
@@ -68,10 +69,14 @@ func TestFileListHashMap_Load(t *testing.T) {
 	}()
 
 	var m = caches.NewFileListHashMap()
-	err = m.Load(list.GetDB("abc"))
+	var before = time.Now()
+	var db = list.GetDB("abc")
+	err = m.Load(db)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log(time.Since(before).Seconds()*1000, "ms")
+	t.Log("count:", m.Len())
 	m.Add("abc")
 
 	for _, hash := range []string{"33347bb4441265405347816cad36a0f8", "a", "abc", "123"} {

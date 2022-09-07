@@ -107,6 +107,12 @@ func (this *FileListHashMap) IsReady() bool {
 	return this.isReady
 }
 
+func (this *FileListHashMap) Len() int {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+	return len(this.m)
+}
+
 func (this *FileListHashMap) bigInt(hash string) uint64 {
 	var bigInt = big.NewInt(0)
 	bigInt.SetString(hash, 16)

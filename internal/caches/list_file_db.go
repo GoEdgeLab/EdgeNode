@@ -48,16 +48,16 @@ type FileListDB struct {
 	deleteByHashStmt *dbs.Stmt // 根据hash删除数据
 	deleteByHashSQL  string
 
-	statStmt           *dbs.Stmt // 统计
-	purgeStmt          *dbs.Stmt // 清理
-	deleteAllStmt      *dbs.Stmt // 删除所有数据
-	listOlderItemsStmt *dbs.Stmt // 读取较早存储的缓存
+	statStmt            *dbs.Stmt // 统计
+	purgeStmt           *dbs.Stmt // 清理
+	deleteAllStmt       *dbs.Stmt // 删除所有数据
+	listOlderItemsStmt  *dbs.Stmt // 读取较早存储的缓存
+	updateAccessWeekSQL string    // 修改访问日期
 
 	// hits
-	insertHitSQL       string    // 写入数据
-	increaseHitSQL     string    // 增加点击量
-	deleteHitByHashSQL string    // 根据hash删除数据
-	lfuHitsStmt        *dbs.Stmt // 读取老的数据
+	insertHitSQL       string // 写入数据
+	increaseHitSQL     string // 增加点击量
+	deleteHitByHashSQL string // 根据hash删除数据
 }
 
 func NewFileListDB() *FileListDB {
@@ -86,6 +86,7 @@ func (this *FileListDB) Open(dbPath string) error {
 
 	// TODO 耗时过长，暂时不整理数据库
 	// TODO 需要根据行数来判断是否VACUUM
+	// TODO 注意VACUUM反而可能让数据库文件变大
 	/**_, err = db.Exec("VACUUM")
 	if err != nil {
 		return err
@@ -151,7 +152,7 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.insertSQL = `INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	this.insertSQL = `INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt", "accessWeek") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	this.insertStmt, err = this.writeDB.Prepare(this.insertSQL)
 	if err != nil {
 		return err
@@ -185,18 +186,15 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "id" ASC LIMIT ?`)
+	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "accessWeek" ASC, "id" ASC LIMIT ?`)
+
+	this.updateAccessWeekSQL = `UPDATE "` + this.itemsTableName + `" SET "accessWeek"=? WHERE "hash"=?`
 
 	this.insertHitSQL = `INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?)`
 
 	this.increaseHitSQL = `INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?) ON CONFLICT("hash") DO UPDATE SET "week1Hits"=IIF("week"=?, "week1Hits", "week2Hits"), "week2Hits"=IIF("week"=?, "week2Hits"+1, 1), "week"=?`
 
 	this.deleteHitByHashSQL = `DELETE FROM "` + this.hitsTableName + `" WHERE "hash"=?`
-
-	this.lfuHitsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.hitsTableName + `" ORDER BY "week" ASC, "week1Hits"+"week2Hits" ASC LIMIT ?`)
-	if err != nil {
-		return err
-	}
 
 	this.isReady = true
 
@@ -226,7 +224,7 @@ func (this *FileListDB) AddAsync(hash string, item *Item) error {
 		item.StaleAt = item.ExpiredAt
 	}
 
-	this.writeBatch.Add(this.insertSQL, hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime())
+	this.writeBatch.Add(this.insertSQL, hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime(), timeutil.Format("YW"))
 	return nil
 
 }
@@ -238,7 +236,7 @@ func (this *FileListDB) AddSync(hash string, item *Item) error {
 		item.StaleAt = item.ExpiredAt
 	}
 
-	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime())
+	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime(), timeutil.Format("YW"))
 	if err != nil {
 		return this.WrapError(err)
 	}
@@ -300,22 +298,15 @@ func (this *FileListDB) ListLFUItems(count int) (hashList []string, err error) {
 		count = 100
 	}
 
-	hashList, err = this.listLFUItems(count)
+	// 先找过期的
+	hashList, err = this.ListExpiredItems(count)
 	if err != nil {
 		return
 	}
+	var l = len(hashList)
 
-	if len(hashList) > count/2 {
-		return
-	}
-
-	// 不足补齐
-	olderHashList, err := this.listOlderItems(count - len(hashList))
-	if err != nil {
-		return nil, err
-	}
-	hashList = append(hashList, olderHashList...)
-	return
+	// 直接删除旧缓存，不再从hits表里查询
+	return this.listOlderItems(count - l)
 }
 
 func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64, err error) {
@@ -342,6 +333,7 @@ func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64
 func (this *FileListDB) IncreaseHitAsync(hash string) error {
 	var week = timeutil.Format("YW")
 	this.writeBatch.Add(this.increaseHitSQL, hash, week, week, week, week)
+	this.writeBatch.Add(this.updateAccessWeekSQL, week, hash)
 	return nil
 }
 
@@ -418,9 +410,6 @@ func (this *FileListDB) Close() error {
 	if this.listOlderItemsStmt != nil {
 		_ = this.listOlderItemsStmt.Close()
 	}
-	if this.lfuHitsStmt != nil {
-		_ = this.lfuHitsStmt.Close()
-	}
 
 	var errStrings []string
 
@@ -472,7 +461,8 @@ func (this *FileListDB) initTables(times int) error {
   "staleAt" integer DEFAULT 0,
   "createdAt" integer DEFAULT 0,
   "host" varchar(128),
-  "serverId" integer
+  "serverId" integer,
+  "accessWeek" varchar(6)
 );
 
 DROP INDEX IF EXISTS "createdAt";
@@ -488,19 +478,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS "hash"
 ON "` + this.itemsTableName + `" (
   "hash" ASC
 );
+
+ALTER TABLE "cacheItems" ADD "accessWeek" varchar(6);
 `)
 
 		if err != nil {
-			// 尝试删除重建
-			if times < 3 {
-				_, dropErr := this.writeDB.Exec(`DROP TABLE "` + this.itemsTableName + `"`)
-				if dropErr == nil {
-					return this.initTables(times + 1)
-				}
-				return this.WrapError(err)
+			// 忽略可以预期的错误
+			if strings.Contains(err.Error(), "duplicate column name") {
+				err = nil
 			}
 
-			return this.WrapError(err)
+			// 尝试删除重建
+			if err != nil {
+				if times < 3 {
+					_, dropErr := this.writeDB.Exec(`DROP TABLE "` + this.itemsTableName + `"`)
+					if dropErr == nil {
+						return this.initTables(times + 1)
+					}
+					return this.WrapError(err)
+				}
+
+				return this.WrapError(err)
+			}
 		}
 	}
 
@@ -533,27 +532,6 @@ ON "` + this.hitsTableName + `" (
 	}
 
 	return nil
-}
-
-func (this *FileListDB) listLFUItems(count int) (hashList []string, err error) {
-	rows, err := this.lfuHitsStmt.Query(count)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	for rows.Next() {
-		var hash string
-		err = rows.Scan(&hash)
-		if err != nil {
-			return nil, err
-		}
-		hashList = append(hashList, hash)
-	}
-
-	return hashList, nil
 }
 
 func (this *FileListDB) listOlderItems(count int) (hashList []string, err error) {
