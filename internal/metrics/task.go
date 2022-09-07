@@ -101,6 +101,14 @@ func (this *Task) Init() error {
 	db.SetMaxOpenConns(1)
 	this.db = dbs.NewDB(db)
 
+	// 恢复数据库
+	var recoverEnv, _ = os.LookupEnv("EdgeRecover")
+	if len(recoverEnv) > 0 {
+		for _, indexName := range []string{"serverId", "hash"} {
+			_, _ = db.Exec(`REINDEX "` + indexName + `"`)
+		}
+	}
+
 	if teaconst.EnableDBStat {
 		this.db.EnableStat(true)
 	}

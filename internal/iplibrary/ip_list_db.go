@@ -71,6 +71,14 @@ func (this *IPListDB) init() error {
 
 	this.db = db
 
+	// 恢复数据库
+	var recoverEnv, _ = os.LookupEnv("EdgeRecover")
+	if len(recoverEnv) > 0 {
+		for _, indexName := range []string{"ip_list_itemId", "ip_list_expiredAt"} {
+			_, _ = db.Exec(`REINDEX "` + indexName + `"`)
+		}
+	}
+
 	// 初始化数据库
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,

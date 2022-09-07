@@ -13,6 +13,7 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -87,13 +88,6 @@ func (this *FileListDB) Open(dbPath string) error {
 
 	this.writeDB = dbs.NewDB(writeDB)
 
-	// 检查
-	if this.shouldRecover() {
-		for _, indexName := range []string{"staleAt", "hash"} {
-			_, _ = this.writeDB.Exec(`REINDEX "` + indexName + `"`)
-		}
-	}
-
 	// TODO 耗时过长，暂时不整理数据库
 	// TODO 需要根据行数来判断是否VACUUM
 	// TODO 注意VACUUM反而可能让数据库文件变大
@@ -101,6 +95,16 @@ func (this *FileListDB) Open(dbPath string) error {
 	if err != nil {
 		return err
 	}**/
+
+	// 检查是否损坏
+	// TODO 暂时屏蔽，因为用时过长
+
+	var recoverEnv, _ = os.LookupEnv("EdgeRecover")
+	if len(recoverEnv) > 0 && this.shouldRecover() {
+		for _, indexName := range []string{"staleAt", "hash"} {
+			_, _ = this.writeDB.Exec(`REINDEX "` + indexName + `"`)
+		}
+	}
 
 	this.writeBatch = dbs.NewBatch(writeDB, 4)
 	this.writeBatch.OnFail(func(err error) {
