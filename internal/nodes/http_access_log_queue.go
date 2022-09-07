@@ -7,6 +7,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"strings"
 	"time"
 )
@@ -102,6 +104,19 @@ Loop:
 		if strings.Contains(err.Error(), "string field contains invalid UTF-8") {
 			for _, accessLog := range accessLogs {
 				this.ToValidUTF8(accessLog)
+			}
+
+			// 重新提交
+			_, err = this.rpcClient.HTTPAccessLogRPC.CreateHTTPAccessLogs(this.rpcClient.Context(), &pb.CreateHTTPAccessLogsRequest{HttpAccessLogs: accessLogs})
+			return err
+		}
+
+		// 是否请求内容过大
+		statusCode, ok := status.FromError(err)
+		if ok && statusCode.Code() == codes.ResourceExhausted {
+			// 去除Body
+			for _, accessLog := range accessLogs {
+				accessLog.RequestBody = nil
 			}
 
 			// 重新提交
