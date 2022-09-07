@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
+	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"runtime"
@@ -84,6 +85,15 @@ func (this *FileListDB) Open(dbPath string) error {
 
 	writeDB.SetMaxOpenConns(1)
 
+	this.writeDB = dbs.NewDB(writeDB)
+
+	// 检查
+	if this.shouldRecover() {
+		for _, indexName := range []string{"staleAt", "hash"} {
+			_, _ = this.writeDB.Exec(`REINDEX "` + indexName + `"`)
+		}
+	}
+
 	// TODO 耗时过长，暂时不整理数据库
 	// TODO 需要根据行数来判断是否VACUUM
 	// TODO 注意VACUUM反而可能让数据库文件变大
@@ -92,7 +102,6 @@ func (this *FileListDB) Open(dbPath string) error {
 		return err
 	}**/
 
-	this.writeDB = dbs.NewDB(writeDB)
 	this.writeBatch = dbs.NewBatch(writeDB, 4)
 	this.writeBatch.OnFail(func(err error) {
 		remotelogs.Warn("LIST_FILE_DB", "run batch failed: "+err.Error())
@@ -305,8 +314,16 @@ func (this *FileListDB) ListLFUItems(count int) (hashList []string, err error) {
 	}
 	var l = len(hashList)
 
-	// 直接删除旧缓存，不再从hits表里查询
-	return this.listOlderItems(count - l)
+	// 从旧缓存中补充
+	if l < count {
+		oldHashList, err := this.listOlderItems(count - l)
+		if err != nil {
+			return nil, err
+		}
+		hashList = append(hashList, oldHashList...)
+	}
+
+	return hashList, nil
 }
 
 func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64, err error) {
@@ -553,4 +570,22 @@ func (this *FileListDB) listOlderItems(count int) (hashList []string, err error)
 	}
 
 	return hashList, nil
+}
+
+func (this *FileListDB) shouldRecover() bool {
+	result, err := this.writeDB.Query("pragma integrity_check;")
+	if err != nil {
+		logs.Println(result)
+	}
+	var errString = ""
+	var shouldRecover = false
+	for result.Next() {
+		err = result.Scan(&errString)
+		if strings.TrimSpace(errString) != "ok" {
+			shouldRecover = true
+		}
+		break
+	}
+	_ = result.Close()
+	return shouldRecover
 }

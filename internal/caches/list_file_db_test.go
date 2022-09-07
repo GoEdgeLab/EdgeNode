@@ -13,6 +13,7 @@ import (
 func TestFileListDB_ListLFUItems(t *testing.T) {
 	var db = caches.NewFileListDB()
 	err := db.Open(Tea.Root + "/data/cache-db-large.db")
+	//err := db.Open(Tea.Root + "/data/cache-index/p1/db-0.db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,6 +21,11 @@ func TestFileListDB_ListLFUItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		_ = db.Close()
+	}()
+
 	hashList, err := db.ListLFUItems(100)
 	if err != nil {
 		t.Fatal(err)
