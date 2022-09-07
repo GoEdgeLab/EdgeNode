@@ -432,6 +432,10 @@ func (this *FileListDB) Close() error {
 		_ = this.listOlderItemsStmt.Close()
 	}
 
+	if this.writeBatch != nil {
+		this.writeBatch.Close()
+	}
+
 	var errStrings []string
 
 	if this.readDB != nil {
@@ -446,10 +450,6 @@ func (this *FileListDB) Close() error {
 		if err != nil {
 			errStrings = append(errStrings, err.Error())
 		}
-	}
-
-	if this.writeBatch != nil {
-		this.writeBatch.Close()
 	}
 
 	if len(errStrings) == 0 {

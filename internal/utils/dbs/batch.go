@@ -64,6 +64,11 @@ For:
 	for {
 		// closed
 		if this.isClosed {
+			if lastTx != nil {
+				_ = lastTx.Commit()
+				lastTx = nil
+			}
+
 			return
 		}
 
