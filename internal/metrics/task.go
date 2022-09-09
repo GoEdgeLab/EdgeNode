@@ -91,8 +91,6 @@ func (this *Task) Init() error {
 	}
 
 	var path = dir + "/metric." + types.String(this.item.Id) + ".db"
-	_ = os.Remove(path + "-shm")
-	_ = os.Remove(path + "-wal")
 
 	db, err := sql.Open("sqlite3", "file:"+path+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
 	if err != nil {
