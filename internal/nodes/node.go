@@ -483,7 +483,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 	}
 
 	// 获取同步任务
-	nodeCtx := rpcClient.Context()
+	var nodeCtx = rpcClient.Context()
 
 	// TODO 这里考虑只同步版本号有变更的
 	configResp, err := rpcClient.NodeRPC.FindCurrentNodeConfig(nodeCtx, &pb.FindCurrentNodeConfigRequest{

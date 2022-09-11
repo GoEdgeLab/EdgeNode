@@ -20,10 +20,12 @@ import (
 func init() {
 	var manager = NewSystemServiceManager()
 	events.On(events.EventReload, func() {
-		err := manager.Setup()
-		if err != nil {
-			remotelogs.Error("SYSTEM_SERVICE", "setup system services failed: "+err.Error())
-		}
+		goman.New(func() {
+			err := manager.Setup()
+			if err != nil {
+				remotelogs.Error("SYSTEM_SERVICE", "setup system services failed: "+err.Error())
+			}
+		})
 	})
 }
 
