@@ -91,6 +91,10 @@ func (this *Node) Test() error {
 
 // Start 启动
 func (this *Node) Start() {
+	// 设置netdns
+	// 这个需要放在所有网络访问的最前面
+	_ = os.Setenv("GODEBUG", "netdns=go")
+
 	_, ok := os.LookupEnv("EdgeDaemon")
 	if ok {
 		remotelogs.Println("NODE", "start from daemon")
