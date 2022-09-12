@@ -167,10 +167,13 @@ func (this *RPCClient) init() error {
 			return errors.New("parse endpoint failed: " + err.Error())
 		}
 		var conn *grpc.ClientConn
-		var callOptions = grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(128*1024*1024),
-			grpc.UseCompressor(gzip.Name))
+		var callOptions = grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(128*1024*1024),
+			grpc.MaxCallSendMsgSize(128*1024*1024),
+			grpc.UseCompressor(gzip.Name),
+		)
 		if u.Scheme == "http" {
-			conn, err = grpc.Dial(u.Host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err = grpc.Dial(u.Host, grpc.WithTransportCredentials(insecure.NewCredentials()), callOptions)
 		} else if u.Scheme == "https" {
 			conn, err = grpc.Dial(u.Host, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
 				InsecureSkipVerify: true,
