@@ -7,7 +7,10 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"golang.org/x/net/ipv4"
+	"golang.org/x/net/ipv6"
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -118,18 +121,64 @@ func (this *Listener) listenTCP() error {
 }
 
 func (this *Listener) listenUDP() error {
-	listener, err := this.createUDPListener()
+	var addr = this.group.Addr()
+
+	var ipv4PacketListener *ipv4.PacketConn
+	var ipv6PacketListener *ipv6.PacketConn
+
+	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return err
 	}
+
+	if len(host) == 0 {
+		// ipv4
+		ipv4Listener, err := this.createUDPIPv4Listener()
+		if err == nil {
+			ipv4PacketListener = ipv4.NewPacketConn(ipv4Listener)
+		} else {
+			remotelogs.Error("LISTENER", "create udp ipv4 listener '"+addr+"': "+err.Error())
+		}
+
+		// ipv6
+		ipv6Listener, err := this.createUDPIPv6Listener()
+		if err == nil {
+			ipv6PacketListener = ipv6.NewPacketConn(ipv6Listener)
+		} else {
+			remotelogs.Error("LISTENER", "create udp ipv6 listener '"+addr+"': "+err.Error())
+		}
+	} else if strings.Contains(host, ":") { // ipv6
+		ipv6Listener, err := this.createUDPIPv6Listener()
+		if err == nil {
+			ipv6PacketListener = ipv6.NewPacketConn(ipv6Listener)
+		} else {
+			remotelogs.Error("LISTENER", "create udp ipv6 listener '"+addr+"': "+err.Error())
+		}
+	} else { // ipv4
+		ipv4Listener, err := this.createUDPIPv4Listener()
+		if err == nil {
+			ipv4PacketListener = ipv4.NewPacketConn(ipv4Listener)
+		} else {
+			remotelogs.Error("LISTENER", "create udp ipv4 listener '"+addr+"': "+err.Error())
+		}
+	}
+
 	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("LISTENER", "quit "+this.group.FullAddr())
-		_ = listener.Close()
+
+		if ipv4PacketListener != nil {
+			_ = ipv4PacketListener.Close()
+		}
+
+		if ipv6PacketListener != nil {
+			_ = ipv6PacketListener.Close()
+		}
 	})
 
 	this.listener = &UDPListener{
 		BaseListener: BaseListener{Group: this.group},
-		Listener:     listener,
+		IPv4Listener: ipv4PacketListener,
+		IPv6Listener: ipv6PacketListener,
 	}
 
 	goman.New(func() {
@@ -168,12 +217,20 @@ func (this *Listener) createTCPListener() (net.Listener, error) {
 	return listenConfig.Listen(context.Background(), "tcp", this.group.Addr())
 }
 
-// 创建UDP监听器
-func (this *Listener) createUDPListener() (*net.UDPConn, error) {
-	// TODO 将来支持udp4/udp6
+// 创建UDP IPv4监听器
+func (this *Listener) createUDPIPv4Listener() (*net.UDPConn, error) {
 	addr, err := net.ResolveUDPAddr("udp", this.group.Addr())
 	if err != nil {
 		return nil, err
 	}
-	return net.ListenUDP("udp", addr)
+	return net.ListenUDP("udp4", addr)
+}
+
+// 创建UDP监听器
+func (this *Listener) createUDPIPv6Listener() (*net.UDPConn, error) {
+	addr, err := net.ResolveUDPAddr("udp", this.group.Addr())
+	if err != nil {
+		return nil, err
+	}
+	return net.ListenUDP("udp6", addr)
 }
