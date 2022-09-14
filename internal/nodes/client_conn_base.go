@@ -17,6 +17,8 @@ type BaseClientConn struct {
 	hasLimit   bool
 
 	isClosed bool
+
+	rawIP string
 }
 
 func (this *BaseClientConn) IsClosed() bool {
@@ -86,7 +88,12 @@ func (this *BaseClientConn) UserId() int64 {
 
 // RawIP 原本IP
 func (this *BaseClientConn) RawIP() string {
+	if len(this.rawIP) > 0 {
+		return this.rawIP
+	}
+
 	ip, _, _ := net.SplitHostPort(this.rawConn.RemoteAddr().String())
+	this.rawIP = ip
 	return ip
 }
 

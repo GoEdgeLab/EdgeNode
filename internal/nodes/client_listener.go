@@ -41,8 +41,10 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 
 	// 是否在WAF名单中
 	ip, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	var isInAllowList = false
 	if err == nil {
-		canGoNext, _ := iplibrary.AllowIP(ip, 0)
+		canGoNext, inAllowList := iplibrary.AllowIP(ip, 0)
+		isInAllowList = inAllowList
 		if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) {
 			expiresAt, ok := waf.SharedIPBlackList.ContainsExpires(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)
 			if ok {
@@ -76,7 +78,7 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 		}
 	}
 
-	return NewClientConn(conn, this.isTLS, this.quickClose), nil
+	return NewClientConn(conn, this.isTLS, this.quickClose, isInAllowList), nil
 }
 
 func (this *ClientListener) Close() error {

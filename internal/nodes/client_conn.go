@@ -32,12 +32,13 @@ type ClientConn struct {
 	hasDeadline bool
 	hasRead     bool
 
-	isLO bool // 是否为环路
+	isLO          bool // 是否为环路
+	isInAllowList bool
 
 	hasResetSYNFlood bool
 }
 
-func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool) net.Conn {
+func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool, isInAllowList bool) net.Conn {
 	// 是否为环路
 	var remoteAddr = rawConn.RemoteAddr().String()
 	var isLO = strings.HasPrefix(remoteAddr, "127.0.0.1:") || strings.HasPrefix(remoteAddr, "[::1]:")
@@ -46,6 +47,7 @@ func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool) net.Conn {
 		BaseClientConn: BaseClientConn{rawConn: rawConn},
 		isTLS:          isTLS,
 		isLO:           isLO,
+		isInAllowList:  isInAllowList,
 	}
 
 	if quickClose {
@@ -89,20 +91,24 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 		}
 	}
 
+	// 检测是否为握手错误
 	var isHandshakeError = err != nil && os.IsTimeout(err) && !this.hasRead
 	if isHandshakeError {
 		_ = this.SetLinger(0)
 	}
 
-	// SYN Flood检测
-	if this.serverId == 0 || !this.hasResetSYNFlood {
-		var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
-		if synFloodConfig != nil && synFloodConfig.IsOn {
-			if isHandshakeError {
-				this.increaseSYNFlood(synFloodConfig)
-			} else if err == nil && !this.hasResetSYNFlood {
-				this.hasResetSYNFlood = true
-				this.resetSYNFlood()
+	// 忽略白名单和局域网
+	if !this.isInAllowList && !utils.IsLocalIP(this.RawIP()) {
+		// SYN Flood检测
+		if this.serverId == 0 || !this.hasResetSYNFlood {
+			var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
+			if synFloodConfig != nil && synFloodConfig.IsOn {
+				if isHandshakeError {
+					this.increaseSYNFlood(synFloodConfig)
+				} else if err == nil && !this.hasResetSYNFlood {
+					this.hasResetSYNFlood = true
+					this.resetSYNFlood()
+				}
 			}
 		}
 	}
