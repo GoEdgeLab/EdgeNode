@@ -5,7 +5,6 @@
 package firewalls
 
 import (
-	"bytes"
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -13,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls/nftables"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"os/exec"
@@ -432,15 +432,14 @@ func (this *NFTablesFirewall) RemoveSourceIP(ip string) error {
 
 // 读取版本号
 func (this *NFTablesFirewall) readVersion(nftPath string) string {
-	var cmd = exec.Command(nftPath, "--version")
-	var output = &bytes.Buffer{}
-	cmd.Stdout = output
+	var cmd = executils.NewTimeoutCmd(10*time.Second, nftPath, "--version")
+	cmd.WithStdout()
 	err := cmd.Run()
 	if err != nil {
 		return ""
 	}
 
-	var outputString = output.String()
+	var outputString = cmd.Stdout()
 	var versionMatches = regexp.MustCompile(`nftables v([\d.]+)`).FindStringSubmatch(outputString)
 	if len(versionMatches) <= 1 {
 		return ""

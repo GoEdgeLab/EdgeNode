@@ -1,13 +1,13 @@
 package iplibrary
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
-	"os/exec"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"path/filepath"
+	"time"
 )
 
 // ScriptAction 脚本命令动作
@@ -45,25 +45,24 @@ func (this *ScriptAction) DeleteItem(listType IPListType, item *pb.IPItem) error
 
 func (this *ScriptAction) runAction(action string, listType IPListType, item *pb.IPItem) error {
 	// TODO 智能支持 .sh 脚本文件
-	cmd := exec.Command(this.config.Path)
-	cmd.Env = []string{
+	var cmd = executils.NewTimeoutCmd(30*time.Second, this.config.Path)
+	cmd.WithEnv([]string{
 		"ACTION=" + action,
 		"TYPE=" + item.Type,
 		"IP_FROM=" + item.IpFrom,
 		"IP_TO=" + item.IpTo,
 		"EXPIRED_AT=" + fmt.Sprintf("%d", item.ExpiredAt),
 		"LIST_TYPE=" + listType,
-	}
+	})
 	if len(this.config.Cwd) > 0 {
-		cmd.Dir = this.config.Cwd
+		cmd.WithDir(this.config.Cwd)
 	} else {
-		cmd.Dir = filepath.Dir(this.config.Path)
+		cmd.WithDir(filepath.Dir(this.config.Path))
 	}
-	stderr := bytes.NewBuffer([]byte{})
-	cmd.Stderr = stderr
+	cmd.WithStderr()
 	err := cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ", output: " + string(stderr.Bytes()))
+		return errors.New(err.Error() + ", output: " + cmd.Stderr())
 	}
 	return nil
 }

@@ -3,9 +3,9 @@
 package clock
 
 import (
-	"bytes"
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"os/exec"
 	"runtime"
 	"time"
@@ -46,12 +46,11 @@ func Sync() error {
 }
 
 func syncNtpdate(ntpdate string) error {
-	var cmd = exec.Command(ntpdate, "pool.ntp.org")
-	var stderr = &bytes.Buffer{}
-	cmd.Stderr = stderr
+	var cmd = executils.NewTimeoutCmd(30*time.Second, ntpdate, "pool.ntp.org")
+	cmd.WithStderr()
 	err := cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ": " + stderr.String())
+		return errors.New(err.Error() + ": " + cmd.Stderr())
 	}
 
 	return nil

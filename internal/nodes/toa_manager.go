@@ -1,14 +1,15 @@
 package nodes
 
 import (
+	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/Tea"
 	"net"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -61,12 +62,16 @@ func (this *TOAManager) Run(config *nodeconfigs.TOAConfig) error {
 	}
 	remotelogs.Println("TOA", "starting ...")
 	remotelogs.Println("TOA", "args: "+strings.Join(config.AsArgs(), " "))
-	cmd := exec.Command(binPath, config.AsArgs()...)
+	cmd := executils.NewCmd(binPath, config.AsArgs()...)
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
-	this.pid = cmd.Process.Pid
+	var process = cmd.Process()
+	if process == nil {
+		return errors.New("start failed")
+	}
+	this.pid = process.Pid
 
 	goman.New(func() {
 		_ = cmd.Wait()

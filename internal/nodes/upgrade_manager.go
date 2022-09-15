@@ -12,11 +12,11 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/Tea"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"github.com/iwind/gosock/pkg/gosock"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -252,7 +252,7 @@ func (this *UpgradeManager) restart() error {
 		// 启动
 		exe = filepath.Dir(exe) + "/" + teaconst.ProcessName
 
-		var cmd = exec.Command(exe, "start")
+		var cmd = executils.NewCmd(exe, "start")
 		err = cmd.Start()
 		if err != nil {
 			return err

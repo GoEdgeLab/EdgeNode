@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/maps"
 	"os"
 	"os/exec"
@@ -84,10 +85,10 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 	if len(systemctl) == 0 {
 		return errors.New("can not find 'systemctl' on the system")
 	}
-	cmd := utils.NewCommandExecutor()
 	shortName := teaconst.SystemdServiceName
-	cmd.Add(systemctl, "is-enabled", shortName)
-	output, err := cmd.Run()
+	var cmd = executils.NewTimeoutCmd(10*time.Second, systemctl, "is-enabled", shortName)
+	cmd.WithStdout()
+	err = cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -100,10 +101,10 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 		// 启动Service
 		goman.New(func() {
 			time.Sleep(5 * time.Second)
-			_ = exec.Command(systemctl, "start", teaconst.SystemdServiceName).Start()
+			_ = executils.NewTimeoutCmd(30*time.Second, systemctl, "start", teaconst.SystemdServiceName).Start()
 		})
 
-		if output == "enabled" {
+		if cmd.Stdout() == "enabled" {
 			// 检查文件路径是否变化
 			data, err := os.ReadFile("/etc/systemd/system/" + teaconst.SystemdServiceName + ".service")
 			if err == nil && bytes.Index(data, []byte(exe)) > 0 {

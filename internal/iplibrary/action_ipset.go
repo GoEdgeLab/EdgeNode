@@ -1,10 +1,10 @@
 package iplibrary
 
 import (
-	"bytes"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/types"
 	"os/exec"
 	"runtime"
@@ -16,12 +16,12 @@ import (
 // IPSetAction IPSet动作
 // 相关命令：
 //   - 利用Firewalld管理set：
-//       - 添加：firewall-cmd --permanent --new-ipset=edge_ip_list --type=hash:ip --option="timeout=0"
-//       - 删除：firewall-cmd --permanent --delete-ipset=edge_ip_list
-//       - 重载：firewall-cmd --reload
-//       - firewalld+ipset: firewall-cmd --permanent --add-rich-rule="rule source ipset='edge_ip_list' reject"
+//   - 添加：firewall-cmd --permanent --new-ipset=edge_ip_list --type=hash:ip --option="timeout=0"
+//   - 删除：firewall-cmd --permanent --delete-ipset=edge_ip_list
+//   - 重载：firewall-cmd --reload
+//   - firewalld+ipset: firewall-cmd --permanent --add-rich-rule="rule source ipset='edge_ip_list' reject"
 //   - 利用IPTables管理set：
-//       - 添加：iptables -A INPUT -m set --match-set edge_ip_list src -j REJECT
+//   - 添加：iptables -A INPUT -m set --match-set edge_ip_list src -j REJECT
 //   - 添加Item：ipset add edge_ip_list 192.168.2.32 timeout 30
 //   - 删除Item: ipset del edge_ip_list 192.168.2.32
 //   - 创建set：ipset create edge_ip_list hash:ip timeout 0
@@ -30,16 +30,13 @@ import (
 type IPSetAction struct {
 	BaseAction
 
-	config   *firewallconfigs.FirewallActionIPSetConfig
-	errorBuf *bytes.Buffer
+	config *firewallconfigs.FirewallActionIPSetConfig
 
 	ipsetNotfound bool
 }
 
 func NewIPSetAction() *IPSetAction {
-	return &IPSetAction{
-		errorBuf: &bytes.Buffer{},
-	}
+	return &IPSetAction{}
 }
 
 func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) error {
@@ -68,14 +65,13 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if len(listName) == 0 {
 				continue
 			}
-			var cmd = exec.Command(path, "create", listName, "hash:ip", "timeout", "0", "maxelem", "1000000")
-			var stderr = bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "create", listName, "hash:ip", "timeout", "0", "maxelem", "1000000")
+			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				var output = stderr.Bytes()
-				if !bytes.Contains(output, []byte("already exists")) {
-					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
+				var output = cmd.Stderr()
+				if !strings.Contains(output, "already exists") {
+					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + output)
 				} else {
 					err = nil
 				}
@@ -87,14 +83,13 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if len(listName) == 0 {
 				continue
 			}
-			var cmd = exec.Command(path, "create", listName, "hash:ip", "family", "inet6", "timeout", "0", "maxelem", "1000000")
-			var stderr = bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "create", listName, "hash:ip", "family", "inet6", "timeout", "0", "maxelem", "1000000")
+			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				var output = stderr.Bytes()
-				if !bytes.Contains(output, []byte("already exists")) {
-					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
+				var output = cmd.Stderr()
+				if !strings.Contains(output, "already exists") {
+					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + output)
 				} else {
 					err = nil
 				}
@@ -114,16 +109,15 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if len(listName) == 0 {
 				continue
 			}
-			cmd := exec.Command(path, "--permanent", "--new-ipset="+listName, "--type=hash:ip", "--option=timeout=0", "--option=maxelem=1000000")
-			stderr := bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "--permanent", "--new-ipset="+listName, "--type=hash:ip", "--option=timeout=0", "--option=maxelem=1000000")
+			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				output := stderr.Bytes()
-				if bytes.Contains(output, []byte("NAME_CONFLICT")) {
+				var output = cmd.Stderr()
+				if strings.Contains(output, "NAME_CONFLICT") {
 					err = nil
 				} else {
-					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
+					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + output)
 				}
 			}
 		}
@@ -133,16 +127,15 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if len(listName) == 0 {
 				continue
 			}
-			cmd := exec.Command(path, "--permanent", "--new-ipset="+listName, "--type=hash:ip", "--option=family=inet6", "--option=timeout=0", "--option=maxelem=1000000")
-			stderr := bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "--permanent", "--new-ipset="+listName, "--type=hash:ip", "--option=family=inet6", "--option=timeout=0", "--option=maxelem=1000000")
+			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				var output = stderr.Bytes()
-				if bytes.Contains(output, []byte("NAME_CONFLICT")) {
+				var output = cmd.Stderr()
+				if strings.Contains(output, "NAME_CONFLICT") {
 					err = nil
 				} else {
-					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + string(output))
+					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + output)
 				}
 			}
 		}
@@ -152,13 +145,11 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if len(listName) == 0 {
 				continue
 			}
-			var cmd = exec.Command(path, "--permanent", "--add-rich-rule=rule source ipset='"+listName+"' accept")
-			var stderr = bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "--permanent", "--add-rich-rule=rule source ipset='"+listName+"' accept")
+			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				var output = stderr.Bytes()
-				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + string(output))
+				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + cmd.Stderr())
 			}
 		}
 
@@ -167,25 +158,21 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if len(listName) == 0 {
 				continue
 			}
-			var cmd = exec.Command(path, "--permanent", "--add-rich-rule=rule source ipset='"+listName+"' reject")
-			var stderr = bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "--permanent", "--add-rich-rule=rule source ipset='"+listName+"' reject")
+			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				var output = stderr.Bytes()
-				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + string(output))
+				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + cmd.Stderr())
 			}
 		}
 
 		// reload
 		{
-			cmd := exec.Command(path, "--reload")
-			stderr := bytes.NewBuffer([]byte{})
-			cmd.Stderr = stderr
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "--reload")
+			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				var output = stderr.Bytes()
-				return errors.New("firewall-cmd reload: " + err.Error() + ", output: " + string(output))
+				return errors.New("firewall-cmd reload: " + err.Error() + ", output: " + cmd.Stderr())
 			}
 		}
 	}
@@ -204,19 +191,17 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			}
 
 			// 检查规则是否存在
-			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "ACCEPT")
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "-C", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "ACCEPT")
 			err := cmd.Run()
 			var exists = err == nil
 
 			// 添加规则
 			if !exists {
-				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "ACCEPT")
-				var stderr = bytes.NewBuffer([]byte{})
-				cmd.Stderr = stderr
+				var cmd = executils.NewTimeoutCmd(30*time.Second, path, "-A", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "ACCEPT")
+				cmd.WithStderr()
 				err := cmd.Run()
 				if err != nil {
-					var output = stderr.Bytes()
-					return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
+					return errors.New("iptables add rule: " + err.Error() + ", output: " + cmd.Stderr())
 				}
 			}
 		}
@@ -228,18 +213,16 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			}
 
 			// 检查规则是否存在
-			var cmd = exec.Command(path, "-C", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "REJECT")
+			var cmd = executils.NewTimeoutCmd(30*time.Second, path, "-C", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "REJECT")
 			err := cmd.Run()
 			var exists = err == nil
 
 			if !exists {
-				var cmd = exec.Command(path, "-A", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "REJECT")
-				var stderr = bytes.NewBuffer([]byte{})
-				cmd.Stderr = stderr
+				var cmd = executils.NewTimeoutCmd(30*time.Second, path, "-A", "INPUT", "-m", "set", "--match-set", listName, "src", "-j", "REJECT")
+				cmd.WithStderr()
 				err := cmd.Run()
 				if err != nil {
-					var output = stderr.Bytes()
-					return errors.New("iptables add rule: " + err.Error() + ", output: " + string(output))
+					return errors.New("iptables add rule: " + err.Error() + ", output: " + cmd.Stderr())
 				}
 			}
 		}
@@ -361,12 +344,11 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 		return nil
 	}
 
-	this.errorBuf.Reset()
-	var cmd = exec.Command(path, args...)
-	cmd.Stderr = this.errorBuf
+	var cmd = executils.NewTimeoutCmd(30*time.Second, path, args...)
+	cmd.WithStderr()
 	err = cmd.Run()
 	if err != nil {
-		var errString = this.errorBuf.String()
+		var errString = cmd.Stderr()
 		if action == "deleteItem" && strings.Contains(errString, "not added") {
 			return nil
 		}

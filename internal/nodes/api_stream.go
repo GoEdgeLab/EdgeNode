@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,7 +16,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
 	"net/url"
@@ -347,15 +346,15 @@ func (this *APIStream) handleCheckSystemdService(message *pb.NodeStreamMessage) 
 		return nil
 	}
 
-	var cmd = utils.NewCommandExecutor()
-	shortName := teaconst.SystemdServiceName
-	cmd.Add(systemctl, "is-enabled", shortName)
-	output, err := cmd.Run()
+	var shortName = teaconst.SystemdServiceName
+	var cmd = executils.NewTimeoutCmd(10*time.Second, systemctl, "is-enabled", shortName)
+	cmd.WithStdout()
+	err = cmd.Run()
 	if err != nil {
 		this.replyFail(message.RequestId, "'systemctl' command error: "+err.Error())
 		return nil
 	}
-	if output == "enabled" {
+	if cmd.Stdout() == "enabled" {
 		this.replyOk(message.RequestId, "ok")
 	} else {
 		this.replyFail(message.RequestId, "not installed")
@@ -385,16 +384,15 @@ func (this *APIStream) handleCheckLocalFirewall(message *pb.NodeStreamMessage) e
 			return nil
 		}
 
-		var cmd = exec.Command(nft, "--version")
-		var output = &bytes.Buffer{}
-		cmd.Stdout = output
+		var cmd = executils.NewTimeoutCmd(10*time.Second, nft, "--version")
+		cmd.WithStdout()
 		err = cmd.Run()
 		if err != nil {
 			this.replyFail(message.RequestId, "get version failed: "+err.Error())
 			return nil
 		}
 
-		var outputString = output.String()
+		var outputString = cmd.Stdout()
 		var versionMatches = regexp.MustCompile(`nftables v([\d.]+)`).FindStringSubmatch(outputString)
 		if len(versionMatches) <= 1 {
 			this.replyFail(message.RequestId, "can not get nft version")

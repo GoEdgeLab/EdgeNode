@@ -1,11 +1,11 @@
 package iplibrary
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"os/exec"
 	"runtime"
 	"time"
@@ -13,9 +13,9 @@ import (
 
 // FirewalldAction Firewalld动作管理
 // 常用命令：
-//  - 查询列表： firewall-cmd --list-all
-//  - 添加IP：firewall-cmd --add-rich-rule="rule family='ipv4' source address='192.168.2.32' reject" --timeout=30s
-//  - 删除IP：firewall-cmd --remove-rich-rule="rule family='ipv4' source address='192.168.2.32' reject" --timeout=30s
+//   - 查询列表： firewall-cmd --list-all
+//   - 添加IP：firewall-cmd --add-rich-rule="rule family='ipv4' source address='192.168.2.32' reject" --timeout=30s
+//   - 删除IP：firewall-cmd --remove-rich-rule="rule family='ipv4' source address='192.168.2.32' reject" --timeout=30s
 type FirewalldAction struct {
 	BaseAction
 
@@ -144,12 +144,11 @@ func (this *FirewalldAction) runActionSingleIP(action string, listType IPListTyp
 		// MAC OS直接返回
 		return nil
 	}
-	cmd := exec.Command(path, args...)
-	stderr := bytes.NewBuffer([]byte{})
-	cmd.Stderr = stderr
+	cmd := executils.NewTimeoutCmd(30*time.Second, path, args...)
+	cmd.WithStderr()
 	err = cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ", output: " + string(stderr.Bytes()))
+		return errors.New(err.Error() + ", output: " + cmd.Stderr())
 	}
 	return nil
 }

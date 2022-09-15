@@ -1,7 +1,6 @@
 package nodes
 
 import (
-	"bytes"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
@@ -9,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
@@ -213,15 +213,14 @@ func (this *ListenerManager) findProcessNameWithPort(isUdp bool, port string) st
 		option = "u"
 	}
 
-	var cmd = exec.Command(path, "-"+option+"lpn", "sport = :"+port)
-	var output = &bytes.Buffer{}
-	cmd.Stdout = output
+	var cmd = executils.NewTimeoutCmd(10*time.Second, path, "-"+option+"lpn", "sport = :"+port)
+	cmd.WithStdout()
 	err = cmd.Run()
 	if err != nil {
 		return ""
 	}
 
-	var matches = regexp.MustCompile(`(?U)\(\("(.+)",pid=\d+,fd=\d+\)\)`).FindStringSubmatch(output.String())
+	var matches = regexp.MustCompile(`(?U)\(\("(.+)",pid=\d+,fd=\d+\)\)`).FindStringSubmatch(cmd.Stdout())
 	if len(matches) > 1 {
 		return matches[1]
 	}

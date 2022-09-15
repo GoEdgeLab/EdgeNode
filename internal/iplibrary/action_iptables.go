@@ -1,20 +1,23 @@
 package iplibrary
 
 import (
-	"bytes"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"os/exec"
 	"runtime"
+	"strings"
+	"time"
 )
 
 // IPTablesAction IPTables动作
 // 相关命令：
-//   iptables -A INPUT -s "192.168.2.32" -j ACCEPT
-//   iptables -A INPUT -s "192.168.2.32" -j REJECT
-//   iptables -D INPUT ...
-//   iptables -F INPUT
+//
+//	iptables -A INPUT -s "192.168.2.32" -j ACCEPT
+//	iptables -A INPUT -s "192.168.2.32" -j REJECT
+//	iptables -D INPUT ...
+//	iptables -F INPUT
 type IPTablesAction struct {
 	BaseAction
 
@@ -110,16 +113,15 @@ func (this *IPTablesAction) runActionSingleIP(action string, listType IPListType
 		return nil
 	}
 
-	cmd := exec.Command(path, args...)
-	stderr := bytes.NewBuffer([]byte{})
-	cmd.Stderr = stderr
+	var cmd = executils.NewTimeoutCmd(30*time.Second, path, args...)
+	cmd.WithStderr()
 	err = cmd.Run()
 	if err != nil {
-		output := stderr.Bytes()
-		if bytes.Contains(output, []byte("No chain/target/match")) {
+		var output = cmd.Stderr()
+		if strings.Contains(output, "No chain/target/match") {
 			err = nil
 		} else {
-			return errors.New(err.Error() + ", output: " + string(output))
+			return errors.New(err.Error() + ", output: " + output)
 		}
 	}
 	return nil

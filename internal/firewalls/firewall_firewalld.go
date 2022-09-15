@@ -7,13 +7,15 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/types"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type firewalldCmd struct {
-	cmd    *exec.Cmd
+	cmd    *executils.Cmd
 	denyIP string
 }
 
@@ -32,7 +34,7 @@ func NewFirewalld() *Firewalld {
 
 	path, err := exec.LookPath("firewall-cmd")
 	if err == nil && len(path) > 0 {
-		var cmd = exec.Command(path, "--state")
+		var cmd = executils.NewTimeoutCmd(3*time.Second, path, "--state")
 		err := cmd.Run()
 		if err == nil {
 			firewalld.exe = path
@@ -85,7 +87,7 @@ func (this *Firewalld) AllowPort(port int, protocol string) error {
 	if !this.isReady {
 		return nil
 	}
-	var cmd = exec.Command(this.exe, "--add-port="+types.String(port)+"/"+protocol)
+	var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, "--add-port="+types.String(port)+"/"+protocol)
 	this.pushCmd(cmd, "")
 	return nil
 }
@@ -95,12 +97,12 @@ func (this *Firewalld) AllowPortRangesPermanently(portRanges [][2]int, protocol 
 		var port = this.PortRangeString(portRange, protocol)
 
 		{
-			var cmd = exec.Command(this.exe, "--add-port="+port, "--permanent")
+			var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, "--add-port="+port, "--permanent")
 			this.pushCmd(cmd, "")
 		}
 
 		{
-			var cmd = exec.Command(this.exe, "--add-port="+port)
+			var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, "--add-port="+port)
 			this.pushCmd(cmd, "")
 		}
 	}
@@ -112,7 +114,7 @@ func (this *Firewalld) RemovePort(port int, protocol string) error {
 	if !this.isReady {
 		return nil
 	}
-	var cmd = exec.Command(this.exe, "--remove-port="+types.String(port)+"/"+protocol)
+	var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, "--remove-port="+types.String(port)+"/"+protocol)
 	this.pushCmd(cmd, "")
 	return nil
 }
@@ -121,12 +123,12 @@ func (this *Firewalld) RemovePortRangePermanently(portRange [2]int, protocol str
 	var port = this.PortRangeString(portRange, protocol)
 
 	{
-		var cmd = exec.Command(this.exe, "--remove-port="+port, "--permanent")
+		var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, "--remove-port="+port, "--permanent")
 		this.pushCmd(cmd, "")
 	}
 
 	{
-		var cmd = exec.Command(this.exe, "--remove-port="+port)
+		var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, "--remove-port="+port)
 		this.pushCmd(cmd, "")
 	}
 
@@ -159,7 +161,7 @@ func (this *Firewalld) RejectSourceIP(ip string, timeoutSeconds int) error {
 	if timeoutSeconds > 0 {
 		args = append(args, "--timeout="+types.String(timeoutSeconds)+"s")
 	}
-	var cmd = exec.Command(this.exe, args...)
+	var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, args...)
 	this.pushCmd(cmd, ip)
 	return nil
 }
@@ -182,7 +184,7 @@ func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int, async bool) e
 	if timeoutSeconds > 0 {
 		args = append(args, "--timeout="+types.String(timeoutSeconds)+"s")
 	}
-	var cmd = exec.Command(this.exe, args...)
+	var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, args...)
 	if async {
 		this.pushCmd(cmd, ip)
 		return nil
@@ -209,13 +211,13 @@ func (this *Firewalld) RemoveSourceIP(ip string) error {
 	}
 	for _, action := range []string{"reject", "drop"} {
 		var args = []string{"--remove-rich-rule=rule family='" + family + "' source address='" + ip + "' " + action}
-		var cmd = exec.Command(this.exe, args...)
+		var cmd = executils.NewTimeoutCmd(10*time.Second, this.exe, args...)
 		this.pushCmd(cmd, "")
 	}
 	return nil
 }
 
-func (this *Firewalld) pushCmd(cmd *exec.Cmd, denyIP string) {
+func (this *Firewalld) pushCmd(cmd *executils.Cmd, denyIP string) {
 	select {
 	case this.cmdQueue <- &firewalldCmd{cmd: cmd, denyIP: denyIP}:
 	default:
