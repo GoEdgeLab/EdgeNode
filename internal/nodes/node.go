@@ -23,7 +23,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	"github.com/TeaOSLab/EdgeNode/internal/utils/clock"
+	_ "github.com/TeaOSLab/EdgeNode/internal/utils/clock" // 触发时钟更新
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/andybalholm/brotli"
 	"github.com/iwind/TeaGo/Tea"
@@ -168,11 +168,6 @@ func (this *Node) Start() {
 	// 监控节点运行状态
 	goman.New(func() {
 		NewNodeStatusExecutor().Listen()
-	})
-
-	// 同步时间
-	goman.New(func() {
-		clock.Start()
 	})
 
 	// 读取配置
