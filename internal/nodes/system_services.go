@@ -85,7 +85,7 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 	if len(systemctl) == 0 {
 		return errors.New("can not find 'systemctl' on the system")
 	}
-	shortName := teaconst.SystemdServiceName
+	var shortName = teaconst.SystemdServiceName
 	var cmd = executils.NewTimeoutCmd(10*time.Second, systemctl, "is-enabled", shortName)
 	cmd.WithStdout()
 	err = cmd.Run()
@@ -111,13 +111,13 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 				return nil
 			}
 		}
-		manager := utils.NewServiceManager(shortName, teaconst.ProductName)
+		var manager = utils.NewServiceManager(shortName, teaconst.ProductName)
 		err = manager.Install(exe, []string{})
 		if err != nil {
 			return err
 		}
 	} else {
-		manager := utils.NewServiceManager(shortName, teaconst.ProductName)
+		var manager = utils.NewServiceManager(shortName, teaconst.ProductName)
 		err = manager.Uninstall()
 		if err != nil {
 			return err

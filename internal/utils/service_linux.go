@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package utils
@@ -5,17 +6,19 @@ package utils
 import (
 	"errors"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/files"
 	"os"
 	"os/exec"
 	"regexp"
+	"time"
 )
 
 var systemdServiceFile = "/etc/systemd/system/edge-node.service"
 var initServiceFile = "/etc/init.d/" + teaconst.SystemdServiceName
 
-// 安装服务
+// Install 安装服务
 func (this *ServiceManager) Install(exePath string, args []string) error {
 	if os.Getgid() != 0 {
 		return errors.New("only root users can install the service")
@@ -29,7 +32,7 @@ func (this *ServiceManager) Install(exePath string, args []string) error {
 	return this.installSystemdService(systemd, exePath, args)
 }
 
-// 启动服务
+// Start 启动服务
 func (this *ServiceManager) Start() error {
 	if os.Getgid() != 0 {
 		return errors.New("only root users can start the service")
@@ -46,7 +49,7 @@ func (this *ServiceManager) Start() error {
 	return exec.Command("service", teaconst.ProcessName, "start").Start()
 }
 
-// 删除服务
+// Uninstall 删除服务
 func (this *ServiceManager) Uninstall() error {
 	if os.Getgid() != 0 {
 		return errors.New("only root users can uninstall the service")
@@ -108,10 +111,10 @@ func (this *ServiceManager) installInitService(exePath string, args []string) er
 
 // install systemd service
 func (this *ServiceManager) installSystemdService(systemd, exePath string, args []string) error {
-	shortName := teaconst.SystemdServiceName
-	longName := "GoEdge Node" // TODO 将来可以修改
+	var shortName = teaconst.SystemdServiceName
+	var longName = "GoEdge Node" // TODO 将来可以修改
 
-	desc := `# Provides:          ` + shortName + `
+	var desc = `# Provides:          ` + shortName + `
 # Required-Start:    $all
 # Required-Stop:
 # Default-Start:     2 3 4 5
@@ -142,12 +145,17 @@ WantedBy=multi-user.target`
 	}
 
 	// stop current systemd service if running
-	exec.Command(systemd, "stop", shortName+".service")
+	executils.NewTimeoutCmd(30*time.Second, systemd, "stop", shortName+".service")
 
 	// reload
-	exec.Command(systemd, "daemon-reload")
+	executils.NewTimeoutCmd(30*time.Second, systemd, "daemon-reload")
 
 	// enable
-	cmd := exec.Command(systemd, "enable", shortName+".service")
-	return cmd.Run()
+	var cmd = executils.NewTimeoutCmd(30*time.Second, systemd, "enable", shortName+".service")
+	cmd.WithStderr()
+	err = cmd.Run()
+	if err != nil {
+		return errors.New(err.Error() + ": " + cmd.Stderr())
+	}
+	return nil
 }
