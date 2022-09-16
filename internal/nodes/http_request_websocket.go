@@ -9,7 +9,7 @@ import (
 )
 
 // 处理Websocket请求
-func (this *HTTPRequest) doWebsocket(requestHost string) {
+func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shouldRetry bool) {
 	if this.web.WebsocketRef == nil || !this.web.WebsocketRef.IsOn || this.web.Websocket == nil || !this.web.Websocket.IsOn {
 		this.writer.WriteHeader(http.StatusForbidden)
 		this.addError(errors.New("websocket have not been enabled yet"))
@@ -43,13 +43,16 @@ func (this *HTTPRequest) doWebsocket(requestHost string) {
 	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
 	originConn, _, err := OriginConnect(this.origin, this.requestServerPort(), this.RawReq.RemoteAddr, requestHost)
 	if err != nil {
-		this.write50x(err, http.StatusBadGateway, "Failed to connect origin site", "源站连接失败", false)
+		if isLastRetry {
+			this.write50x(err, http.StatusBadGateway, "Failed to connect origin site", "源站连接失败", false)
+		}
 
 		// 增加失败次数
 		SharedOriginStateManager.Fail(this.origin, requestHost, this.reverseProxy, func() {
 			this.reverseProxy.ResetScheduling()
 		})
 
+		shouldRetry = true
 		return
 	}
 
@@ -98,4 +101,6 @@ func (this *HTTPRequest) doWebsocket(requestHost string) {
 		_ = originConn.Close()
 	}()
 	_, _ = io.Copy(originConn, clientConn)
+
+	return
 }

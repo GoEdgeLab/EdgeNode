@@ -240,7 +240,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 
 	// 判断是否为Websocket请求
 	if this.RawReq.Header.Get("Upgrade") == "websocket" {
-		this.doWebsocket(requestHost)
+		shouldRetry = this.doWebsocket(requestHost, isLastRetry)
 		return
 	}
 
