@@ -320,6 +320,11 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		}
 		return
 	}
+
+	// 记录相关数据
+	this.originStatus = int32(resp.StatusCode)
+
+	// 恢复源站状态
 	if !origin.IsOk {
 		SharedOriginStateManager.Success(origin, func() {
 			this.reverseProxy.ResetScheduling()

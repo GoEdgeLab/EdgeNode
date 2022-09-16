@@ -146,6 +146,7 @@ func (this *HTTPRequest) log() {
 	if this.origin != nil {
 		accessLog.OriginId = this.origin.Id
 		accessLog.OriginAddress = this.originAddr
+		accessLog.OriginStatus = this.originStatus
 	}
 
 	// 请求Body

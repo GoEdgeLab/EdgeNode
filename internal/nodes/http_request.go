@@ -68,6 +68,7 @@ type HTTPRequest struct {
 	filePath             string                            // 请求的文件名，仅在读取Root目录下的内容时不为空
 	origin               *serverconfigs.OriginConfig       // 源站
 	originAddr           string                            // 源站实际地址
+	originStatus         int32                             // 源站响应代码
 	errors               []string                          // 错误信息
 	rewriteRule          *serverconfigs.HTTPRewriteRule    // 匹配到的重写规则
 	rewriteReplace       string                            // 重写规则的目标
