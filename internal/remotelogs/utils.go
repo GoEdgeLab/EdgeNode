@@ -21,7 +21,7 @@ var logChan = make(chan *pb.NodeLog, 1024)
 
 func init() {
 	// 定期上传日志
-	ticker := time.NewTicker(60 * time.Second)
+	var ticker = time.NewTicker(60 * time.Second)
 	if Tea.IsTesting() {
 		ticker = time.NewTicker(10 * time.Second)
 	}
@@ -111,6 +111,12 @@ func ErrorObject(tag string, err error) {
 
 // ServerError 打印服务相关错误信息
 func ServerError(serverId int64, tag string, description string, logType nodeconfigs.NodeLogType, params maps.Map) {
+	// 是否记录服务相关错误
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig != nil && nodeConfig.GlobalServerConfig != nil && !nodeConfig.GlobalServerConfig.Log.RecordServerError {
+		return
+	}
+
 	logs.Println("[" + tag + "]" + description)
 
 	// 参数
@@ -207,7 +213,7 @@ func ServerLog(serverId int64, tag string, description string, logType nodeconfi
 
 // 上传日志
 func uploadLogs() error {
-	logList := []*pb.NodeLog{}
+	var logList = []*pb.NodeLog{}
 
 	const hashSize = 5
 	var hashList = []uint64{}
@@ -242,6 +248,7 @@ Loop:
 	if len(logList) == 0 {
 		return nil
 	}
+
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
 		return err

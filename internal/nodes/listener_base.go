@@ -3,11 +3,12 @@ package nodes
 import (
 	"crypto/tls"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/sslconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
+	"net"
 )
 
 type BaseListener struct {
@@ -75,7 +76,7 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 	// 如果域名为空，则取第一个
 	// 通常域名为空是因为是直接通过IP访问的
 	if len(domain) == 0 {
-		if group.IsHTTPS() && sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
+		if group.IsHTTPS() && sharedNodeConfig.GlobalServerConfig != nil && sharedNodeConfig.GlobalServerConfig.HTTPAll.MatchDomainStrictly {
 			return nil, nil, errors.New("no tls server name matched")
 		}
 
@@ -131,19 +132,19 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 		return
 	}
 
-	var matchDomainStrictly = sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
+	var matchDomainStrictly = sharedNodeConfig.GlobalServerConfig != nil && sharedNodeConfig.GlobalServerConfig.HTTPAll.MatchDomainStrictly
 
-	if sharedNodeConfig.GlobalConfig != nil &&
-		len(sharedNodeConfig.GlobalConfig.HTTPAll.DefaultDomain) > 0 &&
-		(!matchDomainStrictly || lists.ContainsString(sharedNodeConfig.GlobalConfig.HTTPAll.AllowMismatchDomains, name)) {
-		defaultDomain := sharedNodeConfig.GlobalConfig.HTTPAll.DefaultDomain
+	if sharedNodeConfig.GlobalServerConfig != nil &&
+		len(sharedNodeConfig.GlobalServerConfig.HTTPAll.DefaultDomain) > 0 &&
+		(!matchDomainStrictly || configutils.MatchDomains(sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowMismatchDomains, name) || (sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowNodeIP && net.ParseIP(name) != nil)) {
+		var defaultDomain = sharedNodeConfig.GlobalServerConfig.HTTPAll.DefaultDomain
 		serverConfig, serverName = this.findNamedServerMatched(defaultDomain)
 		if serverConfig != nil {
 			return
 		}
 	}
 
-	if matchDomainStrictly && !lists.ContainsString(sharedNodeConfig.GlobalConfig.HTTPAll.AllowMismatchDomains, name) {
+	if matchDomainStrictly && !configutils.MatchDomains(sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowMismatchDomains, name) && (!sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowNodeIP || net.ParseIP(name) == nil) {
 		return
 	}
 
@@ -170,7 +171,7 @@ func (this *BaseListener) findNamedServerMatched(name string) (serverConfig *ser
 	}
 
 	// 是否严格匹配域名
-	matchDomainStrictly := sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly
+	var matchDomainStrictly = sharedNodeConfig.GlobalServerConfig != nil && sharedNodeConfig.GlobalServerConfig.HTTPAll.MatchDomainStrictly
 
 	// 如果只有一个server，则默认为这个
 	var currentServers = group.Servers()

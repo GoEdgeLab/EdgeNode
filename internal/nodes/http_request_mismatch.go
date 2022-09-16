@@ -32,7 +32,7 @@ func (this *HTTPRequest) doMismatch() {
 	}
 
 	// 根据配置进行相应的处理
-	if sharedNodeConfig.GlobalConfig != nil && sharedNodeConfig.GlobalConfig.HTTPAll.MatchDomainStrictly {
+	if sharedNodeConfig.GlobalServerConfig != nil && sharedNodeConfig.GlobalServerConfig.HTTPAll.MatchDomainStrictly {
 		// 检查cc
 		// TODO 可以在管理端配置是否开启以及最多尝试次数
 		if len(remoteIP) > 0 {
@@ -46,7 +46,7 @@ func (this *HTTPRequest) doMismatch() {
 		}
 
 		// 处理当前连接
-		var httpAllConfig = sharedNodeConfig.GlobalConfig.HTTPAll
+		var httpAllConfig = sharedNodeConfig.GlobalServerConfig.HTTPAll
 		var mismatchAction = httpAllConfig.DomainMismatchAction
 		if mismatchAction != nil && mismatchAction.Code == "page" {
 			if mismatchAction.Options != nil {
