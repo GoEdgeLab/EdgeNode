@@ -1,4 +1,5 @@
 // Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
+//go:build linux
 
 package nftables_test
 

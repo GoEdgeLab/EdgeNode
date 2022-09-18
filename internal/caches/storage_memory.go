@@ -520,8 +520,6 @@ func (this *MemoryStorage) flushItem(key string) {
 
 	// 从内存中移除
 	_ = this.Delete(key)
-
-	return
 }
 
 func (this *MemoryStorage) memoryCapacityBytes() int64 {

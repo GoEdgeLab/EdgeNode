@@ -17,7 +17,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -25,8 +24,6 @@ import (
 // ClientConn 客户端连接
 type ClientConn struct {
 	BaseClientConn
-
-	once sync.Once
 
 	isTLS       bool
 	hasDeadline bool

@@ -1444,8 +1444,6 @@ func (this *HTTPRequest) Close() {
 		_ = conn.Close()
 		return
 	}
-
-	return
 }
 
 // Allow 放行

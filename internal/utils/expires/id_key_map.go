@@ -2,13 +2,9 @@
 
 package expires
 
-import "sync"
-
 type IdKeyMap struct {
 	idKeys map[int64]string // id => key
 	keyIds map[string]int64 // key => id
-
-	locker sync.Mutex
 }
 
 func NewIdKeyMap() *IdKeyMap {

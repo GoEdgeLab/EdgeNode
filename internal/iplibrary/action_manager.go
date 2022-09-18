@@ -68,7 +68,7 @@ func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActi
 				remotelogs.Error("IPLIBRARY/ACTION_MANAGER", "action "+strconv.FormatInt(newAction.Id, 10)+", type:"+newAction.Type+": "+err.Error())
 				continue
 			}
-			if bytes.Compare(newConfigJSON, oldConfigJSON) != 0 {
+			if !bytes.Equal(newConfigJSON, oldConfigJSON) {
 				_ = oldInstance.Close()
 
 				// 重新创建

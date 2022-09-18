@@ -11,7 +11,6 @@ import (
 )
 
 var prefixReg = regexp.MustCompile(`^\(\?([\w\s]+)\)`) // (?x)
-var prefixReg2 = regexp.MustCompile(`^\(\?([\w\s]*:)`) // (?x: ...
 var braceZeroReg = regexp.MustCompile(`^{\s*0*\s*}`)   // {0}
 var braceZeroReg2 = regexp.MustCompile(`^{\s*0*\s*,`)  // {0, x}
 

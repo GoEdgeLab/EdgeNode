@@ -179,7 +179,7 @@ func (this *FileStorage) UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) 
 	// open cache
 	oldOpenFileCacheJSON, _ := json.Marshal(oldOpenFileCache)
 	newOpenFileCacheJSON, _ := json.Marshal(this.options.OpenFileCache)
-	if bytes.Compare(oldOpenFileCacheJSON, newOpenFileCacheJSON) != 0 {
+	if !bytes.Equal(oldOpenFileCacheJSON, newOpenFileCacheJSON) {
 		this.initOpenFileCache()
 	}
 

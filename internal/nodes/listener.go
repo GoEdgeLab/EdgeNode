@@ -15,9 +15,8 @@ import (
 )
 
 type Listener struct {
-	group       *serverconfigs.ServerAddressGroup
-	isListening bool
-	listener    ListenerInterface // 监听器
+	group    *serverconfigs.ServerAddressGroup
+	listener ListenerInterface // 监听器
 
 	locker sync.RWMutex
 }

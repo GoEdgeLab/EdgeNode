@@ -182,23 +182,3 @@ func (this *BaseListener) findNamedServerMatched(name string) (serverConfig *ser
 
 	return nil, name
 }
-
-// 使用CNAME来查找服务
-// TODO 防止单IP随机生成域名攻击
-func (this *BaseListener) findServerWithCNAME(domain string) *serverconfigs.ServerConfig {
-	if !sharedNodeConfig.SupportCNAME {
-		return nil
-	}
-
-	var realName = sharedCNAMEManager.Lookup(domain)
-	if len(realName) == 0 {
-		return nil
-	}
-
-	group := this.Group
-	if group == nil {
-		return nil
-	}
-
-	return group.MatchServerCNAME(realName)
-}

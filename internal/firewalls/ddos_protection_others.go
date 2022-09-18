@@ -11,7 +11,6 @@ import (
 var SharedDDoSProtectionManager = NewDDoSProtectionManager()
 
 type DDoSProtectionManager struct {
-	nftPath string
 }
 
 func NewDDoSProtectionManager() *DDoSProtectionManager {

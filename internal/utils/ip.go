@@ -5,11 +5,8 @@ import (
 	"github.com/cespare/xxhash"
 	"math"
 	"net"
-	"regexp"
 	"strings"
 )
-
-var ipv4Reg = regexp.MustCompile(`\d+\.`)
 
 // IP2Long 将IP转换为整型
 // 注意IPv6没有顺序

@@ -200,6 +200,9 @@ func (this *FileListDB) Init() error {
 	}
 
 	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "accessWeek" ASC, "id" ASC LIMIT ?`)
+	if err != nil {
+		return err
+	}
 
 	this.updateAccessWeekSQL = `UPDATE "` + this.itemsTableName + `" SET "accessWeek"=? WHERE "hash"=?`
 

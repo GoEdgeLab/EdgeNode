@@ -528,7 +528,7 @@ func (this *Rule) Test(value interface{}) bool {
 		if ip == nil {
 			return false
 		}
-		return this.isIP && bytes.Compare(this.ipValue, ip) == 0
+		return this.isIP && bytes.Equal(this.ipValue, ip)
 	case RuleOperatorGtIP:
 		ip := net.ParseIP(types.String(value))
 		if ip == nil {
