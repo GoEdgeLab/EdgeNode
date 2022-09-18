@@ -41,7 +41,7 @@ func (this *LogWriter) Init() {
 	this.c = make(chan string, 1024)
 
 	// 异步写入文件
-	var maxFileSize = 2 * sizes.G // 文件最大尺寸，超出此尺寸则清空
+	var maxFileSize = 128 * sizes.M // 文件最大尺寸，超出此尺寸则清空
 	if fp != nil {
 		goman.New(func() {
 			var totalSize int64 = 0
