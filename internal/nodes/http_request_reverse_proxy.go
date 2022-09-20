@@ -116,7 +116,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	// 处理Scheme
 	if origin.Addr == nil {
 		err := errors.New(this.URL() + ": Origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
-		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", err.Error())
+		remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write50x(err, http.StatusBadGateway, "Origin site did not has a valid address", "源站尚未配置地址", true)
 		return
 	}
@@ -168,7 +168,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		var originHostIndex = strings.Index(originAddr, ":")
 		if originHostIndex < 0 {
 			var originErr = errors.New(this.URL() + ": Invalid origin address '" + originAddr + "', lacking port")
-			remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", originErr.Error())
+			remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", originErr.Error())
 			this.write50x(originErr, http.StatusBadGateway, "No port in origin site address", "源站地址中没有配置端口", true)
 			return
 		}
@@ -247,7 +247,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	// 获取请求客户端
 	client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
 	if err != nil {
-		remotelogs.Error("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Create client failed: "+err.Error())
+		remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Create client failed: "+err.Error())
 		this.write50x(err, http.StatusBadGateway, "Failed to create origin site client", "构造源站客户端失败", true)
 		return
 	}
@@ -262,7 +262,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				this.reverseProxy.ResetScheduling()
 			})
 			this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+err.Error())
+			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+err.Error())
 		} else if httpErr.Err != context.Canceled {
 			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
@@ -278,7 +278,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				}
 
 				if httpErr.Err != io.EOF {
-					remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
+					remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
 				}
 
 				return
@@ -292,7 +292,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 			if httpErr.Err != io.EOF {
-				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
+				remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
 			}
 		} else {
 			// 是否为客户端方面的错误
@@ -336,7 +336,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		if this.doWAFResponse(resp) {
 			err = resp.Body.Close()
 			if err != nil {
-				remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing Error (WAF): "+err.Error())
+				remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing Error (WAF): "+err.Error())
 			}
 			return
 		}
@@ -346,7 +346,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
 		err = resp.Body.Close()
 		if err != nil {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error (Page): "+err.Error())
+			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error (Page): "+err.Error())
 		}
 		return
 	}
@@ -448,13 +448,13 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	var closeErr = resp.Body.Close()
 	if closeErr != nil {
 		if !this.canIgnore(closeErr) {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error: "+closeErr.Error())
+			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error: "+closeErr.Error())
 		}
 	}
 
 	if err != nil && err != io.EOF {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Writing error: "+err.Error())
+			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Writing error: "+err.Error())
 			this.addError(err)
 		}
 	}

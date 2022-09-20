@@ -155,7 +155,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		for _, subKey := range subKeys {
 			err := storage.Delete(subKey)
 			if err != nil {
-				remotelogs.Error("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
+				remotelogs.ErrorServer("HTTP_REQUEST_CACHE", "purge failed: "+err.Error())
 			}
 		}
 
@@ -260,7 +260,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			}
 
 			if !this.canIgnore(err) {
-				remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: open cache failed: "+err.Error())
+				remotelogs.WarnServer("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: open cache failed: "+err.Error())
 			}
 			return
 		}
@@ -320,7 +320,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	})
 	if err != nil {
 		if !this.canIgnore(err) {
-			remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: read header failed: "+err.Error())
+			remotelogs.WarnServer("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: read header failed: "+err.Error())
 		}
 		return
 	}
@@ -471,7 +471,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					return true
 				}
 				if !this.canIgnore(err) {
-					remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
+					remotelogs.WarnServer("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
 				}
 				return
 			}
@@ -517,7 +517,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				})
 				if err != nil {
 					if !this.canIgnore(err) {
-						remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
+						remotelogs.WarnServer("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
 					}
 					return true
 				}
@@ -554,7 +554,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				this.varMapping["cache.status"] = "MISS"
 
 				if !this.canIgnore(err) {
-					remotelogs.Warn("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: read body failed: "+err.Error())
+					remotelogs.WarnServer("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: read body failed: "+err.Error())
 				}
 				return
 			}

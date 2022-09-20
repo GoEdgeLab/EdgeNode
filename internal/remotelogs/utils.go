@@ -37,6 +37,11 @@ func init() {
 	})
 }
 
+// Debug 打印调试信息
+func Debug(tag string, description string) {
+	logs.Println("[" + tag + "]" + description)
+}
+
 // Println 打印普通信息
 func Println(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
@@ -58,6 +63,31 @@ func Println(tag string, description string) {
 // Warn 打印警告信息
 func Warn(tag string, description string) {
 	logs.Println("[" + tag + "]" + description)
+
+	select {
+	case logChan <- &pb.NodeLog{
+		Role:        teaconst.Role,
+		Tag:         tag,
+		Description: description,
+		Level:       "warning",
+		NodeId:      teaconst.NodeId,
+		CreatedAt:   time.Now().Unix(),
+	}:
+	default:
+
+	}
+}
+
+// WarnServer 打印服务相关警告
+func WarnServer(tag string, description string) {
+	if Tea.IsTesting() {
+		logs.Println("[" + tag + "]" + description)
+	}
+
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig != nil && nodeConfig.GlobalServerConfig != nil && !nodeConfig.GlobalServerConfig.Log.RecordServerError {
+		return
+	}
 
 	select {
 	case logChan <- &pb.NodeLog{
@@ -97,6 +127,37 @@ func Error(tag string, description string) {
 	}
 }
 
+// ErrorServer 打印服务相关错误信息
+func ErrorServer(tag string, description string) {
+	if Tea.IsTesting() {
+		logs.Println("[" + tag + "]" + description)
+	}
+
+	// 忽略RPC连接错误
+	var level = "error"
+	if strings.Contains(description, "code = Unavailable desc") {
+		level = "warning"
+	}
+
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig != nil && nodeConfig.GlobalServerConfig != nil && !nodeConfig.GlobalServerConfig.Log.RecordServerError {
+		return
+	}
+
+	select {
+	case logChan <- &pb.NodeLog{
+		Role:        teaconst.Role,
+		Tag:         tag,
+		Description: description,
+		Level:       level,
+		NodeId:      teaconst.NodeId,
+		CreatedAt:   time.Now().Unix(),
+	}:
+	default:
+
+	}
+}
+
 // ErrorObject 打印错误对象
 func ErrorObject(tag string, err error) {
 	if err == nil {
@@ -111,13 +172,15 @@ func ErrorObject(tag string, err error) {
 
 // ServerError 打印服务相关错误信息
 func ServerError(serverId int64, tag string, description string, logType nodeconfigs.NodeLogType, params maps.Map) {
+	if Tea.IsTesting() {
+		logs.Println("[" + tag + "]" + description)
+	}
+
 	// 是否记录服务相关错误
 	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 	if nodeConfig != nil && nodeConfig.GlobalServerConfig != nil && !nodeConfig.GlobalServerConfig.Log.RecordServerError {
 		return
 	}
-
-	logs.Println("[" + tag + "]" + description)
 
 	// 参数
 	var paramsJSON []byte
