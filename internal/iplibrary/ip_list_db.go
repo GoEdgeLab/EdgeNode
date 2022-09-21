@@ -170,6 +170,12 @@ func (this *IPListDB) AddItem(item *pb.IPItem) error {
 	if err != nil {
 		return err
 	}
+
+	// 如果是删除，则不再创建新记录
+	if item.IsDeleted {
+		return nil
+	}
+
 	_, err = this.insertItemStmt.Exec(item.ListId, item.ListType, item.IsGlobal, item.Type, item.Id, item.IpFrom, item.IpTo, item.ExpiredAt, item.EventLevel, item.IsDeleted, item.Version, item.NodeId, item.ServerId)
 	return err
 }
