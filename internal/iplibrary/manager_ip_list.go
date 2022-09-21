@@ -2,6 +2,7 @@ package iplibrary
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -18,6 +19,10 @@ var SharedIPListManager = NewIPListManager()
 var IPListUpdateNotify = make(chan bool, 1)
 
 func init() {
+	if teaconst.IsDaemon {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		goman.New(func() {
 			SharedIPListManager.Start()
@@ -25,6 +30,13 @@ func init() {
 	})
 	events.On(events.EventQuit, func() {
 		SharedIPListManager.Stop()
+	})
+
+	var ticker = time.NewTicker(24 * time.Hour)
+	goman.New(func() {
+		for range ticker.C {
+			SharedIPListManager.DeleteExpiredItems()
+		}
 	})
 }
 
@@ -184,6 +196,12 @@ func (this *IPListManager) FindList(listId int64) *IPList {
 	list, _ := this.listMap[listId]
 	this.locker.Unlock()
 	return list
+}
+
+func (this *IPListManager) DeleteExpiredItems() {
+	if this.db != nil {
+		_ = this.db.DeleteExpiredItems()
+	}
 }
 
 func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
