@@ -229,6 +229,14 @@ func (this *HTTPRequest) Do() {
 			}
 		}
 
+		// 防盗链
+		if !this.isSubRequest && this.web.Referers != nil && this.web.Referers.IsOn {
+			if this.doCheckReferers() {
+				this.doEnd()
+				return
+			}
+		}
+
 		// 访问控制
 		if !this.isSubRequest && this.web.Auth != nil && this.web.Auth.IsOn {
 			if this.doAuth() {
@@ -511,6 +519,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// auth
 	if web.Auth != nil && (web.Auth.IsPrior || isTop) {
 		this.web.Auth = web.Auth
+	}
+
+	// referers
+	if web.Referers != nil && (web.Referers.IsPrior || isTop) {
+		this.web.Referers = web.Referers
 	}
 
 	// request limit
