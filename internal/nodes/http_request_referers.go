@@ -19,7 +19,7 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 		}
 
 		this.tags = append(this.tags, "refererCheck")
-		this.writer.WriteHeader(http.StatusForbidden)
+		this.writeCode(http.StatusForbidden, "The referer has been blocked.", "当前访问已被防盗链系统拦截。")
 
 		return true
 	}
@@ -31,14 +31,14 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 		}
 
 		this.tags = append(this.tags, "refererCheck")
-		this.writer.WriteHeader(http.StatusForbidden)
+		this.writeCode(http.StatusForbidden, "The referer has been blocked.", "当前访问已被防盗链系统拦截。")
 
 		return true
 	}
 
 	if !this.web.Referers.MatchDomain(this.ReqHost, u.Host) {
 		this.tags = append(this.tags, "refererCheck")
-		this.writer.WriteHeader(http.StatusForbidden)
+		this.writeCode(http.StatusForbidden, "The referer has been blocked.", "当前访问已被防盗链系统拦截。")
 		return true
 	}
 	return

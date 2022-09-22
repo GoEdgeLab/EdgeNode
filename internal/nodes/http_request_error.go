@@ -25,10 +25,10 @@ const httpStatusPageTemplate = `<!DOCTYPE html>
 </html>`
 
 func (this *HTTPRequest) write404() {
-	this.writeCode(http.StatusNotFound)
+	this.writeCode(http.StatusNotFound, "", "")
 }
 
-func (this *HTTPRequest) writeCode(statusCode int) {
+func (this *HTTPRequest) writeCode(statusCode int, enMessage string, zhMessage string) {
 	if this.doPage(statusCode) {
 		return
 	}
@@ -42,7 +42,17 @@ func (this *HTTPRequest) writeCode(statusCode int) {
 		case "requestId":
 			return this.requestId
 		case "message":
-			return "" // 空
+			var acceptLanguages = this.RawReq.Header.Get("Accept-Language")
+			if len(acceptLanguages) > 0 {
+				var index = strings.Index(acceptLanguages, ",")
+				if index > 0 {
+					var firstLanguage = acceptLanguages[:index]
+					if firstLanguage == "zh-CN" {
+						return zhMessage
+					}
+				}
+			}
+			return enMessage
 		}
 		return "${" + varName + "}"
 	})

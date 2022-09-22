@@ -18,7 +18,7 @@ func (this *HTTPRequest) doRequestLimit() (shouldStop bool) {
 	// TODO 处理分片提交的内容
 	if this.web.RequestLimit.MaxBodyBytes() > 0 &&
 		this.RawReq.ContentLength > this.web.RequestLimit.MaxBodyBytes() {
-		this.writeCode(http.StatusRequestEntityTooLarge)
+		this.writeCode(http.StatusRequestEntityTooLarge, "", "")
 		return true
 	}
 
@@ -29,7 +29,7 @@ func (this *HTTPRequest) doRequestLimit() (shouldStop bool) {
 			clientConn, ok := requestConn.(ClientConnInterface)
 			if ok && !clientConn.IsBound() {
 				if !clientConn.Bind(this.ReqServer.Id, this.requestRemoteAddr(true), this.web.RequestLimit.MaxConns, this.web.RequestLimit.MaxConnsPerIP) {
-					this.writeCode(http.StatusTooManyRequests)
+					this.writeCode(http.StatusTooManyRequests, "", "")
 					this.Close()
 					return true
 				}
