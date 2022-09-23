@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"bufio"
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"io"
@@ -82,6 +83,33 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 	}()
 
 	go func() {
+		// 读取第一个响应
+		resp, err := http.ReadResponse(bufio.NewReader(originConn), this.RawReq)
+		if err != nil {
+			_ = clientConn.Close()
+			_ = originConn.Close()
+			return
+		}
+
+		this.processResponseHeaders(resp.Header, resp.StatusCode)
+
+		// 将响应写回客户端
+		err = resp.Write(clientConn)
+		if err != nil {
+			if resp.Body != nil {
+				_ = resp.Body.Close()
+			}
+
+			_ = clientConn.Close()
+			_ = originConn.Close()
+			return
+		}
+
+		if resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+
+		// 复制剩余的数据
 		var buf = utils.BytePool4k.Get()
 		defer utils.BytePool4k.Put(buf)
 		for {

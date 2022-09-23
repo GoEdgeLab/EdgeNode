@@ -34,10 +34,10 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				}
 
 				if u.Status <= 0 {
-					this.processResponseHeaders(http.StatusTemporaryRedirect)
+					this.processResponseHeaders(this.writer.Header(), http.StatusTemporaryRedirect)
 					http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
 				} else {
-					this.processResponseHeaders(u.Status)
+					this.processResponseHeaders(this.writer.Header(), u.Status)
 					http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
 				}
 				return true
@@ -81,10 +81,10 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 			}
 
 			if u.Status <= 0 {
-				this.processResponseHeaders(http.StatusTemporaryRedirect)
+				this.processResponseHeaders(this.writer.Header(), http.StatusTemporaryRedirect)
 				http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
 			} else {
-				this.processResponseHeaders(u.Status)
+				this.processResponseHeaders(this.writer.Header(), u.Status)
 				http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
 			}
 			return true
@@ -104,10 +104,10 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				}
 
 				if u.Status <= 0 {
-					this.processResponseHeaders(http.StatusTemporaryRedirect)
+					this.processResponseHeaders(this.writer.Header(), http.StatusTemporaryRedirect)
 					http.Redirect(this.RawWriter, this.RawReq, afterURL, http.StatusTemporaryRedirect)
 				} else {
-					this.processResponseHeaders(u.Status)
+					this.processResponseHeaders(this.writer.Header(), u.Status)
 					http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
 				}
 				return true

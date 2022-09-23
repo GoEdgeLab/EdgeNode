@@ -42,7 +42,7 @@ func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.
 	}
 
 	newURL := "https://" + host + this.RawReq.RequestURI
-	this.processResponseHeaders(statusCode)
+	this.processResponseHeaders(this.writer.Header(), statusCode)
 	http.Redirect(this.writer, this.RawReq, newURL, statusCode)
 
 	return true

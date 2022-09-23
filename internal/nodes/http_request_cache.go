@@ -372,7 +372,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	// 支持 If-None-Match
 	if !this.isLnRequest && !isPartialCache && len(eTag) > 0 && this.requestHeader("If-None-Match") == eTag {
 		// 自定义Header
-		this.processResponseHeaders(http.StatusNotModified)
+		this.processResponseHeaders(this.writer.Header(), http.StatusNotModified)
 		this.addExpiresHeader(reader.ExpiresAt())
 		this.writer.WriteHeader(http.StatusNotModified)
 		this.isCached = true
@@ -384,7 +384,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	// 支持 If-Modified-Since
 	if !this.isLnRequest && !isPartialCache && len(modifiedTime) > 0 && this.requestHeader("If-Modified-Since") == modifiedTime {
 		// 自定义Header
-		this.processResponseHeaders(http.StatusNotModified)
+		this.processResponseHeaders(this.writer.Header(), http.StatusNotModified)
 		this.addExpiresHeader(reader.ExpiresAt())
 		this.writer.WriteHeader(http.StatusNotModified)
 		this.isCached = true
@@ -393,7 +393,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		return true
 	}
 
-	this.processResponseHeaders(reader.Status())
+	this.processResponseHeaders(this.writer.Header(), reader.Status())
 	this.addExpiresHeader(reader.ExpiresAt())
 
 	// 返回上级节点过期时间
@@ -422,7 +422,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		if supportRange {
 			if len(rangeHeader) > 0 {
 				if fileSize == 0 {
-					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+					this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 					return true
 				}
@@ -430,7 +430,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				if len(ranges) == 0 {
 					ranges, ok = httpRequestParseRangeHeader(rangeHeader)
 					if !ok {
-						this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+						this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 						this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 						return true
 					}
@@ -439,7 +439,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					for k, r := range ranges {
 						r2, ok := r.Convert(fileSize)
 						if !ok {
-							this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+							this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 							this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 							return true
 						}
@@ -466,7 +466,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				this.varMapping["cache.status"] = "MISS"
 
 				if err == caches.ErrInvalidRange {
-					this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+					this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 					return true
 				}

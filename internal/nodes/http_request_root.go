@@ -217,7 +217,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	// 支持 If-None-Match
 	if this.requestHeader("If-None-Match") == eTag {
 		// 自定义Header
-		this.processResponseHeaders(http.StatusNotModified)
+		this.processResponseHeaders(this.writer.Header(), http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
 		return true
 	}
@@ -225,7 +225,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	// 支持 If-Modified-Since
 	if this.requestHeader("If-Modified-Since") == modifiedTime {
 		// 自定义Header
-		this.processResponseHeaders(http.StatusNotModified)
+		this.processResponseHeaders(this.writer.Header(), http.StatusNotModified)
 		this.writer.WriteHeader(http.StatusNotModified)
 		return true
 	}
@@ -253,14 +253,14 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		var contentRange = this.RawReq.Header.Get("Range")
 		if len(contentRange) > 0 {
 			if fileSize == 0 {
-				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+				this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 				this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 				return true
 			}
 
 			set, ok := httpRequestParseRangeHeader(contentRange)
 			if !ok {
-				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+				this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 				this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 				return true
 			}
@@ -269,7 +269,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				for k, r := range ranges {
 					r2, ok := r.Convert(fileSize)
 					if !ok {
-						this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+						this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 						this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 						return true
 					}
@@ -290,7 +290,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	// 自定义Header
-	this.processResponseHeaders(http.StatusOK)
+	this.processResponseHeaders(this.writer.Header(), http.StatusOK)
 
 	// 在Range请求中不能缓存
 	if len(ranges) > 0 {
@@ -325,7 +325,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			return true
 		}
 		if !ok {
-			this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+			this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 			this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 			return true
 		}
@@ -377,7 +377,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				return true
 			}
 			if !ok {
-				this.processResponseHeaders(http.StatusRequestedRangeNotSatisfiable)
+				this.processResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 				this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 				return true
 			}

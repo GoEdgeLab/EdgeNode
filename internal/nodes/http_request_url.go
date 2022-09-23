@@ -44,9 +44,9 @@ func (this *HTTPRequest) doURL(method string, url string, host string, statusCod
 
 	// Header
 	if statusCode <= 0 {
-		this.processResponseHeaders(resp.StatusCode)
+		this.processResponseHeaders(this.writer.Header(), resp.StatusCode)
 	} else {
-		this.processResponseHeaders(statusCode)
+		this.processResponseHeaders(this.writer.Header(), statusCode)
 	}
 
 	if supportVariables {
