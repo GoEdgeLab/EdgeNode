@@ -117,6 +117,11 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 		msgPrompt = "请输入上面的验证码"
 		msgButtonTitle = "提交验证"
 		msgRequestId = "请求ID"
+	case "zh-TW":
+		msgTitle = "身份驗證"
+		msgPrompt = "請輸入上面的驗證碼"
+		msgButtonTitle = "提交驗證"
+		msgRequestId = "請求ID"
 	default:
 		msgTitle = "Verify Yourself"
 		msgPrompt = "Input verify code above:"
