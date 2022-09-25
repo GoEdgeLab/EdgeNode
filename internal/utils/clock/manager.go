@@ -31,7 +31,7 @@ func init() {
 			goman.New(func() {
 				err := sharedClockManager.Sync()
 				if err != nil {
-					remotelogs.Error("CLOCK", "sync clock failed: "+err.Error())
+					remotelogs.Warn("CLOCK", "sync clock failed: "+err.Error())
 				}
 			})
 		}
@@ -51,7 +51,7 @@ func (this *ClockManager) Start() {
 	for range ticker.C {
 		err := this.Sync()
 		if err != nil {
-			remotelogs.Error("CLOCK", "sync clock failed: "+err.Error())
+			remotelogs.Warn("CLOCK", "sync clock failed: "+err.Error())
 		}
 	}
 }
