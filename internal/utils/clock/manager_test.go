@@ -3,9 +3,10 @@
 package clock_test
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/clock"
 	"testing"
 )
 
 func TestReadServer(t *testing.T) {
-
+	t.Log(clock.NewClockManager().ReadServer("pool.ntp.org"))
 }

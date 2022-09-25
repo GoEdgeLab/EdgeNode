@@ -83,7 +83,7 @@ func (this *ClockManager) Sync() error {
 		// date --set TIME
 		dateExe, err := exec.LookPath("date")
 		if err == nil {
-			currentTime, err := this.readServer(server)
+			currentTime, err := this.ReadServer(server)
 			if err != nil {
 				return errors.New("read server failed: " + err.Error())
 			}
@@ -119,7 +119,7 @@ func (this *ClockManager) syncNtpdate(ntpdate string, server string) error {
 }
 
 // 参考自：https://medium.com/learning-the-go-programming-language/lets-make-an-ntp-client-in-go-287c4b9a969f
-func (this *ClockManager) readServer(server string) (time.Time, error) {
+func (this *ClockManager) ReadServer(server string) (time.Time, error) {
 	conn, err := net.Dial("udp", server+":123")
 	if err != nil {
 		return time.Time{}, errors.New("connect to server failed: " + err.Error())
