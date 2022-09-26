@@ -20,6 +20,9 @@ func NewDB(rawDB *sql.DB) *DB {
 		rawDB: rawDB,
 	}
 
+	events.OnKey(events.EventQuit, fmt.Sprintf("db_%p", db), func() {
+		_ = rawDB.Close()
+	})
 	events.OnKey(events.EventTerminated, fmt.Sprintf("db_%p", db), func() {
 		_ = rawDB.Close()
 	})
