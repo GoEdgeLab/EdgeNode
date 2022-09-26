@@ -759,6 +759,7 @@ func (this *Node) listenSock() error {
 
 				// 退出主进程
 				events.Notify(events.EventQuit)
+				time.Sleep(100 * time.Millisecond)
 				utils.Exit()
 			case "quit":
 				_ = cmd.ReplyOk()
