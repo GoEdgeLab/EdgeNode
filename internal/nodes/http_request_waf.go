@@ -218,7 +218,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 
 	goNext, hasRequestBody, ruleGroup, ruleSet, err := w.MatchRequest(this, this.writer)
-	if forceLog && logRequestBody && hasRequestBody {
+	if forceLog && logRequestBody && hasRequestBody && ruleSet != nil && ruleSet.HasAttackActions() {
 		this.wafHasRequestBody = true
 	}
 	if err != nil {
@@ -294,7 +294,7 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 	}
 
 	goNext, hasRequestBody, ruleGroup, ruleSet, err := w.MatchResponse(this, resp, this.writer)
-	if forceLog && logRequestBody && hasRequestBody {
+	if forceLog && logRequestBody && hasRequestBody && ruleSet != nil && ruleSet.HasAttackActions() {
 		this.wafHasRequestBody = true
 	}
 	if err != nil {
