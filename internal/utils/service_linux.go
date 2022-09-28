@@ -114,7 +114,8 @@ func (this *ServiceManager) installSystemdService(systemd, exePath string, args 
 	var shortName = teaconst.SystemdServiceName
 	var longName = "GoEdge Node" // TODO 将来可以修改
 
-	var desc = `# Provides:          ` + shortName + `
+	var desc = `### BEGIN INIT INFO
+# Provides:          ` + shortName + `
 # Required-Start:    $all
 # Required-Stop:
 # Default-Start:     2 3 4 5
