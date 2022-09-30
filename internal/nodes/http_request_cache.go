@@ -19,6 +19,11 @@ import (
 
 // 读取缓存
 func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
+	// 需要动态Upgrade的不缓存
+	if len(this.RawReq.Header.Get("Upgrade")) > 0 {
+		return
+	}
+
 	this.cacheCanTryStale = false
 
 	var cachePolicy = this.ReqServer.HTTPCachePolicy
