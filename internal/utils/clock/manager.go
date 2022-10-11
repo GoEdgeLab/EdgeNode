@@ -39,6 +39,7 @@ func init() {
 }
 
 type ClockManager struct {
+	lastFailAt int64
 }
 
 func NewClockManager() *ClockManager {
@@ -51,7 +52,13 @@ func (this *ClockManager) Start() {
 	for range ticker.C {
 		err := this.Sync()
 		if err != nil {
-			remotelogs.Warn("CLOCK", "sync clock failed: "+err.Error())
+			var currentTimestamp = time.Now().Unix()
+
+			// 每天只提醒一次错误
+			if currentTimestamp-this.lastFailAt > 86400 {
+				remotelogs.Warn("CLOCK", "sync clock failed: "+err.Error())
+				this.lastFailAt = currentTimestamp
+			}
 		}
 	}
 }
@@ -118,7 +125,7 @@ func (this *ClockManager) syncNtpdate(ntpdate string, server string) error {
 	return nil
 }
 
-// 参考自：https://medium.com/learning-the-go-programming-language/lets-make-an-ntp-client-in-go-287c4b9a969f
+// ReadServer 参考自：https://medium.com/learning-the-go-programming-language/lets-make-an-ntp-client-in-go-287c4b9a969f
 func (this *ClockManager) ReadServer(server string) (time.Time, error) {
 	conn, err := net.Dial("udp", server+":123")
 	if err != nil {
