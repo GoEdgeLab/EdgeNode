@@ -3,9 +3,8 @@
 package stats
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
-	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/logs"
@@ -18,14 +17,6 @@ import (
 var SharedBandwidthStatManager = NewBandwidthStatManager()
 
 const bandwidthTimestampDelim = 2 // N秒平均，更为精确
-
-func init() {
-	events.On(events.EventLoaded, func() {
-		goman.New(func() {
-			SharedBandwidthStatManager.Start()
-		})
-	})
-}
 
 type BandwidthStat struct {
 	Day      string
@@ -65,6 +56,12 @@ func (this *BandwidthStatManager) Start() {
 }
 
 func (this *BandwidthStatManager) Loop() error {
+	var regionId int64
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig != nil {
+		regionId = nodeConfig.RegionId
+	}
+
 	var now = time.Now()
 	var day = timeutil.Format("Ymd", now)
 	var currentTime = timeutil.FormatTime("Hi", now.Unix()/300*300)
@@ -86,6 +83,7 @@ func (this *BandwidthStatManager) Loop() error {
 				Day:      stat.Day,
 				TimeAt:   stat.TimeAt,
 				Bytes:    stat.MaxBytes / bandwidthTimestampDelim,
+				RegionId: regionId,
 			})
 			delete(this.m, key)
 		}
