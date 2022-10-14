@@ -174,7 +174,7 @@ func (this *TrafficStatManager) Upload() error {
 
 		pbServerStats = append(pbServerStats, &pb.ServerDailyStat{
 			ServerId:             serverId,
-			RegionId:             config.RegionId,
+			NodeRegionId:         config.RegionId,
 			Bytes:                item.Bytes,
 			CachedBytes:          item.CachedBytes,
 			CountRequests:        item.CountRequests,

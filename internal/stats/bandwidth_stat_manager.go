@@ -77,13 +77,13 @@ func (this *BandwidthStatManager) Loop() error {
 	for key, stat := range this.m {
 		if stat.Day < day || stat.TimeAt < currentTime {
 			pbStats = append(pbStats, &pb.ServerBandwidthStat{
-				Id:       0,
-				UserId:   stat.UserId,
-				ServerId: stat.ServerId,
-				Day:      stat.Day,
-				TimeAt:   stat.TimeAt,
-				Bytes:    stat.MaxBytes / bandwidthTimestampDelim,
-				RegionId: regionId,
+				Id:           0,
+				UserId:       stat.UserId,
+				ServerId:     stat.ServerId,
+				Day:          stat.Day,
+				TimeAt:       stat.TimeAt,
+				Bytes:        stat.MaxBytes / bandwidthTimestampDelim,
+				NodeRegionId: regionId,
 			})
 			delete(this.m, key)
 		}
