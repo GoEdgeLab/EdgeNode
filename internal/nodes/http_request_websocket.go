@@ -115,8 +115,8 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		// 读取第一个响应
 		var respReader = NewWebsocketResponseReader(originConn)
 		resp, err := http.ReadResponse(bufio.NewReader(respReader), this.RawReq)
-		if err != nil {
-			if resp.Body != nil {
+		if err != nil || resp == nil {
+			if resp != nil && resp.Body != nil {
 				_ = resp.Body.Close()
 			}
 
