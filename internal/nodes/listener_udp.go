@@ -170,6 +170,11 @@ func (this *UDPListener) servePacketListener(listener UDPPacketListener) error {
 			return nil
 		}
 
+		// 检查用户状态
+		if firstServer.UserId > 0 && !SharedUserManager.CheckUserServersIsEnabled(firstServer.UserId) {
+			return nil
+		}
+
 		n, cm, clientAddr, err := listener.ReadFrom(buffer)
 		if err != nil {
 			if this.isClosed {

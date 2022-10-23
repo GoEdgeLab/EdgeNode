@@ -92,7 +92,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	}
 
 	// 是否已达到流量限制
-	if this.reachedTrafficLimit() {
+	if this.reachedTrafficLimit() || (server.UserId > 0 && !SharedUserManager.CheckUserServersIsEnabled(server.UserId)) {
 		// 关闭连接
 		tcpConn, ok := conn.(LingerConn)
 		if ok {

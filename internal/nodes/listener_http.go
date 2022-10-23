@@ -175,6 +175,15 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		}
 	}
 
+	// 检查用户
+	if server != nil && server.UserId > 0 {
+		if !SharedUserManager.CheckUserServersIsEnabled(server.UserId) {
+			rawWriter.WriteHeader(http.StatusNotFound)
+			_, _ = rawWriter.Write([]byte("The site owner is unavailable."))
+			return
+		}
+	}
+
 	// 包装新请求对象
 	var req = &HTTPRequest{
 		RawReq:     rawReq,

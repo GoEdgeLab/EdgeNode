@@ -160,7 +160,7 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 
 // 严格查找域名
 func (this *BaseListener) findNamedServerMatched(name string) (serverConfig *serverconfigs.ServerConfig, serverName string) {
-	group := this.Group
+	var group = this.Group
 	if group == nil {
 		return nil, ""
 	}

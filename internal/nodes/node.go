@@ -430,6 +430,22 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, nodeCtx context.Context, ta
 				}
 			}
 		}
+	case "userServersStateChanged":
+		if task.UserId > 0 {
+			resp, err := rpcClient.UserRPC.CheckUserServersState(nodeCtx, &pb.CheckUserServersStateRequest{UserId: task.UserId})
+			if err != nil {
+				return err
+			}
+
+			SharedUserManager.UpdateUserServersIsEnabled(task.UserId, resp.IsEnabled)
+
+			if resp.IsEnabled {
+				err = this.syncUserServersConfig(task.UserId)
+				if err != nil {
+					return err
+				}
+			}
+		}
 	default:
 		remotelogs.Error("NODE", "task '"+types.String(task.Id)+"', type '"+task.Type+"' has not been handled")
 	}
@@ -612,6 +628,36 @@ func (this *Node) syncServerConfig(serverId int64) error {
 		}
 		this.updatingServerMap[serverId] = config
 	}
+	return nil
+}
+
+// 同步某个用户下的所有服务配置
+func (this *Node) syncUserServersConfig(userId int64) error {
+	rpcClient, err := rpc.SharedRPC()
+	if err != nil {
+		return err
+	}
+	serverConfigsResp, err := rpcClient.ServerRPC.ComposeAllUserServersConfig(rpcClient.Context(), &pb.ComposeAllUserServersConfigRequest{
+		UserId: userId,
+	})
+	if err != nil {
+		return err
+	}
+	if len(serverConfigsResp.ServersConfigJSON) == 0 {
+		return nil
+	}
+	var serverConfigs = []*serverconfigs.ServerConfig{}
+	err = json.Unmarshal(serverConfigsResp.ServersConfigJSON, &serverConfigs)
+	if err != nil {
+		return err
+	}
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	for _, config := range serverConfigs {
+		this.updatingServerMap[config.Id] = config
+	}
+
 	return nil
 }
 

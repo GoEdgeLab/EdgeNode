@@ -49,6 +49,7 @@ type RPCClient struct {
 	FirewallRPC            pb.FirewallServiceClient
 	SSLCertRPC             pb.SSLCertServiceClient
 	ScriptRPC              pb.ScriptServiceClient
+	UserRPC                pb.UserServiceClient
 }
 
 func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
@@ -81,6 +82,7 @@ func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
 	client.FirewallRPC = pb.NewFirewallServiceClient(client)
 	client.SSLCertRPC = pb.NewSSLCertServiceClient(client)
 	client.ScriptRPC = pb.NewScriptServiceClient(client)
+	client.UserRPC = pb.NewUserServiceClient(client)
 
 	err := client.init()
 	if err != nil {
