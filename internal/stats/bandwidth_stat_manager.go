@@ -5,6 +5,8 @@ package stats
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/logs"
@@ -17,6 +19,14 @@ import (
 var SharedBandwidthStatManager = NewBandwidthStatManager()
 
 const bandwidthTimestampDelim = 2 // N秒平均，更为精确
+
+func init() {
+	events.On(events.EventLoaded, func() {
+		goman.New(func() {
+			SharedBandwidthStatManager.Start()
+		})
+	})
+}
 
 type BandwidthStat struct {
 	Day      string
@@ -32,6 +42,8 @@ type BandwidthStat struct {
 // BandwidthStatManager 服务带宽统计
 type BandwidthStatManager struct {
 	m map[string]*BandwidthStat // key => *BandwidthStat
+
+	pbStats []*pb.ServerBandwidthStat
 
 	lastTime string // 上一次执行的时间
 
@@ -73,6 +85,18 @@ func (this *BandwidthStatManager) Loop() error {
 
 	var pbStats = []*pb.ServerBandwidthStat{}
 
+	// 历史未提交记录
+	if len(this.pbStats) > 0 {
+		var expiredTime = timeutil.FormatTime("Hi", time.Now().Unix()-1200) // 只保留20分钟
+
+		for _, stat := range this.pbStats {
+			if stat.TimeAt > expiredTime {
+				pbStats = append(pbStats, stat)
+			}
+		}
+		this.pbStats = nil
+	}
+
 	this.locker.Lock()
 	for key, stat := range this.m {
 		if stat.Day < day || stat.TimeAt < currentTime {
@@ -98,6 +122,8 @@ func (this *BandwidthStatManager) Loop() error {
 		}
 		_, err = rpcClient.ServerBandwidthStatRPC.UploadServerBandwidthStats(rpcClient.Context(), &pb.UploadServerBandwidthStatsRequest{ServerBandwidthStats: pbStats})
 		if err != nil {
+			this.pbStats = pbStats
+
 			return err
 		}
 	}

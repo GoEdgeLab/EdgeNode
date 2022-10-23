@@ -205,9 +205,7 @@ func (this *Node) Start() {
 
 	// 统计
 	goman.New(func() {
-		stats.SharedTrafficStatManager.Start(func() *nodeconfigs.NodeConfig {
-			return sharedNodeConfig
-		})
+		stats.SharedTrafficStatManager.Start()
 	})
 	goman.New(func() {
 		stats.SharedHTTPRequestStatManager.Start()

@@ -31,19 +31,33 @@ type TrafficItem struct {
 	CheckingTrafficLimit bool
 }
 
+func (this *TrafficItem) Add(anotherItem *TrafficItem) {
+	this.Bytes += anotherItem.Bytes
+	this.CachedBytes += anotherItem.CachedBytes
+	this.CountRequests += anotherItem.CountRequests
+	this.CountCachedRequests += anotherItem.CountCachedRequests
+	this.CountAttackRequests += anotherItem.CountAttackRequests
+	this.AttackBytes += anotherItem.AttackBytes
+}
+
+const trafficStatsMaxLife = 1200 // 最大只保存20分钟内的数据
+
 // TrafficStatManager 区域流量统计
 type TrafficStatManager struct {
 	itemMap    map[string]*TrafficItem // [timestamp serverId] => *TrafficItem
 	domainsMap map[string]*TrafficItem // timestamp @ serverId @ domain => *TrafficItem
-	locker     sync.Mutex
-	configFunc func() *nodeconfigs.NodeConfig
+
+	pbItems       []*pb.ServerDailyStat
+	pbDomainItems []*pb.UploadServerDailyStatsRequest_DomainStat
+
+	locker sync.Mutex
 
 	totalRequests int64
 }
 
 // NewTrafficStatManager 获取新对象
 func NewTrafficStatManager() *TrafficStatManager {
-	manager := &TrafficStatManager{
+	var manager = &TrafficStatManager{
 		itemMap:    map[string]*TrafficItem{},
 		domainsMap: map[string]*TrafficItem{},
 	}
@@ -52,9 +66,7 @@ func NewTrafficStatManager() *TrafficStatManager {
 }
 
 // Start 启动自动任务
-func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig) {
-	this.configFunc = configFunc
-
+func (this *TrafficStatManager) Start() {
 	// 上传请求总数
 	var monitorTicker = time.NewTicker(1 * time.Minute)
 	events.OnKey(events.EventQuit, this, func() {
@@ -70,7 +82,7 @@ func (this *TrafficStatManager) Start(configFunc func() *nodeconfigs.NodeConfig)
 	})
 
 	// 上传统计数据
-	duration := 5 * time.Minute
+	var duration = 5 * time.Minute
 	if Tea.IsTesting() {
 		// 测试环境缩短上传时间，方便我们调试
 		duration = 30 * time.Second
@@ -143,9 +155,10 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 
 // Upload 上传流量
 func (this *TrafficStatManager) Upload() error {
-	var config = this.configFunc()
-	if config == nil {
-		return nil
+	var regionId int64
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig != nil {
+		regionId = nodeConfig.RegionId
 	}
 
 	client, err := rpc.SharedRPC()
@@ -154,10 +167,14 @@ func (this *TrafficStatManager) Upload() error {
 	}
 
 	this.locker.Lock()
+
 	var itemMap = this.itemMap
 	var domainMap = this.domainsMap
+
+	// reset
 	this.itemMap = map[string]*TrafficItem{}
 	this.domainsMap = map[string]*TrafficItem{}
+
 	this.locker.Unlock()
 
 	// 服务统计
@@ -174,7 +191,7 @@ func (this *TrafficStatManager) Upload() error {
 
 		pbServerStats = append(pbServerStats, &pb.ServerDailyStat{
 			ServerId:             serverId,
-			NodeRegionId:         config.RegionId,
+			NodeRegionId:         regionId,
 			Bytes:                item.Bytes,
 			CachedBytes:          item.CachedBytes,
 			CountRequests:        item.CountRequests,
@@ -185,9 +202,6 @@ func (this *TrafficStatManager) Upload() error {
 			PlanId:               item.PlanId,
 			CreatedAt:            timestamp,
 		})
-	}
-	if len(pbServerStats) == 0 {
-		return nil
 	}
 
 	// 域名统计
@@ -210,9 +224,40 @@ func (this *TrafficStatManager) Upload() error {
 		})
 	}
 
+	// 历史未提交记录
+	if len(this.pbItems) > 0 || len(this.pbDomainItems) > 0 {
+		var expiredAt = time.Now().Unix() - 1200 // 只保留20分钟
+
+		for _, item := range this.pbItems {
+			if item.CreatedAt > expiredAt {
+				pbServerStats = append(pbServerStats, item)
+			}
+		}
+		this.pbItems = nil
+
+		for _, item := range this.pbDomainItems {
+			if item.CreatedAt > expiredAt {
+				pbDomainStats = append(pbDomainStats, item)
+			}
+		}
+		this.pbDomainItems = nil
+	}
+
+	if len(pbServerStats) == 0 && len(pbDomainStats) == 0 {
+		return nil
+	}
+
 	_, err = client.ServerDailyStatRPC.UploadServerDailyStats(client.Context(), &pb.UploadServerDailyStatsRequest{
 		Stats:       pbServerStats,
 		DomainStats: pbDomainStats,
 	})
-	return err
+	if err != nil {
+		// 加回历史记录
+		this.pbItems = pbServerStats
+		this.pbDomainItems = pbDomainStats
+
+		return err
+	}
+
+	return nil
 }
