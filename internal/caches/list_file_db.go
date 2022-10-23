@@ -473,6 +473,7 @@ func (this *FileListDB) initTables(times int) error {
 	{
 		// expiredAt - 过期时间，用来判断有无过期
 		// staleAt - 过时缓存最大时间，用来清理缓存
+		// 不对 hash 增加 unique 参数，是尽可能避免产生 malformed 错误
 		_, err := this.writeDB.Exec(`CREATE TABLE IF NOT EXISTS "` + this.itemsTableName + `" (
   "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
   "hash" varchar(32),
@@ -498,7 +499,7 @@ ON "` + this.itemsTableName + `" (
   "staleAt" ASC
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "hash"
+CREATE INDEX IF NOT EXISTS "hash"
 ON "` + this.itemsTableName + `" (
   "hash" ASC
 );
