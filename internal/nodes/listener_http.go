@@ -45,7 +45,7 @@ func (this *HTTPListener) Serve() error {
 		Handler:           this,
 		ReadTimeout:       1 * time.Hour,    // TODO 改成可以配置
 		ReadHeaderTimeout: 3 * time.Second,  // TODO 改成可以配置
-		WriteTimeout:      1 * time.Hour,    // TODO 改成可以配置
+		WriteTimeout:      2 * time.Hour,    // TODO 改成可以配置
 		IdleTimeout:       75 * time.Second, // TODO 改成可以配置
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
