@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"os/exec"
 	"runtime"
@@ -74,10 +75,16 @@ func (this *IPTablesAction) runAction(action string, listType IPListType, item *
 }
 
 func (this *IPTablesAction) runActionSingleIP(action string, listType IPListType, item *pb.IPItem) error {
+	// 暂时不支持ipv6
+	// TODO 将来支持ipv6
+	if utils.IsIPv6(item.IpFrom) {
+		return nil
+	}
+
 	if item.Type == "all" {
 		return nil
 	}
-	path := this.config.Path
+	var path = this.config.Path
 	var err error
 	if len(path) == 0 {
 		path, err = exec.LookPath("iptables")
@@ -88,6 +95,7 @@ func (this *IPTablesAction) runActionSingleIP(action string, listType IPListType
 			this.iptablesNotFound = true
 			return err
 		}
+		this.config.Path = path
 	}
 	iptablesAction := ""
 	switch action {
