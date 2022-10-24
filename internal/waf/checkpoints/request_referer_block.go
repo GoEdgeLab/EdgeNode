@@ -41,19 +41,45 @@ func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, pa
 		return
 	}
 
-	var domains = options.GetSlice("allowDomains")
-	var domainStrings = []string{}
-	for _, domain := range domains {
-		domainStrings = append(domainStrings, types.String(domain))
+	// allow domains
+	var allowDomains = options.GetSlice("allowDomains")
+	var allowDomainStrings = []string{}
+	for _, domain := range allowDomains {
+		allowDomainStrings = append(allowDomainStrings, types.String(domain))
 	}
 
-	if len(domainStrings) == 0 {
+	// deny domains
+	var denyDomains = options.GetSlice("denyDomains")
+	var denyDomainStrings = []string{}
+	for _, domain := range denyDomains {
+		denyDomainStrings = append(denyDomainStrings, types.String(domain))
+	}
+
+	if len(allowDomainStrings) == 0 {
+		if len(denyDomainStrings) > 0 {
+			if configutils.MatchDomains(denyDomainStrings, host) {
+				value = 0
+			} else {
+				value = 1
+			}
+			return
+		}
+
 		value = 0
 		return
 	}
 
-	if configutils.MatchDomains(domainStrings, host) {
+	if configutils.MatchDomains(allowDomainStrings, host) {
+		if len(denyDomainStrings) > 0 {
+			if configutils.MatchDomains(denyDomainStrings, host) {
+				value = 0
+			} else {
+				value = 1
+			}
+			return
+		}
 		value = 1
+		return
 	} else {
 		value = 0
 	}
