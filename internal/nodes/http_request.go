@@ -1603,9 +1603,25 @@ func (this *HTTPRequest) fixRequestHeader(header http.Header) {
 			header.Del(k)
 			k = strings.ReplaceAll(k, "-Websocket-", "-WebSocket-")
 			header[k] = v
-		} else if k == "Www-Authenticate" {
+		} else if strings.HasPrefix(k, "Sec-Ch") {
 			header.Del(k)
-			header["WWW-Authenticate"] = v
+			k = strings.ReplaceAll(k, "Sec-Ch-Ua", "Sec-CH-UA")
+			header[k] = v
+		} else {
+			switch k {
+			case "Www-Authenticate":
+				header.Del(k)
+				header["WWW-Authenticate"] = v
+			case "A-Im":
+				header.Del(k)
+				header["A-IM"] = v
+			case "Content-Md5":
+				header.Del(k)
+				header["Content-MD5"] = v
+			case "Sec-Gpc":
+				header.Del(k)
+				header["Content-GPC"] = v
+			}
 		}
 	}
 }

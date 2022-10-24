@@ -62,7 +62,13 @@ func (this *HTTPRequest) log() {
 	// 请求Header
 	var pbReqHeader = map[string]*pb.Strings{}
 	if ref == nil || ref.ContainsField(serverconfigs.HTTPAccessLogFieldHeader) {
+		// 是否只记录通用Header
+		var commonHeadersOnly = this.nodeConfig != nil && this.nodeConfig.GlobalServerConfig != nil && this.nodeConfig.GlobalServerConfig.HTTPAccessLog.CommonRequestHeadersOnly
+
 		for k, v := range this.RawReq.Header {
+			if commonHeadersOnly && !serverconfigs.IsCommonRequestHeader(k) {
+				continue
+			}
 			pbReqHeader[k] = &pb.Strings{Values: v}
 		}
 	}
