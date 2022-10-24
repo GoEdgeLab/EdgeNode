@@ -33,4 +33,10 @@ type CheckpointInterface interface {
 
 	// Stop stop
 	Stop()
+
+	// SetPriority set priority
+	SetPriority(priority int)
+
+	// get priority
+	Priority() int
 }

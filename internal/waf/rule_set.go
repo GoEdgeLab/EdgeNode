@@ -52,6 +52,11 @@ func (this *RuleSet) Init(waf *WAF) error {
 				return errors.New("init rule '" + rule.Param + " " + rule.Operator + " " + types.String(rule.Value) + "' failed: " + err.Error())
 			}
 		}
+
+		// sort by priority
+		sort.Slice(this.Rules, func(i, j int) bool {
+			return this.Rules[i].Priority > this.Rules[j].Priority
+		})
 	}
 
 	// action codes

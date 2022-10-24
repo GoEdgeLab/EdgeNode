@@ -35,6 +35,7 @@ type Rule struct {
 	Value             string                 `yaml:"value" json:"value"`       // compared value
 	IsCaseInsensitive bool                   `yaml:"isCaseInsensitive" json:"isCaseInsensitive"`
 	CheckpointOptions map[string]interface{} `yaml:"checkpointOptions" json:"checkpointOptions"`
+	Priority          int                    `yaml:"priority" json:"priority"`
 
 	checkpointFinder func(prefix string) checkpoints.CheckpointInterface
 
@@ -132,9 +133,9 @@ func (this *Rule) Init() error {
 	}
 
 	if singleParamRegexp.MatchString(this.Param) {
-		param := this.Param[2 : len(this.Param)-1]
-		pieces := strings.SplitN(param, ".", 2)
-		prefix := pieces[0]
+		var param = this.Param[2 : len(this.Param)-1]
+		var pieces = strings.SplitN(param, ".", 2)
+		var prefix = pieces[0]
 		if len(pieces) == 1 {
 			this.singleParam = ""
 		} else {
@@ -142,18 +143,20 @@ func (this *Rule) Init() error {
 		}
 
 		if this.checkpointFinder != nil {
-			checkpoint := this.checkpointFinder(prefix)
+			var checkpoint = this.checkpointFinder(prefix)
 			if checkpoint == nil {
 				return errors.New("no check point '" + prefix + "' found")
 			}
 			this.singleCheckpoint = checkpoint
+			this.Priority = checkpoint.Priority()
 		} else {
-			checkpoint := checkpoints.FindCheckpoint(prefix)
+			var checkpoint = checkpoints.FindCheckpoint(prefix)
 			if checkpoint == nil {
 				return errors.New("no check point '" + prefix + "' found")
 			}
 			checkpoint.Init()
 			this.singleCheckpoint = checkpoint
+			this.Priority = checkpoint.Priority()
 		}
 
 		return nil
@@ -162,22 +165,24 @@ func (this *Rule) Init() error {
 	this.multipleCheckpoints = map[string]checkpoints.CheckpointInterface{}
 	var err error = nil
 	configutils.ParseVariables(this.Param, func(varName string) (value string) {
-		pieces := strings.SplitN(varName, ".", 2)
-		prefix := pieces[0]
+		var pieces = strings.SplitN(varName, ".", 2)
+		var prefix = pieces[0]
 		if this.checkpointFinder != nil {
-			checkpoint := this.checkpointFinder(prefix)
+			var checkpoint = this.checkpointFinder(prefix)
 			if checkpoint == nil {
 				err = errors.New("no check point '" + prefix + "' found")
 			} else {
 				this.multipleCheckpoints[prefix] = checkpoint
+				this.Priority = checkpoint.Priority()
 			}
 		} else {
-			checkpoint := checkpoints.FindCheckpoint(prefix)
+			var checkpoint = checkpoints.FindCheckpoint(prefix)
 			if checkpoint == nil {
 				err = errors.New("no check point '" + prefix + "' found")
 			} else {
 				checkpoint.Init()
 				this.multipleCheckpoints[prefix] = checkpoint
+				this.Priority = checkpoint.Priority()
 			}
 		}
 		return ""

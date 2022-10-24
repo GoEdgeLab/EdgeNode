@@ -7,4 +7,5 @@ type CheckpointDefinition struct {
 	Prefix      string
 	HasParams   bool // has sub params
 	Instance    CheckpointInterface
+	Priority    int
 }

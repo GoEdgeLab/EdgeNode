@@ -73,6 +73,7 @@ func (this *WAF) Init() (resultErrors []error) {
 	for _, def := range checkpoints.AllCheckpoints {
 		instance := reflect.New(reflect.Indirect(reflect.ValueOf(def.Instance)).Type()).Interface().(checkpoints.CheckpointInterface)
 		instance.Init()
+		instance.SetPriority(def.Priority)
 		this.checkpointsMap[def.Prefix] = instance
 	}
 
