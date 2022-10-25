@@ -21,6 +21,7 @@ import (
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
+	"golang.org/x/sys/unix"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"math"
@@ -58,6 +59,7 @@ const (
 	HotItemLifeSeconds       int64 = 3600         // 热点数据生命周期
 	FileToMemoryMaxSize            = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
 	FileTmpSuffix                  = ".tmp"
+	MinDiskSpace                   = 5 << 30 // 当前磁盘最小剩余空间
 )
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
@@ -90,6 +92,8 @@ type FileStorage struct {
 	ignoreKeys *setutils.FixedSet
 
 	openFileCache *OpenFileCache
+
+	diskIsFull bool
 }
 
 func NewFileStorage(policy *serverconfigs.HTTPCachePolicy) *FileStorage {
@@ -287,6 +291,9 @@ func (this *FileStorage) Init() error {
 	// open file cache
 	this.initOpenFileCache()
 
+	// 检查磁盘空间
+	this.checkDiskSpace()
+
 	return nil
 }
 
@@ -395,6 +402,11 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	// 是否正在退出
 	if teaconst.IsQuiting {
 		return nil, ErrWritingUnavailable
+	}
+
+	// 当前磁盘可用容量是否严重不足
+	if this.diskIsFull {
+		return nil, NewCapacityError("the disk is full")
 	}
 
 	// 是否已忽略
@@ -938,18 +950,25 @@ func (this *FileStorage) initList() error {
 
 // 清理任务
 func (this *FileStorage) purgeLoop() {
+	// 检查磁盘剩余空间
+	this.checkDiskSpace()
+
 	// 计算是否应该开启LFU清理
 	var capacityBytes = this.policy.CapacityBytes()
 	var startLFU = false
-	var usedPercent = float32(this.TotalDiskSize()*100) / float32(capacityBytes)
 	var lfuFreePercent = this.policy.PersistenceLFUFreePercent
 	if lfuFreePercent <= 0 {
 		lfuFreePercent = 5
 	}
-	if capacityBytes > 0 {
-		if lfuFreePercent < 100 {
-			if usedPercent >= 100-lfuFreePercent {
-				startLFU = true
+	if this.diskIsFull {
+		startLFU = true
+	} else {
+		var usedPercent = float32(this.TotalDiskSize()*100) / float32(capacityBytes)
+		if capacityBytes > 0 {
+			if lfuFreePercent < 100 {
+				if usedPercent >= 100-lfuFreePercent {
+					startLFU = true
+				}
 			}
 		}
 	}
@@ -1325,5 +1344,17 @@ func (this *FileStorage) runMemoryStorageSafety(f func(memoryStorage *MemoryStor
 	var memoryStorage = this.memoryStorage
 	if memoryStorage != nil {
 		f(memoryStorage)
+	}
+}
+
+// 检查磁盘剩余空间
+func (this *FileStorage) checkDiskSpace() {
+	if this.options != nil && len(this.options.Dir) > 0 {
+		var stat unix.Statfs_t
+		err := unix.Statfs(this.options.Dir, &stat)
+		if err == nil {
+			var availableBytes = stat.Bavail * uint64(stat.Bsize)
+			this.diskIsFull = availableBytes < MinDiskSpace
+		}
 	}
 }

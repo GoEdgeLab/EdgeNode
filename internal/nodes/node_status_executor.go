@@ -195,8 +195,8 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 	})
 
 	// 当前TeaWeb所在的fs
-	rootFS := ""
-	rootTotal := uint64(0)
+	var rootFS = ""
+	var rootTotal = uint64(0)
 	if lists.ContainsString([]string{"darwin", "linux", "freebsd"}, runtime.GOOS) {
 		for _, p := range partitions {
 			if p.Mountpoint == "/" {
@@ -210,9 +210,9 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 		}
 	}
 
-	total := rootTotal
-	totalUsage := uint64(0)
-	maxUsage := float64(0)
+	var total = rootTotal
+	var totalUsage = uint64(0)
+	var maxUsage = float64(0)
 	for _, partition := range partitions {
 		if runtime.GOOS != "windows" && !strings.Contains(partition.Device, "/") && !strings.Contains(partition.Device, "\\") {
 			continue
@@ -252,7 +252,7 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 // 缓存空间
 func (this *NodeStatusExecutor) updateCacheSpace(status *nodeconfigs.NodeStatus) {
 	var result = []maps.Map{}
-	cachePaths := caches.SharedManager.FindAllCachePaths()
+	var cachePaths = caches.SharedManager.FindAllCachePaths()
 	for _, path := range cachePaths {
 		var stat unix.Statfs_t
 		err := unix.Statfs(path, &stat)
