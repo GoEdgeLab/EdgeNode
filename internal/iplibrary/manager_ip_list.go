@@ -1,6 +1,7 @@
 package iplibrary
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
@@ -141,6 +142,12 @@ func (this *IPListManager) init() {
 }
 
 func (this *IPListManager) loop() error {
+	// 是否同步IP名单
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig != nil && !nodeConfig.EnableIPLists {
+		return nil
+	}
+
 	for {
 		hasNext, err := this.fetch()
 		if err != nil {
