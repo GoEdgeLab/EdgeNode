@@ -51,33 +51,46 @@ func (this *HTTPRequest) log() {
 		addr = addr[:index]
 	}
 
+	var serverGlobalConfig = this.nodeConfig.GlobalServerConfig
+
 	// 请求Cookie
 	var cookies = map[string]string{}
-	if ref == nil || ref.ContainsField(serverconfigs.HTTPAccessLogFieldCookie) {
-		for _, cookie := range this.RawReq.Cookies() {
-			cookies[cookie.Name] = cookie.Value
+	var enableCookies = false
+	if serverGlobalConfig == nil || serverGlobalConfig.HTTPAccessLog.EnableCookies {
+		enableCookies = true
+		if ref == nil || ref.ContainsField(serverconfigs.HTTPAccessLogFieldCookie) {
+			for _, cookie := range this.RawReq.Cookies() {
+				cookies[cookie.Name] = cookie.Value
+			}
 		}
 	}
 
 	// 请求Header
 	var pbReqHeader = map[string]*pb.Strings{}
-	if ref == nil || ref.ContainsField(serverconfigs.HTTPAccessLogFieldHeader) {
-		// 是否只记录通用Header
-		var commonHeadersOnly = this.nodeConfig != nil && this.nodeConfig.GlobalServerConfig != nil && this.nodeConfig.GlobalServerConfig.HTTPAccessLog.CommonRequestHeadersOnly
+	if serverGlobalConfig == nil || serverGlobalConfig.HTTPAccessLog.EnableRequestHeaders {
+		if ref == nil || ref.ContainsField(serverconfigs.HTTPAccessLogFieldHeader) {
+			// 是否只记录通用Header
+			var commonHeadersOnly = serverGlobalConfig != nil && serverGlobalConfig.HTTPAccessLog.CommonRequestHeadersOnly
 
-		for k, v := range this.RawReq.Header {
-			if commonHeadersOnly && !serverconfigs.IsCommonRequestHeader(k) {
-				continue
+			for k, v := range this.RawReq.Header {
+				if commonHeadersOnly && !serverconfigs.IsCommonRequestHeader(k) {
+					continue
+				}
+				if !enableCookies && k == "Cookie" {
+					continue
+				}
+				pbReqHeader[k] = &pb.Strings{Values: v}
 			}
-			pbReqHeader[k] = &pb.Strings{Values: v}
 		}
 	}
 
 	// 响应Header
 	var pbResHeader = map[string]*pb.Strings{}
-	if ref == nil || ref.ContainsField(serverconfigs.HTTPAccessLogFieldSentHeader) {
-		for k, v := range this.writer.Header() {
-			pbResHeader[k] = &pb.Strings{Values: v}
+	if serverGlobalConfig == nil || serverGlobalConfig.HTTPAccessLog.EnableResponseHeaders {
+		if ref == nil || ref.ContainsField(serverconfigs.HTTPAccessLogFieldSentHeader) {
+			for k, v := range this.writer.Header() {
+				pbResHeader[k] = &pb.Strings{Values: v}
+			}
 		}
 	}
 
