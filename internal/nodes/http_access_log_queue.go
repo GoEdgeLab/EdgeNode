@@ -43,7 +43,11 @@ func (this *HTTPAccessLogQueue) Start() {
 	for range ticker.C {
 		err := this.loop()
 		if err != nil {
-			remotelogs.Error("ACCESS_LOG_QUEUE", err.Error())
+			if rpc.IsConnError(err) {
+				remotelogs.Debug("ACCESS_LOG_QUEUE", err.Error())
+			} else {
+				remotelogs.Error("ACCESS_LOG_QUEUE", err.Error())
+			}
 		}
 	}
 }
