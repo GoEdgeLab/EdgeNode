@@ -407,7 +407,7 @@ func (this *APIStream) handleCheckLocalFirewall(message *pb.NodeStreamMessage) e
 		var protectionConfig = sharedNodeConfig.DDoSProtection
 		err = firewalls.SharedDDoSProtectionManager.Apply(protectionConfig)
 		if err != nil {
-			this.replyFail(message.RequestId, dataMessage.Name+"was installed, but apply DDoS protection config failed: "+err.Error())
+			this.replyFail(message.RequestId, dataMessage.Name+" was installed, but apply DDoS protection config failed: "+err.Error())
 		} else {
 			this.replyOk(message.RequestId, string(result.AsJSON()))
 		}

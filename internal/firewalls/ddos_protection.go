@@ -91,6 +91,9 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 	}
 
 	if nftablesInstance == nil {
+		if config == nil || !config.IsOn() {
+			return nil
+		}
 		return errors.New("nftables instance should not be nil")
 	}
 
