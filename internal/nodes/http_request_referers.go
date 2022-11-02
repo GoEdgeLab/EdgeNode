@@ -12,6 +12,8 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 		return
 	}
 
+	const cacheSeconds = "3600" // 时间不能过长，防止修改设置后长期无法生效
+
 	var refererURL = this.RawReq.Header.Get("Referer")
 	if len(refererURL) == 0 {
 		if this.web.Referers.MatchDomain(this.ReqHost, "") {
@@ -19,6 +21,7 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 		}
 
 		this.tags = append(this.tags, "refererCheck")
+		this.writer.Header().Set("Cache-Control", "max-age="+cacheSeconds)
 		this.writeCode(http.StatusForbidden, "The referer has been blocked.", "当前访问已被防盗链系统拦截。")
 
 		return true
@@ -31,6 +34,7 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 		}
 
 		this.tags = append(this.tags, "refererCheck")
+		this.writer.Header().Set("Cache-Control", "max-age="+cacheSeconds)
 		this.writeCode(http.StatusForbidden, "The referer has been blocked.", "当前访问已被防盗链系统拦截。")
 
 		return true
@@ -38,6 +42,7 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 
 	if !this.web.Referers.MatchDomain(this.ReqHost, u.Host) {
 		this.tags = append(this.tags, "refererCheck")
+		this.writer.Header().Set("Cache-Control", "max-age="+cacheSeconds)
 		this.writeCode(http.StatusForbidden, "The referer has been blocked.", "当前访问已被防盗链系统拦截。")
 		return true
 	}
