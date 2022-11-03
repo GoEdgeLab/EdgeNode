@@ -79,6 +79,18 @@ func (this *ClockManager) Sync() error {
 		return nil
 	}
 
+	// check chrony
+	if config.CheckChrony {
+		chronycExe, err := exec.LookPath("chronyc")
+		if err == nil && len(chronycExe) > 0 {
+			var chronyCmd = executils.NewTimeoutCmd(3*time.Second, chronycExe, "tracking")
+			err = chronyCmd.Run()
+			if err == nil {
+				return nil
+			}
+		}
+	}
+
 	var server = config.Server
 	if len(server) == 0 {
 		server = "pool.ntp.org"
