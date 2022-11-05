@@ -452,7 +452,7 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, nodeCtx context.Context, ta
 }
 
 // 标记任务完成
-func (this *Node) finishTask(taskId int64, err error) {
+func (this *Node) finishTask(taskId int64, taskErr error) {
 	if taskId <= 0 {
 		return
 	}
@@ -465,10 +465,10 @@ func (this *Node) finishTask(taskId int64, err error) {
 
 	var nodeCtx = rpcClient.Context()
 
-	var isOk = err == nil
+	var isOk = taskErr == nil
 	var errMsg = ""
-	if err != nil {
-		errMsg = err.Error()
+	if taskErr != nil {
+		errMsg = taskErr.Error()
 	}
 
 	_, err = rpcClient.NodeTaskRPC.ReportNodeTaskDone(nodeCtx, &pb.ReportNodeTaskDoneRequest{
