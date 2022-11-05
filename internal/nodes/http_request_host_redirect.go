@@ -117,8 +117,18 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				continue
 			}
 
+			var reqHost = this.ReqHost
+
+			// 忽略跳转前端口
+			if u.DomainBeforeIgnorePorts {
+				h, _, err := net.SplitHostPort(reqHost)
+				if err == nil && len(h) > 0 {
+					reqHost = h
+				}
+			}
+
 			// 如果跳转前后域名一致，则终止
-			if u.DomainAfter == this.ReqHost {
+			if u.DomainAfter == reqHost {
 				return false
 			}
 
@@ -126,7 +136,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 			if len(scheme) == 0 {
 				scheme = this.requestScheme()
 			}
-			if u.DomainsAll || configutils.MatchDomains(u.DomainsBefore, this.ReqHost) {
+			if u.DomainsAll || configutils.MatchDomains(u.DomainsBefore, reqHost) {
 				var afterURL = scheme + "://" + u.DomainAfter + urlPath
 				if fullURL == afterURL {
 					// 终止匹配
