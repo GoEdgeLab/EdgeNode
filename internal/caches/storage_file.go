@@ -954,7 +954,7 @@ func (this *FileStorage) purgeLoop() {
 	this.checkDiskSpace()
 
 	// 计算是否应该开启LFU清理
-	var capacityBytes = this.policy.CapacityBytes()
+	var capacityBytes = this.diskCapacityBytes()
 	var startLFU = false
 	var lfuFreePercent = this.policy.PersistenceLFUFreePercent
 	if lfuFreePercent <= 0 {

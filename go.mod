@@ -5,6 +5,7 @@ go 1.18
 replace (
 	github.com/TeaOSLab/EdgeCommon => ../EdgeCommon
 	github.com/fsnotify/fsnotify => github.com/iwind/fsnotify v1.5.2-0.20220817040843-193be2051ff4
+	rogchap.com/v8go => /Users/Workspace/Projects/v8go
 )
 
 require (
