@@ -302,21 +302,21 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}()
 
 	// 读取Header
-	var headerBuf = []byte{}
+	var headerData = []byte{}
 	this.writer.SetSentHeaderBytes(reader.HeaderSize())
 	err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
-		headerBuf = append(headerBuf, buf[:n]...)
+		headerData = append(headerData, buf[:n]...)
 		for {
-			nIndex := bytes.Index(headerBuf, []byte{'\n'})
+			nIndex := bytes.Index(headerData, []byte{'\n'})
 			if nIndex >= 0 {
-				row := headerBuf[:nIndex]
+				row := headerData[:nIndex]
 				spaceIndex := bytes.Index(row, []byte{':'})
 				if spaceIndex <= 0 {
 					return false, errors.New("invalid header '" + string(row) + "'")
 				}
 
 				this.writer.Header().Set(string(row[:spaceIndex]), string(row[spaceIndex+1:]))
-				headerBuf = headerBuf[nIndex+1:]
+				headerData = headerData[nIndex+1:]
 			} else {
 				break
 			}
