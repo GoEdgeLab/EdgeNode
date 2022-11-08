@@ -295,17 +295,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		}
 	}
 
-	var pool = this.bytePool(fileSize)
-	var buf = pool.Get()
-	defer func() {
-		pool.Put(buf)
-	}()
-
 	// 读取Header
 	var headerData = []byte{}
 	this.writer.SetSentHeaderBytes(reader.HeaderSize())
-	err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
-		headerData = append(headerData, buf[:n]...)
+	var headerPool = this.bytePool(reader.HeaderSize())
+	var headerBuf = headerPool.Get()
+	err = reader.ReadHeader(headerBuf, func(n int) (goNext bool, err error) {
+		headerData = append(headerData, headerBuf[:n]...)
 		for {
 			nIndex := bytes.Index(headerData, []byte{'\n'})
 			if nIndex >= 0 {
@@ -323,6 +319,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		}
 		return true, nil
 	})
+	headerPool.Put(headerBuf)
 	if err != nil {
 		if !this.canIgnore(err) {
 			remotelogs.WarnServer("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: read header failed: "+err.Error())
@@ -460,13 +457,16 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			respHeader.Set("Content-Length", strconv.FormatInt(ranges[0].Length(), 10))
 			this.writer.WriteHeader(http.StatusPartialContent)
 
-			err = reader.ReadBodyRange(buf, ranges[0].Start(), ranges[0].End(), func(n int) (goNext bool, err error) {
-				_, err = this.writer.Write(buf[:n])
+			var pool = this.bytePool(fileSize)
+			var bodyBuf = pool.Get()
+			err = reader.ReadBodyRange(bodyBuf, ranges[0].Start(), ranges[0].End(), func(n int) (goNext bool, err error) {
+				_, err = this.writer.Write(bodyBuf[:n])
 				if err != nil {
 					return false, errWritingToClient
 				}
 				return true, nil
 			})
+			pool.Put(bodyBuf)
 			if err != nil {
 				this.varMapping["cache.status"] = "MISS"
 
@@ -513,13 +513,16 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 					}
 				}
 
-				err := reader.ReadBodyRange(buf, r.Start(), r.End(), func(n int) (goNext bool, err error) {
-					_, err = this.writer.Write(buf[:n])
+				var pool = this.bytePool(fileSize)
+				var bodyBuf = pool.Get()
+				err := reader.ReadBodyRange(bodyBuf, r.Start(), r.End(), func(n int) (goNext bool, err error) {
+					_, err = this.writer.Write(bodyBuf[:n])
 					if err != nil {
 						return false, errWritingToClient
 					}
 					return true, nil
 				})
+				pool.Put(bodyBuf)
 				if err != nil {
 					if !this.canIgnore(err) {
 						remotelogs.WarnServer("HTTP_REQUEST_CACHE", this.URL()+": read from cache failed: "+err.Error())
@@ -543,15 +546,18 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			this.writer.Prepare(resp, fileSize, reader.Status(), false)
 			this.writer.WriteHeader(reader.Status())
 
+			var pool = this.bytePool(fileSize)
+			var bodyBuf = pool.Get()
 			if storage.CanSendfile() {
 				if fp, canSendFile := this.writer.canSendfile(); canSendFile {
-					this.writer.sentBodyBytes, err = io.CopyBuffer(this.writer.rawWriter, fp, buf)
+					this.writer.sentBodyBytes, err = io.CopyBuffer(this.writer.rawWriter, fp, bodyBuf)
 				} else {
-					_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+					_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf)
 				}
 			} else {
-				_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+				_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf)
 			}
+			pool.Put(bodyBuf)
 			if err == io.EOF {
 				err = nil
 			}
