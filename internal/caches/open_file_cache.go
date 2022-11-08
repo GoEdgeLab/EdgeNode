@@ -19,7 +19,7 @@ type OpenFileCache struct {
 	poolList *linkedlist.List
 	watcher  *fsnotify.Watcher
 
-	locker sync.Mutex
+	locker sync.RWMutex
 
 	maxSize int
 	count   int
@@ -54,13 +54,15 @@ func NewOpenFileCache(maxSize int) (*OpenFileCache, error) {
 }
 
 func (this *OpenFileCache) Get(filename string) *OpenFile {
-	this.locker.Lock()
-	defer this.locker.Unlock()
+	this.locker.RLock()
 	pool, ok := this.poolMap[filename]
+	this.locker.RUnlock()
 	if ok {
 		file, consumed := pool.Get()
 		if consumed {
+			this.locker.Lock()
 			this.count--
+			this.locker.Unlock()
 		}
 		return file
 	}
