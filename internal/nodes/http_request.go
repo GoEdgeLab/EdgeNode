@@ -1721,10 +1721,10 @@ func (this *HTTPRequest) bytePool(contentLength int64) *utils.BytePool {
 		return utils.BytePool1k
 	}
 	if contentLength < 32768 { // 32K
-		return utils.BytePool4k
+		return utils.BytePool16k
 	}
 	if contentLength < 131072 { // 128K
-		return utils.BytePool16k
+		return utils.BytePool32k
 	}
 	return utils.BytePool32k
 }

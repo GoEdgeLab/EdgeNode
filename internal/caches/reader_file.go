@@ -42,7 +42,7 @@ func (this *FileReader) InitAutoDiscard(autoDiscard bool) error {
 		this.header = this.openFile.header
 	}
 
-	isOk := false
+	var isOk = false
 
 	if autoDiscard {
 		defer func() {
@@ -67,17 +67,17 @@ func (this *FileReader) InitAutoDiscard(autoDiscard bool) error {
 
 	this.expiresAt = int64(binary.BigEndian.Uint32(buf[:SizeExpiresAt]))
 
-	status := types.Int(string(buf[OffsetStatus : OffsetStatus+SizeStatus]))
+	var status = types.Int(string(buf[OffsetStatus : OffsetStatus+SizeStatus]))
 	if status < 100 || status > 999 {
 		return errors.New("invalid status")
 	}
 	this.status = status
 
 	// URL
-	urlLength := binary.BigEndian.Uint32(buf[OffsetURLLength : OffsetURLLength+SizeURLLength])
+	var urlLength = binary.BigEndian.Uint32(buf[OffsetURLLength : OffsetURLLength+SizeURLLength])
 
 	// header
-	headerSize := int(binary.BigEndian.Uint32(buf[OffsetHeaderLength : OffsetHeaderLength+SizeHeaderLength]))
+	var headerSize = int(binary.BigEndian.Uint32(buf[OffsetHeaderLength : OffsetHeaderLength+SizeHeaderLength]))
 	if headerSize == 0 {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (this *FileReader) InitAutoDiscard(autoDiscard bool) error {
 
 	// body
 	this.bodyOffset = this.headerOffset + int64(headerSize)
-	bodySize := int(binary.BigEndian.Uint64(buf[OffsetBodyLength : OffsetBodyLength+SizeBodyLength]))
+	var bodySize = int(binary.BigEndian.Uint64(buf[OffsetBodyLength : OffsetBodyLength+SizeBodyLength]))
 	if bodySize == 0 {
 		isOk = true
 		return nil
@@ -158,7 +158,7 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 		return nil
 	}
 
-	isOk := false
+	var isOk = false
 
 	defer func() {
 		if !isOk {
@@ -171,7 +171,7 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 		return err
 	}
 
-	headerSize := this.headerSize
+	var headerSize = this.headerSize
 
 	for {
 		n, err := this.fp.Read(buf)
@@ -215,7 +215,7 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 }
 
 func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
-	isOk := false
+	var isOk = false
 
 	defer func() {
 		if !isOk {
@@ -261,11 +261,12 @@ func (this *FileReader) Read(buf []byte) (n int, err error) {
 	if err != nil && err != io.EOF {
 		_ = this.discard()
 	}
+
 	return
 }
 
 func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callback ReaderFunc) error {
-	isOk := false
+	var isOk = false
 
 	defer func() {
 		if !isOk {
@@ -273,7 +274,7 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 		}
 	}()
 
-	offset := start
+	var offset = start
 	if start < 0 {
 		offset = this.bodyOffset + this.bodySize + end
 		end = this.bodyOffset + this.bodySize - 1
@@ -296,7 +297,7 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 	for {
 		n, err := this.fp.Read(buf)
 		if n > 0 {
-			n2 := int(end-offset) + 1
+			var n2 = int(end-offset) + 1
 			if n2 <= n {
 				_, e := callback(n2)
 				if e != nil {
@@ -344,12 +345,12 @@ func (this *FileReader) FP() *os.File {
 }
 
 func (this *FileReader) Close() error {
-	if this.openFileCache != nil {
-		if this.isClosed {
-			return nil
-		}
-		this.isClosed = true
+	if this.isClosed {
+		return nil
+	}
+	this.isClosed = true
 
+	if this.openFileCache != nil {
 		if this.openFile != nil {
 			this.openFileCache.Put(this.fp.Name(), this.openFile)
 		} else {
@@ -359,6 +360,7 @@ func (this *FileReader) Close() error {
 		}
 		return nil
 	}
+
 	return this.fp.Close()
 }
 
