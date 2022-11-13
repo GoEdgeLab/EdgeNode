@@ -27,6 +27,9 @@ type RPCClient struct {
 	apiConfig *configs.APIConfig
 	conns     []*grpc.ClientConn
 
+	ctx          context.Context
+	ctxUpdatedAt int64
+
 	locker sync.RWMutex
 
 	NodeRPC                pb.NodeServiceClient
@@ -94,7 +97,12 @@ func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
 
 // Context 节点上下文信息
 func (this *RPCClient) Context() context.Context {
-	var ctx = context.Background()
+	var currentTime = time.Now().Unix()
+
+	if this.ctx != nil && this.ctxUpdatedAt > currentTime-5 {
+		return this.ctx
+	}
+
 	var m = maps.Map{
 		"timestamp": time.Now().Unix(),
 		"type":      "node",
@@ -111,7 +119,13 @@ func (this *RPCClient) Context() context.Context {
 		return context.Background()
 	}
 	var token = base64.StdEncoding.EncodeToString(data)
+
+	var ctx = context.Background()
 	ctx = metadata.AppendToOutgoingContext(ctx, "nodeId", this.apiConfig.NodeId, "token", token)
+
+	this.ctxUpdatedAt = currentTime
+	this.ctx = ctx
+
 	return ctx
 }
 

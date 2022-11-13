@@ -73,6 +73,15 @@ func (this *UserAgentParser) Parse(userAgent string) (result UserAgentParserResu
 	result.BrowserName, result.BrowserVersion = this.parser.Browser()
 	result.IsMobile = this.parser.Mobile()
 
+	// 忽略特殊字符
+	if len(result.BrowserName) > 0 {
+		for _, r := range result.BrowserName {
+			if r == '$' || r == '"' || r == '\'' || r == '<' || r == '>' || r == ')' {
+				return
+			}
+		}
+	}
+
 	if this.cacheCursor == 0 {
 		this.cacheMap1[userAgent] = result
 		if len(this.cacheMap1) >= this.maxCacheItems {
