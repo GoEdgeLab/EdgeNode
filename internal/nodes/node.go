@@ -37,6 +37,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"sort"
@@ -985,7 +986,19 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 	// 缓存策略
 	caches.SharedManager.MaxDiskCapacity = config.MaxCacheDiskCapacity
 	caches.SharedManager.MaxMemoryCapacity = config.MaxCacheMemoryCapacity
-	caches.SharedManager.DiskDir = config.CacheDiskDir
+	caches.SharedManager.MainDiskDir = config.CacheDiskDir
+
+	var subDirs = config.CacheDiskSubDirs
+	for _, subDir := range subDirs {
+		subDir.Path = filepath.Clean(subDir.Path)
+	}
+	if len(subDirs) > 0 {
+		sort.Slice(subDirs, func(i, j int) bool {
+			return subDirs[i].Path < subDirs[j].Path
+		})
+	}
+	caches.SharedManager.SubDiskDirs = subDirs
+
 	if len(config.HTTPCachePolicies) > 0 {
 		caches.SharedManager.UpdatePolicies(config.HTTPCachePolicies)
 	} else {

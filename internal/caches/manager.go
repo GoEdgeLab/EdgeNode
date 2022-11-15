@@ -24,7 +24,8 @@ func init() {
 type Manager struct {
 	// 全局配置
 	MaxDiskCapacity   *shared.SizeCapacity
-	DiskDir           string
+	MainDiskDir       string
+	SubDiskDirs       []*serverconfigs.CacheDir
 	MaxMemoryCapacity *shared.SizeCapacity
 
 	policyMap  map[int64]*serverconfigs.HTTPCachePolicy // policyId => []*Policy
@@ -47,12 +48,10 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
-	newPolicyIds := []int64{}
+	var newPolicyIds = []int64{}
 	for _, policy := range newPolicies {
 		// 使用节点单独的缓存目录
-		if len(this.DiskDir) > 0 {
-			policy.UpdateDiskDir(this.DiskDir)
-		}
+		policy.UpdateDiskDir(this.MainDiskDir, this.SubDiskDirs)
 
 		newPolicyIds = append(newPolicyIds, policy.Id)
 	}
