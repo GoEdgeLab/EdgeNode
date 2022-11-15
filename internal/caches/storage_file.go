@@ -501,18 +501,6 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		return nil, NewCapacityError("the disk is full")
 	}
 
-	// TODO 可以只stat一次
-	_, err = os.Stat(dir)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-		err = os.MkdirAll(dir, 0777)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// 检查缓存是否已经生成
 	var cachePathName = dir + "/" + hash
 	var cachePath = cachePathName + ".cache"
@@ -579,7 +567,15 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	var before = time.Now()
 	writer, err := os.OpenFile(tmpPath, flags, 0666)
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			_ = os.MkdirAll(dir, 0777)
+
+			// open file again
+			writer, err = os.OpenFile(tmpPath, flags, 0666)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	if !isFlushing {
 		if time.Since(before) >= maxOpenFilesSlowCost {
