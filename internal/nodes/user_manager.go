@@ -37,6 +37,10 @@ func (this *UserManager) UpdateUserServersIsEnabled(userId int64, isEnabled bool
 }
 
 func (this *UserManager) CheckUserServersIsEnabled(userId int64) (isEnabled bool) {
+	if userId <= 0 {
+		return true
+	}
+	
 	this.locker.RLock()
 	u, ok := this.userMap[userId]
 	if ok {
