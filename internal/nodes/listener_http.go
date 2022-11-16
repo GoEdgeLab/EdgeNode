@@ -117,7 +117,7 @@ func (this *HTTPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 // ServerHTTP 处理HTTP请求
 func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
 	// 域名
-	var reqHost = rawReq.Host
+	var reqHost = strings.TrimRight(rawReq.Host, ".")
 
 	// TLS域名
 	if this.isIP(reqHost) {
