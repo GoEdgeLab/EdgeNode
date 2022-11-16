@@ -758,6 +758,8 @@ func (this *HTTPRequest) Format(source string) string {
 			return strconv.FormatInt(this.requestFromTime.Unix(), 10)
 		case "host":
 			return this.ReqHost
+		case "cname":
+			return this.ReqServer.CNameDomain
 		case "referer":
 			return this.RawReq.Referer()
 		case "referer.host":

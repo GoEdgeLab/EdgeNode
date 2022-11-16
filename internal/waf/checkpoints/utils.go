@@ -147,6 +147,22 @@ var AllCheckpoints = []*CheckpointDefinition{
 		Priority:    100,
 	},
 	{
+		Name:        "CNAME",
+		Prefix:      "cname",
+		Description: "当前网站服务CNAME，比如38b48e4f.goedge.cn",
+		HasParams:   false,
+		Instance:    new(RequestCNAMECheckpoint),
+		Priority:    100,
+	},
+	{
+		Name:        "是否为CNAME",
+		Prefix:      "isCNAME",
+		Description: "是否为CNAME，值为1（是）或0（否）",
+		HasParams:   false,
+		Instance:    new(RequestIsCNAMECheckpoint),
+		Priority:    100,
+	},
+	{
 		Name:        "请求来源URL",
 		Prefix:      "referer",
 		Description: "请求Header中的Referer值",
