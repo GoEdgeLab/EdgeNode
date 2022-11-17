@@ -222,6 +222,7 @@ func (this *RPCClient) pickConn() *grpc.ClientConn {
 		for _, stateArray := range [][2]connectivity.State{
 			{connectivity.Ready, connectivity.Idle}, // 优先Ready和Idle
 			{connectivity.Connecting, connectivity.Connecting},
+			{connectivity.TransientFailure, connectivity.TransientFailure},
 		} {
 			for _, conn := range this.conns {
 				var state = conn.GetState()
