@@ -218,12 +218,12 @@ func (this *RPCClient) pickConn() *grpc.ClientConn {
 
 	// 检查连接状态
 	if len(this.conns) > 0 {
-		var availableConns = []*grpc.ClientConn{}
 		for _, stateArray := range [][2]connectivity.State{
 			{connectivity.Ready, connectivity.Idle}, // 优先Ready和Idle
 			{connectivity.Connecting, connectivity.Connecting},
 			{connectivity.TransientFailure, connectivity.TransientFailure},
 		} {
+			var availableConns = []*grpc.ClientConn{}
 			for _, conn := range this.conns {
 				var state = conn.GetState()
 				if state == stateArray[0] || state == stateArray[1] {
@@ -234,21 +234,6 @@ func (this *RPCClient) pickConn() *grpc.ClientConn {
 				return this.randConn(availableConns)
 			}
 		}
-
-		if len(availableConns) > 0 {
-			return this.randConn(availableConns)
-		}
-	}
-
-	// 重新初始化
-	err := this.init()
-	if err != nil {
-		// 错误提示已经在构造对象时打印过，所以这里不再重复打印
-		return nil
-	}
-
-	if len(this.conns) == 0 {
-		return nil
 	}
 
 	return this.randConn(this.conns)
