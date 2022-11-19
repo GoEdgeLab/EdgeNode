@@ -152,6 +152,8 @@ func (this *PartialFileWriter) Close() error {
 
 	err := this.ranges.WriteToFile(this.rangePath)
 	if err != nil {
+		_ = this.rawWriter.Close()
+		this.remove()
 		return err
 	}
 

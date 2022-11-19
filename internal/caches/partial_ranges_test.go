@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewPartialRanges(t *testing.T) {
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	r.Add(1, 100)
 	r.Add(50, 300)
 
@@ -28,7 +28,7 @@ func TestNewPartialRanges(t *testing.T) {
 func TestNewPartialRanges1(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	r.Add(1, 100)
 	r.Add(1, 101)
 	r.Add(1, 102)
@@ -47,7 +47,7 @@ func TestNewPartialRanges1(t *testing.T) {
 
 func TestNewPartialRanges2(t *testing.T) {
 	// low -> high
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	r.Add(1, 100)
 	r.Add(1, 101)
 	r.Add(1, 102)
@@ -63,7 +63,7 @@ func TestNewPartialRanges2(t *testing.T) {
 
 func TestNewPartialRanges3(t *testing.T) {
 	// high -> low
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	r.Add(301, 302)
 	r.Add(303, 304)
 	r.Add(200, 300)
@@ -75,7 +75,7 @@ func TestNewPartialRanges3(t *testing.T) {
 
 func TestNewPartialRanges4(t *testing.T) {
 	// nearby
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	r.Add(301, 302)
 	r.Add(303, 304)
 	r.Add(305, 306)
@@ -90,7 +90,7 @@ func TestNewPartialRanges4(t *testing.T) {
 }
 
 func TestNewPartialRanges5(t *testing.T) {
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	for j := 0; j < 1000; j++ {
 		r.Add(int64(j), int64(j+100))
 	}
@@ -100,7 +100,7 @@ func TestNewPartialRanges5(t *testing.T) {
 func TestNewPartialRanges_Nearest(t *testing.T) {
 	{
 		// nearby
-		var r = caches.NewPartialRanges()
+		var r = caches.NewPartialRanges(0)
 		r.Add(301, 400)
 		r.Add(401, 500)
 		r.Add(501, 600)
@@ -112,7 +112,7 @@ func TestNewPartialRanges_Nearest(t *testing.T) {
 
 	{
 		// nearby
-		var r = caches.NewPartialRanges()
+		var r = caches.NewPartialRanges(0)
 		r.Add(301, 400)
 		r.Add(450, 500)
 		r.Add(550, 600)
@@ -131,7 +131,7 @@ func TestNewPartialRanges_Large_Range(t *testing.T) {
 	var largeSize int64 = 10000000000000
 	t.Log(largeSize/1024/1024/1024, "G")
 
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	r.Add(1, largeSize)
 	jsonData, err := r.AsJSON()
 	if err != nil {
@@ -148,7 +148,7 @@ func TestNewPartialRanges_Large_Range(t *testing.T) {
 }
 
 func TestNewPartialRanges_AsJSON(t *testing.T) {
-	var r = caches.NewPartialRanges()
+	var r = caches.NewPartialRanges(0)
 	for j := 0; j < 1000; j++ {
 		r.Add(int64(j), int64(j+100))
 	}
@@ -167,7 +167,7 @@ func TestNewPartialRanges_AsJSON(t *testing.T) {
 
 func BenchmarkNewPartialRanges(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		var r = caches.NewPartialRanges()
+		var r = caches.NewPartialRanges(0)
 		for j := 0; j < 1000; j++ {
 			r.Add(int64(j), int64(j+100))
 		}

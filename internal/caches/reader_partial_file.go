@@ -117,13 +117,10 @@ func (this *PartialFileReader) ContainsRange(r rangeutils.Range) (r2 rangeutils.
 	r2, ok = this.ranges.Nearest(r.Start(), r.End())
 	if ok && this.bodySize > 0 {
 		// 考虑可配置
-		var span int64 = 512 * 1024
-		if this.bodySize > 1<<30 {
-			span = 1 << 20
-		}
+		const minSpan = 128 << 10
 
 		// 这里限制返回的最小缓存，防止因为返回的内容过小而导致请求过多
-		if r2.Length() < r.Length() && r2.Length() < span {
+		if r2.Length() < r.Length() && r2.Length() < minSpan {
 			ok = false
 		}
 	}
@@ -136,6 +133,10 @@ func (this *PartialFileReader) MaxLength() int64 {
 		return this.bodySize
 	}
 	return this.ranges.Max() + 1
+}
+
+func (this *PartialFileReader) Ranges() *PartialRanges {
+	return this.ranges
 }
 
 func (this *PartialFileReader) discard() error {

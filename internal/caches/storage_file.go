@@ -544,18 +544,27 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	// 从已经存储的内容中读取信息
 	var isNewCreated = true
 	var partialBodyOffset int64
+	var partialRanges *PartialRanges
 	if isPartial {
-		readerFp, err := os.OpenFile(tmpPath, os.O_RDONLY, 0444)
-		if err == nil {
-			var partialReader = NewPartialFileReader(readerFp)
-			err = partialReader.Init()
-			_ = partialReader.Close()
-			if err == nil && partialReader.bodyOffset > 0 {
-				isNewCreated = false
-				partialBodyOffset = partialReader.bodyOffset
-			} else {
-				_ = this.removeCacheFile(tmpPath)
+		// 数据库中是否存在
+		existsCacheItem, _ := this.list.Exist(hash)
+		if existsCacheItem {
+			readerFp, err := os.OpenFile(tmpPath, os.O_RDONLY, 0444)
+			if err == nil {
+				var partialReader = NewPartialFileReader(readerFp)
+				err = partialReader.Init()
+				_ = partialReader.Close()
+				if err == nil && partialReader.bodyOffset > 0 {
+					partialRanges = partialReader.Ranges()
+					isNewCreated = false
+					partialBodyOffset = partialReader.bodyOffset
+				} else {
+					_ = this.removeCacheFile(tmpPath)
+				}
 			}
+		}
+		if partialRanges == nil {
+			partialRanges = NewPartialRanges(expiredAt)
 		}
 	}
 
@@ -641,12 +650,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 
 	isOk = true
 	if isPartial {
-		ranges, err := NewPartialRangesFromFile(cachePathName + "@ranges.cache")
-		if err != nil {
-			ranges = NewPartialRanges()
-		}
-
-		return NewPartialFileWriter(writer, key, expiredAt, isNewCreated, isPartial, partialBodyOffset, ranges, func() {
+		return NewPartialFileWriter(writer, key, expiredAt, isNewCreated, isPartial, partialBodyOffset, partialRanges, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
 			if len(sharedWritingFileKeyMap) == 0 {

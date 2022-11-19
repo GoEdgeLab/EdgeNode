@@ -26,7 +26,7 @@ func TestPartialFileWriter_Write(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var ranges = caches.NewPartialRanges()
+	var ranges = caches.NewPartialRanges(0)
 	var writer = caches.NewPartialFileWriter(fp, "test", time.Now().Unix()+86500, true, true, 0, ranges, func() {
 		t.Log("end")
 	})

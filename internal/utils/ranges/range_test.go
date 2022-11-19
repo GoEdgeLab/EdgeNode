@@ -67,3 +67,10 @@ func TestRange_ComposeContentRangeHeader(t *testing.T) {
 	var r = rangeutils.NewRange(1, 100)
 	t.Log(r.ComposeContentRangeHeader("1000"))
 }
+
+func TestRange_SetLength(t *testing.T) {
+	var r = rangeutils.NewRange(1, 100)
+	t.Log(r)
+
+	t.Log(r.SetLength(1024))
+}

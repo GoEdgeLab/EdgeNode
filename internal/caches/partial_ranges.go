@@ -10,17 +10,21 @@ import (
 
 // PartialRanges 内容分区范围定义
 type PartialRanges struct {
-	Ranges [][2]int64 `json:"ranges"`
+	ExpiresAt int64      `json:"expiresAt"` // 过期时间
+	Ranges    [][2]int64 `json:"ranges"`
 }
 
 // NewPartialRanges 获取新对象
-func NewPartialRanges() *PartialRanges {
-	return &PartialRanges{Ranges: [][2]int64{}}
+func NewPartialRanges(expiresAt int64) *PartialRanges {
+	return &PartialRanges{
+		Ranges:    [][2]int64{},
+		ExpiresAt: expiresAt,
+	}
 }
 
 // NewPartialRangesFromJSON 从JSON中解析范围
 func NewPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
-	var rs = NewPartialRanges()
+	var rs = NewPartialRanges(0)
 	err := json.Unmarshal(data, &rs)
 	if err != nil {
 		return nil, err
@@ -133,6 +137,10 @@ func (this *PartialRanges) Max() int64 {
 		return this.Ranges[len(this.Ranges)-1][1]
 	}
 	return 0
+}
+
+func (this *PartialRanges) Reset() {
+	this.Ranges = [][2]int64{}
 }
 
 func (this *PartialRanges) merge(index int) {
