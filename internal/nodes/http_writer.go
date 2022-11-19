@@ -303,7 +303,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	if this.isPartial {
 		cacheKey += caches.SuffixPartial
 	}
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiresAt, this.StatusCode(), size, cacheRef.MaxSizeBytes(), this.isPartial)
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiresAt, this.StatusCode(), this.calculateHeaderLength(), size, cacheRef.MaxSizeBytes(), this.isPartial)
 	if err != nil {
 		if err == caches.ErrEntityTooLarge && addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, entity too large")
@@ -638,7 +638,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 			cacheKey += this.cacheReaderSuffix
 		}
 
-		compressionCacheWriter, err := this.cacheStorage.OpenWriter(cacheKey+caches.SuffixCompression+compressionEncoding, expiredAt, this.StatusCode(), -1, cacheRef.MaxSizeBytes(), false)
+		compressionCacheWriter, err := this.cacheStorage.OpenWriter(cacheKey+caches.SuffixCompression+compressionEncoding, expiredAt, this.StatusCode(), this.calculateHeaderLength(), -1, cacheRef.MaxSizeBytes(), false)
 		if err != nil {
 			return
 		}
@@ -964,7 +964,7 @@ func (this *HTTPWriter) finishWebP() {
 				expiredAt = this.cacheWriter.ExpiredAt()
 			}
 
-			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), -1, -1, false)
+			webpCacheWriter, _ = this.cacheStorage.OpenWriter(cacheKey, expiredAt, this.StatusCode(), -1, -1, -1, false)
 			if webpCacheWriter != nil {
 				// 写入Header
 				for k, v := range this.Header() {
@@ -1178,4 +1178,14 @@ func (this *HTTPWriter) finishRequest() {
 	if this.rawReader != nil {
 		_ = this.rawReader.Close()
 	}
+}
+
+// 计算Header长度
+func (this *HTTPWriter) calculateHeaderLength() (result int) {
+	for k, v := range this.Header() {
+		for _, v1 := range v {
+			result += len(k) + 1 /**:**/ + len(v1) + 1 /**\n**/
+		}
+	}
+	return
 }

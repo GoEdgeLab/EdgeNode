@@ -62,7 +62,7 @@ func TestFileStorage_OpenWriter(t *testing.T) {
 
 	header := []byte("Header")
 	body := []byte("This is Body")
-	writer, err := storage.OpenWriter("my-key", time.Now().Unix()+86400, 200, -1, -1, false)
+	writer, err := storage.OpenWriter("my-key", time.Now().Unix()+86400, 200, -1, -1, -1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestFileStorage_OpenWriter_Partial(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	writer, err := storage.OpenWriter("my-key", time.Now().Unix()+86400, 200, -1, -1, true)
+	writer, err := storage.OpenWriter("my-key", time.Now().Unix()+86400, 200, -1, -1, -1, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestFileStorage_OpenWriter_HTTP(t *testing.T) {
 		t.Log(time.Since(now).Seconds()*1000, "ms")
 	}()
 
-	writer, err := storage.OpenWriter("my-http-response", time.Now().Unix()+86400, 200, -1, -1, false)
+	writer, err := storage.OpenWriter("my-http-response", time.Now().Unix()+86400, 200, -1, -1, -1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 
-			writer, err := storage.OpenWriter("abc"+strconv.Itoa(i), time.Now().Unix()+3600, 200, -1, -1, false)
+			writer, err := storage.OpenWriter("abc"+strconv.Itoa(i), time.Now().Unix()+3600, 200, -1, -1, -1, false)
 			if err != nil {
 				if err != ErrFileIsWriting {
 					t.Error(err)
@@ -267,7 +267,7 @@ func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 
-			writer, err := storage.OpenWriter("abc"+strconv.Itoa(0), time.Now().Unix()+3600, 200, -1, -1, false)
+			writer, err := storage.OpenWriter("abc"+strconv.Itoa(0), time.Now().Unix()+3600, 200, -1, -1, -1, false)
 			if err != nil {
 				if err != ErrFileIsWriting {
 					t.Error(err)
@@ -522,7 +522,7 @@ func TestFileStorage_DecodeFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, path := storage.keyPath("my-key")
+	_, path, _ := storage.keyPath("my-key")
 	t.Log(path)
 }
 
@@ -569,6 +569,6 @@ func BenchmarkFileStorage_KeyPath(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		_, _ = storage.keyPath(strconv.Itoa(i))
+		_, _, _ = storage.keyPath(strconv.Itoa(i))
 	}
 }

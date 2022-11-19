@@ -19,7 +19,7 @@ func TestFileReader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, path := storage.keyPath("my-key")
+	_, path, _ := storage.keyPath("my-key")
 
 	fp, err := os.Open(path)
 	if err != nil {
@@ -105,7 +105,7 @@ func TestFileReader_Range(t *testing.T) {
 	}
 	_ = writer.Close()**/
 
-	_, path := storage.keyPath("my-number")
+	_, path, _ := storage.keyPath("my-number")
 
 	fp, err := os.Open(path)
 	if err != nil {

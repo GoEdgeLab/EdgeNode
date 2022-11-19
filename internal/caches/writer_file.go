@@ -11,25 +11,32 @@ import (
 )
 
 type FileWriter struct {
-	storage    StorageInterface
-	rawWriter  *os.File
-	key        string
-	headerSize int64
-	bodySize   int64
-	expiredAt  int64
-	maxSize    int64
-	endFunc    func()
-	once       sync.Once
+	storage   StorageInterface
+	rawWriter *os.File
+	key       string
+
+	metaHeaderSize int
+	headerSize     int64
+
+	metaBodySize int64 // 写入前的内容长度
+	bodySize     int64
+
+	expiredAt int64
+	maxSize   int64
+	endFunc   func()
+	once      sync.Once
 }
 
-func NewFileWriter(storage StorageInterface, rawWriter *os.File, key string, expiredAt int64, maxSize int64, endFunc func()) *FileWriter {
+func NewFileWriter(storage StorageInterface, rawWriter *os.File, key string, expiredAt int64, metaHeaderSize int, metaBodySize int64, maxSize int64, endFunc func()) *FileWriter {
 	return &FileWriter{
-		storage:   storage,
-		key:       key,
-		rawWriter: rawWriter,
-		expiredAt: expiredAt,
-		maxSize:   maxSize,
-		endFunc:   endFunc,
+		storage:        storage,
+		key:            key,
+		rawWriter:      rawWriter,
+		expiredAt:      expiredAt,
+		maxSize:        maxSize,
+		endFunc:        endFunc,
+		metaHeaderSize: metaHeaderSize,
+		metaBodySize:   metaBodySize,
 	}
 }
 
@@ -45,7 +52,10 @@ func (this *FileWriter) WriteHeader(data []byte) (n int, err error) {
 
 // WriteHeaderLength 写入Header长度数据
 func (this *FileWriter) WriteHeaderLength(headerLength int) error {
-	bytes4 := make([]byte, 4)
+	if this.metaHeaderSize > 0 && this.metaHeaderSize == headerLength {
+		return nil
+	}
+	var bytes4 = make([]byte, 4)
 	binary.BigEndian.PutUint32(bytes4, uint32(headerLength))
 	_, err := this.rawWriter.Seek(SizeExpiresAt+SizeStatus+SizeURLLength, io.SeekStart)
 	if err != nil {
@@ -88,7 +98,10 @@ func (this *FileWriter) WriteAt(offset int64, data []byte) error {
 
 // WriteBodyLength 写入Body长度数据
 func (this *FileWriter) WriteBodyLength(bodyLength int64) error {
-	bytes8 := make([]byte, 8)
+	if this.metaBodySize >= 0 && bodyLength == this.metaBodySize {
+		return nil
+	}
+	var bytes8 = make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes8, uint64(bodyLength))
 	_, err := this.rawWriter.Seek(SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength, io.SeekStart)
 	if err != nil {
@@ -109,7 +122,7 @@ func (this *FileWriter) Close() error {
 		this.endFunc()
 	})
 
-	path := this.rawWriter.Name()
+	var path = this.rawWriter.Name()
 
 	err := this.WriteHeaderLength(types.Int(this.headerSize))
 	if err != nil {

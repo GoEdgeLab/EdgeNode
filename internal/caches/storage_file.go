@@ -49,8 +49,7 @@ const (
 	SizeBodyLength     = 8
 	OffsetBodyLength   = OffsetHeaderLength + SizeHeaderLength
 
-	SizeMeta  = SizeExpiresAt + SizeStatus + SizeURLLength + SizeHeaderLength + SizeBodyLength
-	OffsetKey = SizeMeta
+	SizeMeta = SizeExpiresAt + SizeStatus + SizeURLLength + SizeHeaderLength + SizeBodyLength
 )
 
 const (
@@ -415,16 +414,16 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 }
 
 // OpenWriter 打开缓存文件等待写入
-func (this *FileStorage) OpenWriter(key string, expiresAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
-	return this.openWriter(key, expiresAt, status, size, maxSize, isPartial, false)
+func (this *FileStorage) OpenWriter(key string, expiresAt int64, status int, headerSize int, bodySize int64, maxSize int64, isPartial bool) (Writer, error) {
+	return this.openWriter(key, expiresAt, status, headerSize, bodySize, maxSize, isPartial, false)
 }
 
 // OpenFlushWriter 打开从其他媒介直接刷入的写入器
-func (this *FileStorage) OpenFlushWriter(key string, expiresAt int64, status int) (Writer, error) {
-	return this.openWriter(key, expiresAt, status, -1, -1, false, true)
+func (this *FileStorage) OpenFlushWriter(key string, expiresAt int64, status int, headerSize int, bodySize int64) (Writer, error) {
+	return this.openWriter(key, expiresAt, status, headerSize, bodySize, -1, false, true)
 }
 
-func (this *FileStorage) openWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool, isFlushing bool) (Writer, error) {
+func (this *FileStorage) openWriter(key string, expiredAt int64, status int, headerSize int, bodySize int64, maxSize int64, isPartial bool, isFlushing bool) (Writer, error) {
 	// 是否正在退出
 	if teaconst.IsQuiting {
 		return nil, ErrWritingUnavailable
@@ -442,8 +441,8 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		maxMemorySize = maxSize
 	}
 	var memoryStorage = this.memoryStorage
-	if !isFlushing && !isPartial && memoryStorage != nil && ((size > 0 && size < maxMemorySize) || size < 0) {
-		writer, err := memoryStorage.OpenWriter(key, expiredAt, status, size, maxMemorySize, false)
+	if !isFlushing && !isPartial && memoryStorage != nil && ((bodySize > 0 && bodySize < maxMemorySize) || bodySize < 0) {
+		writer, err := memoryStorage.OpenWriter(key, expiredAt, status, headerSize, bodySize, maxMemorySize, false)
 		if err == nil {
 			return writer, nil
 		}
@@ -608,6 +607,8 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 		return nil, ErrFileIsWriting
 	}
 
+	var metaBodySize int64 = -1
+	var metaHeaderSize int = -1
 	if isNewCreated {
 		// 写入meta
 		// 从v0.5.8开始不再在meta中写入Key
@@ -619,6 +620,18 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 			status = 200
 		}
 		copy(metaBytes[OffsetStatus:], strconv.Itoa(status))
+
+		// 写入Header Length
+		if headerSize > 0 {
+			binary.BigEndian.PutUint32(metaBytes[OffsetHeaderLength:], uint32(headerSize))
+			metaHeaderSize = headerSize
+		}
+
+		// 写入Body Length
+		if bodySize > 0 {
+			binary.BigEndian.PutUint64(metaBytes[OffsetBodyLength:], uint64(bodySize))
+			metaBodySize = bodySize
+		}
 
 		_, err = writer.Write(metaBytes)
 		if err != nil {
@@ -642,7 +655,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 			sharedWritingFileKeyLocker.Unlock()
 		}), nil
 	} else {
-		return NewFileWriter(this, writer, key, expiredAt, -1, func() {
+		return NewFileWriter(this, writer, key, expiredAt, metaHeaderSize, metaBodySize, -1, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
 			if len(sharedWritingFileKeyMap) == 0 {
@@ -1140,7 +1153,7 @@ func (this *FileStorage) hotLoop() {
 				expiresAt = bestExpiresAt
 			}
 
-			writer, err := memoryStorage.openWriter(item.Key, expiresAt, reader.Status(), reader.BodySize(), -1, false)
+			writer, err := memoryStorage.openWriter(item.Key, expiresAt, reader.Status(), types.Int(reader.HeaderSize()), reader.BodySize(), -1, false)
 			if err != nil {
 				if !CanIgnoreErr(err) {
 					remotelogs.Error("CACHE", "transfer hot item failed: "+err.Error())

@@ -178,7 +178,7 @@ func (this *APIStream) handleWriteCache(message *pb.NodeStreamMessage) error {
 	}
 
 	expiredAt := time.Now().Unix() + msg.LifeSeconds
-	writer, err := storage.OpenWriter(msg.Key, expiredAt, 200, int64(len(msg.Value)), -1, false)
+	writer, err := storage.OpenWriter(msg.Key, expiredAt, 200, -1, int64(len(msg.Value)), -1, false)
 	if err != nil {
 		this.replyFail(message.RequestId, "prepare writing failed: "+err.Error())
 		return err

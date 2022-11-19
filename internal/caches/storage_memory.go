@@ -149,7 +149,7 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 }
 
 // OpenWriter 打开缓存写入器等待写入
-func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, size int64, maxSize int64, isPartial bool) (Writer, error) {
+func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, headerSize int, bodySize int64, maxSize int64, isPartial bool) (Writer, error) {
 	if this.ignoreKeys.Has(key) {
 		return nil, ErrEntityTooLarge
 	}
@@ -158,15 +158,15 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, s
 	if isPartial {
 		return nil, ErrFileIsWriting
 	}
-	return this.openWriter(key, expiredAt, status, size, maxSize, true)
+	return this.openWriter(key, expiredAt, status, headerSize, bodySize, maxSize, true)
 }
 
 // OpenFlushWriter 打开从其他媒介直接刷入的写入器
-func (this *MemoryStorage) OpenFlushWriter(key string, expiresAt int64, status int) (Writer, error) {
-	return this.openWriter(key, expiresAt, status, -1, -1, true)
+func (this *MemoryStorage) OpenFlushWriter(key string, expiresAt int64, status int, headerSize int, bodySize int64) (Writer, error) {
+	return this.openWriter(key, expiresAt, status, headerSize, bodySize, -1, true)
 }
 
-func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, size int64, maxSize int64, isDirty bool) (Writer, error) {
+func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, headerSize int, bodySize int64, maxSize int64, isDirty bool) (Writer, error) {
 	// 待写入队列是否已满
 	if isDirty &&
 		this.parentStorage != nil &&
@@ -207,10 +207,10 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, s
 		return nil, NewCapacityError("write memory cache failed: too many keys in cache storage")
 	}
 	capacityBytes := this.memoryCapacityBytes()
-	if size < 0 {
-		size = 0
+	if bodySize < 0 {
+		bodySize = 0
 	}
-	if capacityBytes > 0 && capacityBytes <= this.totalSize+size {
+	if capacityBytes > 0 && capacityBytes <= this.totalSize+bodySize {
 		return nil, NewCapacityError("write memory cache failed: over memory size: " + strconv.FormatInt(capacityBytes, 10) + ", current size: " + strconv.FormatInt(this.totalSize, 10) + " bytes")
 	}
 
@@ -481,7 +481,7 @@ func (this *MemoryStorage) flushItem(key string) {
 		return
 	}
 
-	writer, err := this.parentStorage.OpenFlushWriter(key, item.ExpiresAt, item.Status)
+	writer, err := this.parentStorage.OpenFlushWriter(key, item.ExpiresAt, item.Status, len(item.HeaderValue), int64(len(item.BodyValue)))
 	if err != nil {
 		if !CanIgnoreErr(err) {
 			remotelogs.Error("CACHE", "flush items failed: open writer failed: "+err.Error())
