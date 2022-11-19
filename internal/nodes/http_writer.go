@@ -326,6 +326,9 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	// 写入Header
 	var headerBuf = utils.SharedBufferPool.Get()
 	for k, v := range this.Header() {
+		if k == "Set-Cookie" {
+			continue
+		}
 		for _, v1 := range v {
 			if this.isPartial && k == "Content-Type" && strings.Contains(v1, "multipart/byteranges") {
 				continue
@@ -646,6 +649,9 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		// 写入Header
 		var headerBuffer = utils.SharedBufferPool.Get()
 		for k, v := range this.Header() {
+			if k == "Set-Cookie" {
+				continue
+			}
 			for _, v1 := range v {
 				_, err = headerBuffer.Write([]byte(k + ":" + v1 + "\n"))
 				if err != nil {
@@ -968,6 +974,10 @@ func (this *HTTPWriter) finishWebP() {
 			if webpCacheWriter != nil {
 				// 写入Header
 				for k, v := range this.Header() {
+					if k == "Set-Cookie" {
+						continue
+					}
+
 					// 这里是原始的数据，不需要内容编码
 					if k == "Content-Encoding" || k == "Transfer-Encoding" {
 						continue
@@ -1183,6 +1193,9 @@ func (this *HTTPWriter) finishRequest() {
 // 计算Header长度
 func (this *HTTPWriter) calculateHeaderLength() (result int) {
 	for k, v := range this.Header() {
+		if k == "Set-Cookie" {
+			continue
+		}
 		for _, v1 := range v {
 			result += len(k) + 1 /**:**/ + len(v1) + 1 /**\n**/
 		}
