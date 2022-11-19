@@ -3,10 +3,12 @@
 package caches_test
 
 import (
+	"encoding/json"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/logs"
 	"testing"
+	"time"
 )
 
 func TestNewPartialRanges(t *testing.T) {
@@ -133,36 +135,49 @@ func TestNewPartialRanges_Large_Range(t *testing.T) {
 
 	var r = caches.NewPartialRanges(0)
 	r.Add(1, largeSize)
-	jsonData, err := r.AsJSON()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(string(jsonData))
+	var s = r.String()
+	t.Log(s)
 
-	r2, err := caches.NewPartialRangesFromJSON(jsonData)
+	r2, err := caches.NewPartialRangesFromData([]byte(s))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	a.IsTrue(largeSize == r2.Ranges[0][1])
+	logs.PrintAsJSON(r, t)
 }
 
-func TestNewPartialRanges_AsJSON(t *testing.T) {
+func TestPartialRanges_Encode_JSON(t *testing.T) {
 	var r = caches.NewPartialRanges(0)
-	for j := 0; j < 1000; j++ {
-		r.Add(int64(j), int64(j+100))
+	r.ExpiresAt = time.Now().Unix()
+	for i := 0; i < 10; i++ {
+		r.Ranges = append(r.Ranges, [2]int64{int64(i * 100), int64(i*100 + 100)})
 	}
-	data, err := r.AsJSON()
+	var before = time.Now()
+	data, err := json.Marshal(r)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(string(data))
+	t.Log(time.Since(before).Seconds()*1000, "ms")
+	t.Log(len(data))
+}
 
-	r2, err := caches.NewPartialRangesFromJSON(data)
+func TestPartialRanges_Encode_String(t *testing.T) {
+	var r = caches.NewPartialRanges(0)
+	r.ExpiresAt = time.Now().Unix()
+	for i := 0; i < 10; i++ {
+		r.Ranges = append(r.Ranges, [2]int64{int64(i * 100), int64(i*100 + 100)})
+	}
+	var before = time.Now()
+	var data = r.String()
+	t.Log(time.Since(before).Seconds()*1000, "ms")
+	t.Log(len(data))
+
+	r2, err := caches.NewPartialRangesFromData([]byte(data))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(r2.Ranges)
+	logs.PrintAsJSON(r2, t)
 }
 
 func BenchmarkNewPartialRanges(b *testing.B) {

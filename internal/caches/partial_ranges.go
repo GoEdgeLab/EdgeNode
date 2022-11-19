@@ -3,8 +3,9 @@
 package caches
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
+	"github.com/iwind/TeaGo/types"
 	"os"
 )
 
@@ -22,8 +23,37 @@ func NewPartialRanges(expiresAt int64) *PartialRanges {
 	}
 }
 
+// NewPartialRangesFromData 从数据中解析范围
+func NewPartialRangesFromData(data []byte) (*PartialRanges, error) {
+	var rs = NewPartialRanges(0)
+	for {
+		var index = bytes.IndexRune(data, '\n')
+		if index < 0 {
+			break
+		}
+		var line = data[:index]
+		var colonIndex = bytes.IndexRune(line, ':')
+		if colonIndex > 0 {
+			switch string(line[:colonIndex]) {
+			case "e":
+				rs.ExpiresAt = types.Int64(line[colonIndex+1:])
+			case "r":
+				var commaIndex = bytes.IndexRune(line, ',')
+				if commaIndex > 0 {
+					rs.Ranges = append(rs.Ranges, [2]int64{types.Int64(line[colonIndex+1 : commaIndex]), types.Int64(line[commaIndex+1:])})
+				}
+			}
+		}
+		data = data[index+1:]
+		if len(data) == 0 {
+			break
+		}
+	}
+	return rs, nil
+}
+
 // NewPartialRangesFromJSON 从JSON中解析范围
-func NewPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
+func newPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
 	var rs = NewPartialRanges(0)
 	err := json.Unmarshal(data, &rs)
 	if err != nil {
@@ -38,7 +68,17 @@ func NewPartialRangesFromFile(path string) (*PartialRanges, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewPartialRangesFromJSON(data)
+	if len(data) == 0 {
+		return NewPartialRanges(0), nil
+	}
+
+	// 兼容老的JSON格式
+	if data[0] == '{' {
+		return newPartialRangesFromJSON(data)
+	}
+
+	// 新的格式
+	return NewPartialRangesFromData(data)
 }
 
 // Add 添加新范围
@@ -109,27 +149,22 @@ func (this *PartialRanges) Nearest(begin int64, end int64) (r [2]int64, ok bool)
 	return
 }
 
-// AsJSON 转换为JSON
-func (this *PartialRanges) AsJSON() ([]byte, error) {
-	return json.Marshal(this)
+// 转换为字符串
+func (this *PartialRanges) String() string {
+	var s = "e:" + types.String(this.ExpiresAt) + "\n"
+	for _, r := range this.Ranges {
+		s += "r:" + types.String(r[0]) + "," + types.String(r[1]) + "\n"
+	}
+	return s
+}
+
+func (this *PartialRanges) Bytes() []byte {
+	return []byte(this.String())
 }
 
 // WriteToFile 写入到文件中
 func (this *PartialRanges) WriteToFile(path string) error {
-	data, err := this.AsJSON()
-	if err != nil {
-		return errors.New("convert to json failed: " + err.Error())
-	}
-	return os.WriteFile(path, data, 0666)
-}
-
-// ReadFromFile 从文件中读取
-func (this *PartialRanges) ReadFromFile(path string) (*PartialRanges, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return NewPartialRangesFromJSON(data)
+	return os.WriteFile(path, this.Bytes(), 0666)
 }
 
 func (this *PartialRanges) Max() int64 {
