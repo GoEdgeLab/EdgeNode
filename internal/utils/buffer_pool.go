@@ -2,47 +2,39 @@
 
 package utils
 
-import "bytes"
+import (
+	"bytes"
+	"sync"
+)
+
+var SharedBufferPool = NewBufferPool()
 
 // BufferPool pool for get byte slice
 type BufferPool struct {
-	c chan *bytes.Buffer
+	rawPool *sync.Pool
 }
 
 // NewBufferPool 创建新对象
-func NewBufferPool(maxSize int) *BufferPool {
-	if maxSize <= 0 {
-		maxSize = 1024
-	}
-	pool := &BufferPool{
-		c: make(chan *bytes.Buffer, maxSize),
+func NewBufferPool() *BufferPool {
+	var pool = &BufferPool{}
+	pool.rawPool = &sync.Pool{
+		New: func() any {
+			return &bytes.Buffer{}
+		},
 	}
 	return pool
 }
 
 // Get 获取一个新的Buffer
 func (this *BufferPool) Get() (b *bytes.Buffer) {
-	select {
-	case b = <-this.c:
-		b.Reset()
-	default:
-		b = &bytes.Buffer{}
+	var buffer = this.rawPool.Get().(*bytes.Buffer)
+	if buffer.Len() > 0 {
+		buffer.Reset()
 	}
-	return
+	return buffer
 }
 
 // Put 放回一个使用过的byte slice
 func (this *BufferPool) Put(b *bytes.Buffer) {
-	b.Reset()
-
-	select {
-	case this.c <- b:
-	default:
-		// 已达最大容量，则抛弃
-	}
-}
-
-// Size 当前的数量
-func (this *BufferPool) Size() int {
-	return len(this.c)
+	this.rawPool.Put(b)
 }

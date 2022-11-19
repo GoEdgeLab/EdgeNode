@@ -324,19 +324,30 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	}
 
 	// 写入Header
+	var headerBuf = utils.SharedBufferPool.Get()
 	for k, v := range this.Header() {
 		for _, v1 := range v {
 			if this.isPartial && k == "Content-Type" && strings.Contains(v1, "multipart/byteranges") {
 				continue
 			}
-			_, err = cacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
+			_, err = headerBuf.Write([]byte(k + ":" + v1 + "\n"))
 			if err != nil {
+				utils.SharedBufferPool.Put(headerBuf)
+
 				remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
 				_ = this.cacheWriter.Discard()
 				this.cacheWriter = nil
 				return
 			}
 		}
+	}
+	_, err = cacheWriter.WriteHeader(headerBuf.Bytes())
+	utils.SharedBufferPool.Put(headerBuf)
+	if err != nil {
+		remotelogs.Error("HTTP_WRITER", "write cache failed: "+err.Error())
+		_ = this.cacheWriter.Discard()
+		this.cacheWriter = nil
+		return
 	}
 
 	if this.isPartial {
@@ -633,16 +644,27 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		}
 
 		// 写入Header
+		var headerBuffer = utils.SharedBufferPool.Get()
 		for k, v := range this.Header() {
 			for _, v1 := range v {
-				_, err = compressionCacheWriter.WriteHeader([]byte(k + ":" + v1 + "\n"))
+				_, err = headerBuffer.Write([]byte(k + ":" + v1 + "\n"))
 				if err != nil {
+					utils.SharedBufferPool.Put(headerBuffer)
 					remotelogs.Error("HTTP_WRITER", "write compression cache failed: "+err.Error())
 					_ = compressionCacheWriter.Discard()
 					compressionCacheWriter = nil
 					return
 				}
 			}
+		}
+
+		_, err = compressionCacheWriter.WriteHeader(headerBuffer.Bytes())
+		utils.SharedBufferPool.Put(headerBuffer)
+		if err != nil {
+			remotelogs.Error("HTTP_WRITER", "write compression cache failed: "+err.Error())
+			_ = compressionCacheWriter.Discard()
+			compressionCacheWriter = nil
+			return
 		}
 
 		if compressionCacheWriter != nil {

@@ -567,6 +567,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	var before = time.Now()
 	writer, err := os.OpenFile(tmpPath, flags, 0666)
 	if err != nil {
+		// TODO 检查在各个系统中的稳定性
 		if os.IsNotExist(err) {
 			_ = os.MkdirAll(dir, 0777)
 
@@ -608,8 +609,9 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 	}
 
 	if isNewCreated {
-		// 写入过期时间
-		var metaBytes = make([]byte, SizeMeta+len(key))
+		// 写入meta
+		// 从v0.5.8开始不再在meta中写入Key
+		var metaBytes = make([]byte, SizeMeta)
 		binary.BigEndian.PutUint32(metaBytes[OffsetExpiresAt:], uint32(expiredAt))
 
 		// 写入状态码
@@ -617,18 +619,6 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, siz
 			status = 200
 		}
 		copy(metaBytes[OffsetStatus:], strconv.Itoa(status))
-
-		// 写入URL长度
-		binary.BigEndian.PutUint32(metaBytes[OffsetURLLength:], uint32(len(key)))
-
-		// 写入Header Length
-		binary.BigEndian.PutUint32(metaBytes[OffsetHeaderLength:], uint32(0))
-
-		// 写入Body Length
-		binary.BigEndian.PutUint64(metaBytes[OffsetBodyLength:], uint64(0))
-
-		// 写入URL
-		copy(metaBytes[OffsetKey:], key)
 
 		_, err = writer.Write(metaBytes)
 		if err != nil {
@@ -679,7 +669,7 @@ func (this *FileStorage) AddToList(item *Item) {
 	}
 
 	item.MetaSize = SizeMeta + 128
-	hash := stringutil.Md5(item.Key)
+	var hash = stringutil.Md5(item.Key)
 	err := this.list.Add(hash, item)
 	if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") {
 		remotelogs.Error("CACHE", "add to list failed: "+err.Error())
