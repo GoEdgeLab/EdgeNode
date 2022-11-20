@@ -628,14 +628,14 @@ func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key s
 	}()
 
 	// 检查范围
-	const maxFirstSpan = 16 << 20 // TODO 可以在缓存策略中设置此值
+	//const maxFirstSpan = 16 << 20 // TODO 可以在缓存策略中设置此值
 	for index, r := range ranges {
-		// 没有指定结束字节时，自动指定一个
-		if r.Start() >= 0 && r.End() == -1 {
+		// 没有指定结束位置时，自动指定一个
+		/**if r.Start() >= 0 && r.End() == -1 {
 			if partialReader.MaxLength() > r.Start()+maxFirstSpan {
 				r[1] = r.Start() + maxFirstSpan
 			}
-		}
+		}**/
 		r1, ok := r.Convert(partialReader.MaxLength())
 		if !ok {
 			return nil, nil

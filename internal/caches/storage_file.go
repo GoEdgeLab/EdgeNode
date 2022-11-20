@@ -556,11 +556,21 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 				_ = partialReader.Close()
 				if err == nil && partialReader.bodyOffset > 0 {
 					partialRanges = partialReader.Ranges()
-					isNewCreated = false
-					partialBodyOffset = partialReader.bodyOffset
+					if bodySize > 0 && partialRanges != nil && partialRanges.BodySize > 0 && bodySize != partialRanges.BodySize {
+						_ = this.removeCacheFile(tmpPath)
+					} else {
+						isNewCreated = false
+						partialBodyOffset = partialReader.bodyOffset
+					}
 				} else {
 					_ = this.removeCacheFile(tmpPath)
 				}
+			}
+		}
+		if isNewCreated {
+			err = this.list.Remove(hash)
+			if err != nil {
+				return nil, err
 			}
 		}
 		if partialRanges == nil {
@@ -617,7 +627,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	}
 
 	var metaBodySize int64 = -1
-	var metaHeaderSize int = -1
+	var metaHeaderSize = -1
 	if isNewCreated {
 		// 写入meta
 		// 从v0.5.8开始不再在meta中写入Key
@@ -650,7 +660,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 
 	isOk = true
 	if isPartial {
-		return NewPartialFileWriter(writer, key, expiredAt, isNewCreated, isPartial, partialBodyOffset, partialRanges, func() {
+		return NewPartialFileWriter(writer, key, expiredAt, metaHeaderSize, metaBodySize, isNewCreated, isPartial, partialBodyOffset, partialRanges, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
 			if len(sharedWritingFileKeyMap) == 0 {

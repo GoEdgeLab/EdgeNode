@@ -11,13 +11,18 @@ import (
 )
 
 type PartialFileWriter struct {
-	rawWriter  *os.File
-	key        string
-	headerSize int64
-	bodySize   int64
-	expiredAt  int64
-	endFunc    func()
-	once       sync.Once
+	rawWriter *os.File
+	key       string
+
+	metaHeaderSize int
+	headerSize     int64
+
+	metaBodySize int64
+	bodySize     int64
+
+	expiredAt int64
+	endFunc   func()
+	once      sync.Once
 
 	isNew      bool
 	isPartial  bool
@@ -27,17 +32,19 @@ type PartialFileWriter struct {
 	rangePath string
 }
 
-func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, isNew bool, isPartial bool, bodyOffset int64, ranges *PartialRanges, endFunc func()) *PartialFileWriter {
+func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, metaHeaderSize int, metaBodySize int64, isNew bool, isPartial bool, bodyOffset int64, ranges *PartialRanges, endFunc func()) *PartialFileWriter {
 	return &PartialFileWriter{
-		key:        key,
-		rawWriter:  rawWriter,
-		expiredAt:  expiredAt,
-		endFunc:    endFunc,
-		isNew:      isNew,
-		isPartial:  isPartial,
-		bodyOffset: bodyOffset,
-		ranges:     ranges,
-		rangePath:  partialRangesFilePath(rawWriter.Name()),
+		key:            key,
+		rawWriter:      rawWriter,
+		expiredAt:      expiredAt,
+		endFunc:        endFunc,
+		isNew:          isNew,
+		isPartial:      isPartial,
+		bodyOffset:     bodyOffset,
+		ranges:         ranges,
+		rangePath:      partialRangesFilePath(rawWriter.Name()),
+		metaHeaderSize: metaHeaderSize,
+		metaBodySize:   metaBodySize,
 	}
 }
 
@@ -71,7 +78,11 @@ func (this *PartialFileWriter) AppendHeader(data []byte) error {
 
 // WriteHeaderLength 写入Header长度数据
 func (this *PartialFileWriter) WriteHeaderLength(headerLength int) error {
-	bytes4 := make([]byte, 4)
+	if this.metaHeaderSize > 0 && this.metaHeaderSize == headerLength {
+		return nil
+	}
+
+	var bytes4 = make([]byte, 4)
 	binary.BigEndian.PutUint32(bytes4, uint32(headerLength))
 	_, err := this.rawWriter.Seek(SizeExpiresAt+SizeStatus+SizeURLLength, io.SeekStart)
 	if err != nil {
@@ -110,8 +121,13 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 	}
 
 	if this.bodyOffset == 0 {
-		this.bodyOffset = SizeMeta + int64(len(this.key)) + this.headerSize
+		var keyLength = 0
+		if this.ranges.Version == 0 { // 以往的版本包含有Key
+			keyLength = len(this.key)
+		}
+		this.bodyOffset = SizeMeta + int64(keyLength) + this.headerSize
 	}
+
 	_, err := this.rawWriter.WriteAt(data, this.bodyOffset+offset)
 	if err != nil {
 		return err
@@ -129,7 +145,10 @@ func (this *PartialFileWriter) SetBodyLength(bodyLength int64) {
 
 // WriteBodyLength 写入Body长度数据
 func (this *PartialFileWriter) WriteBodyLength(bodyLength int64) error {
-	bytes8 := make([]byte, 8)
+	if this.metaBodySize > 0 && this.metaBodySize == bodyLength {
+		return nil
+	}
+	var bytes8 = make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes8, uint64(bodyLength))
 	_, err := this.rawWriter.Seek(SizeExpiresAt+SizeStatus+SizeURLLength+SizeHeaderLength, io.SeekStart)
 	if err != nil {
@@ -150,6 +169,7 @@ func (this *PartialFileWriter) Close() error {
 		this.endFunc()
 	})
 
+	this.ranges.BodySize = this.bodySize
 	err := this.ranges.WriteToFile(this.rangePath)
 	if err != nil {
 		_ = this.rawWriter.Close()

@@ -149,7 +149,6 @@ func TestNewPartialRanges_Large_Range(t *testing.T) {
 
 func TestPartialRanges_Encode_JSON(t *testing.T) {
 	var r = caches.NewPartialRanges(0)
-	r.ExpiresAt = time.Now().Unix()
 	for i := 0; i < 10; i++ {
 		r.Ranges = append(r.Ranges, [2]int64{int64(i * 100), int64(i*100 + 100)})
 	}
@@ -164,7 +163,7 @@ func TestPartialRanges_Encode_JSON(t *testing.T) {
 
 func TestPartialRanges_Encode_String(t *testing.T) {
 	var r = caches.NewPartialRanges(0)
-	r.ExpiresAt = time.Now().Unix()
+	r.BodySize = 1024
 	for i := 0; i < 10; i++ {
 		r.Ranges = append(r.Ranges, [2]int64{int64(i * 100), int64(i*100 + 100)})
 	}
@@ -180,11 +179,54 @@ func TestPartialRanges_Encode_String(t *testing.T) {
 	logs.PrintAsJSON(r2, t)
 }
 
+func TestPartialRanges_Version(t *testing.T) {
+	{
+		ranges, err := caches.NewPartialRangesFromData([]byte(`e:1668928495
+r:0,1048576
+r:1140260864,1140295164`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("version:", ranges.Version)
+	}
+	{
+		ranges, err := caches.NewPartialRangesFromData([]byte(`e:1668928495
+r:0,1048576
+r:1140260864,1140295164
+v:0
+`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("version:", ranges.Version)
+	}
+	{
+		ranges, err := caches.NewPartialRangesFromJSON([]byte(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log("version:", ranges.Version)
+	}
+}
+
 func BenchmarkNewPartialRanges(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var r = caches.NewPartialRanges(0)
 		for j := 0; j < 1000; j++ {
 			r.Add(int64(j), int64(j+100))
 		}
+	}
+}
+
+func BenchmarkPartialRanges_String(b *testing.B) {
+	var r = caches.NewPartialRanges(0)
+	r.BodySize = 1024
+	for i := 0; i < 10; i++ {
+		r.Ranges = append(r.Ranges, [2]int64{int64(i * 100), int64(i*100 + 100)})
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = r.String()
 	}
 }

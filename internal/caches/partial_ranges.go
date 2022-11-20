@@ -7,19 +7,21 @@ import (
 	"encoding/json"
 	"github.com/iwind/TeaGo/types"
 	"os"
+	"strconv"
 )
 
 // PartialRanges 内容分区范围定义
 type PartialRanges struct {
-	ExpiresAt int64      `json:"expiresAt"` // 过期时间
-	Ranges    [][2]int64 `json:"ranges"`
+	Version  int        `json:"version"`  // 版本号
+	Ranges   [][2]int64 `json:"ranges"`   // 范围
+	BodySize int64      `json:"bodySize"` // 总长度
 }
 
 // NewPartialRanges 获取新对象
 func NewPartialRanges(expiresAt int64) *PartialRanges {
 	return &PartialRanges{
-		Ranges:    [][2]int64{},
-		ExpiresAt: expiresAt,
+		Ranges:  [][2]int64{},
+		Version: 1,
 	}
 }
 
@@ -35,9 +37,11 @@ func NewPartialRangesFromData(data []byte) (*PartialRanges, error) {
 		var colonIndex = bytes.IndexRune(line, ':')
 		if colonIndex > 0 {
 			switch string(line[:colonIndex]) {
-			case "e":
-				rs.ExpiresAt = types.Int64(line[colonIndex+1:])
-			case "r":
+			case "v": // 版本号
+				rs.Version = types.Int(line[colonIndex+1:])
+			case "b": // 总长度
+				rs.BodySize = types.Int64(line[colonIndex+1:])
+			case "r": // 范围信息
 				var commaIndex = bytes.IndexRune(line, ',')
 				if commaIndex > 0 {
 					rs.Ranges = append(rs.Ranges, [2]int64{types.Int64(line[colonIndex+1 : commaIndex]), types.Int64(line[commaIndex+1:])})
@@ -53,16 +57,18 @@ func NewPartialRangesFromData(data []byte) (*PartialRanges, error) {
 }
 
 // NewPartialRangesFromJSON 从JSON中解析范围
-func newPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
+func NewPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
 	var rs = NewPartialRanges(0)
 	err := json.Unmarshal(data, &rs)
 	if err != nil {
 		return nil, err
 	}
+	rs.Version = 0
 
 	return rs, nil
 }
 
+// NewPartialRangesFromFile 从文件中加载范围信息
 func NewPartialRangesFromFile(path string) (*PartialRanges, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -74,7 +80,7 @@ func NewPartialRangesFromFile(path string) (*PartialRanges, error) {
 
 	// 兼容老的JSON格式
 	if data[0] == '{' {
-		return newPartialRangesFromJSON(data)
+		return NewPartialRangesFromJSON(data)
 	}
 
 	// 新的格式
@@ -151,13 +157,15 @@ func (this *PartialRanges) Nearest(begin int64, end int64) (r [2]int64, ok bool)
 
 // 转换为字符串
 func (this *PartialRanges) String() string {
-	var s = "e:" + types.String(this.ExpiresAt) + "\n"
+	var s = "v:" + strconv.Itoa(this.Version) + "\n" + // version
+		"b:" + this.formatInt64(this.BodySize) + "\n" // bodySize
 	for _, r := range this.Ranges {
-		s += "r:" + types.String(r[0]) + "," + types.String(r[1]) + "\n"
+		s += "r:" + this.formatInt64(r[0]) + "," + this.formatInt64(r[1]) + "\n" // range
 	}
 	return s
 }
 
+// Bytes 将内容转换为字节
 func (this *PartialRanges) Bytes() []byte {
 	return []byte(this.String())
 }
@@ -167,6 +175,7 @@ func (this *PartialRanges) WriteToFile(path string) error {
 	return os.WriteFile(path, this.Bytes(), 0666)
 }
 
+// Max 获取最大位置
 func (this *PartialRanges) Max() int64 {
 	if len(this.Ranges) > 0 {
 		return this.Ranges[len(this.Ranges)-1][1]
@@ -174,6 +183,7 @@ func (this *PartialRanges) Max() int64 {
 	return 0
 }
 
+// Reset 重置范围信息
 func (this *PartialRanges) Reset() {
 	this.Ranges = [][2]int64{}
 }
@@ -229,4 +239,8 @@ func (this *PartialRanges) max(n1 int64, n2 int64) int64 {
 		return n1
 	}
 	return n2
+}
+
+func (this *PartialRanges) formatInt64(i int64) string {
+	return strconv.FormatInt(i, 10)
 }

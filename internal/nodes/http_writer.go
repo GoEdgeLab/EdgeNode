@@ -303,7 +303,19 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	if this.isPartial {
 		cacheKey += caches.SuffixPartial
 	}
-	cacheWriter, err := storage.OpenWriter(cacheKey, expiresAt, this.StatusCode(), this.calculateHeaderLength(), size, cacheRef.MaxSizeBytes(), this.isPartial)
+
+	// 待写入尺寸
+	var totalSize = size
+	if totalSize < 0 && this.isPartial {
+		var contentRange = resp.Header.Get("Content-Range")
+		if len(contentRange) > 0 {
+			_, partialTotalSize := httpRequestParseContentRangeHeader(contentRange)
+			if partialTotalSize > 0 {
+				totalSize = partialTotalSize
+			}
+		}
+	}
+	cacheWriter, err := storage.OpenWriter(cacheKey, expiresAt, this.StatusCode(), this.calculateHeaderLength(), totalSize, cacheRef.MaxSizeBytes(), this.isPartial)
 	if err != nil {
 		if err == caches.ErrEntityTooLarge && addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, entity too large")

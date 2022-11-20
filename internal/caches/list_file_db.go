@@ -14,6 +14,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -108,7 +109,7 @@ func (this *FileListDB) Open(dbPath string) error {
 
 	this.writeBatch = dbs.NewBatch(writeDB, 4)
 	this.writeBatch.OnFail(func(err error) {
-		remotelogs.Warn("LIST_FILE_DB", "run batch failed: "+err.Error())
+		remotelogs.Warn("LIST_FILE_DB", "run batch failed: "+err.Error()+" ("+filepath.Base(this.dbPath)+")")
 	})
 
 	goman.New(func() {
