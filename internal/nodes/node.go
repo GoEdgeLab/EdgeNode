@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	iplib "github.com/TeaOSLab/EdgeCommon/pkg/iplibrary"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
@@ -64,6 +65,9 @@ type Node struct {
 	timezone   string
 
 	updatingServerMap map[int64]*serverconfigs.ServerConfig
+
+	lastAPINodeVersion int64
+	lastAPINodeAddrs   []string // 以前的API节点地址
 
 	lastTaskVersion int64
 }
@@ -747,8 +751,8 @@ func (this *Node) checkClusterConfig() error {
 	}
 	var apiConfig = &configs.APIConfig{
 		RPC: struct {
-			Endpoints     []string `yaml:"endpoints"`
-			DisableUpdate bool     `yaml:"disableUpdate"`
+			Endpoints     []string `yaml:"endpoints" json:"endpoints"`
+			DisableUpdate bool     `yaml:"disableUpdate" json:"disableUpdate"`
 		}{
 			Endpoints:     resp.Endpoints,
 			DisableUpdate: false,
@@ -1083,6 +1087,9 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 			remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
 		}
 	}
+
+	// API Node地址，这里不限制是否为空，因为在为空时仍然要有对应的处理
+	this.changeAPINodeAddrs(config.APINodeAddrs)
 }
 
 // reload server config
@@ -1144,5 +1151,70 @@ func (this *Node) checkDisk() {
 			}
 			return
 		}
+	}
+}
+
+func (this *Node) changeAPINodeAddrs(apiNodeAddrs []*serverconfigs.NetworkAddressConfig) {
+	var addrs = []string{}
+	for _, addr := range apiNodeAddrs {
+		err := addr.Init()
+		if err != nil {
+			remotelogs.Error("NODE", "changeAPINodeAddrs: validate api node address '"+configutils.QuoteIP(addr.Host)+":"+addr.PortRange+"' failed: "+err.Error())
+		} else {
+			addrs = append(addrs, addr.FullAddresses()...)
+		}
+	}
+	sort.Strings(addrs)
+
+	if utils.EqualStrings(this.lastAPINodeAddrs, addrs) {
+		return
+	}
+
+	this.lastAPINodeAddrs = addrs
+
+	config, err := configs.LoadAPIConfig()
+	if err != nil {
+		remotelogs.Error("NODE", "changeAPINodeAddrs: "+err.Error())
+		return
+	}
+	if config == nil {
+		return
+	}
+	var oldEndpoints = config.RPC.Endpoints
+
+	rpcClient, err := rpc.SharedRPC()
+	if err != nil {
+		return
+	}
+	if len(addrs) > 0 {
+		this.lastAPINodeVersion++
+		var v = this.lastAPINodeVersion
+
+		// 异步检测，防止阻塞
+		go func(v int64) {
+			// 测试新的API节点地址
+			if rpcClient.TestEndpoints(addrs) {
+				config.RPC.Endpoints = addrs
+			} else {
+				config.RPC.Endpoints = oldEndpoints
+				this.lastAPINodeAddrs = nil // 恢复为空，以便于下次更新重试
+			}
+
+			// 检查测试中间有无新的变更
+			if v != this.lastAPINodeVersion {
+				return
+			}
+
+			err = rpcClient.UpdateConfig(config)
+			if err != nil {
+				remotelogs.Error("NODE", "changeAPINodeAddrs: update rpc config failed: "+err.Error())
+			}
+		}(v)
+		return
+	}
+
+	err = rpcClient.UpdateConfig(config)
+	if err != nil {
+		remotelogs.Error("NODE", "changeAPINodeAddrs: update rpc config failed: "+err.Error())
 	}
 }

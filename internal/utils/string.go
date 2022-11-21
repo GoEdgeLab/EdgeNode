@@ -42,8 +42,8 @@ func ToValidUTF8string(v string) string {
 	return strings.ToValidUTF8(v, "")
 }
 
-// ContainsSameStrings 检查两个字符串slice内容是否一致
-func ContainsSameStrings(s1 []string, s2 []string) bool {
+// EqualStrings 检查两个字符串slice内容是否一致
+func EqualStrings(s1 []string, s2 []string) bool {
 	if len(s1) != len(s2) {
 		return false
 	}

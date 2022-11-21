@@ -59,9 +59,9 @@ func TestFormatAddressList(t *testing.T) {
 
 func TestContainsSameStrings(t *testing.T) {
 	var a = assert.NewAssertion(t)
-	a.IsFalse(utils.ContainsSameStrings([]string{"a"}, []string{"b"}))
-	a.IsFalse(utils.ContainsSameStrings([]string{"a", "b"}, []string{"b"}))
-	a.IsFalse(utils.ContainsSameStrings([]string{"a", "b"}, []string{"a", "b", "c"}))
-	a.IsTrue(utils.ContainsSameStrings([]string{"a", "b"}, []string{"a", "b"}))
-	a.IsTrue(utils.ContainsSameStrings([]string{"a", "b"}, []string{"b", "a"}))
+	a.IsFalse(utils.EqualStrings([]string{"a"}, []string{"b"}))
+	a.IsFalse(utils.EqualStrings([]string{"a", "b"}, []string{"b"}))
+	a.IsFalse(utils.EqualStrings([]string{"a", "b"}, []string{"a", "b", "c"}))
+	a.IsTrue(utils.EqualStrings([]string{"a", "b"}, []string{"a", "b"}))
+	a.IsTrue(utils.EqualStrings([]string{"a", "b"}, []string{"b", "a"}))
 }

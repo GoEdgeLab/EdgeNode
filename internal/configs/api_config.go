@@ -9,11 +9,15 @@ import (
 // APIConfig 节点API配置
 type APIConfig struct {
 	RPC struct {
-		Endpoints     []string `yaml:"endpoints"`
-		DisableUpdate bool     `yaml:"disableUpdate"`
-	} `yaml:"rpc"`
-	NodeId string `yaml:"nodeId"`
-	Secret string `yaml:"secret"`
+		Endpoints     []string `yaml:"endpoints" json:"endpoints"`
+		DisableUpdate bool     `yaml:"disableUpdate" json:"disableUpdate"`
+	} `yaml:"rpc" json:"rpc"`
+	NodeId string `yaml:"nodeId" json:"nodeId"`
+	Secret string `yaml:"secret" json:"secret"`
+}
+
+func NewAPIConfig() *APIConfig {
+	return &APIConfig{}
 }
 
 func LoadAPIConfig() (*APIConfig, error) {

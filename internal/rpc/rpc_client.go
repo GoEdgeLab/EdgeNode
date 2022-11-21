@@ -160,6 +160,64 @@ func (this *RPCClient) UpdateConfig(config *configs.APIConfig) error {
 	return err
 }
 
+// TestEndpoints 测试Endpoints是否可用
+func (this *RPCClient) TestEndpoints(endpoints []string) bool {
+	if len(endpoints) == 0 {
+		return false
+	}
+
+	var wg = sync.WaitGroup{}
+	wg.Add(len(endpoints))
+
+	var ok = false
+
+	for _, endpoint := range endpoints {
+		go func(endpoint string) {
+			defer wg.Done()
+
+			u, err := url.Parse(endpoint)
+			if err != nil {
+				return
+			}
+
+			ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+			defer func() {
+				cancelFunc()
+			}()
+			var conn *grpc.ClientConn
+			if u.Scheme == "http" {
+				conn, err = grpc.DialContext(ctx, u.Host, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+			} else if u.Scheme == "https" {
+				conn, err = grpc.DialContext(ctx, u.Host, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+					InsecureSkipVerify: true,
+				})), grpc.WithBlock())
+			} else {
+				return
+			}
+			if err != nil {
+				return
+			}
+			if conn == nil {
+				return
+			}
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			var pingService = pb.NewPingServiceClient(conn)
+			_, err = pingService.Ping(this.Context(), &pb.PingRequest{})
+			if err != nil {
+				return
+			}
+
+			ok = true
+		}(endpoint)
+	}
+	wg.Wait()
+
+	return ok
+}
+
 // 初始化
 func (this *RPCClient) init() error {
 	// 重新连接
