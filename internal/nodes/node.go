@@ -1133,6 +1133,7 @@ func (this *Node) reloadServer() {
 	}
 }
 
+// 检查硬盘
 func (this *Node) checkDisk() {
 	if runtime.GOOS != "linux" {
 		return
@@ -1154,6 +1155,7 @@ func (this *Node) checkDisk() {
 	}
 }
 
+// 检查API节点地址
 func (this *Node) changeAPINodeAddrs(apiNodeAddrs []*serverconfigs.NetworkAddressConfig) {
 	var addrs = []string{}
 	for _, addr := range apiNodeAddrs {
