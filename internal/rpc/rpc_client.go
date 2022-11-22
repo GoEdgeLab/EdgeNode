@@ -287,14 +287,15 @@ func (this *RPCClient) pickConn() *grpc.ClientConn {
 func (this *RPCClient) Invoke(ctx context.Context, method string, args interface{}, reply interface{}, opts ...grpc.CallOption) error {
 	var conn = this.pickConn()
 	if conn == nil {
-		return errors.New("can not get available grpc connection")
+		return errors.New("could not get available grpc connection")
 	}
 	return conn.Invoke(ctx, method, args, reply, opts...)
 }
+
 func (this *RPCClient) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 	var conn = this.pickConn()
 	if conn == nil {
-		return nil, errors.New("can not get available grpc connection")
+		return nil, errors.New("could not get available grpc connection")
 	}
 	return conn.NewStream(ctx, desc, method, opts...)
 }

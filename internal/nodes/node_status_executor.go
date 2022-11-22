@@ -31,12 +31,15 @@ type NodeStatusExecutor struct {
 	cpuLogicalCount  int
 	cpuPhysicalCount int
 
+	apiCallStat *rpc.CallStat
+
 	ticker *time.Ticker
 }
 
 func NewNodeStatusExecutor() *NodeStatusExecutor {
 	return &NodeStatusExecutor{
-		ticker: time.NewTicker(30 * time.Second),
+		ticker:      time.NewTicker(30 * time.Second),
+		apiCallStat: rpc.NewCallStat(10),
 	}
 }
 
@@ -78,6 +81,11 @@ func (this *NodeStatusExecutor) update() {
 	status.CacheTotalMemorySize = caches.SharedManager.TotalMemorySize()
 	status.TrafficInBytes = teaconst.InTrafficBytes
 	status.TrafficOutBytes = teaconst.OutTrafficBytes
+
+	apiSuccessPercent, apiAvgCostSeconds := this.apiCallStat.Sum()
+	status.APISuccessPercent = apiSuccessPercent
+	status.APIAvgCostSeconds = apiAvgCostSeconds
+
 	var localFirewall = firewalls.Firewall()
 	if localFirewall != nil && !localFirewall.IsMock() {
 		status.LocalFirewallName = localFirewall.Name()
@@ -125,9 +133,13 @@ func (this *NodeStatusExecutor) update() {
 		remotelogs.Error("NODE_STATUS", "failed to open rpc: "+err.Error())
 		return
 	}
+
+	var before = time.Now()
 	_, err = rpcClient.NodeRPC.UpdateNodeStatus(rpcClient.Context(), &pb.UpdateNodeStatusRequest{
 		StatusJSON: jsonData,
 	})
+	var costSeconds = time.Since(before).Seconds()
+	this.apiCallStat.Add(err == nil, costSeconds)
 	if err != nil {
 		if rpc.IsConnError(err) {
 			remotelogs.Warn("NODE_STATUS", "rpc UpdateNodeStatus() failed: "+err.Error())
@@ -140,7 +152,7 @@ func (this *NodeStatusExecutor) update() {
 
 // 更新CPU
 func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
-	duration := time.Duration(0)
+	var duration = time.Duration(0)
 	if this.isFirstTime {
 		duration = 100 * time.Millisecond
 	}
