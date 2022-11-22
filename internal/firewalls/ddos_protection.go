@@ -70,7 +70,7 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 	if nodeConfig != nil {
 		var allowIPList = nodeConfig.AllowedIPs
-		if !utils.ContainsSameStrings(allowIPList, this.lastAllowIPList) {
+		if !utils.EqualStrings(allowIPList, this.lastAllowIPList) {
 			allowIPListChanged = true
 			this.lastAllowIPList = allowIPList
 		}
