@@ -45,8 +45,13 @@ func (this *CallStat) Sum() (successPercent float64, avgCostSeconds float64) {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
+	var size = this.size
+	if size <= 0 {
+		size = 10
+	}
+
 	var totalItems = len(this.items)
-	if totalItems == 0 {
+	if totalItems <= size/2 /** 低于一半的采样率，不计入统计 **/ {
 		successPercent = 100
 		return
 	}
