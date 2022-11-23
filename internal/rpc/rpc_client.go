@@ -262,7 +262,12 @@ func (this *RPCClient) pickConn() *grpc.ClientConn {
 	defer this.locker.Unlock()
 
 	// 检查连接状态
-	if len(this.conns) > 0 {
+	var countConns = len(this.conns)
+	if countConns > 0 {
+		if countConns == 1 {
+			return this.conns[0]
+		}
+
 		for _, stateArray := range [][2]connectivity.State{
 			{connectivity.Ready, connectivity.Idle}, // 优先Ready和Idle
 			{connectivity.Connecting, connectivity.Connecting},
