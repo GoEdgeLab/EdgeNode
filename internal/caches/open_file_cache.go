@@ -62,6 +62,9 @@ func (this *OpenFileCache) Get(filename string) *OpenFile {
 		if consumed {
 			this.locker.Lock()
 			this.count--
+
+			// pool如果为空，也不需要从列表中删除，避免put时需要重新创建
+
 			this.locker.Unlock()
 		}
 		return file
@@ -148,6 +151,7 @@ func (this *OpenFileCache) CloseAll() {
 	this.poolMap = map[string]*OpenFilePool{}
 	this.poolList.Reset()
 	_ = this.watcher.Close()
+	this.count = 0
 	this.locker.Unlock()
 }
 
