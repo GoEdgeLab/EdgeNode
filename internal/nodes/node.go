@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/ddosconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
@@ -25,6 +26,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	_ "github.com/TeaOSLab/EdgeNode/internal/utils/clock" // 触发时钟更新
+	"github.com/TeaOSLab/EdgeNode/internal/utils/jsonutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/andybalholm/brotli"
 	"github.com/iwind/TeaGo/Tea"
@@ -59,9 +61,13 @@ type Node struct {
 	sock     *gosock.Sock
 	locker   sync.Mutex
 
-	maxCPU     int32
-	maxThreads int
-	timezone   string
+	oldMaxCPU               int32
+	oldMaxThreads           int
+	oldTimezone             string
+	oldHTTPCachePolicies    []*serverconfigs.HTTPCachePolicy
+	oldHTTPFirewallPolicies []*firewallconfigs.HTTPFirewallPolicy
+	oldFirewallActions      []*firewallconfigs.FirewallActionConfig
+	oldMetricItems          []*serverconfigs.MetricItemConfig
 
 	updatingServerMap map[int64]*serverconfigs.ServerConfig
 
@@ -74,8 +80,8 @@ type Node struct {
 func NewNode() *Node {
 	return &Node{
 		sock:              gosock.NewTmpSock(teaconst.ProcessName),
-		maxThreads:        -1,
-		maxCPU:            -1,
+		oldMaxThreads:     -1,
+		oldMaxCPU:         -1,
 		updatingServerMap: map[int64]*serverconfigs.ServerConfig{},
 	}
 }
@@ -195,7 +201,7 @@ func (this *Node) Start() {
 		}
 	}
 	sharedNodeConfig = nodeConfig
-	this.onReload(nodeConfig)
+	this.onReload(nodeConfig, true)
 
 	// 发送事件
 	events.Notify(events.EventLoaded)
@@ -601,7 +607,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		remotelogs.Println("NODE", "loading config ...")
 	}
 
-	this.onReload(nodeConfig)
+	this.onReload(nodeConfig, true)
 
 	// 发送事件
 	events.Notify(events.EventReload)
@@ -977,15 +983,16 @@ func (this *Node) listenSock() error {
 }
 
 // 重载配置调用
-func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
+func (this *Node) onReload(config *nodeconfigs.NodeConfig, reloadAll bool) {
 	nodeconfigs.ResetNodeConfig(config)
 	sharedNodeConfig = config
 
-	// 缓存策略
-	caches.SharedManager.MaxDiskCapacity = config.MaxCacheDiskCapacity
-	caches.SharedManager.MaxMemoryCapacity = config.MaxCacheMemoryCapacity
-	caches.SharedManager.MainDiskDir = config.CacheDiskDir
+	// 不需要每次都全部重新加载
+	if !reloadAll {
+		return
+	}
 
+	// 缓存策略
 	var subDirs = config.CacheDiskSubDirs
 	for _, subDir := range subDirs {
 		subDir.Path = filepath.Clean(subDir.Path)
@@ -995,23 +1002,75 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 			return subDirs[i].Path < subDirs[j].Path
 		})
 	}
+
+	var cachePoliciesChanged = !jsonutils.Equal(caches.SharedManager.MaxDiskCapacity, config.MaxCacheDiskCapacity) ||
+		!jsonutils.Equal(caches.SharedManager.MaxMemoryCapacity, config.MaxCacheMemoryCapacity) ||
+		!jsonutils.Equal(caches.SharedManager.MainDiskDir, config.CacheDiskDir) ||
+		!jsonutils.Equal(caches.SharedManager.SubDiskDirs, subDirs) ||
+		!jsonutils.Equal(this.oldHTTPCachePolicies, config.HTTPCachePolicies)
+
+	caches.SharedManager.MaxDiskCapacity = config.MaxCacheDiskCapacity
+	caches.SharedManager.MaxMemoryCapacity = config.MaxCacheMemoryCapacity
+	caches.SharedManager.MainDiskDir = config.CacheDiskDir
 	caches.SharedManager.SubDiskDirs = subDirs
 
-	if len(config.HTTPCachePolicies) > 0 {
-		caches.SharedManager.UpdatePolicies(config.HTTPCachePolicies)
-	} else {
-		caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
+	if cachePoliciesChanged {
+		// copy
+		this.oldHTTPCachePolicies = []*serverconfigs.HTTPCachePolicy{}
+		err := jsonutils.Copy(&this.oldHTTPCachePolicies, config.HTTPCachePolicies)
+		if err != nil {
+			remotelogs.Error("NODE", "onReload: copy HTTPCachePolicies failed: "+err.Error())
+		}
+
+		// update
+		if len(config.HTTPCachePolicies) > 0 {
+			caches.SharedManager.UpdatePolicies(config.HTTPCachePolicies)
+		} else {
+			caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
+		}
 	}
 
 	// WAF策略
-	waf.SharedWAFManager.UpdatePolicies(config.FindAllFirewallPolicies())
-	iplibrary.SharedActionManager.UpdateActions(config.FirewallActions)
+	var allFirewallPolicies = config.FindAllFirewallPolicies()
+	if !jsonutils.Equal(allFirewallPolicies, this.oldHTTPFirewallPolicies) {
+		// copy
+		this.oldHTTPFirewallPolicies = []*firewallconfigs.HTTPFirewallPolicy{}
+		err := jsonutils.Copy(&this.oldHTTPFirewallPolicies, allFirewallPolicies)
+		if err != nil {
+			remotelogs.Error("NODE", "onReload: copy HTTPFirewallPolicies failed: "+err.Error())
+		}
+
+		// update
+		waf.SharedWAFManager.UpdatePolicies(allFirewallPolicies)
+	}
+
+	if !jsonutils.Equal(config.FirewallActions, this.oldFirewallActions) {
+		// copy
+		this.oldFirewallActions = []*firewallconfigs.FirewallActionConfig{}
+		err := jsonutils.Copy(&this.oldFirewallActions, config.FirewallActions)
+		if err != nil {
+			remotelogs.Error("NODE", "onReload: copy FirewallActionConfigs failed: "+err.Error())
+		}
+
+		// update
+		iplibrary.SharedActionManager.UpdateActions(config.FirewallActions)
+	}
 
 	// 统计指标
-	metrics.SharedManager.Update(config.MetricItems)
+	if !jsonutils.Equal(this.oldMetricItems, config.MetricItems) {
+		// copy
+		this.oldMetricItems = []*serverconfigs.MetricItemConfig{}
+		err := jsonutils.Copy(&this.oldMetricItems, config.MetricItems)
+		if err != nil {
+			remotelogs.Error("NODE", "onReload: copy MetricItemConfigs failed: "+err.Error())
+		}
+
+		// update
+		metrics.SharedManager.Update(config.MetricItems)
+	}
 
 	// max cpu
-	if config.MaxCPU != this.maxCPU {
+	if config.MaxCPU != this.oldMaxCPU {
 		if config.MaxCPU > 0 && config.MaxCPU < int32(runtime.NumCPU()) {
 			runtime.GOMAXPROCS(int(config.MaxCPU))
 			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(config.MaxCPU)+"'")
@@ -1021,11 +1080,11 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(threads)+"'")
 		}
 
-		this.maxCPU = config.MaxCPU
+		this.oldMaxCPU = config.MaxCPU
 	}
 
 	// max threads
-	if config.MaxThreads != this.maxThreads {
+	if config.MaxThreads != this.oldMaxThreads {
 		if config.MaxThreads > 0 {
 			debug.SetMaxThreads(config.MaxThreads)
 			remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(config.MaxThreads)+"'")
@@ -1033,7 +1092,7 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 			debug.SetMaxThreads(nodeconfigs.DefaultMaxThreads)
 			remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(nodeconfigs.DefaultMaxThreads)+"'")
 		}
-		this.maxThreads = config.MaxThreads
+		this.oldMaxThreads = config.MaxThreads
 	}
 
 	// timezone
@@ -1042,7 +1101,7 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 		timeZone = "Asia/Shanghai"
 	}
 
-	if this.timezone != timeZone {
+	if this.oldTimezone != timeZone {
 		location, err := time.LoadLocation(timeZone)
 		if err != nil {
 			remotelogs.Error("NODE", "[TIMEZONE]change time zone failed: "+err.Error())
@@ -1051,7 +1110,7 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig) {
 
 		remotelogs.Println("NODE", "[TIMEZONE]change time zone to '"+timeZone+"'")
 		time.Local = location
-		this.timezone = timeZone
+		this.oldTimezone = timeZone
 	}
 
 	// product information
@@ -1118,7 +1177,7 @@ func (this *Node) reloadServer() {
 			}
 		}
 
-		this.onReload(newNodeConfig)
+		this.onReload(newNodeConfig, false)
 
 		err = sharedListenerManager.Start(newNodeConfig)
 		if err != nil {

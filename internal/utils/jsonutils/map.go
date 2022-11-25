@@ -7,7 +7,7 @@ import (
 	"github.com/iwind/TeaGo/maps"
 )
 
-func MapToObject(m maps.Map, ptr interface{}) error {
+func MapToObject(m maps.Map, ptr any) error {
 	if m == nil {
 		return nil
 	}
@@ -18,7 +18,7 @@ func MapToObject(m maps.Map, ptr interface{}) error {
 	return json.Unmarshal(mJSON, ptr)
 }
 
-func ObjectToMap(ptr interface{}) (maps.Map, error) {
+func ObjectToMap(ptr any) (maps.Map, error) {
 	if ptr == nil {
 		return maps.Map{}, nil
 	}
@@ -32,4 +32,13 @@ func ObjectToMap(ptr interface{}) (maps.Map, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func Copy(destPtr any, srcPtr any) error {
+	data, err := json.Marshal(srcPtr)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(data, destPtr)
+	return err
 }
