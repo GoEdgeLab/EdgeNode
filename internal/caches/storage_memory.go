@@ -1,7 +1,6 @@
 package caches
 
 import (
-	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -17,6 +16,7 @@ import (
 	"math"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -230,10 +230,10 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 
 // Delete 删除某个键值对应的缓存
 func (this *MemoryStorage) Delete(key string) error {
-	hash := this.hash(key)
+	var hash = this.hash(key)
 	this.locker.Lock()
 	delete(this.valuesMap, hash)
-	_ = this.list.Remove(fmt.Sprintf("%d", hash))
+	_ = this.list.Remove(types.String(hash))
 	this.locker.Unlock()
 	return nil
 }
@@ -263,6 +263,19 @@ func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 	// 目录
 	if urlType == "dir" {
 		for _, key := range keys {
+			// 检查是否有通配符 http(s)://*.example.com
+			var schemeIndex = strings.Index(key, "://")
+			if schemeIndex > 0 {
+				var keyRight = key[schemeIndex+3:]
+				if strings.HasPrefix(keyRight, "*.") {
+					err := this.list.CleanMatchPrefix(key)
+					if err != nil {
+						return err
+					}
+					continue
+				}
+			}
+
 			err := this.list.CleanPrefix(key)
 			if err != nil {
 				return err
@@ -273,6 +286,19 @@ func (this *MemoryStorage) Purge(keys []string, urlType string) error {
 
 	// URL
 	for _, key := range keys {
+		// 检查是否有通配符 http(s)://*.example.com
+		var schemeIndex = strings.Index(key, "://")
+		if schemeIndex > 0 {
+			var keyRight = key[schemeIndex+3:]
+			if strings.HasPrefix(keyRight, "*.") {
+				err := this.list.CleanMatchKey(key)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
 		err := this.Delete(key)
 		if err != nil {
 			return err
@@ -336,7 +362,12 @@ func (this *MemoryStorage) CanUpdatePolicy(newPolicy *serverconfigs.HTTPCachePol
 // AddToList 将缓存添加到列表
 func (this *MemoryStorage) AddToList(item *Item) {
 	item.MetaSize = int64(len(item.Key)) + 128 /** 128是我们评估的数据结构的长度 **/
-	hash := fmt.Sprintf("%d", this.hash(item.Key))
+	var hash = types.String(this.hash(item.Key))
+
+	if len(item.Host) == 0 {
+		item.Host = ParseHost(item.Key)
+	}
+
 	_ = this.list.Add(hash, item)
 }
 
@@ -433,7 +464,7 @@ func (this *MemoryStorage) startFlush() {
 	var statCount = 0
 	var writeDelayMS float64 = 0
 
-	for hash := range this.dirtyChan {
+	for key := range this.dirtyChan {
 		statCount++
 
 		if statCount == 100 {
@@ -455,7 +486,7 @@ func (this *MemoryStorage) startFlush() {
 			}
 		}
 
-		this.flushItem(hash)
+		this.flushItem(key)
 
 		if writeDelayMS > 0 {
 			time.Sleep(time.Duration(writeDelayMS) * time.Millisecond)
@@ -513,6 +544,7 @@ func (this *MemoryStorage) flushItem(key string) {
 	this.parentStorage.AddToList(&Item{
 		Type:       writer.ItemType(),
 		Key:        key,
+		Host:       ParseHost(key),
 		ExpiredAt:  item.ExpiresAt,
 		HeaderSize: writer.HeaderSize(),
 		BodySize:   writer.BodySize(),
@@ -542,7 +574,7 @@ func (this *MemoryStorage) memoryCapacityBytes() int64 {
 func (this *MemoryStorage) deleteWithoutLocker(key string) error {
 	hash := this.hash(key)
 	delete(this.valuesMap, hash)
-	_ = this.list.Remove(fmt.Sprintf("%d", hash))
+	_ = this.list.Remove(types.String(hash))
 	return nil
 }
 

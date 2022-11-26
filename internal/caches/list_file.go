@@ -160,11 +160,52 @@ func (this *FileList) CleanPrefix(prefix string) error {
 	}
 
 	defer func() {
+		// TODO 需要优化
 		this.memoryCache.Clean()
 	}()
 
 	for _, db := range this.dbList {
 		err := db.CleanPrefix(prefix)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CleanMatchKey 清理通配符匹配的缓存数据，类似于 https://*.example.com/hello
+func (this *FileList) CleanMatchKey(key string) error {
+	if len(key) == 0 {
+		return nil
+	}
+
+	defer func() {
+		// TODO 需要优化
+		this.memoryCache.Clean()
+	}()
+
+	for _, db := range this.dbList {
+		err := db.CleanMatchKey(key)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CleanMatchPrefix 清理通配符匹配的缓存数据，类似于 https://*.example.com/prefix/
+func (this *FileList) CleanMatchPrefix(prefix string) error {
+	if len(prefix) == 0 {
+		return nil
+	}
+
+	defer func() {
+		// TODO 需要优化
+		this.memoryCache.Clean()
+	}()
+
+	for _, db := range this.dbList {
+		err := db.CleanMatchPrefix(prefix)
 		if err != nil {
 			return err
 		}

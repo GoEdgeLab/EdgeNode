@@ -13,6 +13,8 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -387,6 +389,85 @@ func (this *FileListDB) CleanPrefix(prefix string) error {
 			return nil
 		}
 	}
+}
+
+func (this *FileListDB) CleanMatchKey(key string) error {
+	if !this.isReady {
+		return nil
+	}
+
+	// 忽略 @GOEDGE_
+	if strings.Contains(key, SuffixAll) {
+		return nil
+	}
+
+	u, err := url.Parse(key)
+	if err != nil {
+		return nil
+	}
+
+	var host = u.Host
+	hostPart, _, err := net.SplitHostPort(host)
+	if err == nil && len(hostPart) > 0 {
+		host = hostPart
+	}
+	if len(host) == 0 {
+		return nil
+	}
+
+	// 转义
+	var queryKey = strings.ReplaceAll(key, "%", "\\%")
+	queryKey = strings.ReplaceAll(queryKey, "_", "\\_")
+	queryKey = strings.Replace(queryKey, "*", "%", 1)
+
+	// TODO 检查大批量数据下的操作性能
+	var staleLife = 600             // TODO 需要可以设置
+	var unixTime = utils.UnixTime() // 只删除当前的，不删除新的
+
+	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryKey)
+	if err != nil {
+		return err
+	}
+
+	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryKey+SuffixAll+"%")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (this *FileListDB) CleanMatchPrefix(prefix string) error {
+	if !this.isReady {
+		return nil
+	}
+
+	u, err := url.Parse(prefix)
+	if err != nil {
+		return nil
+	}
+
+	var host = u.Host
+	hostPart, _, err := net.SplitHostPort(host)
+	if err == nil && len(hostPart) > 0 {
+		host = hostPart
+	}
+	if len(host) == 0 {
+		return nil
+	}
+
+	// 转义
+	var queryPrefix = strings.ReplaceAll(prefix, "%", "\\%")
+	queryPrefix = strings.ReplaceAll(queryPrefix, "_", "\\_")
+	queryPrefix = strings.Replace(queryPrefix, "*", "%", 1)
+	queryPrefix += "%"
+
+	// TODO 检查大批量数据下的操作性能
+	var staleLife = 600             // TODO 需要可以设置
+	var unixTime = utils.UnixTime() // 只删除当前的，不删除新的
+
+	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryPrefix)
+	return err
 }
 
 func (this *FileListDB) CleanAll() error {

@@ -18,6 +18,12 @@ type ListInterface interface {
 	// CleanPrefix 清除某个前缀的缓存
 	CleanPrefix(prefix string) error
 
+	// CleanMatchKey 清除通配符匹配的Key
+	CleanMatchKey(key string) error
+
+	// CleanMatchPrefix 清除通配符匹配的前缀
+	CleanMatchPrefix(prefix string) error
+
 	// Remove 删除内容
 	Remove(hash string) error
 

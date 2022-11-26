@@ -841,6 +841,19 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 	// 目录
 	if urlType == "dir" {
 		for _, key := range keys {
+			// 检查是否有通配符 http(s)://*.example.com
+			var schemeIndex = strings.Index(key, "://")
+			if schemeIndex > 0 {
+				var keyRight = key[schemeIndex+3:]
+				if strings.HasPrefix(keyRight, "*.") {
+					err := this.list.CleanMatchPrefix(key)
+					if err != nil {
+						return err
+					}
+					continue
+				}
+			}
+
 			err := this.list.CleanPrefix(key)
 			if err != nil {
 				return err
@@ -851,6 +864,20 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 
 	// URL
 	for _, key := range keys {
+		// 检查是否有通配符 http(s)://*.example.com
+		var schemeIndex = strings.Index(key, "://")
+		if schemeIndex > 0 {
+			var keyRight = key[schemeIndex+3:]
+			if strings.HasPrefix(keyRight, "*.") {
+				err := this.list.CleanMatchKey(key)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
+		// 普通的Key
 		hash, path, _ := this.keyPath(key)
 		err := this.removeCacheFile(path)
 		if err != nil && !os.IsNotExist(err) {
@@ -1206,6 +1233,7 @@ func (this *FileStorage) hotLoop() {
 			memoryStorage.AddToList(&Item{
 				Type:       writer.ItemType(),
 				Key:        item.Key,
+				Host:       ParseHost(item.Key),
 				ExpiredAt:  expiresAt,
 				HeaderSize: writer.HeaderSize(),
 				BodySize:   writer.BodySize(),

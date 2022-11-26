@@ -81,3 +81,14 @@ func TestItems_Memory2(t *testing.T) {
 		t.Log(w, len(i))
 	}
 }
+
+func TestItem_RequestURI(t *testing.T) {
+	for _, u := range []string{
+		"https://goedge.cn/hello/world",
+		"https://goedge.cn:8080/hello/world",
+		"https://goedge.cn/hello/world?v=1&t=123",
+	} {
+		var item = &Item{Key: u}
+		t.Log(u, "=>", item.RequestURI())
+	}
+}

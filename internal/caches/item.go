@@ -2,6 +2,7 @@ package caches
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"strings"
 	"time"
 )
 
@@ -58,4 +59,18 @@ func (this *Item) IncreaseHit(week int32) {
 		this.Week2Hits = 1
 		this.Week = week
 	}
+}
+
+func (this *Item) RequestURI() string {
+	var schemeIndex = strings.Index(this.Key, "://")
+	if schemeIndex <= 0 {
+		return ""
+	}
+
+	var firstSlashIndex = strings.Index(this.Key[schemeIndex+3:], "/")
+	if firstSlashIndex <= 0 {
+		return ""
+	}
+
+	return this.Key[schemeIndex+3+firstSlashIndex:]
 }

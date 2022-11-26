@@ -1,8 +1,11 @@
 package caches
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/logs"
+	"net"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -143,6 +146,82 @@ func (this *MemoryList) CleanPrefix(prefix string) error {
 			}
 		}
 	}
+	return nil
+}
+
+// CleanMatchKey 清理通配符匹配的缓存数据，类似于 https://*.example.com/hello
+func (this *MemoryList) CleanMatchKey(key string) error {
+	if strings.Contains(key, SuffixAll) {
+		return nil
+	}
+
+	u, err := url.Parse(key)
+	if err != nil {
+		return nil
+	}
+
+	var host = u.Host
+	hostPart, _, err := net.SplitHostPort(host)
+	if err == nil && len(hostPart) > 0 {
+		host = hostPart
+	}
+
+	if len(host) == 0 {
+		return nil
+	}
+	var requestURI = u.RequestURI()
+
+	this.locker.RLock()
+	defer this.locker.RUnlock()
+
+	// TODO 需要优化性能，支持千万级数据低于1s的处理速度
+	for _, itemMap := range this.itemMaps {
+		for _, item := range itemMap {
+			if configutils.MatchDomain(host, item.Host) {
+				var itemRequestURI = item.RequestURI()
+				if itemRequestURI == requestURI || strings.HasPrefix(itemRequestURI, requestURI+SuffixAll) {
+					item.ExpiredAt = 0
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// CleanMatchPrefix 清理通配符匹配的缓存数据，类似于 https://*.example.com/prefix/
+func (this *MemoryList) CleanMatchPrefix(prefix string) error {
+	u, err := url.Parse(prefix)
+	if err != nil {
+		return nil
+	}
+
+	var host = u.Host
+	hostPart, _, err := net.SplitHostPort(host)
+	if err == nil && len(hostPart) > 0 {
+		host = hostPart
+	}
+	if len(host) == 0 {
+		return nil
+	}
+	var requestURI = u.RequestURI()
+	var isRootPath = requestURI == "/"
+
+	this.locker.RLock()
+	defer this.locker.RUnlock()
+
+	// TODO 需要优化性能，支持千万级数据低于1s的处理速度
+	for _, itemMap := range this.itemMaps {
+		for _, item := range itemMap {
+			if configutils.MatchDomain(host, item.Host) {
+				var itemRequestURI = item.RequestURI()
+				if isRootPath || strings.HasPrefix(itemRequestURI, requestURI) {
+					item.ExpiredAt = 0
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

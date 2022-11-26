@@ -47,3 +47,41 @@ func TestFileListDB_IncreaseHitAsync(t *testing.T) {
 	// wait transaction
 	time.Sleep(1 * time.Second)
 }
+
+func TestFileListDB_CleanMatchKey(t *testing.T) {
+	var db = caches.NewFileListDB()
+	err := db.Open(Tea.Root + "/data/cache-db-large.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.Init()
+
+	err = db.CleanMatchKey("https://*.goedge.cn/large-text")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.CleanMatchKey("https://*.goedge.cn:1234/large-text?%2B____")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFileListDB_CleanMatchPrefix(t *testing.T) {
+	var db = caches.NewFileListDB()
+	err := db.Open(Tea.Root + "/data/cache-db-large.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.Init()
+
+	err = db.CleanMatchPrefix("https://*.goedge.cn/large-text")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.CleanMatchPrefix("https://*.goedge.cn:1234/large-text?%2B____")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
