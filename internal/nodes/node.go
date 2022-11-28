@@ -987,50 +987,48 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig, reloadAll bool) {
 	nodeconfigs.ResetNodeConfig(config)
 	sharedNodeConfig = config
 
-	// 不需要每次都全部重新加载
-	if !reloadAll {
-		return
-	}
-
-	// 缓存策略
-	var subDirs = config.CacheDiskSubDirs
-	for _, subDir := range subDirs {
-		subDir.Path = filepath.Clean(subDir.Path)
-	}
-	if len(subDirs) > 0 {
-		sort.Slice(subDirs, func(i, j int) bool {
-			return subDirs[i].Path < subDirs[j].Path
-		})
-	}
-
-	var cachePoliciesChanged = !jsonutils.Equal(caches.SharedManager.MaxDiskCapacity, config.MaxCacheDiskCapacity) ||
-		!jsonutils.Equal(caches.SharedManager.MaxMemoryCapacity, config.MaxCacheMemoryCapacity) ||
-		!jsonutils.Equal(caches.SharedManager.MainDiskDir, config.CacheDiskDir) ||
-		!jsonutils.Equal(caches.SharedManager.SubDiskDirs, subDirs) ||
-		!jsonutils.Equal(this.oldHTTPCachePolicies, config.HTTPCachePolicies)
-
-	caches.SharedManager.MaxDiskCapacity = config.MaxCacheDiskCapacity
-	caches.SharedManager.MaxMemoryCapacity = config.MaxCacheMemoryCapacity
-	caches.SharedManager.MainDiskDir = config.CacheDiskDir
-	caches.SharedManager.SubDiskDirs = subDirs
-
-	if cachePoliciesChanged {
-		// copy
-		this.oldHTTPCachePolicies = []*serverconfigs.HTTPCachePolicy{}
-		err := jsonutils.Copy(&this.oldHTTPCachePolicies, config.HTTPCachePolicies)
-		if err != nil {
-			remotelogs.Error("NODE", "onReload: copy HTTPCachePolicies failed: "+err.Error())
+	if reloadAll {
+		// 缓存策略
+		var subDirs = config.CacheDiskSubDirs
+		for _, subDir := range subDirs {
+			subDir.Path = filepath.Clean(subDir.Path)
+		}
+		if len(subDirs) > 0 {
+			sort.Slice(subDirs, func(i, j int) bool {
+				return subDirs[i].Path < subDirs[j].Path
+			})
 		}
 
-		// update
-		if len(config.HTTPCachePolicies) > 0 {
-			caches.SharedManager.UpdatePolicies(config.HTTPCachePolicies)
-		} else {
-			caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
+		var cachePoliciesChanged = !jsonutils.Equal(caches.SharedManager.MaxDiskCapacity, config.MaxCacheDiskCapacity) ||
+			!jsonutils.Equal(caches.SharedManager.MaxMemoryCapacity, config.MaxCacheMemoryCapacity) ||
+			!jsonutils.Equal(caches.SharedManager.MainDiskDir, config.CacheDiskDir) ||
+			!jsonutils.Equal(caches.SharedManager.SubDiskDirs, subDirs) ||
+			!jsonutils.Equal(this.oldHTTPCachePolicies, config.HTTPCachePolicies)
+
+		caches.SharedManager.MaxDiskCapacity = config.MaxCacheDiskCapacity
+		caches.SharedManager.MaxMemoryCapacity = config.MaxCacheMemoryCapacity
+		caches.SharedManager.MainDiskDir = config.CacheDiskDir
+		caches.SharedManager.SubDiskDirs = subDirs
+
+		if cachePoliciesChanged {
+			// copy
+			this.oldHTTPCachePolicies = []*serverconfigs.HTTPCachePolicy{}
+			err := jsonutils.Copy(&this.oldHTTPCachePolicies, config.HTTPCachePolicies)
+			if err != nil {
+				remotelogs.Error("NODE", "onReload: copy HTTPCachePolicies failed: "+err.Error())
+			}
+
+			// update
+			if len(config.HTTPCachePolicies) > 0 {
+				caches.SharedManager.UpdatePolicies(config.HTTPCachePolicies)
+			} else {
+				caches.SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
+			}
 		}
 	}
 
 	// WAF策略
+	// 包含了服务里的WAF策略，所以需要整体更新
 	var allFirewallPolicies = config.FindAllFirewallPolicies()
 	if !jsonutils.Equal(allFirewallPolicies, this.oldHTTPFirewallPolicies) {
 		// copy
@@ -1044,105 +1042,107 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig, reloadAll bool) {
 		waf.SharedWAFManager.UpdatePolicies(allFirewallPolicies)
 	}
 
-	if !jsonutils.Equal(config.FirewallActions, this.oldFirewallActions) {
-		// copy
-		this.oldFirewallActions = []*firewallconfigs.FirewallActionConfig{}
-		err := jsonutils.Copy(&this.oldFirewallActions, config.FirewallActions)
-		if err != nil {
-			remotelogs.Error("NODE", "onReload: copy FirewallActionConfigs failed: "+err.Error())
+	if reloadAll {
+		if !jsonutils.Equal(config.FirewallActions, this.oldFirewallActions) {
+			// copy
+			this.oldFirewallActions = []*firewallconfigs.FirewallActionConfig{}
+			err := jsonutils.Copy(&this.oldFirewallActions, config.FirewallActions)
+			if err != nil {
+				remotelogs.Error("NODE", "onReload: copy FirewallActionConfigs failed: "+err.Error())
+			}
+
+			// update
+			iplibrary.SharedActionManager.UpdateActions(config.FirewallActions)
 		}
 
-		// update
-		iplibrary.SharedActionManager.UpdateActions(config.FirewallActions)
-	}
+		// 统计指标
+		if !jsonutils.Equal(this.oldMetricItems, config.MetricItems) {
+			// copy
+			this.oldMetricItems = []*serverconfigs.MetricItemConfig{}
+			err := jsonutils.Copy(&this.oldMetricItems, config.MetricItems)
+			if err != nil {
+				remotelogs.Error("NODE", "onReload: copy MetricItemConfigs failed: "+err.Error())
+			}
 
-	// 统计指标
-	if !jsonutils.Equal(this.oldMetricItems, config.MetricItems) {
-		// copy
-		this.oldMetricItems = []*serverconfigs.MetricItemConfig{}
-		err := jsonutils.Copy(&this.oldMetricItems, config.MetricItems)
-		if err != nil {
-			remotelogs.Error("NODE", "onReload: copy MetricItemConfigs failed: "+err.Error())
+			// update
+			metrics.SharedManager.Update(config.MetricItems)
 		}
 
-		// update
-		metrics.SharedManager.Update(config.MetricItems)
-	}
+		// max cpu
+		if config.MaxCPU != this.oldMaxCPU {
+			if config.MaxCPU > 0 && config.MaxCPU < int32(runtime.NumCPU()) {
+				runtime.GOMAXPROCS(int(config.MaxCPU))
+				remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(config.MaxCPU)+"'")
+			} else {
+				var threads = runtime.NumCPU() * 4
+				runtime.GOMAXPROCS(threads)
+				remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(threads)+"'")
+			}
 
-	// max cpu
-	if config.MaxCPU != this.oldMaxCPU {
-		if config.MaxCPU > 0 && config.MaxCPU < int32(runtime.NumCPU()) {
-			runtime.GOMAXPROCS(int(config.MaxCPU))
-			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(config.MaxCPU)+"'")
+			this.oldMaxCPU = config.MaxCPU
+		}
+
+		// max threads
+		if config.MaxThreads != this.oldMaxThreads {
+			if config.MaxThreads > 0 {
+				debug.SetMaxThreads(config.MaxThreads)
+				remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(config.MaxThreads)+"'")
+			} else {
+				debug.SetMaxThreads(nodeconfigs.DefaultMaxThreads)
+				remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(nodeconfigs.DefaultMaxThreads)+"'")
+			}
+			this.oldMaxThreads = config.MaxThreads
+		}
+
+		// timezone
+		var timeZone = config.TimeZone
+		if len(timeZone) == 0 {
+			timeZone = "Asia/Shanghai"
+		}
+
+		if this.oldTimezone != timeZone {
+			location, err := time.LoadLocation(timeZone)
+			if err != nil {
+				remotelogs.Error("NODE", "[TIMEZONE]change time zone failed: "+err.Error())
+				return
+			}
+
+			remotelogs.Println("NODE", "[TIMEZONE]change time zone to '"+timeZone+"'")
+			time.Local = location
+			this.oldTimezone = timeZone
+		}
+
+		// product information
+		if config.ProductConfig != nil {
+			teaconst.GlobalProductName = config.ProductConfig.Name
+		}
+
+		// DNS resolver
+		if config.DNSResolver != nil {
+			var err error
+			switch config.DNSResolver.Type {
+			case nodeconfigs.DNSResolverTypeGoNative:
+				err = os.Setenv("GODEBUG", "netdns=go")
+			case nodeconfigs.DNSResolverTypeCGO:
+				err = os.Setenv("GODEBUG", "netdns=cgo")
+			default:
+				// 默认使用go原生
+				err = os.Setenv("GODEBUG", "netdns=go")
+			}
+			if err != nil {
+				remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
+			}
 		} else {
-			var threads = runtime.NumCPU() * 4
-			runtime.GOMAXPROCS(threads)
-			remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(threads)+"'")
-		}
-
-		this.oldMaxCPU = config.MaxCPU
-	}
-
-	// max threads
-	if config.MaxThreads != this.oldMaxThreads {
-		if config.MaxThreads > 0 {
-			debug.SetMaxThreads(config.MaxThreads)
-			remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(config.MaxThreads)+"'")
-		} else {
-			debug.SetMaxThreads(nodeconfigs.DefaultMaxThreads)
-			remotelogs.Println("NODE", "[THREADS]set max threads to '"+types.String(nodeconfigs.DefaultMaxThreads)+"'")
-		}
-		this.oldMaxThreads = config.MaxThreads
-	}
-
-	// timezone
-	var timeZone = config.TimeZone
-	if len(timeZone) == 0 {
-		timeZone = "Asia/Shanghai"
-	}
-
-	if this.oldTimezone != timeZone {
-		location, err := time.LoadLocation(timeZone)
-		if err != nil {
-			remotelogs.Error("NODE", "[TIMEZONE]change time zone failed: "+err.Error())
-			return
-		}
-
-		remotelogs.Println("NODE", "[TIMEZONE]change time zone to '"+timeZone+"'")
-		time.Local = location
-		this.oldTimezone = timeZone
-	}
-
-	// product information
-	if config.ProductConfig != nil {
-		teaconst.GlobalProductName = config.ProductConfig.Name
-	}
-
-	// DNS resolver
-	if config.DNSResolver != nil {
-		var err error
-		switch config.DNSResolver.Type {
-		case nodeconfigs.DNSResolverTypeGoNative:
-			err = os.Setenv("GODEBUG", "netdns=go")
-		case nodeconfigs.DNSResolverTypeCGO:
-			err = os.Setenv("GODEBUG", "netdns=cgo")
-		default:
 			// 默认使用go原生
-			err = os.Setenv("GODEBUG", "netdns=go")
+			err := os.Setenv("GODEBUG", "netdns=go")
+			if err != nil {
+				remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
+			}
 		}
-		if err != nil {
-			remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
-		}
-	} else {
-		// 默认使用go原生
-		err := os.Setenv("GODEBUG", "netdns=go")
-		if err != nil {
-			remotelogs.Error("NODE", "[DNS_RESOLVER]set env failed: "+err.Error())
-		}
-	}
 
-	// API Node地址，这里不限制是否为空，因为在为空时仍然要有对应的处理
-	this.changeAPINodeAddrs(config.APINodeAddrs)
+		// API Node地址，这里不限制是否为空，因为在为空时仍然要有对应的处理
+		this.changeAPINodeAddrs(config.APINodeAddrs)
+	}
 }
 
 // reload server config
