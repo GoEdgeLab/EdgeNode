@@ -767,6 +767,7 @@ func (this *FileStorage) CleanAll() error {
 		}
 	}
 
+	var dirNameReg = regexp.MustCompile(`^[0-9a-f]{2}$`)
 	for _, rootDir := range rootDirs {
 		var dir = rootDir + "/p" + types.String(this.policy.Id)
 		fp, err := os.Open(dir)
@@ -795,11 +796,7 @@ func (this *FileStorage) CleanAll() error {
 			subDir := info.Name()
 
 			// 检查目录名
-			ok, err := regexp.MatchString(`^[0-9a-f]{2}$`, subDir)
-			if err != nil {
-				return err
-			}
-			if !ok {
+			if !dirNameReg.MatchString(subDir) {
 				continue
 			}
 

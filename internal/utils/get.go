@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-var RegexpDigitNumber = regexp.MustCompile("^\\d+$")
+var RegexpDigitNumber = regexp.MustCompile(`^\d+$`)
 
 func Get(object interface{}, keys []string) interface{} {
 	if len(keys) == 0 {

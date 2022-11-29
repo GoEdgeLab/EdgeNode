@@ -362,13 +362,13 @@ func (this *Rule) Test(value interface{}) bool {
 		return types.Float64(value) != this.floatValue
 	case RuleOperatorEqString:
 		if this.IsCaseInsensitive {
-			return strings.ToLower(types.String(value)) == strings.ToLower(this.Value)
+			return strings.EqualFold(types.String(value), this.Value)
 		} else {
 			return types.String(value) == this.Value
 		}
 	case RuleOperatorNeqString:
 		if this.IsCaseInsensitive {
-			return strings.ToLower(types.String(value)) != strings.ToLower(this.Value)
+			return !strings.EqualFold(types.String(value), this.Value)
 		} else {
 			return types.String(value) != this.Value
 		}

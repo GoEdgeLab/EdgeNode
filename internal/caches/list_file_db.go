@@ -180,6 +180,9 @@ func (this *FileListDB) Init() error {
 	}
 
 	this.selectHashListStmt, err = this.readDB.Prepare(`SELECT "id", "hash" FROM "` + this.itemsTableName + `" WHERE id>:id ORDER BY id ASC LIMIT 2000`)
+	if err != nil {
+		return err
+	}
 
 	this.deleteByHashSQL = `DELETE FROM "` + this.itemsTableName + `" WHERE "hash"=?`
 	this.deleteByHashStmt, err = this.writeDB.Prepare(this.deleteByHashSQL)
