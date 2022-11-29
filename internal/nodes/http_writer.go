@@ -132,7 +132,7 @@ func (this *HTTPWriter) Prepare(resp *http.Response, size int64, status int, ena
 		this.req.web.RequestLimit != nil &&
 		this.req.web.RequestLimit.IsOn &&
 		this.req.web.RequestLimit.OutBandwidthPerConnBytes() > 0 {
-		this.writer = writers.NewRateLimitWriter(this.writer, this.req.web.RequestLimit.OutBandwidthPerConnBytes())
+		this.writer = writers.NewRateLimitWriter(this.req.RawReq.Context(), this.writer, this.req.web.RequestLimit.OutBandwidthPerConnBytes())
 	}
 
 	return

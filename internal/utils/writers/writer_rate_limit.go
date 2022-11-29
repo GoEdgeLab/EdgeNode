@@ -3,6 +3,7 @@
 package writers
 
 import (
+	"context"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"time"
@@ -11,6 +12,7 @@ import (
 // RateLimitWriter 限速写入
 type RateLimitWriter struct {
 	rawWriter io.WriteCloser
+	ctx       context.Context
 
 	rateBytes int
 
@@ -18,9 +20,10 @@ type RateLimitWriter struct {
 	before  time.Time
 }
 
-func NewRateLimitWriter(rawWriter io.WriteCloser, rateBytes int64) io.WriteCloser {
+func NewRateLimitWriter(ctx context.Context, rawWriter io.WriteCloser, rateBytes int64) io.WriteCloser {
 	return &RateLimitWriter{
 		rawWriter: rawWriter,
+		ctx:       ctx,
 		rateBytes: types.Int(rateBytes),
 		before:    time.Now(),
 	}
@@ -71,6 +74,14 @@ func (this *RateLimitWriter) write(p []byte) (n int, err error) {
 	n, err = this.rawWriter.Write(p)
 
 	if err == nil {
+		select {
+		case <-this.ctx.Done():
+			err = io.EOF
+			return
+		default:
+
+		}
+
 		this.written += n
 
 		if this.written >= this.rateBytes {
