@@ -879,16 +879,19 @@ func (this *Node) listenSock() error {
 					},
 				})
 			case "conns":
-				var addrs = []string{}
+				var connMaps = []maps.Map{}
 				var connMap = conns.SharedMap.AllConns()
-				for _, conn := range connMap {
-					addrs = append(addrs, conn.RemoteAddr().String())
+				for _, connInfo := range connMap {
+					connMaps = append(connMaps, maps.Map{
+						"addr": connInfo.Conn.RemoteAddr().String(),
+						"age":  time.Now().Unix() - connInfo.CreatedAt,
+					})
 				}
 
 				_ = cmd.Reply(&gosock.Command{
 					Params: map[string]interface{}{
-						"addrs": addrs,
-						"total": len(addrs),
+						"conns": connMaps,
+						"total": len(connMaps),
 					},
 				})
 			case "dropIP":
