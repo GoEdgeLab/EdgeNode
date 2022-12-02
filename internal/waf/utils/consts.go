@@ -5,5 +5,5 @@ package utils
 import "github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 
 const (
-	MaxBodySize = 4 * sizes.M
+	MaxBodySize = 2 * sizes.M
 )
