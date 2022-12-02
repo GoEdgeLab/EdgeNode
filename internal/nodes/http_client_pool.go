@@ -95,11 +95,11 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		numberCPU = 8
 	}
 	if maxConnections <= 0 {
-		maxConnections = numberCPU * 32
+		maxConnections = numberCPU * 64
 	}
 
 	if idleConns <= 0 {
-		idleConns = numberCPU * 8
+		idleConns = numberCPU * 16
 	}
 
 	// 可以判断为Ln节点请求
