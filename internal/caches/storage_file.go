@@ -770,51 +770,58 @@ func (this *FileStorage) CleanAll() error {
 	var dirNameReg = regexp.MustCompile(`^[0-9a-f]{2}$`)
 	for _, rootDir := range rootDirs {
 		var dir = rootDir + "/p" + types.String(this.policy.Id)
-		fp, err := os.Open(dir)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			_ = fp.Close()
-		}()
-
-		stat, err := fp.Stat()
-		if err != nil {
-			return err
-		}
-
-		if !stat.IsDir() {
-			return nil
-		}
-
-		// 改成待删除
-		subDirs, err := fp.Readdir(-1)
-		if err != nil {
-			return err
-		}
-		for _, info := range subDirs {
-			subDir := info.Name()
-
-			// 检查目录名
-			if !dirNameReg.MatchString(subDir) {
-				continue
-			}
-
-			// 修改目录名
-			tmpDir := dir + "/" + subDir + "-deleted"
-			err = os.Rename(dir+"/"+subDir, tmpDir)
+		err = func(dir string) error {
+			fp, err := os.Open(dir)
 			if err != nil {
 				return err
 			}
-		}
+			defer func() {
+				_ = fp.Close()
+			}()
 
-		// 重新遍历待删除
-		goman.New(func() {
-			err = this.cleanDeletedDirs(dir)
+			stat, err := fp.Stat()
 			if err != nil {
-				remotelogs.Warn("CACHE", "delete '*-deleted' dirs failed: "+err.Error())
+				return err
 			}
-		})
+
+			if !stat.IsDir() {
+				return nil
+			}
+
+			// 改成待删除
+			subDirs, err := fp.Readdir(-1)
+			if err != nil {
+				return err
+			}
+			for _, info := range subDirs {
+				subDir := info.Name()
+
+				// 检查目录名
+				if !dirNameReg.MatchString(subDir) {
+					continue
+				}
+
+				// 修改目录名
+				tmpDir := dir + "/" + subDir + "-deleted"
+				err = os.Rename(dir+"/"+subDir, tmpDir)
+				if err != nil {
+					return err
+				}
+			}
+
+			// 重新遍历待删除
+			goman.New(func() {
+				err = this.cleanDeletedDirs(dir)
+				if err != nil {
+					remotelogs.Warn("CACHE", "delete '*-deleted' dirs failed: "+err.Error())
+				}
+			})
+
+			return nil
+		}(dir)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
