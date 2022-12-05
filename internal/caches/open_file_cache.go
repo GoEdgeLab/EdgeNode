@@ -129,6 +129,9 @@ func (this *OpenFileCache) Close(filename string) {
 
 	pool, ok := this.poolMap[filename]
 	if ok {
+		// 设置关闭状态
+		pool.SetClosing()
+
 		delete(this.poolMap, filename)
 		this.poolList.Remove(pool.linkItem)
 		_ = this.watcher.Remove(filename)

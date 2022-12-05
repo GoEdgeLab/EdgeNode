@@ -12,6 +12,7 @@ type OpenFilePool struct {
 	linkItem *linkedlist.Item
 	filename string
 	version  int64
+	isClosed bool
 }
 
 func NewOpenFilePool(filename string) *OpenFilePool {
@@ -29,6 +30,11 @@ func (this *OpenFilePool) Filename() string {
 }
 
 func (this *OpenFilePool) Get() (*OpenFile, bool) {
+	// 如果已经关闭，直接返回
+	if this.isClosed {
+		return nil, false
+	}
+
 	select {
 	case file := <-this.c:
 		if file != nil {
@@ -48,10 +54,19 @@ func (this *OpenFilePool) Get() (*OpenFile, bool) {
 }
 
 func (this *OpenFilePool) Put(file *OpenFile) bool {
+	// 如果已关闭，则不接受新的文件
+	if this.isClosed {
+		_ = file.Close()
+		return false
+	}
+
+	// 检查文件版本号
 	if this.version > 0 && file.version > 0 && file.version != this.version {
 		_ = file.Close()
 		return false
 	}
+
+	// 加入Pool
 	select {
 	case this.c <- file:
 		return true
@@ -66,14 +81,18 @@ func (this *OpenFilePool) Len() int {
 	return len(this.c)
 }
 
+func (this *OpenFilePool) SetClosing() {
+	this.isClosed = true
+}
+
 func (this *OpenFilePool) Close() {
-Loop:
+	this.isClosed = true
 	for {
 		select {
 		case file := <-this.c:
 			_ = file.Close()
 		default:
-			break Loop
+			return
 		}
 	}
 }
