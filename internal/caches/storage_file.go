@@ -710,9 +710,6 @@ func (this *FileStorage) Delete(key string) error {
 		return nil
 	}
 
-	this.locker.Lock()
-	defer this.locker.Unlock()
-
 	// 先尝试内存缓存
 	this.runMemoryStorageSafety(func(memoryStorage *MemoryStorage) {
 		_ = memoryStorage.Delete(key)
@@ -733,9 +730,6 @@ func (this *FileStorage) Delete(key string) error {
 
 // Stat 统计
 func (this *FileStorage) Stat() (*Stat, error) {
-	this.locker.RLock()
-	defer this.locker.RUnlock()
-
 	return this.list.Stat(func(hash string) bool {
 		return true
 	})
@@ -833,9 +827,6 @@ func (this *FileStorage) Purge(keys []string, urlType string) error {
 	if teaconst.IsQuiting {
 		return nil
 	}
-
-	this.locker.Lock()
-	defer this.locker.Unlock()
 
 	// 先尝试内存缓存
 	this.runMemoryStorageSafety(func(memoryStorage *MemoryStorage) {

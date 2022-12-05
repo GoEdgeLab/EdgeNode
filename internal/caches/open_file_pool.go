@@ -31,14 +31,17 @@ func (this *OpenFilePool) Filename() string {
 func (this *OpenFilePool) Get() (*OpenFile, bool) {
 	select {
 	case file := <-this.c:
-		err := file.SeekStart()
-		if err != nil {
-			_ = file.Close()
-			return nil, true
-		}
-		file.version = this.version
+		if file != nil {
+			err := file.SeekStart()
+			if err != nil {
+				_ = file.Close()
+				return nil, true
+			}
+			file.version = this.version
 
-		return file, true
+			return file, true
+		}
+		return nil, false
 	default:
 		return nil, false
 	}
