@@ -100,7 +100,7 @@ func (this *IPList) RecordIP(ipType string,
 		case recordIPTaskChan <- &recordIPTask{
 			ip:                            ip,
 			listId:                        firewallconfigs.GlobalListId,
-			expiredAt:                     expiresAt,
+			expiresAt:                     expiresAt,
 			level:                         firewallconfigs.DefaultEventLevel,
 			serverId:                      serverId,
 			sourceServerId:                serverId,

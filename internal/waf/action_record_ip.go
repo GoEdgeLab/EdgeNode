@@ -18,7 +18,7 @@ import (
 type recordIPTask struct {
 	ip        string
 	listId    int64
-	expiredAt int64
+	expiresAt int64
 	level     string
 	serverId  int64
 
@@ -54,7 +54,7 @@ func init() {
 					IpListId:                      task.listId,
 					IpFrom:                        task.ip,
 					IpTo:                          "",
-					ExpiredAt:                     task.expiredAt,
+					ExpiredAt:                     task.expiresAt,
 					Reason:                        reason,
 					Type:                          ipType,
 					EventLevel:                    task.level,
@@ -105,11 +105,13 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		return true, false
 	}
 
-	timeout := this.Timeout
+	var timeout = this.Timeout
+	var isForever = false
 	if timeout <= 0 {
+		isForever = true
 		timeout = 86400 // 1天
 	}
-	expiredAt := time.Now().Unix() + int64(timeout)
+	var expiresAt = time.Now().Unix() + int64(timeout)
 
 	if this.Type == "black" {
 		writer.WriteHeader(http.StatusForbidden)
@@ -117,10 +119,10 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		request.WAFClose()
 
 		// 先加入本地的黑名单
-		SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiredAt)
+		SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
 	} else {
 		// 加入本地白名单
-		SharedIPWhiteList.Add("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiredAt)
+		SharedIPWhiteList.Add("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
 	}
 
 	// 上报
@@ -130,11 +132,16 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 			serverId = request.WAFServerId()
 		}
 
+		var realExpiresAt = expiresAt
+		if isForever {
+			realExpiresAt = 0
+		}
+
 		select {
 		case recordIPTaskChan <- &recordIPTask{
 			ip:                            request.WAFRemoteIP(),
 			listId:                        this.IPListId,
-			expiredAt:                     expiredAt,
+			expiresAt:                     realExpiresAt,
 			level:                         this.Level,
 			serverId:                      serverId,
 			sourceServerId:                request.WAFServerId(),
