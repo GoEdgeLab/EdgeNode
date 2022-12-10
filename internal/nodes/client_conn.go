@@ -115,7 +115,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
 	// 设置超时时间
-	_ = this.rawConn.SetWriteDeadline(time.Now().Add(30 * time.Second)) // TODO 时间可以设置
+	_ = this.rawConn.SetWriteDeadline(time.Now().Add(60 * time.Second)) // TODO 时间可以设置
 
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
@@ -125,6 +125,14 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 				atomic.AddUint64(&teaconst.OutTrafficBytes, uint64(n))
 				stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n))
 			}
+		}
+	}
+
+	// 如果是写入超时，则立即关闭连接
+	if err != nil && os.IsTimeout(err) {
+		conn, ok := this.rawConn.(LingerConn)
+		if ok {
+			_ = conn.SetLinger(0)
 		}
 	}
 
