@@ -114,6 +114,9 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 }
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
+	// 设置超时时间
+	_ = this.rawConn.SetWriteDeadline(time.Now().Add(30 * time.Second)) // TODO 时间可以设置
+
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
 		// 统计当前服务带宽
