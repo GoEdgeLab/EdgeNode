@@ -25,7 +25,7 @@ func main() {
 		Product(teaconst.ProductName).
 		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof|accesslog]").
 		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc]").
-		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove] IP")
+		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove|ip.close] IP")
 
 	app.On("test", func() {
 		err := nodes.NewNode().Test()
@@ -228,6 +228,38 @@ func main() {
 			Params: map[string]interface{}{
 				"ip":             ip,
 				"timeoutSeconds": timeoutSeconds,
+			},
+		})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+		} else {
+			var errString = maps.NewMap(reply.Params).GetString("error")
+			if len(errString) > 0 {
+				fmt.Println("[ERROR]" + errString)
+			} else {
+				fmt.Println("ok")
+			}
+		}
+	})
+	app.On("ip.close", func() {
+		var args = os.Args[2:]
+		if len(args) == 0 {
+			fmt.Println("Usage: edge-node ip.close IP")
+			return
+		}
+		var ip = args[0]
+		if len(net.ParseIP(ip)) == 0 {
+			fmt.Println("IP '" + ip + "' is invalid")
+			return
+		}
+
+		fmt.Println("close ip '" + ip)
+
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{
+			Code: "closeIP",
+			Params: map[string]any{
+				"ip": ip,
 			},
 		})
 		if err != nil {

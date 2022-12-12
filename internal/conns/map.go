@@ -102,6 +102,13 @@ func (this *Map) CloseIPConns(ip string) {
 
 	if ok {
 		for _, conn := range conns {
+			// 设置Linger
+			lingerConn, isLingerConn := conn.(LingerConn)
+			if isLingerConn {
+				_ = lingerConn.SetLinger(0)
+			}
+
+			// 关闭
 			_ = conn.Close()
 		}
 

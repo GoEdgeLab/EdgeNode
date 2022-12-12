@@ -923,6 +923,11 @@ func (this *Node) listenSock() error {
 				} else {
 					_ = cmd.ReplyOk()
 				}
+			case "closeIP":
+				var m = maps.NewMap(cmd.Params)
+				var ip = m.GetString("ip")
+				conns.SharedMap.CloseIPConns(ip)
+				_ = cmd.ReplyOk()
 			case "removeIP":
 				var m = maps.NewMap(cmd.Params)
 				var ip = m.GetString("ip")
