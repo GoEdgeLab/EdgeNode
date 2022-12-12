@@ -115,7 +115,11 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
 	// 设置超时时间
-	_ = this.rawConn.SetWriteDeadline(time.Now().Add(60 * time.Second)) // TODO 时间可以设置
+	var timeoutSeconds = len(b) / 512
+	if timeoutSeconds < 5 {
+		timeoutSeconds = 5
+	}
+	_ = this.rawConn.SetWriteDeadline(time.Now().Add(time.Duration(timeoutSeconds) * time.Second)) // TODO 时间可以设置
 
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
@@ -130,6 +134,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 	// 如果是写入超时，则立即关闭连接
 	if err != nil && os.IsTimeout(err) {
+		// TODO 考虑对多次慢连接的IP做出惩罚
 		conn, ok := this.rawConn.(LingerConn)
 		if ok {
 			_ = conn.SetLinger(0)
