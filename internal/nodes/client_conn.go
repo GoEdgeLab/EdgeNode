@@ -69,6 +69,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// TLS
+	// TODO L1 -> L2 时，不计算synflood
 	if this.isTLS {
 		if !this.hasDeadline {
 			_ = this.rawConn.SetReadDeadline(time.Now().Add(time.Duration(nodeconfigs.DefaultTLSHandshakeTimeout) * time.Second)) // TODO 握手超时时间可以设置
@@ -115,9 +116,10 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
 	// 设置超时时间
-	var timeoutSeconds = len(b) / 512
-	if timeoutSeconds < 5 {
-		timeoutSeconds = 5
+	// TODO L2 -> L1 写入时不限制时间
+	var timeoutSeconds = len(b) / 4096
+	if timeoutSeconds < 3 {
+		timeoutSeconds = 3
 	}
 	_ = this.rawConn.SetWriteDeadline(time.Now().Add(time.Duration(timeoutSeconds) * time.Second)) // TODO 时间可以设置
 
@@ -134,6 +136,8 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 	// 如果是写入超时，则立即关闭连接
 	if err != nil && os.IsTimeout(err) {
+		//logs.Println(this.RemoteAddr(), timeoutSeconds, "seconds", n, "bytes")
+
 		// TODO 考虑对多次慢连接的IP做出惩罚
 		conn, ok := this.rawConn.(LingerConn)
 		if ok {

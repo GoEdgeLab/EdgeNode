@@ -4,6 +4,7 @@ package conns
 
 import (
 	"net"
+	"sort"
 	"sync"
 	"time"
 )
@@ -126,5 +127,12 @@ func (this *Map) AllConns() []*ConnInfo {
 			result = append(result, connInfo)
 		}
 	}
+
+	// 按时间排序
+	sort.Slice(result, func(i, j int) bool {
+		// 创建时间越大，Age越小
+		return result[i].CreatedAt > result[j].CreatedAt
+	})
+
 	return result
 }
