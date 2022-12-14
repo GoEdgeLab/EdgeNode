@@ -590,18 +590,56 @@ func (this *Rule) SetCheckpointFinder(finder func(prefix string) checkpoints.Che
 	this.checkpointFinder = finder
 }
 
+var unescapeChars = [][2]string{
+	{`\s`, `(\s|%09|%0A|\+)`},
+	{`\(`, `(\(|%28)`},
+	{`=`, `(=|%3D)`},
+	{`<`, `(<|%3C)`},
+	{`\*`, `(\*|%2A)`},
+	{`\\`, `(\\|%2F)`},
+	{`!`, `(!|%21)`},
+	{`/`, `(/|%2F)`},
+	{`;`, `(;|%3B)`},
+	{`\+`, `(\+|%20)`},
+}
+
 func (this *Rule) unescape(v string) string {
-	//replace urlencoded characters
-	v = strings.Replace(v, `\s`, `(\s|%09|%0A|\+)`, -1)
-	v = strings.Replace(v, `\(`, `(\(|%28)`, -1)
-	v = strings.Replace(v, `=`, `(=|%3D)`, -1)
-	v = strings.Replace(v, `<`, `(<|%3C)`, -1)
-	v = strings.Replace(v, `\*`, `(\*|%2A)`, -1)
-	v = strings.Replace(v, `\\`, `(\\|%2F)`, -1)
-	v = strings.Replace(v, `!`, `(!|%21)`, -1)
-	v = strings.Replace(v, `/`, `(/|%2F)`, -1)
-	v = strings.Replace(v, `;`, `(;|%3B)`, -1)
-	v = strings.Replace(v, `\+`, `(\+|%20)`, -1)
+	// replace urlencoded characters
+
+	for _, c := range unescapeChars {
+		if !strings.Contains(v, c[0]) {
+			continue
+		}
+		var pieces = strings.Split(v, c[0])
+
+		// 修复piece中错误的\
+		for pieceIndex, piece := range pieces {
+			var l = len(piece)
+			if l == 0 {
+				continue
+			}
+			if piece[l-1] != '\\' {
+				continue
+			}
+
+			// 计算\的数量
+			var countBackSlashes = 0
+			for i := l - 1; i >= 0; i-- {
+				if piece[i] == '\\' {
+					countBackSlashes++
+				} else {
+					break
+				}
+			}
+			if countBackSlashes%2 == 1 {
+				// 去掉最后一个
+				pieces[pieceIndex] = piece[:len(piece)-1]
+			}
+		}
+
+		v = strings.Join(pieces, c[1])
+	}
+
 	return v
 }
 

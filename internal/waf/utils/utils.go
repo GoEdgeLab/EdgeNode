@@ -13,6 +13,10 @@ var cache = ttlcache.NewCache()
 
 // MatchStringCache 正则表达式匹配字符串，并缓存结果
 func MatchStringCache(regex *re.Regexp, s string) bool {
+	if regex == nil {
+		return false
+	}
+
 	// 如果长度超过4096，大概率是不能重用的
 	if len(s) > 4096 {
 		return regex.MatchString(s)
@@ -35,6 +39,10 @@ func MatchStringCache(regex *re.Regexp, s string) bool {
 
 // MatchBytesCache 正则表达式匹配字节slice，并缓存结果
 func MatchBytesCache(regex *re.Regexp, byteSlice []byte) bool {
+	if regex == nil {
+		return false
+	}
+
 	// 如果长度超过4096，大概率是不能重用的
 	if len(byteSlice) > 4096 {
 		return regex.Match(byteSlice)

@@ -57,6 +57,79 @@ func TestRegexp_ParseKeywords(t *testing.T) {
 	}
 }
 
+func TestRegexp_Special(t *testing.T) {
+	var unescape = func(v string) string {
+		//replace urlencoded characters
+
+		var chars = [][2]string{
+			{`\s`, `(\s|%09|%0A|\+)`},
+			{`\(`, `(\(|%28)`},
+			{`=`, `(=|%3D)`},
+			{`<`, `(<|%3C)`},
+			{`\*`, `(\*|%2A)`},
+			{`\\`, `(\\|%2F)`},
+			{`!`, `(!|%21)`},
+			{`/`, `(/|%2F)`},
+			{`;`, `(;|%3B)`},
+			{`\+`, `(\+|%20)`},
+		}
+
+		for _, c := range chars {
+			if !strings.Contains(v, c[0]) {
+				continue
+			}
+			var pieces = strings.Split(v, c[0])
+
+			// 修复piece中错误的\
+			for pieceIndex, piece := range pieces {
+				var l = len(piece)
+				if l == 0 {
+					continue
+				}
+				if piece[l-1] != '\\' {
+					continue
+				}
+
+				// 计算\的数量
+				var countBackSlashes = 0
+				for i := l - 1; i >= 0; i-- {
+					if piece[i] == '\\' {
+						countBackSlashes++
+					} else {
+						break
+					}
+				}
+				if countBackSlashes%2 == 1 {
+					// 去掉最后一个
+					pieces[pieceIndex] = piece[:len(piece)-1]
+				}
+			}
+
+			v = strings.Join(pieces, c[1])
+		}
+
+		return v
+	}
+
+	for _, s := range []string{
+		`\\s`,
+		`\s\W`,
+		`aaaa/\W`,
+		`aaaa\/\W`,
+		`aaaa\=\W`,
+		`aaaa\\=\W`,
+		`aaaa\\\=\W`,
+		`aaaa\\\\=\W`,
+	} {
+		var es = unescape(s)
+		t.Log(s, "=>", es)
+		_, err := re.Compile(es)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestRegexp_ParseKeywords2(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
