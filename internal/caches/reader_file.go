@@ -215,6 +215,10 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 }
 
 func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
+	if this.bodySize == 0 {
+		return nil
+	}
+
 	var isOk = false
 
 	defer func() {
@@ -257,6 +261,12 @@ func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
 }
 
 func (this *FileReader) Read(buf []byte) (n int, err error) {
+	if this.bodySize == 0 {
+		n = 0
+		err = io.EOF
+		return
+	}
+
 	n, err = this.fp.Read(buf)
 	if err != nil && err != io.EOF {
 		_ = this.discard()

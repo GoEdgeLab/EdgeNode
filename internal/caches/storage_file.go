@@ -1213,9 +1213,12 @@ func (this *FileStorage) hotLoop() {
 			}
 
 			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
-				_, err = writer.Write(buf[:n])
-				if err == nil {
-					goNext = true
+				goNext = true
+				if n > 0 {
+					_, err = writer.Write(buf[:n])
+					if err != nil {
+						goNext = false
+					}
 				}
 				return
 			})
