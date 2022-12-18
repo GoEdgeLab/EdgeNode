@@ -1133,6 +1133,8 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 
 // 获取请求的客户端地址列表
 func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
+	result = append(result, this.requestRemoteAddr(true))
+
 	// X-Forwarded-For
 	var forwardedFor = this.RawReq.Header.Get("X-Forwarded-For")
 	if len(forwardedFor) > 0 {
