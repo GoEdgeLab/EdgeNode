@@ -116,6 +116,12 @@ func (this *HTTPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 
 // ServerHTTP 处理HTTP请求
 func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
+	// 不支持Connect
+	if rawReq.Method == http.MethodConnect {
+		http.Error(rawWriter, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	// 域名
 	var reqHost = strings.TrimRight(rawReq.Host, ".")
 
