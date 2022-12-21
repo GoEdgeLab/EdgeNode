@@ -881,12 +881,49 @@ func (this *Node) listenSock() error {
 			case "conns":
 				var connMaps = []maps.Map{}
 				var connMap = conns.SharedMap.AllConns()
-				for _, connInfo := range connMap {
+				for _, conn := range connMap {
+					var createdAt int64
+					var lastReadAt int64
+					var lastWriteAt int64
+					var lastErrString = ""
+					clientConn, ok := conn.(*ClientConn)
+					if ok {
+						createdAt = clientConn.CreatedAt()
+						lastReadAt = clientConn.LastReadAt()
+						lastWriteAt = clientConn.LastWriteAt()
+
+						var lastErr = clientConn.LastErr()
+						if lastErr != nil {
+							lastErrString = lastErr.Error()
+						}
+					}
+					var age int64
+					var lastReadAge int64
+					var lastWriteAge int64
+					var currentTime = time.Now().Unix()
+					if createdAt > 0 {
+						age = currentTime - createdAt
+					}
+					if lastReadAt > 0 {
+						lastReadAge = currentTime - lastReadAt
+					}
+					if lastWriteAt > 0 {
+						lastWriteAge = currentTime - lastWriteAt
+					}
+
 					connMaps = append(connMaps, maps.Map{
-						"addr": connInfo.Conn.RemoteAddr().String(),
-						"age":  time.Now().Unix() - connInfo.CreatedAt,
+						"addr":     conn.RemoteAddr().String(),
+						"age":      age,
+						"readAge":  lastReadAge,
+						"writeAge": lastWriteAge,
+						"lastErr":  lastErrString,
 					})
 				}
+				sort.Slice(connMaps, func(i, j int) bool {
+					var m1 = connMaps[i]
+					var m2 = connMaps[j]
+					return m1.GetInt64("age") < m2.GetInt64("age")
+				})
 
 				_ = cmd.Reply(&gosock.Command{
 					Params: map[string]interface{}{

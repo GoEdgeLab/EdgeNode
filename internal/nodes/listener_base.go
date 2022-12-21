@@ -36,7 +36,7 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: nil,
 		GetConfigForClient: func(clientInfo *tls.ClientHelloInfo) (config *tls.Config, e error) {
-			tlsPolicy, _, err := this.matchSSL(clientInfo.ServerName)
+			tlsPolicy, _, err := this.matchSSL(this.helloServerName(clientInfo))
 			if err != nil {
 				return nil, err
 			}
@@ -50,7 +50,7 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 			return tlsPolicy.TLSConfig(), nil
 		},
 		GetCertificate: func(clientInfo *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
-			tlsPolicy, cert, err := this.matchSSL(clientInfo.ServerName)
+			tlsPolicy, cert, err := this.matchSSL(this.helloServerName(clientInfo))
 			if err != nil {
 				return nil, err
 			}
@@ -181,4 +181,19 @@ func (this *BaseListener) findNamedServerMatched(name string) (serverConfig *ser
 	}
 
 	return nil, name
+}
+
+// 从Hello信息中获取服务名称
+func (this *BaseListener) helloServerName(clientInfo *tls.ClientHelloInfo) string {
+	var serverName = clientInfo.ServerName
+	if len(serverName) == 0 {
+		var localAddr = clientInfo.Conn.LocalAddr()
+		if localAddr != nil {
+			tcpAddr, ok := localAddr.(*net.TCPAddr)
+			if ok {
+				serverName = tcpAddr.IP.String()
+			}
+		}
+	}
+	return serverName
 }

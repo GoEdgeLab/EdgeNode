@@ -3,6 +3,7 @@
 package nodes
 
 import (
+	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
@@ -25,14 +26,19 @@ import (
 type ClientConn struct {
 	BaseClientConn
 
-	isTLS       bool
-	hasDeadline bool
-	hasRead     bool
+	createdAt int64
+
+	isTLS   bool
+	hasRead bool
 
 	isLO          bool // 是否为环路
 	isInAllowList bool
 
 	hasResetSYNFlood bool
+
+	lastReadAt  int64
+	lastWriteAt int64
+	lastErr     error
 }
 
 func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool, isInAllowList bool) net.Conn {
@@ -45,6 +51,7 @@ func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool, isInAllowList 
 		isTLS:          isTLS,
 		isLO:           isLO,
 		isInAllowList:  isInAllowList,
+		createdAt:      time.Now().Unix(),
 	}
 
 	if quickClose {
@@ -59,6 +66,14 @@ func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool, isInAllowList 
 }
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
+	this.lastReadAt = time.Now().Unix()
+
+	defer func() {
+		if err != nil {
+			this.lastErr = errors.New("read error: " + err.Error())
+		}
+	}()
+
 	// 环路直接读取
 	if this.isLO {
 		n, err = this.rawConn.Read(b)
@@ -68,25 +83,11 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 		return
 	}
 
-	// TLS
-	// TODO L1 -> L2 时，不计算synflood
-	if this.isTLS {
-		if !this.hasDeadline {
-			_ = this.rawConn.SetReadDeadline(time.Now().Add(time.Duration(nodeconfigs.DefaultTLSHandshakeTimeout) * time.Second)) // TODO 握手超时时间可以设置
-			this.hasDeadline = true
-			defer func() {
-				_ = this.rawConn.SetReadDeadline(time.Time{})
-			}()
-		}
-	}
-
 	// 开始读取
 	n, err = this.rawConn.Read(b)
 	if n > 0 {
 		atomic.AddUint64(&teaconst.InTrafficBytes, uint64(n))
-		if !this.hasRead {
-			this.hasRead = true
-		}
+		this.hasRead = true
 	}
 
 	// 检测是否为握手错误
@@ -115,6 +116,14 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 }
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
+	this.lastWriteAt = time.Now().Unix()
+
+	defer func() {
+		if err != nil {
+			this.lastErr = errors.New("write error: " + err.Error())
+		}
+	}()
+
 	// 设置超时时间
 	// TODO L2 -> L1 写入时不限制时间
 	var timeoutSeconds = len(b) / 4096
@@ -136,8 +145,6 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 	// 如果是写入超时，则立即关闭连接
 	if err != nil && os.IsTimeout(err) {
-		//logs.Println(this.RemoteAddr(), timeoutSeconds, "seconds", n, "bytes")
-
 		// TODO 考虑对多次慢连接的IP做出惩罚
 		conn, ok := this.rawConn.(LingerConn)
 		if ok {
@@ -181,6 +188,22 @@ func (this *ClientConn) SetReadDeadline(t time.Time) error {
 
 func (this *ClientConn) SetWriteDeadline(t time.Time) error {
 	return this.rawConn.SetWriteDeadline(t)
+}
+
+func (this *ClientConn) CreatedAt() int64 {
+	return this.createdAt
+}
+
+func (this *ClientConn) LastReadAt() int64 {
+	return this.lastReadAt
+}
+
+func (this *ClientConn) LastWriteAt() int64 {
+	return this.lastWriteAt
+}
+
+func (this *ClientConn) LastErr() error {
+	return this.lastErr
 }
 
 func (this *ClientConn) resetSYNFlood() {

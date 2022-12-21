@@ -51,8 +51,6 @@ func (this *HTTPListener) Serve() error {
 			switch state {
 			case http.StateNew:
 				atomic.AddInt64(&this.countActiveConnections, 1)
-			case http.StateActive, http.StateIdle, http.StateHijacked:
-				// Nothing to do
 			case http.StateClosed:
 				atomic.AddInt64(&this.countActiveConnections, -1)
 			}

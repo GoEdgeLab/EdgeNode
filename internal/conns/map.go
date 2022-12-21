@@ -4,22 +4,20 @@ package conns
 
 import (
 	"net"
-	"sort"
 	"sync"
-	"time"
 )
 
 var SharedMap = NewMap()
 
 type Map struct {
-	m map[string]map[int]*ConnInfo // ip => { port => ConnInfo  }
+	m map[string]map[int]net.Conn // ip => { port => Conn  }
 
 	locker sync.RWMutex
 }
 
 func NewMap() *Map {
 	return &Map{
-		m: map[string]map[int]*ConnInfo{},
+		m: map[string]map[int]net.Conn{},
 	}
 }
 
@@ -35,20 +33,13 @@ func (this *Map) Add(conn net.Conn) {
 	var ip = tcpAddr.IP.String()
 	var port = tcpAddr.Port
 
-	var connInfo = &ConnInfo{
-		Conn:      conn,
-		CreatedAt: time.Now().Unix(),
-	}
-
 	this.locker.Lock()
 	defer this.locker.Unlock()
 	connMap, ok := this.m[ip]
 	if !ok {
-		this.m[ip] = map[int]*ConnInfo{
-			port: connInfo,
-		}
+		this.m[ip] = map[int]net.Conn{port: conn}
 	} else {
-		connMap[port] = connInfo
+		connMap[port] = conn
 	}
 }
 
@@ -93,8 +84,8 @@ func (this *Map) CloseIPConns(ip string) {
 
 	// 复制，防止在Close时产生并发冲突
 	if ok {
-		for _, connInfo := range connMap {
-			conns = append(conns, connInfo.Conn)
+		for _, conn := range connMap {
+			conns = append(conns, conn)
 		}
 	}
 
@@ -117,22 +108,16 @@ func (this *Map) CloseIPConns(ip string) {
 	}
 }
 
-func (this *Map) AllConns() []*ConnInfo {
+func (this *Map) AllConns() []net.Conn {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
 
-	var result = []*ConnInfo{}
+	var result = []net.Conn{}
 	for _, m := range this.m {
 		for _, connInfo := range m {
 			result = append(result, connInfo)
 		}
 	}
-
-	// 按时间排序
-	sort.Slice(result, func(i, j int) bool {
-		// 创建时间越大，Age越小
-		return result[i].CreatedAt > result[j].CreatedAt
-	})
 
 	return result
 }
