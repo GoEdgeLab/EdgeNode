@@ -150,6 +150,8 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 		if ok {
 			_ = conn.SetLinger(0)
 		}
+
+		_ = this.rawConn.Close()
 	}
 
 	return
