@@ -50,6 +50,7 @@ type RPCClient struct {
 	SSLCertRPC             pb.SSLCertServiceClient
 	ScriptRPC              pb.ScriptServiceClient
 	UserRPC                pb.UserServiceClient
+	ClientAgentIPRPC       pb.ClientAgentIPServiceClient
 }
 
 func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
@@ -83,6 +84,7 @@ func NewRPCClient(apiConfig *configs.APIConfig) (*RPCClient, error) {
 	client.SSLCertRPC = pb.NewSSLCertServiceClient(client)
 	client.ScriptRPC = pb.NewScriptServiceClient(client)
 	client.UserRPC = pb.NewUserServiceClient(client)
+	client.ClientAgentIPRPC = pb.NewClientAgentIPServiceClient(client)
 
 	err := client.init()
 	if err != nil {

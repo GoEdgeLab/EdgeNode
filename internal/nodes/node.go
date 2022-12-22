@@ -25,7 +25,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
-	_ "github.com/TeaOSLab/EdgeNode/internal/utils/clock" // 触发时钟更新
+	_ "github.com/TeaOSLab/EdgeNode/internal/utils/agents" // 引入Agent管理器
+	_ "github.com/TeaOSLab/EdgeNode/internal/utils/clock"  // 触发时钟更新
 	"github.com/TeaOSLab/EdgeNode/internal/utils/jsonutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/andybalholm/brotli"

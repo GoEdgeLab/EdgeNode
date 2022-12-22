@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/agents"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
@@ -146,9 +147,14 @@ func (this *HTTPRequestStatManager) AddRemoteAddr(serverId int64, remoteAddr str
 }
 
 // AddUserAgent 添加UserAgent
-func (this *HTTPRequestStatManager) AddUserAgent(serverId int64, userAgent string) {
+func (this *HTTPRequestStatManager) AddUserAgent(serverId int64, userAgent string, ip string) {
 	if len(userAgent) == 0 {
 		return
+	}
+
+	// 是否包含一些知名Agent
+	if len(userAgent) > 0 && len(ip) > 0 && agents.IsAgentFromUserAgent(userAgent) {
+		agents.SharedQueue.Push(ip)
 	}
 
 	select {
