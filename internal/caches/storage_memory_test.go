@@ -14,15 +14,22 @@ import (
 )
 
 func TestMemoryStorage_OpenWriter(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
+	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 
 	writer, err := storage.OpenWriter("abc", time.Now().Unix()+60, 200, -1, -1, -1, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, _ = writer.WriteHeader([]byte("Header"))
 	_, _ = writer.Write([]byte("Hello"))
 	_, _ = writer.Write([]byte(", World"))
+	err = writer.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Log(storage.valuesMap)
 
 	{
@@ -30,6 +37,7 @@ func TestMemoryStorage_OpenWriter(t *testing.T) {
 		if err != nil {
 			if err == ErrNotFound {
 				t.Log("not found: abc")
+				return
 			} else {
 				t.Fatal(err)
 			}
@@ -102,13 +110,17 @@ func TestMemoryStorage_OpenReaderLock(t *testing.T) {
 }
 
 func TestMemoryStorage_Delete(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
+	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	{
 		writer, err := storage.OpenWriter("abc", time.Now().Unix()+60, 200, -1, -1, -1, false)
 		if err != nil {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Log(len(storage.valuesMap))
 	}
 	{
@@ -117,6 +129,10 @@ func TestMemoryStorage_Delete(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Log(len(storage.valuesMap))
 	}
 	_ = storage.Delete("abc1")
@@ -124,7 +140,7 @@ func TestMemoryStorage_Delete(t *testing.T) {
 }
 
 func TestMemoryStorage_Stat(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
+	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	expiredAt := time.Now().Unix() + 60
 	{
 		writer, err := storage.OpenWriter("abc", expiredAt, 200, -1, -1, -1, false)
@@ -132,6 +148,10 @@ func TestMemoryStorage_Stat(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Log(len(storage.valuesMap))
 		storage.AddToList(&Item{
 			Key:       "abc",
@@ -145,6 +165,10 @@ func TestMemoryStorage_Stat(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Log(len(storage.valuesMap))
 		storage.AddToList(&Item{
 			Key:       "abc1",
@@ -161,14 +185,18 @@ func TestMemoryStorage_Stat(t *testing.T) {
 }
 
 func TestMemoryStorage_CleanAll(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
-	expiredAt := time.Now().Unix() + 60
+	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
+	var expiredAt = time.Now().Unix() + 60
 	{
 		writer, err := storage.OpenWriter("abc", expiredAt, 200, -1, -1, -1, false)
 		if err != nil {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		storage.AddToList(&Item{
 			Key:       "abc",
 			BodySize:  5,
@@ -181,6 +209,10 @@ func TestMemoryStorage_CleanAll(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		storage.AddToList(&Item{
 			Key:       "abc1",
 			BodySize:  5,
@@ -204,6 +236,10 @@ func TestMemoryStorage_Purge(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		storage.AddToList(&Item{
 			Key:       "abc",
 			BodySize:  5,
@@ -216,6 +252,10 @@ func TestMemoryStorage_Purge(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		storage.AddToList(&Item{
 			Key:       "abc1",
 			BodySize:  5,
@@ -231,7 +271,7 @@ func TestMemoryStorage_Purge(t *testing.T) {
 }
 
 func TestMemoryStorage_Expire(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{
+	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{
 		MemoryAutoPurgeInterval: 5,
 	}, nil)
 	err := storage.Init()
@@ -247,6 +287,10 @@ func TestMemoryStorage_Expire(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, _ = writer.Write([]byte("Hello"))
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
 		storage.AddToList(&Item{
 			Key:       key,
 			BodySize:  5,
@@ -257,7 +301,7 @@ func TestMemoryStorage_Expire(t *testing.T) {
 }
 
 func TestMemoryStorage_Locker(t *testing.T) {
-	storage := NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
+	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
 	err := storage.Init()
 	if err != nil {
 		t.Fatal(err)
