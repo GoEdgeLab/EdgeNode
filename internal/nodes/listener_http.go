@@ -121,7 +121,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 	}
 
 	// 域名
-	var reqHost = strings.TrimRight(rawReq.Host, ".")
+	var reqHost = strings.ToLower(strings.TrimRight(rawReq.Host, "."))
 
 	// TLS域名
 	if this.isIP(reqHost) {
