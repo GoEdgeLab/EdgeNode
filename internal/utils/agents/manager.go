@@ -69,7 +69,7 @@ func (this *Manager) Start() {
 	}
 
 	// 定时获取
-	var duration = 30 * time.Second
+	var duration = 30 * time.Minute
 	if Tea.IsTesting() {
 		duration = 30 * time.Second
 	}

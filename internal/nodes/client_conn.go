@@ -15,6 +15,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -110,6 +111,11 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 				}
 			}
 		}
+	}
+
+	// 关闭连接
+	if err == io.EOF {
+		_ = this.rawConn.Close()
 	}
 
 	return
