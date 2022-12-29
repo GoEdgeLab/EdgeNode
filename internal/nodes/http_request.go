@@ -1556,7 +1556,7 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 			}
 
 			// 是否已删除
-			if this.web.ResponseHeaderPolicy.ContainsDeletedHeader(header.Name) {
+			if this.web.RequestHeaderPolicy.ContainsDeletedHeader(header.Name) {
 				continue
 			}
 
@@ -1693,6 +1693,36 @@ func (this *HTTPRequest) processResponseHeaders(responseHeader http.Header, stat
 			} else {
 				responseHeader[header.Name] = []string{headerValue}
 			}
+		}
+
+		// CORS
+		if this.web.ResponseHeaderPolicy.CORS != nil && this.web.ResponseHeaderPolicy.CORS.IsOn {
+			var corsConfig = this.web.ResponseHeaderPolicy.CORS
+
+			// Allow-Origin
+			if len(corsConfig.AllowOrigin) == 0 {
+				var origin = this.RawReq.Header.Get("Origin")
+				if len(origin) > 0 {
+					responseHeader.Set("Access-Control-Allow-Origin", origin)
+				}
+			} else {
+				responseHeader.Set("Access-Control-Allow-Origin", corsConfig.AllowOrigin)
+			}
+
+			// Allow-Methods
+			if len(corsConfig.AllowMethods) == 0 {
+				responseHeader.Set("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, HEAD, OPTIONS")
+			} else {
+				responseHeader.Set("Access-Control-Allow-Methods", strings.Join(corsConfig.AllowMethods, ", "))
+			}
+
+			// Max-Age
+			if corsConfig.MaxAge > 0 {
+				responseHeader.Set("Access-Control-Max-Age", types.String(corsConfig.MaxAge))
+			}
+
+			// Allow-Credentials
+			responseHeader.Set("Access-Control-Allow-Credentials", "true")
 		}
 	}
 
