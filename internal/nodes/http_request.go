@@ -237,6 +237,14 @@ func (this *HTTPRequest) Do() {
 			}
 		}
 
+		// UA名单
+		if !this.isSubRequest && this.web.UserAgent != nil && this.web.UserAgent.IsOn {
+			if this.doCheckUserAgent() {
+				this.doEnd()
+				return
+			}
+		}
+
 		// 访问控制
 		if !this.isSubRequest && this.web.Auth != nil && this.web.Auth.IsOn {
 			if this.doAuth() {
@@ -524,6 +532,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// referers
 	if web.Referers != nil && (web.Referers.IsPrior || isTop) {
 		this.web.Referers = web.Referers
+	}
+
+	// user agent
+	if web.UserAgent != nil && (web.UserAgent.IsPrior || isTop) {
+		this.web.UserAgent = web.UserAgent
 	}
 
 	// request limit
