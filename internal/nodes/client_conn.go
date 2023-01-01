@@ -67,13 +67,17 @@ func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool, isInAllowList 
 }
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
-	this.lastReadAt = time.Now().Unix()
+	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
 
-	defer func() {
-		if err != nil {
-			this.lastErr = errors.New("read error: " + err.Error())
-		}
-	}()
+	if globalServerConfig != nil && globalServerConfig.Performance.Debug {
+		this.lastReadAt = time.Now().Unix()
+
+		defer func() {
+			if err != nil {
+				this.lastErr = errors.New("read error: " + err.Error())
+			}
+		}()
+	}
 
 	// 环路直接读取
 	if this.isLO {
@@ -122,21 +126,27 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 }
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
-	this.lastWriteAt = time.Now().Unix()
+	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
 
-	defer func() {
-		if err != nil {
-			this.lastErr = errors.New("write error: " + err.Error())
-		}
-	}()
+	if globalServerConfig != nil && globalServerConfig.Performance.Debug {
+		this.lastWriteAt = time.Now().Unix()
+
+		defer func() {
+			if err != nil {
+				this.lastErr = errors.New("write error: " + err.Error())
+			}
+		}()
+	}
 
 	// 设置超时时间
-	// TODO L2 -> L1 写入时不限制时间
-	var timeoutSeconds = len(b) / 4096
-	if timeoutSeconds < 3 {
-		timeoutSeconds = 3
+	if globalServerConfig != nil && globalServerConfig.Performance.AutoWriteTimeout {
+		// TODO L2 -> L1 写入时不限制时间
+		var timeoutSeconds = len(b) / 4096
+		if timeoutSeconds < 3 {
+			timeoutSeconds = 3
+		}
+		_ = this.rawConn.SetWriteDeadline(time.Now().Add(time.Duration(timeoutSeconds) * time.Second)) // TODO 时间可以设置
 	}
-	_ = this.rawConn.SetWriteDeadline(time.Now().Add(time.Duration(timeoutSeconds) * time.Second)) // TODO 时间可以设置
 
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
