@@ -119,7 +119,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 
 	// 关闭连接
 	if err == io.EOF {
-		_ = this.rawConn.Close()
+		_ = this.Close()
 	}
 
 	return
@@ -167,7 +167,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 			_ = conn.SetLinger(0)
 		}
 
-		_ = this.rawConn.Close()
+		_ = this.Close()
 	}
 
 	return
