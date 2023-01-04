@@ -18,6 +18,8 @@ import (
 
 var httpErrorLogger = log.New(io.Discard, "", 0)
 
+const HTTPIdleTimeout = 75 * time.Second
+
 type contextKey struct {
 	key string
 }
@@ -43,10 +45,8 @@ func (this *HTTPListener) Serve() error {
 	this.httpServer = &http.Server{
 		Addr:              this.addr,
 		Handler:           this,
-		ReadTimeout:       1 * time.Hour,    // TODO 改成可以配置
-		ReadHeaderTimeout: 3 * time.Second,  // TODO 改成可以配置
-		WriteTimeout:      2 * time.Hour,    // TODO 改成可以配置
-		IdleTimeout:       75 * time.Second, // TODO 改成可以配置
+		ReadHeaderTimeout: 3 * time.Second, // TODO 改成可以配置
+		IdleTimeout:       HTTPIdleTimeout, // TODO 改成可以配置
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:

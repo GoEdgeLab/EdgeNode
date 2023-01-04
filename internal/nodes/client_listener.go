@@ -14,14 +14,14 @@ import (
 // ClientListener 客户端网络监听
 type ClientListener struct {
 	rawListener net.Listener
+	isHTTP      bool
 	isTLS       bool
-	quickClose  bool
 }
 
-func NewClientListener(listener net.Listener, quickClose bool) *ClientListener {
+func NewClientListener(listener net.Listener, isHTTP bool) *ClientListener {
 	return &ClientListener{
 		rawListener: listener,
-		quickClose:  quickClose,
+		isHTTP:      isHTTP,
 	}
 }
 
@@ -78,7 +78,7 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 		}
 	}
 
-	return NewClientConn(conn, this.isTLS, this.quickClose, isInAllowList), nil
+	return NewClientConn(conn, this.isHTTP, this.isTLS, isInAllowList), nil
 }
 
 func (this *ClientListener) Close() error {

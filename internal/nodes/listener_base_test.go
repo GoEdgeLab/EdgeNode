@@ -14,7 +14,7 @@ func TestBaseListener_FindServer(t *testing.T) {
 	sharedNodeConfig = &nodeconfigs.NodeConfig{}
 
 	var listener = &BaseListener{}
-	listener.Group = &serverconfigs.ServerAddressGroup{}
+	listener.Group = serverconfigs.NewServerAddressGroup("https://*:443")
 	for i := 0; i < 1_000_000; i++ {
 		var server = &serverconfigs.ServerConfig{
 			IsOn: true,

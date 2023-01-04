@@ -15,7 +15,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
-	"io"
 	"net"
 	"os"
 	"strings"
@@ -30,6 +29,7 @@ type ClientConn struct {
 	createdAt int64
 
 	isTLS   bool
+	isHTTP  bool
 	hasRead bool
 
 	isLO          bool // 是否为环路
@@ -40,9 +40,11 @@ type ClientConn struct {
 	lastReadAt  int64
 	lastWriteAt int64
 	lastErr     error
+
+	readDeadlineTime int64
 }
 
-func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool, isInAllowList bool) net.Conn {
+func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool) net.Conn {
 	// 是否为环路
 	var remoteAddr = rawConn.RemoteAddr().String()
 	var isLO = strings.HasPrefix(remoteAddr, "127.0.0.1:") || strings.HasPrefix(remoteAddr, "[::1]:")
@@ -50,12 +52,13 @@ func NewClientConn(rawConn net.Conn, isTLS bool, quickClose bool, isInAllowList 
 	var conn = &ClientConn{
 		BaseClientConn: BaseClientConn{rawConn: rawConn},
 		isTLS:          isTLS,
+		isHTTP:         isHTTP,
 		isLO:           isLO,
 		isInAllowList:  isInAllowList,
 		createdAt:      time.Now().Unix(),
 	}
 
-	if quickClose {
+	if isHTTP {
 		// TODO 可以在配置中设置此值
 		_ = conn.SetLinger(nodeconfigs.DefaultTCPLinger)
 	}
@@ -88,6 +91,11 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 		return
 	}
 
+	// 设置读超时时间
+	if this.isHTTP {
+		this.setHTTPReadTimeout()
+	}
+
 	// 开始读取
 	n, err = this.rawConn.Read(b)
 	if n > 0 {
@@ -102,7 +110,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// 忽略白名单和局域网
-	if !this.isInAllowList && !utils.IsLocalIP(this.RawIP()) {
+	if this.isHTTP && !this.isInAllowList && !utils.IsLocalIP(this.RawIP()) {
 		// SYN Flood检测
 		if this.serverId == 0 || !this.hasResetSYNFlood {
 			var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
@@ -115,11 +123,6 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 				}
 			}
 		}
-	}
-
-	// 关闭连接
-	if err == io.EOF {
-		_ = this.Close()
 	}
 
 	return
@@ -138,16 +141,22 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 		}()
 	}
 
-	// 设置超时时间
+	// 设置写超时时间
 	if globalServerConfig != nil && globalServerConfig.Performance.AutoWriteTimeout {
 		// TODO L2 -> L1 写入时不限制时间
-		var timeoutSeconds = len(b) / 4096
+		var timeoutSeconds = len(b) / 1024
 		if timeoutSeconds < 3 {
 			timeoutSeconds = 3
 		}
 		_ = this.rawConn.SetWriteDeadline(time.Now().Add(time.Duration(timeoutSeconds) * time.Second)) // TODO 时间可以设置
 	}
 
+	// 延长读超时时间
+	if this.isHTTP {
+		this.setHTTPReadTimeout()
+	}
+
+	// 开始写入
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
 		// 统计当前服务带宽
@@ -201,6 +210,16 @@ func (this *ClientConn) SetDeadline(t time.Time) error {
 }
 
 func (this *ClientConn) SetReadDeadline(t time.Time) error {
+	if this.isHTTP {
+		var unixTime = t.Unix()
+		if unixTime < 10 {
+			return nil
+		}
+		if unixTime == this.readDeadlineTime {
+			return nil
+		}
+		this.readDeadlineTime = unixTime
+	}
 	return this.rawConn.SetReadDeadline(t)
 }
 
@@ -254,4 +273,9 @@ func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloo
 			waf.SharedIPBlackList.RecordIP(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip, time.Now().Unix()+int64(timeout), 0, true, 0, 0, "疑似SYN Flood攻击，当前1分钟"+types.String(result)+"次空连接")
 		}
 	}
+}
+
+// 设置读超时时间
+func (this *ClientConn) setHTTPReadTimeout() {
+	_ = this.SetReadDeadline(time.Now().Add(HTTPIdleTimeout))
 }
