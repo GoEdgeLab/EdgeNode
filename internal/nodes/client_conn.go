@@ -42,6 +42,7 @@ type ClientConn struct {
 	lastErr     error
 
 	readDeadlineTime int64
+	isShortReading   bool // header or handshake
 }
 
 func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool) net.Conn {
@@ -92,7 +93,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// 设置读超时时间
-	if this.isHTTP {
+	if this.isHTTP && !this.isShortReading {
 		this.setHTTPReadTimeout()
 	}
 
@@ -211,6 +212,8 @@ func (this *ClientConn) SetDeadline(t time.Time) error {
 
 func (this *ClientConn) SetReadDeadline(t time.Time) error {
 	if this.isHTTP {
+		this.isShortReading = false
+
 		var unixTime = t.Unix()
 		if unixTime < 10 {
 			return nil
@@ -219,6 +222,9 @@ func (this *ClientConn) SetReadDeadline(t time.Time) error {
 			return nil
 		}
 		this.readDeadlineTime = unixTime
+		if -time.Since(t) < HTTPIdleTimeout-1*time.Second {
+			this.isShortReading = true
+		}
 	}
 	return this.rawConn.SetReadDeadline(t)
 }
