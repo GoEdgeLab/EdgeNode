@@ -898,9 +898,9 @@ func (this *Node) listenSock() error {
 							lastErrString = lastErr.Error()
 						}
 					}
-					var age int64
-					var lastReadAge int64
-					var lastWriteAge int64
+					var age int64 = -1
+					var lastReadAge int64 = -1
+					var lastWriteAge int64 = -1
 					var currentTime = time.Now().Unix()
 					if createdAt > 0 {
 						age = currentTime - createdAt

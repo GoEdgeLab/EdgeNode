@@ -222,7 +222,11 @@ func (this *ClientConn) SetReadDeadline(t time.Time) error {
 			return nil
 		}
 		this.readDeadlineTime = unixTime
-		if -time.Since(t) < HTTPIdleTimeout-1*time.Second {
+		var seconds = -time.Since(t)
+		if seconds <= 0 || seconds > HTTPIdleTimeout {
+			return nil
+		}
+		if seconds < HTTPIdleTimeout-1*time.Second {
 			this.isShortReading = true
 		}
 	}
