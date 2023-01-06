@@ -49,8 +49,7 @@ type Rule struct {
 	ipValue net.IP
 
 	ipRangeListValue *values.IPRangeList
-	numberListValue  *values.NumberList
-	stringListValue  *values.StringList
+	stringValues     []string
 
 	floatValue float64
 	reg        *re.Regexp
@@ -75,6 +74,21 @@ func (this *Rule) Init() error {
 		this.floatValue = types.Float64(this.Value)
 	case RuleOperatorNeq:
 		this.floatValue = types.Float64(this.Value)
+	case RuleOperatorContainsAny, RuleOperatorContainsAll:
+		this.stringValues = []string{}
+		if len(this.Value) > 0 {
+			var lines = strings.Split(this.Value, "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if len(line) > 0 {
+					if this.IsCaseInsensitive {
+						this.stringValues = append(this.stringValues, strings.ToLower(line))
+					} else {
+						this.stringValues = append(this.stringValues, line)
+					}
+				}
+			}
+		}
 	case RuleOperatorMatch:
 		v := this.Value
 		if this.IsCaseInsensitive && !strings.HasPrefix(v, "(?i)") {
@@ -452,6 +466,33 @@ func (this *Rule) Test(value interface{}) bool {
 		} else {
 			return strings.HasSuffix(types.String(value), this.Value)
 		}
+	case RuleOperatorContainsAny:
+		var stringValue = types.String(value)
+		if this.IsCaseInsensitive {
+			stringValue = strings.ToLower(stringValue)
+		}
+		if len(stringValue) > 0 && len(this.stringValues) > 0 {
+			for _, v := range this.stringValues {
+				if strings.Contains(stringValue, v) {
+					return true
+				}
+			}
+		}
+		return false
+	case RuleOperatorContainsAll:
+		var stringValue = types.String(value)
+		if this.IsCaseInsensitive {
+			stringValue = strings.ToLower(stringValue)
+		}
+		if len(stringValue) > 0 && len(this.stringValues) > 0 {
+			for _, v := range this.stringValues {
+				if !strings.Contains(stringValue, v) {
+					return false
+				}
+			}
+			return true
+		}
+		return false
 	case RuleOperatorContainsBinary:
 		data, _ := base64.StdEncoding.DecodeString(types.String(this.Value))
 		if this.IsCaseInsensitive {

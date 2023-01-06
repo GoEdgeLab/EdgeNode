@@ -8,17 +8,19 @@ import (
 )
 
 type StringList struct {
-	ValueMap map[string]zero.Zero
+	ValueMap        map[string]zero.Zero
+	CaseInsensitive bool
 }
 
-func NewStringList() *StringList {
+func NewStringList(caseInsensitive bool) *StringList {
 	return &StringList{
-		ValueMap: map[string]zero.Zero{},
+		ValueMap:        map[string]zero.Zero{},
+		CaseInsensitive: caseInsensitive,
 	}
 }
 
-func ParseStringList(v string) *StringList {
-	var list = NewStringList()
+func ParseStringList(v string, caseInsensitive bool) *StringList {
+	var list = NewStringList(caseInsensitive)
 	if len(v) == 0 {
 		return list
 	}
@@ -34,6 +36,9 @@ func ParseStringList(v string) *StringList {
 		for _, value := range values {
 			value = strings.TrimSpace(value)
 			if len(value) > 0 {
+				if caseInsensitive {
+					value = strings.ToLower(value)
+				}
 				list.ValueMap[value] = zero.Zero{}
 			}
 		}
@@ -42,6 +47,9 @@ func ParseStringList(v string) *StringList {
 }
 
 func (this *StringList) Contains(f string) bool {
+	if this.CaseInsensitive {
+		f = strings.ToLower(f)
+	}
 	_, ok := this.ValueMap[f]
 	return ok
 }

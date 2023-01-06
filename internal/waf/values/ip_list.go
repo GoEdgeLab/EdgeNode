@@ -3,5 +3,5 @@
 package values
 
 func ParseIPList(v string) *StringList {
-	return ParseStringList(v)
+	return ParseStringList(v, false)
 }

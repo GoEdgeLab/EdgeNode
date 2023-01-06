@@ -12,7 +12,7 @@ func TestParseStringList(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
 	{
-		var list = values.ParseStringList("")
+		var list = values.ParseStringList("", false)
 		a.IsFalse(list.Contains("hello"))
 	}
 
@@ -22,9 +22,22 @@ func TestParseStringList(t *testing.T) {
 world
 hi
 
-people`)
+people`, false)
 		a.IsTrue(list.Contains("hello"))
 		a.IsFalse(list.Contains("hello1"))
+		a.IsFalse(list.Contains("Hello"))
 		a.IsTrue(list.Contains("hi"))
+	}
+	{
+		var list = values.ParseStringList(`Hello
+
+world
+hi
+
+people`, true)
+		a.IsTrue(list.Contains("hello"))
+		a.IsTrue(list.Contains("Hello"))
+		a.IsTrue(list.Contains("HELLO"))
+		a.IsFalse(list.Contains("How"))
 	}
 }
