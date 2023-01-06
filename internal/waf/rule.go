@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/values"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -46,6 +47,10 @@ type Rule struct {
 
 	isIP    bool
 	ipValue net.IP
+
+	ipRangeListValue *values.IPRangeList
+	numberListValue  *values.NumberList
+	stringListValue  *values.StringList
 
 	floatValue float64
 	reg        *re.Regexp
@@ -104,32 +109,7 @@ func (this *Rule) Init() error {
 			return errors.New("value should be a valid ip")
 		}
 	case RuleOperatorIPRange, RuleOperatorNotIPRange:
-		if strings.Contains(this.Value, ",") {
-			ipList := strings.SplitN(this.Value, ",", 2)
-			ipString1 := strings.TrimSpace(ipList[0])
-			ipString2 := strings.TrimSpace(ipList[1])
-
-			if len(ipString1) > 0 {
-				ip1 := net.ParseIP(ipString1)
-				if ip1 == nil {
-					return errors.New("start ip is invalid")
-				}
-			}
-
-			if len(ipString2) > 0 {
-				ip2 := net.ParseIP(ipString2)
-				if ip2 == nil {
-					return errors.New("end ip is invalid")
-				}
-			}
-		} else if strings.Contains(this.Value, "/") {
-			_, _, err := net.ParseCIDR(this.Value)
-			if err != nil {
-				return err
-			}
-		} else {
-			return errors.New("invalid ip range")
-		}
+		this.ipRangeListValue = values.ParseIPRangeList(this.Value)
 	}
 
 	if singleParamRegexp.MatchString(this.Param) {
@@ -643,50 +623,11 @@ func (this *Rule) unescape(v string) string {
 	return v
 }
 
-func (this *Rule) containsIP(value interface{}) bool {
-	ip := net.ParseIP(types.String(value))
-	if ip == nil {
+func (this *Rule) containsIP(value any) bool {
+	if this.ipRangeListValue == nil {
 		return false
 	}
-
-	// 检查IP范围格式
-	if strings.Contains(this.Value, ",") {
-		ipList := strings.SplitN(this.Value, ",", 2)
-		ipString1 := strings.TrimSpace(ipList[0])
-		ipString2 := strings.TrimSpace(ipList[1])
-
-		if len(ipString1) > 0 {
-			ip1 := net.ParseIP(ipString1)
-			if ip1 == nil {
-				return false
-			}
-
-			if bytes.Compare(ip, ip1) < 0 {
-				return false
-			}
-		}
-
-		if len(ipString2) > 0 {
-			ip2 := net.ParseIP(ipString2)
-			if ip2 == nil {
-				return false
-			}
-
-			if bytes.Compare(ip, ip2) > 0 {
-				return false
-			}
-		}
-
-		return true
-	} else if strings.Contains(this.Value, "/") {
-		_, ipNet, err := net.ParseCIDR(this.Value)
-		if err != nil {
-			return false
-		}
-		return ipNet.Contains(ip)
-	} else {
-		return false
-	}
+	return this.ipRangeListValue.Contains(types.String(value))
 }
 
 func (this *Rule) ipToInt64(ip net.IP) int64 {
