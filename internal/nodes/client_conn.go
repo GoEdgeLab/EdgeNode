@@ -104,10 +104,13 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 		this.hasRead = true
 	}
 
-	// 检测是否为握手错误
-	var isHandshakeError = err != nil && os.IsTimeout(err) && !this.hasRead
-	if isHandshakeError {
+	// 检测是否为超时错误
+	var isTimeout = err != nil && os.IsTimeout(err)
+	var isHandshakeError = isTimeout && !this.hasRead
+	if isTimeout {
 		_ = this.SetLinger(0)
+	} else {
+		_ = this.SetLinger(nodeconfigs.DefaultTCPLinger)
 	}
 
 	// 忽略白名单和局域网
