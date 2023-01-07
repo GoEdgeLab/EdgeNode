@@ -93,7 +93,8 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// 设置读超时时间
-	if this.isHTTP && !this.isShortReading {
+	var autoReadTimeout = globalServerConfig != nil && globalServerConfig.Performance.AutoReadTimeout
+	if this.isHTTP && !this.isShortReading && autoReadTimeout {
 		this.setHTTPReadTimeout()
 	}
 
@@ -214,7 +215,9 @@ func (this *ClientConn) SetDeadline(t time.Time) error {
 }
 
 func (this *ClientConn) SetReadDeadline(t time.Time) error {
-	if this.isHTTP {
+	// 如果开启了HTTP自动读超时选项，则自动控制超时时间
+	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
+	if this.isHTTP && globalServerConfig != nil && globalServerConfig.Performance.AutoReadTimeout {
 		this.isShortReading = false
 
 		var unixTime = t.Unix()
