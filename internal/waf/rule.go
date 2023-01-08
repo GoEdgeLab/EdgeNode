@@ -50,6 +50,7 @@ type Rule struct {
 
 	ipRangeListValue *values.IPRangeList
 	stringValues     []string
+	ipList           *values.StringList
 
 	floatValue float64
 	reg        *re.Regexp
@@ -122,6 +123,8 @@ func (this *Rule) Init() error {
 		if !this.isIP {
 			return errors.New("value should be a valid ip")
 		}
+	case RuleOperatorInIPList:
+		this.ipList = values.ParseStringList(this.Value, true)
 	case RuleOperatorIPRange, RuleOperatorNotIPRange:
 		this.ipRangeListValue = values.ParseIPRangeList(this.Value)
 	}
@@ -584,12 +587,12 @@ func (this *Rule) Test(value interface{}) bool {
 	case RuleOperatorNotIPRange:
 		return !this.containsIP(value)
 	case RuleOperatorIPMod:
-		pieces := strings.SplitN(this.Value, ",", 2)
+		var pieces = strings.SplitN(this.Value, ",", 2)
 		if len(pieces) == 1 {
-			rem := types.Int64(pieces[0])
+			var rem = types.Int64(pieces[0])
 			return this.ipToInt64(net.ParseIP(types.String(value)))%10 == rem
 		}
-		div := types.Int64(pieces[0])
+		var div = types.Int64(pieces[0])
 		if div == 0 {
 			return false
 		}
@@ -599,6 +602,11 @@ func (this *Rule) Test(value interface{}) bool {
 		return this.ipToInt64(net.ParseIP(types.String(value)))%10 == types.Int64(this.Value)
 	case RuleOperatorIPMod100:
 		return this.ipToInt64(net.ParseIP(types.String(value)))%100 == types.Int64(this.Value)
+	case RuleOperatorInIPList:
+		if this.ipList != nil {
+			return this.ipList.Contains(types.String(value))
+		}
+		return false
 	}
 	return false
 }

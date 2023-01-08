@@ -18,8 +18,9 @@ const (
 	RuleOperatorNotContains  RuleOperator = "not contains"
 	RuleOperatorPrefix       RuleOperator = "prefix"
 	RuleOperatorSuffix       RuleOperator = "suffix"
-	RuleOperatorContainsAny  RuleOperator = "containsAny"
-	RuleOperatorContainsAll  RuleOperator = "containsAll"
+	RuleOperatorContainsAny  RuleOperator = "contains any"
+	RuleOperatorContainsAll  RuleOperator = "contains all"
+	RuleOperatorInIPList     RuleOperator = "in ip list"
 	RuleOperatorHasKey       RuleOperator = "has key" // has key in slice or map
 	RuleOperatorVersionGt    RuleOperator = "version gt"
 	RuleOperatorVersionLt    RuleOperator = "version lt"
