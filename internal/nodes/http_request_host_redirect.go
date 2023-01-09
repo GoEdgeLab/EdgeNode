@@ -146,6 +146,13 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					u.Status = http.StatusTemporaryRedirect
 				}
 				this.processResponseHeaders(this.writer.Header(), u.Status)
+
+				// 参数
+				var qIndex = strings.Index(this.uri, "?")
+				if qIndex >= 0 {
+					afterURL += this.uri[qIndex:]
+				}
+
 				http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
 				return true
 			}
