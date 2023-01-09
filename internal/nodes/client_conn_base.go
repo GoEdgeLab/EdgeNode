@@ -16,6 +16,8 @@ type BaseClientConn struct {
 	remoteAddr string
 	hasLimit   bool
 
+	isWebsocket bool
+
 	isClosed bool
 
 	rawIP string
@@ -121,4 +123,8 @@ func (this *BaseClientConn) SetLinger(seconds int) error {
 		return tcpConn.SetLinger(seconds)
 	}
 	return nil
+}
+
+func (this *BaseClientConn) SetIsWebsocket(isWebsocket bool) {
+	this.isWebsocket = isWebsocket
 }

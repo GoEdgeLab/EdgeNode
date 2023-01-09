@@ -70,6 +70,13 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		this.RawReq.Header.Set("Origin", newRequestOrigin)
 	}
 
+	// 获取当前连接
+	var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+	if requestConn == nil {
+		return
+	}
+
+	// 连接源站
 	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
 	originConn, _, err := OriginConnect(this.origin, this.requestServerPort(), this.RawReq.RemoteAddr, requestHost)
 	if err != nil {
@@ -100,6 +107,11 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 	if err != nil {
 		this.write50x(err, http.StatusBadGateway, "Failed to write request to origin site", "源站请求初始化失败", false)
 		return
+	}
+
+	requestClientConn, ok := requestConn.(ClientConnInterface)
+	if ok {
+		requestClientConn.SetIsWebsocket(true)
 	}
 
 	clientConn, _, err := this.writer.Hijack()
