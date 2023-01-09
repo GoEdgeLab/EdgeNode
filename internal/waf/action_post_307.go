@@ -87,7 +87,12 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusTemporaryRedirect)
 
 	if request.WAFRaw().ProtoMajor == 1 {
-		_ = this.CloseConn(writer)
+		flusher, ok := writer.(http.Flusher)
+		if ok {
+			flusher.Flush()
+		}
+
+		request.WAFClose()
 	}
 
 	return false, false

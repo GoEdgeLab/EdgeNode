@@ -70,7 +70,12 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 	http.Redirect(writer, request.WAFRaw(), Get302Path+"?info="+url.QueryEscape(info), http.StatusFound)
 
 	if request.WAFRaw().ProtoMajor == 1 {
-		_ = this.CloseConn(writer)
+		flusher, ok := writer.(http.Flusher)
+		if ok {
+			flusher.Flush()
+		}
+
+		request.WAFClose()
 	}
 
 	return false, false
