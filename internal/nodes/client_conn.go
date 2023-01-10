@@ -42,7 +42,11 @@ type ClientConn struct {
 	lastErr     error
 
 	readDeadlineTime int64
-	isShortReading   bool // header or handshake
+	isShortReading   bool // reading header or tls handshake
+
+	isDebugging      bool
+	autoReadTimeout  bool
+	autoWriteTimeout bool
 }
 
 func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool) net.Conn {
@@ -59,6 +63,14 @@ func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool
 		createdAt:      time.Now().Unix(),
 	}
 
+	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
+	if globalServerConfig != nil {
+		var performanceConfig = globalServerConfig.Performance
+		conn.isDebugging = performanceConfig.Debug
+		conn.autoReadTimeout = performanceConfig.AutoReadTimeout
+		conn.autoWriteTimeout = performanceConfig.AutoWriteTimeout
+	}
+
 	if isHTTP {
 		// TODO 可以在配置中设置此值
 		_ = conn.SetLinger(nodeconfigs.DefaultTCPLinger)
@@ -71,9 +83,7 @@ func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool
 }
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
-	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
-
-	if globalServerConfig != nil && globalServerConfig.Performance.Debug {
+	if this.isDebugging {
 		this.lastReadAt = time.Now().Unix()
 
 		defer func() {
@@ -93,8 +103,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// 设置读超时时间
-	var autoReadTimeout = globalServerConfig != nil && globalServerConfig.Performance.AutoReadTimeout
-	if this.isHTTP && !this.isWebsocket && !this.isShortReading && autoReadTimeout {
+	if this.isHTTP && !this.isWebsocket && !this.isShortReading && this.autoReadTimeout {
 		this.setHTTPReadTimeout()
 	}
 
@@ -134,9 +143,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 }
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
-	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
-
-	if globalServerConfig != nil && globalServerConfig.Performance.Debug {
+	if this.isDebugging {
 		this.lastWriteAt = time.Now().Unix()
 
 		defer func() {
@@ -147,7 +154,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	}
 
 	// 设置写超时时间
-	if globalServerConfig != nil && globalServerConfig.Performance.AutoWriteTimeout {
+	if this.autoWriteTimeout {
 		// TODO L2 -> L1 写入时不限制时间
 		var timeoutSeconds = len(b) / 1024
 		if timeoutSeconds < 3 {
@@ -157,7 +164,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	}
 
 	// 延长读超时时间
-	if this.isHTTP && !this.isWebsocket && globalServerConfig != nil && globalServerConfig.Performance.AutoReadTimeout {
+	if this.isHTTP && !this.isWebsocket && this.autoReadTimeout {
 		this.setHTTPReadTimeout()
 	}
 
@@ -216,8 +223,7 @@ func (this *ClientConn) SetDeadline(t time.Time) error {
 
 func (this *ClientConn) SetReadDeadline(t time.Time) error {
 	// 如果开启了HTTP自动读超时选项，则自动控制超时时间
-	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
-	if this.isHTTP && !this.isWebsocket && globalServerConfig != nil && globalServerConfig.Performance.AutoReadTimeout {
+	if this.isHTTP && !this.isWebsocket && this.autoReadTimeout {
 		this.isShortReading = false
 
 		var unixTime = t.Unix()
