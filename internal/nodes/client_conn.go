@@ -89,6 +89,8 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 		defer func() {
 			if err != nil {
 				this.lastErr = errors.New("read error: " + err.Error())
+			} else {
+				this.lastErr = nil
 			}
 		}()
 	}
@@ -149,6 +151,8 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 		defer func() {
 			if err != nil {
 				this.lastErr = errors.New("write error: " + err.Error())
+			} else {
+				this.lastErr = nil
 			}
 		}()
 	}
