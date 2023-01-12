@@ -148,7 +148,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	if len(b) == 0 {
 		return 0, nil
 	}
-	
+
 	if this.isDebugging {
 		this.lastWriteAt = time.Now().Unix()
 
@@ -177,13 +177,21 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	}
 
 	// 开始写入
+	var before = time.Now()
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
+
 		// 统计当前服务带宽
 		if this.serverId > 0 {
 			if !this.isLO || Tea.IsTesting() { // 环路不统计带宽，避免缓存预热等行为产生带宽
 				atomic.AddUint64(&teaconst.OutTrafficBytes, uint64(n))
-				stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n))
+
+				var cost = time.Since(before).Seconds()
+				if cost > 1 {
+					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(float64(n)/cost))
+				} else {
+					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n))
+				}
 			}
 		}
 	}
