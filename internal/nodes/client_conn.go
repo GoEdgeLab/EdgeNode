@@ -145,6 +145,10 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 }
 
 func (this *ClientConn) Write(b []byte) (n int, err error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
+	
 	if this.isDebugging {
 		this.lastWriteAt = time.Now().Unix()
 
