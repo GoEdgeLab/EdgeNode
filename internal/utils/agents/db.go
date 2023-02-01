@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -94,9 +95,13 @@ func (this *DB) InsertAgentIP(ipId int64, ip string, agentCode string) error {
 		return errors.New("db should not be nil")
 	}
 
-	this.log("InsertAgentIP", "id:", ipId, "ip:", ip, "agent:", agentCode)
 	_, err := this.insertAgentIPStmt.Exec(ipId, ip, agentCode)
 	if err != nil {
+		// 不提示ID重复错误
+		if strings.Contains(err.Error(), "UNIQUE constraint") {
+			return nil
+		}
+
 		return err
 	}
 
