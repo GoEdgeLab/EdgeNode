@@ -728,6 +728,8 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.Path()
 		case "requestPathExtension":
 			return filepath.Ext(this.Path())
+		case "requestPathLowerExtension":
+			return strings.ToLower(filepath.Ext(this.Path()))
 		case "requestLength":
 			return strconv.FormatInt(this.requestLength(), 10)
 		case "requestTime":
