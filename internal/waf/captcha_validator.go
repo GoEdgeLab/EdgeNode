@@ -162,7 +162,7 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 	</div>
 	<div class="ui-input">
 		<p>` + msgPrompt + `</p>
-		<input type="text" name="GOEDGE_WAF_CAPTCHA_CODE" id="GOEDGE_WAF_CAPTCHA_CODE" maxlength="6" autocomplete="off" z-index="1" class="input"/>
+		<input type="text" name="GOEDGE_WAF_CAPTCHA_CODE" id="GOEDGE_WAF_CAPTCHA_CODE" size="` + types.String(countLetters*17/10) + `" maxlength="` + types.String(countLetters) + `" autocomplete="off" z-index="1" class="input"/>
 	</div>
 	<div class="ui-button">
 		<button type="submit" style="line-height:24px;margin-top:10px">` + msgButtonTitle + `</button>
@@ -199,7 +199,7 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 	</script>
 	<style type="text/css">
 	form { width: 20em; margin: 0 auto; text-align: center; }
-	.input { font-size:16px;line-height:24px; letter-spacing: 15px; padding-left: 10px; width: 140px; }
+	.input { font-size:16px;line-height:24px; letter-spacing:0.2em; min-width: 5em; text-align: center; }
 	address { margin-top: 1em; padding-top: 0.5em; border-top: 1px #ccc solid; text-align: center; }
 ` + msgCss + `
 	</style>
