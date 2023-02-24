@@ -55,7 +55,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 			if life <= 0 {
 				life = 600 // 默认10分钟
 			}
-			var setId = m.GetString("setId")
+			var setId = types.String(m.GetInt64("setId"))
 			SharedIPWhiteList.RecordIP("set:"+setId, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life, m.GetInt64("policyId"), false, m.GetInt64("groupId"), m.GetInt64("setId"), "")
 			return true, false
 		}

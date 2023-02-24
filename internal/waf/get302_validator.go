@@ -5,6 +5,7 @@ package waf
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"time"
 )
@@ -39,11 +40,11 @@ func (this *Get302Validator) Run(request requests.Request, writer http.ResponseW
 	}
 
 	// 加入白名单
-	life := m.GetInt64("life")
+	var life = m.GetInt64("life")
 	if life <= 0 {
 		life = 600 // 默认10分钟
 	}
-	setId := m.GetString("setId")
+	var setId = types.String(m.GetInt64("setId"))
 	SharedIPWhiteList.RecordIP("set:"+setId, m.GetString("scope"), request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life, m.GetInt64("policyId"), false, m.GetInt64("groupId"), m.GetInt64("setId"), "")
 
 	// 返回原始URL
