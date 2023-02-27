@@ -180,7 +180,6 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	var before = time.Now()
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
-
 		// 统计当前服务带宽
 		if this.serverId > 0 {
 			if !this.isLO || Tea.IsTesting() { // 环路不统计带宽，避免缓存预热等行为产生带宽
@@ -188,9 +187,9 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 				var cost = time.Since(before).Seconds()
 				if cost > 1 {
-					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(float64(n)/cost))
+					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(float64(n)/cost), int64(n))
 				} else {
-					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n))
+					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n), int64(n))
 				}
 			}
 		}

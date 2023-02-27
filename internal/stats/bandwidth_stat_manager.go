@@ -37,6 +37,7 @@ type BandwidthStat struct {
 	CurrentBytes     int64
 	CurrentTimestamp int64
 	MaxBytes         int64
+	TotalBytes       int64
 }
 
 // BandwidthStatManager 服务带宽统计
@@ -107,6 +108,7 @@ func (this *BandwidthStatManager) Loop() error {
 				Day:          stat.Day,
 				TimeAt:       stat.TimeAt,
 				Bytes:        stat.MaxBytes / bandwidthTimestampDelim,
+				TotalBytes:   stat.TotalBytes,
 				NodeRegionId: regionId,
 			})
 			delete(this.m, key)
@@ -132,8 +134,8 @@ func (this *BandwidthStatManager) Loop() error {
 }
 
 // Add 添加带宽数据
-func (this *BandwidthStatManager) Add(userId int64, serverId int64, bytes int64) {
-	if serverId <= 0 || bytes == 0 {
+func (this *BandwidthStatManager) Add(userId int64, serverId int64, peekBytes int64, totalBytes int64) {
+	if serverId <= 0 || (peekBytes == 0 && totalBytes == 0) {
 		return
 	}
 
@@ -146,8 +148,8 @@ func (this *BandwidthStatManager) Add(userId int64, serverId int64, bytes int64)
 	// 增加TCP Header尺寸，这里默认MTU为1500，且默认为IPv4
 	const mtu = 1500
 	const tcpHeaderSize = 20
-	if bytes > mtu {
-		bytes += bytes * tcpHeaderSize / mtu
+	if peekBytes > mtu {
+		peekBytes += peekBytes * tcpHeaderSize / mtu
 	}
 
 	this.locker.Lock()
@@ -156,22 +158,25 @@ func (this *BandwidthStatManager) Add(userId int64, serverId int64, bytes int64)
 		// 此刻如果发生用户ID（userId）的变化也忽略，等N分钟后有新记录后再换
 
 		if stat.CurrentTimestamp == timestamp {
-			stat.CurrentBytes += bytes
+			stat.CurrentBytes += peekBytes
 		} else {
-			stat.CurrentBytes = bytes
+			stat.CurrentBytes = peekBytes
 			stat.CurrentTimestamp = timestamp
 		}
 		if stat.CurrentBytes > stat.MaxBytes {
 			stat.MaxBytes = stat.CurrentBytes
 		}
+
+		stat.TotalBytes += totalBytes
 	} else {
 		this.m[key] = &BandwidthStat{
 			Day:              day,
 			TimeAt:           timeAt,
 			UserId:           userId,
 			ServerId:         serverId,
-			CurrentBytes:     bytes,
-			MaxBytes:         bytes,
+			CurrentBytes:     peekBytes,
+			MaxBytes:         peekBytes,
+			TotalBytes:       totalBytes,
 			CurrentTimestamp: timestamp,
 		}
 	}

@@ -404,7 +404,7 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyListener
 					stats.SharedTrafficStatManager.Add(server.Id, "", int64(n), 0, 0, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
 
 					// 带宽
-					stats.SharedBandwidthStatManager.Add(server.UserId, server.Id, int64(n))
+					stats.SharedBandwidthStatManager.Add(server.UserId, server.Id, int64(n), int64(n))
 				}
 			}
 			if err != nil {
