@@ -180,6 +180,7 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			Body:       policy.BlockOptions.Body,
 			URL:        policy.BlockOptions.URL,
 			Timeout:    policy.BlockOptions.Timeout,
+			TimeoutMax: policy.BlockOptions.TimeoutMax,
 		}
 	}
 

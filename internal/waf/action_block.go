@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/rands"
 	"io"
 	"net/http"
 	"os"
@@ -25,6 +26,7 @@ type BlockAction struct {
 	Body       string `yaml:"body" json:"body"` // supports HTML
 	URL        string `yaml:"url" json:"url"`
 	Timeout    int32  `yaml:"timeout" json:"timeout"`
+	TimeoutMax int32  `yaml:"timeoutMax" json:"timeoutMax"`
 	Scope      string `yaml:"scope" json:"scope"`
 }
 
@@ -41,6 +43,7 @@ func (this *BlockAction) Init(waf *WAF) error {
 		}
 		if this.Timeout <= 0 {
 			this.Timeout = waf.DefaultBlockAction.Timeout
+			this.TimeoutMax = waf.DefaultBlockAction.TimeoutMax // 只有没有填写封锁时长的时候才会使用默认的封锁时长最大值
 		}
 	}
 	return nil
@@ -63,6 +66,12 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 	var timeout = this.Timeout
 	if timeout <= 0 {
 		timeout = 300 // 默认封锁300秒
+	}
+
+	// 随机时长
+	var timeoutMax = this.TimeoutMax
+	if timeoutMax > timeout {
+		timeout = timeout + int32(rands.Int64()%int64(timeoutMax-timeout+1))
 	}
 
 	SharedIPBlackList.RecordIP(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+int64(timeout), waf.Id, waf.UseLocalFirewall, group.Id, set.Id, "")
