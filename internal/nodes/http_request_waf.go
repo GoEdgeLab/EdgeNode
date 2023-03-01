@@ -67,7 +67,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 	// 当前服务的独立设置
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
-		blocked, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying)
+		blocked, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying, false)
 		if blocked {
 			return true
 		}
@@ -78,7 +78,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 	// 公用的防火墙设置
 	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
-		blocked, breakChecking := this.checkWAFRequest(this.ReqServer.HTTPFirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying)
+		blocked, breakChecking := this.checkWAFRequest(this.ReqServer.HTTPFirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying, this.web.FirewallRef.IgnoreGlobalRules)
 		if blocked {
 			return true
 		}
@@ -90,7 +90,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	return
 }
 
-func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, forceLog bool, logRequestBody bool, logDenying bool) (blocked bool, breakChecking bool) {
+func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, forceLog bool, logRequestBody bool, logDenying bool, ignoreRules bool) (blocked bool, breakChecking bool) {
 	// 检查配置是否为空
 	if firewallPolicy == nil || !firewallPolicy.IsOn || firewallPolicy.Inbound == nil || !firewallPolicy.Inbound.IsOn || firewallPolicy.Mode == firewallconfigs.FirewallModeBypass {
 		return
@@ -211,8 +211,13 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		}
 	}
 
+	// 是否执行规则
+	if ignoreRules {
+		return
+	}
+
 	// 规则测试
-	w := waf.SharedWAFManager.FindWAF(firewallPolicy.Id)
+	var w = waf.SharedWAFManager.FindWAF(firewallPolicy.Id)
 	if w == nil {
 		return
 	}
@@ -267,7 +272,7 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 	}
 
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
-		blocked := this.checkWAFResponse(this.web.FirewallPolicy, resp, forceLog, forceLogRequestBody)
+		blocked := this.checkWAFResponse(this.web.FirewallPolicy, resp, forceLog, forceLogRequestBody, false)
 		if blocked {
 			return true
 		}
@@ -275,7 +280,7 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 
 	// 公用的防火墙设置
 	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
-		blocked := this.checkWAFResponse(this.ReqServer.HTTPFirewallPolicy, resp, forceLog, forceLogRequestBody)
+		blocked := this.checkWAFResponse(this.ReqServer.HTTPFirewallPolicy, resp, forceLog, forceLogRequestBody, this.web.FirewallRef.IgnoreGlobalRules)
 		if blocked {
 			return true
 		}
@@ -283,12 +288,17 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 	return
 }
 
-func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, resp *http.Response, forceLog bool, logRequestBody bool) (blocked bool) {
+func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, resp *http.Response, forceLog bool, logRequestBody bool, ignoreRules bool) (blocked bool) {
 	if firewallPolicy == nil || !firewallPolicy.IsOn || !firewallPolicy.Outbound.IsOn || firewallPolicy.Mode == firewallconfigs.FirewallModeBypass {
 		return
 	}
 
-	w := waf.SharedWAFManager.FindWAF(firewallPolicy.Id)
+	// 是否执行规则
+	if ignoreRules {
+		return
+	}
+
+	var w = waf.SharedWAFManager.FindWAF(firewallPolicy.Id)
 	if w == nil {
 		return
 	}
