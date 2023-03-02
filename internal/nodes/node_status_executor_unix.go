@@ -8,6 +8,8 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
+	"runtime"
+	"runtime/debug"
 )
 
 // 更新内存
@@ -31,6 +33,18 @@ func (this *NodeStatusExecutor) updateMem(status *nodeconfigs.NodeStatus) {
 		"total": status.MemoryTotal,
 		"used":  stat.Used,
 	})
+
+	// 内存严重不足时自动释放内存
+	if stat.Total > 0 {
+		var minFreeMemory = stat.Total / 8
+		if minFreeMemory > 1<<30 {
+			minFreeMemory = 1 << 30
+		}
+		if stat.Free < minFreeMemory {
+			runtime.GC()
+			debug.FreeOSMemory()
+		}
+	}
 }
 
 // 更新负载
