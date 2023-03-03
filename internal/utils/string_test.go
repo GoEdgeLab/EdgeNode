@@ -3,6 +3,7 @@ package utils_test
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/assert"
+	"github.com/iwind/TeaGo/types"
 	"strings"
 	"testing"
 )
@@ -64,4 +65,16 @@ func TestContainsSameStrings(t *testing.T) {
 	a.IsFalse(utils.EqualStrings([]string{"a", "b"}, []string{"a", "b", "c"}))
 	a.IsTrue(utils.EqualStrings([]string{"a", "b"}, []string{"a", "b"}))
 	a.IsTrue(utils.EqualStrings([]string{"a", "b"}, []string{"b", "a"}))
+}
+
+func TestToValidUTF8string(t *testing.T) {
+	for _, s := range []string{
+		"https://goedge.cn/",
+		"提升mysql数据表写入速度",
+		"😆",
+		string([]byte{'a', 'b', 130, 131, 132, 133, 134, 'c'}),
+	} {
+		var u = utils.ToValidUTF8string(s)
+		t.Log(s, "["+types.String(len(s))+"]", "=>", u, "["+types.String(len(u))+"]")
+	}
 }
