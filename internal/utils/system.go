@@ -23,5 +23,11 @@ func SystemMemoryGB() int {
 	}
 
 	systemTotalMemory = int(stat.Total / 1024 / 1024 / 1024)
+	if systemTotalMemory <= 0 {
+		systemTotalMemory = 1
+	}
+
+	setMaxMemory(systemTotalMemory)
+
 	return systemTotalMemory
 }
