@@ -74,5 +74,8 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 		flusher.Flush()
 	}
 
+	// 迟滞访问
+	time.Sleep(1 * time.Second)
+
 	return false, false
 }
