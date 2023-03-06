@@ -74,9 +74,5 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 		flusher.Flush()
 	}
 
-	// 延迟等待响应发送完毕
-	time.Sleep(1 * time.Second)
-	request.WAFClose()
-
 	return false, false
 }

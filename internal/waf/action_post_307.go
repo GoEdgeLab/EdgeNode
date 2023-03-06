@@ -81,6 +81,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	var req = request.WAFRaw()
 	if req.ContentLength > 0 && req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
+		_ = req.Body.Close()
 	}
 
 	// 设置Cookie
@@ -97,10 +98,6 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	if ok {
 		flusher.Flush()
 	}
-
-	// 延迟等待响应发送完毕
-	time.Sleep(1 * time.Second)
-	request.WAFClose()
 
 	return false, false
 }
