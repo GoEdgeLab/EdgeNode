@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
+	"io"
 	"net/http"
 	"time"
 )
@@ -72,8 +73,14 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	}
 	info, err := utils.SimpleEncryptMap(m)
 	if err != nil {
-		remotelogs.Error("WAF_POST_302_ACTION", "encode info failed: "+err.Error())
+		remotelogs.Error("WAF_POST_307_ACTION", "encode info failed: "+err.Error())
 		return true, false
+	}
+
+	// 清空请求内容
+	var req = request.WAFRaw()
+	if req.ContentLength > 0 && req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
 	}
 
 	// 设置Cookie
@@ -86,14 +93,14 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 
 	http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusTemporaryRedirect)
 
-	if request.WAFRaw().ProtoMajor == 1 {
-		flusher, ok := writer.(http.Flusher)
-		if ok {
-			flusher.Flush()
-		}
-
-		request.WAFClose()
+	flusher, ok := writer.(http.Flusher)
+	if ok {
+		flusher.Flush()
 	}
+
+	// 延迟等待响应发送完毕
+	time.Sleep(1 * time.Second)
+	request.WAFClose()
 
 	return false, false
 }
