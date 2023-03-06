@@ -24,6 +24,6 @@ type ClientConnInterface interface {
 	// UserId 获取当前连接所属服务的用户ID
 	UserId() int64
 
-	// SetIsWebsocket 设置是否为Websocket
-	SetIsWebsocket(isWebsocket bool)
+	// SetIsPersistent 设置是否为持久化
+	SetIsPersistent(isPersistent bool)
 }

@@ -16,7 +16,7 @@ type BaseClientConn struct {
 	remoteAddr string
 	hasLimit   bool
 
-	isWebsocket bool
+	isPersistent bool // 是否为持久化连接
 
 	isClosed bool
 
@@ -125,6 +125,6 @@ func (this *BaseClientConn) SetLinger(seconds int) error {
 	return nil
 }
 
-func (this *BaseClientConn) SetIsWebsocket(isWebsocket bool) {
-	this.isWebsocket = isWebsocket
+func (this *BaseClientConn) SetIsPersistent(isPersistent bool) {
+	this.isPersistent = isPersistent
 }

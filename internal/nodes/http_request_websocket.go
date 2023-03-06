@@ -111,7 +111,7 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 
 	requestClientConn, ok := requestConn.(ClientConnInterface)
 	if ok {
-		requestClientConn.SetIsWebsocket(true)
+		requestClientConn.SetIsPersistent(true)
 	}
 
 	clientConn, _, err := this.writer.Hijack()

@@ -56,14 +56,14 @@ func (this *ClientTLSConn) SetWriteDeadline(t time.Time) error {
 	return this.rawConn.SetWriteDeadline(t)
 }
 
-func (this *ClientTLSConn) SetIsWebsocket(isWebsocket bool) {
+func (this *ClientTLSConn) SetIsPersistent(isPersistent bool) {
 	tlsConn, ok := this.rawConn.(*tls.Conn)
 	if ok {
 		var rawConn = tlsConn.NetConn()
 		if rawConn != nil {
 			clientConn, ok := rawConn.(*ClientConn)
 			if ok {
-				clientConn.SetIsWebsocket(isWebsocket)
+				clientConn.SetIsPersistent(isPersistent)
 			}
 		}
 	}

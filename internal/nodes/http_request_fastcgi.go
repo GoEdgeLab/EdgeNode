@@ -73,6 +73,16 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 		}
 	}
 
+	// 设置为持久化连接
+	var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+	if requestConn == nil {
+		return
+	}
+	requestClientConn, ok := requestConn.(ClientConnInterface)
+	if ok {
+		requestClientConn.SetIsPersistent(true)
+	}
+
 	// 连接池配置
 	poolSize := fastcgi.PoolSize
 	if poolSize <= 0 {

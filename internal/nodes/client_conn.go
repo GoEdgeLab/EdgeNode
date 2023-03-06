@@ -105,7 +105,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// 设置读超时时间
-	if this.isHTTP && !this.isWebsocket && !this.isShortReading && this.autoReadTimeout {
+	if this.isHTTP && !this.isPersistent && !this.isShortReading && this.autoReadTimeout {
 		this.setHTTPReadTimeout()
 	}
 
@@ -172,7 +172,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	}
 
 	// 延长读超时时间
-	if this.isHTTP && !this.isWebsocket && this.autoReadTimeout {
+	if this.isHTTP && !this.isPersistent && this.autoReadTimeout {
 		this.setHTTPReadTimeout()
 	}
 
@@ -238,7 +238,7 @@ func (this *ClientConn) SetDeadline(t time.Time) error {
 
 func (this *ClientConn) SetReadDeadline(t time.Time) error {
 	// 如果开启了HTTP自动读超时选项，则自动控制超时时间
-	if this.isHTTP && !this.isWebsocket && this.autoReadTimeout {
+	if this.isHTTP && !this.isPersistent && this.autoReadTimeout {
 		this.isShortReading = false
 
 		var unixTime = t.Unix()
