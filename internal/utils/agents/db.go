@@ -3,13 +3,12 @@
 package agents
 
 import (
-	"database/sql"
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
-	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,11 +20,11 @@ const (
 )
 
 type DB struct {
-	db   *sql.DB
+	db   *dbs.DB
 	path string
 
-	insertAgentIPStmt *sql.Stmt
-	listAgentIPsStmt  *sql.Stmt
+	insertAgentIPStmt *dbs.Stmt
+	listAgentIPsStmt  *dbs.Stmt
 }
 
 func NewDB(path string) *DB {
@@ -52,7 +51,7 @@ func (this *DB) Init() error {
 	}
 
 	// TODO 思考 data.db 的数据安全性
-	db, err := sql.Open("sqlite3", "file:"+this.path+"?cache=shared&mode=rwc&_journal_mode=WAL")
+	db, err := dbs.OpenWriter("file:" + this.path + "?cache=shared&mode=rwc&_journal_mode=WAL&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return err
 	}
@@ -135,7 +134,7 @@ func (this *DB) Close() error {
 		return nil
 	}
 
-	for _, stmt := range []*sql.Stmt{
+	for _, stmt := range []*dbs.Stmt{
 		this.insertAgentIPStmt,
 		this.listAgentIPsStmt,
 	} {

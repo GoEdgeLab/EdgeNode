@@ -3,28 +3,27 @@
 package iplibrary
 
 import (
-	"database/sql"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/iwind/TeaGo/Tea"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"path/filepath"
 	"time"
 )
 
 type IPListDB struct {
-	db *sql.DB
+	db *dbs.DB
 
 	itemTableName string
 
-	deleteExpiredItemsStmt *sql.Stmt
-	deleteItemStmt         *sql.Stmt
-	insertItemStmt         *sql.Stmt
-	selectItemsStmt        *sql.Stmt
-	selectMaxVersionStmt   *sql.Stmt
+	deleteExpiredItemsStmt *dbs.Stmt
+	deleteItemStmt         *dbs.Stmt
+	insertItemStmt         *dbs.Stmt
+	selectItemsStmt        *dbs.Stmt
+	selectMaxVersionStmt   *dbs.Stmt
 
 	cleanTicker *time.Ticker
 
@@ -56,7 +55,7 @@ func (this *IPListDB) init() error {
 
 	var path = this.dir + "/ip_list.db"
 
-	db, err := sql.Open("sqlite3", "file:"+path+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
+	db, err := dbs.OpenWriter("file:" + path + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@
 package metrics
 
 import (
-	"database/sql"
 	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
@@ -17,7 +16,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"strconv"
 	"sync"
@@ -50,11 +48,11 @@ type Task struct {
 
 	cleanVersion int32
 
-	insertStatStmt          *sql.Stmt
-	deleteByVersionStmt     *sql.Stmt
-	deleteByExpiresTimeStmt *sql.Stmt
-	selectTopStmt           *sql.Stmt
-	sumStmt                 *sql.Stmt
+	insertStatStmt          *dbs.Stmt
+	deleteByVersionStmt     *dbs.Stmt
+	deleteByExpiresTimeStmt *dbs.Stmt
+	selectTopStmt           *dbs.Stmt
+	sumStmt                 *dbs.Stmt
 
 	serverIdMap       map[int64]zero.Zero  // 所有的服务Ids
 	timeMap           map[string]zero.Zero // time => bool
@@ -92,12 +90,12 @@ func (this *Task) Init() error {
 
 	var path = dir + "/metric." + types.String(this.item.Id) + ".db"
 
-	db, err := sql.Open("sqlite3", "file:"+path+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
+	db, err := dbs.OpenWriter("file:" + path + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return err
 	}
 	db.SetMaxOpenConns(1)
-	this.db = dbs.NewDB(db)
+	this.db = db
 
 	// 恢复数据库
 	var recoverEnv, _ = os.LookupEnv("EdgeRecover")

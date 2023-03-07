@@ -7,9 +7,9 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/iwind/TeaGo/types"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"sync/atomic"
 	"time"
@@ -450,7 +450,7 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 		remotelogs.Println("CACHE", "upgrading local database finished")
 	}()
 
-	db, err := sql.Open("sqlite3", "file:"+indexDBPath+"?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF")
+	db, err := dbs.OpenWriter("file:" + indexDBPath + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return err
 	}

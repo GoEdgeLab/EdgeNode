@@ -7,12 +7,54 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fileutils"
+	_ "github.com/mattn/go-sqlite3"
+	"strings"
 )
 
 type DB struct {
-	rawDB *sql.DB
+	locker *fileutils.Locker
+	rawDB  *sql.DB
 
 	enableStat bool
+}
+
+func OpenWriter(dsn string) (*DB, error) {
+	return open(dsn, true)
+}
+
+func OpenReader(dsn string) (*DB, error) {
+	return open(dsn, false)
+}
+
+func open(dsn string, lock bool) (*DB, error) {
+	// locker
+	var locker *fileutils.Locker
+	if lock {
+		var path = dsn
+		var queryIndex = strings.Index(dsn, "?")
+		if queryIndex >= 0 {
+			path = path[:queryIndex]
+		}
+		path = strings.TrimSpace(strings.TrimPrefix(path, "file:"))
+		locker = fileutils.NewLocker(path)
+		err := locker.Lock()
+		if err != nil {
+			remotelogs.Warn("DB", "lock '"+path+"' failed: "+err.Error())
+			locker = nil
+		}
+	}
+
+	// open
+	rawDB, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	var db = NewDB(rawDB)
+	db.locker = locker
+	return db, nil
 }
 
 func NewDB(rawDB *sql.DB) *DB {
@@ -28,6 +70,10 @@ func NewDB(rawDB *sql.DB) *DB {
 	})
 
 	return db
+}
+
+func (this *DB) SetMaxOpenConns(n int) {
+	this.rawDB.SetMaxOpenConns(n)
 }
 
 func (this *DB) EnableStat(b bool) {
@@ -81,6 +127,13 @@ func (this *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 
 func (this *DB) Close() error {
 	events.Remove(fmt.Sprintf("db_%p", this))
+
+	defer func() {
+		if this.locker != nil {
+			_ = this.locker.Release()
+		}
+	}()
+
 	return this.rawDB.Close()
 }
 

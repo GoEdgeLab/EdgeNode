@@ -3,7 +3,6 @@
 package caches
 
 import (
-	"database/sql"
 	"errors"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
@@ -82,14 +81,14 @@ func (this *FileListDB) Open(dbPath string) error {
 	}
 
 	// write db
-	writeDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size="+types.String(cacheSize)+"&_secure_delete=FAST")
+	writeDB, err := dbs.OpenWriter("file:" + dbPath + "?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=" + types.String(cacheSize) + "&_secure_delete=FAST&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return errors.New("open write database failed: " + err.Error())
 	}
 
 	writeDB.SetMaxOpenConns(1)
 
-	this.writeDB = dbs.NewDB(writeDB)
+	this.writeDB = writeDB
 
 	// TODO 耗时过长，暂时不整理数据库
 	// TODO 需要根据行数来判断是否VACUUM
@@ -109,7 +108,7 @@ func (this *FileListDB) Open(dbPath string) error {
 		}
 	}
 
-	this.writeBatch = dbs.NewBatch(writeDB, 4)
+	this.writeBatch = dbs.NewBatch(writeDB.RawDB(), 4)
 	this.writeBatch.OnFail(func(err error) {
 		remotelogs.Warn("LIST_FILE_DB", "run batch failed: "+err.Error()+" ("+filepath.Base(this.dbPath)+")")
 	})
@@ -124,14 +123,14 @@ func (this *FileListDB) Open(dbPath string) error {
 	}
 
 	// read db
-	readDB, err := sql.Open("sqlite3", "file:"+dbPath+"?cache=private&mode=ro&_journal_mode=WAL&_sync=OFF&_cache_size="+types.String(cacheSize))
+	readDB, err := dbs.OpenReader("file:" + dbPath + "?cache=private&mode=ro&_journal_mode=WAL&_sync=OFF&_cache_size=" + types.String(cacheSize))
 	if err != nil {
 		return errors.New("open read database failed: " + err.Error())
 	}
 
 	readDB.SetMaxOpenConns(runtime.NumCPU())
 
-	this.readDB = dbs.NewDB(readDB)
+	this.readDB = readDB
 
 	if teaconst.EnableDBStat {
 		this.readDB.EnableStat(true)
