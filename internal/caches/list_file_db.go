@@ -81,7 +81,8 @@ func (this *FileListDB) Open(dbPath string) error {
 	}
 
 	// write db
-	writeDB, err := dbs.OpenWriter("file:" + dbPath + "?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=" + types.String(cacheSize) + "&_secure_delete=FAST&_locking_mode=EXCLUSIVE")
+	// 这里不能加 EXCLUSIVE 锁，不然异步事务可能会失败
+	writeDB, err := dbs.OpenWriter("file:" + dbPath + "?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=" + types.String(cacheSize) + "&_secure_delete=FAST")
 	if err != nil {
 		return errors.New("open write database failed: " + err.Error())
 	}
