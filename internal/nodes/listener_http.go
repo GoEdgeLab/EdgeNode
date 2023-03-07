@@ -226,14 +226,21 @@ func (this *HTTPListener) emptyServer() *serverconfigs.ServerConfig {
 		Type: serverconfigs.ServerTypeHTTPProxy,
 	}
 
-	var accessLogRef = serverconfigs.NewHTTPAccessLogRef()
-	// TODO 需要配置是否记录日志
-	accessLogRef.IsOn = true
-	accessLogRef.Fields = append([]int{}, serverconfigs.HTTPAccessLogDefaultFieldsCodes...)
-	server.Web = &serverconfigs.HTTPWebConfig{
-		IsOn:         true,
-		AccessLogRef: accessLogRef,
+	// 检查是否开启访问日志
+	if sharedNodeConfig != nil {
+		var globalServerConfig = sharedNodeConfig.GlobalServerConfig
+		if globalServerConfig != nil && globalServerConfig.HTTPAccessLog.EnableServerNotFound {
+			var accessLogRef = serverconfigs.NewHTTPAccessLogRef()
+			accessLogRef.IsOn = true
+			accessLogRef.Fields = append([]int{}, serverconfigs.HTTPAccessLogDefaultFieldsCodes...)
+			server.Web = &serverconfigs.HTTPWebConfig{
+				IsOn:         true,
+				AccessLogRef: accessLogRef,
+			}
+		}
 	}
+
+	// TODO 需要对访问频率过多的IP进行惩罚
 
 	return server
 }
