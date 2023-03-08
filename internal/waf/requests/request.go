@@ -32,6 +32,9 @@ type Request interface {
 	// WAFOnAction 动作回调
 	WAFOnAction(action interface{}) (goNext bool)
 
+	// WAFFingerprint 读取连接指纹
+	WAFFingerprint() []byte
+
 	// Format 格式化变量
 	Format(string) string
 }

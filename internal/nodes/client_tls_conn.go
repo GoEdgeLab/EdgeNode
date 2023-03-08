@@ -68,3 +68,17 @@ func (this *ClientTLSConn) SetIsPersistent(isPersistent bool) {
 		}
 	}
 }
+
+func (this *ClientTLSConn) Fingerprint() []byte {
+	tlsConn, ok := this.rawConn.(*tls.Conn)
+	if ok {
+		var rawConn = tlsConn.NetConn()
+		if rawConn != nil {
+			clientConn, ok := rawConn.(*ClientConn)
+			if ok {
+				return clientConn.fingerprint
+			}
+		}
+	}
+	return nil
+}

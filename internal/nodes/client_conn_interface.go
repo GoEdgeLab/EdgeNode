@@ -26,4 +26,10 @@ type ClientConnInterface interface {
 
 	// SetIsPersistent 设置是否为持久化
 	SetIsPersistent(isPersistent bool)
+
+	// SetFingerprint 设置指纹信息
+	SetFingerprint(fingerprint []byte)
+
+	// Fingerprint 读取指纹信息
+	Fingerprint() []byte
 }

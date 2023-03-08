@@ -17,6 +17,7 @@ type BaseClientConn struct {
 	hasLimit   bool
 
 	isPersistent bool // 是否为持久化连接
+	fingerprint  []byte
 
 	isClosed bool
 
@@ -127,4 +128,14 @@ func (this *BaseClientConn) SetLinger(seconds int) error {
 
 func (this *BaseClientConn) SetIsPersistent(isPersistent bool) {
 	this.isPersistent = isPersistent
+}
+
+// SetFingerprint 设置指纹信息
+func (this *BaseClientConn) SetFingerprint(fingerprint []byte) {
+	this.fingerprint = fingerprint
+}
+
+// Fingerprint 读取指纹信息
+func (this *BaseClientConn) Fingerprint() []byte {
+	return this.fingerprint
 }

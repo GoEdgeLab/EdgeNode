@@ -402,3 +402,17 @@ func (this *HTTPRequest) WAFOnAction(action interface{}) (goNext bool) {
 	}
 	return true
 }
+
+func (this *HTTPRequest) WAFFingerprint() []byte {
+	var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+	if requestConn == nil {
+		return nil
+	}
+
+	clientConn, ok := requestConn.(ClientConnInterface)
+	if ok {
+		return clientConn.Fingerprint()
+	}
+
+	return nil
+}

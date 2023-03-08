@@ -3,6 +3,7 @@
 package checkpoints
 
 import (
+	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
@@ -35,7 +36,11 @@ type CC2Checkpoint struct {
 func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	var keys = options.GetSlice("keys")
 	var keyValues = []string{}
+	var hasRemoteAddr = false
 	for _, key := range keys {
+		if key == "${remoteAddr}" || key == "${rawRemoteAddr}" {
+			hasRemoteAddr = true
+		}
 		keyValues = append(keyValues, req.Format(types.String(key)))
 	}
 	if len(keyValues) == 0 {
@@ -66,8 +71,29 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 		}
 	}
 
+	var expiresAt = time.Now().Unix() + period
 	var ccKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(keyValues, "@")
-	value = ccCache.IncreaseInt64(ccKey, 1, time.Now().Unix()+period, false)
+	value = ccCache.IncreaseInt64(ccKey, 1, expiresAt, false)
+
+	// 基于指纹统计
+	if hasRemoteAddr {
+		var fingerprint = req.WAFFingerprint()
+		if len(fingerprint) > 0 {
+			var fpKeyValues = []string{}
+			for _, key := range keys {
+				if key == "${remoteAddr}" || key == "${rawRemoteAddr}" {
+					fpKeyValues = append(fpKeyValues, fmt.Sprintf("%x", fingerprint))
+					continue
+				}
+				fpKeyValues = append(fpKeyValues, req.Format(types.String(key)))
+			}
+			var fpCCKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(fpKeyValues, "@")
+			var fpValue = ccCache.IncreaseInt64(fpCCKey, 1, expiresAt, false)
+			if fpValue > value.(int64) {
+				value = fpValue
+			}
+		}
+	}
 
 	return
 }

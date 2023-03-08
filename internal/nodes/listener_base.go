@@ -36,6 +36,15 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 	return &tls.Config{
 		Certificates: nil,
 		GetConfigForClient: func(clientInfo *tls.ClientHelloInfo) (config *tls.Config, e error) {
+			// 指纹信息
+			var fingerprint = this.calculateFingerprint(clientInfo)
+			if len(fingerprint) > 0 {
+				clientConn, ok := clientInfo.Conn.(ClientConnInterface)
+				if ok {
+					clientConn.SetFingerprint(fingerprint)
+				}
+			}
+
 			tlsPolicy, _, err := this.matchSSL(this.helloServerName(clientInfo))
 			if err != nil {
 				return nil, err
@@ -50,6 +59,15 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 			return tlsPolicy.TLSConfig(), nil
 		},
 		GetCertificate: func(clientInfo *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
+			// 指纹信息
+			var fingerprint = this.calculateFingerprint(clientInfo)
+			if len(fingerprint) > 0 {
+				clientConn, ok := clientInfo.Conn.(ClientConnInterface)
+				if ok {
+					clientConn.SetFingerprint(fingerprint)
+				}
+			}
+
 			tlsPolicy, cert, err := this.matchSSL(this.helloServerName(clientInfo))
 			if err != nil {
 				return nil, err
