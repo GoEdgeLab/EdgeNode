@@ -221,6 +221,18 @@ func (this *HTTPRequest) Do() {
 			}
 		}
 
+		// CC
+		if !isHealthCheck {
+			if this.web.CC != nil {
+				if this.web.CC.IsOn {
+					if this.doCC() {
+						this.doEnd()
+						return
+					}
+				}
+			}
+		}
+
 		// WAF
 		if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 			if this.doWAFRequest() {
@@ -570,6 +582,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// UAM
 	if web.UAM != nil && (web.UAM.IsPrior || isTop) {
 		this.web.UAM = web.UAM
+	}
+
+	// CC
+	if web.CC != nil && (web.CC.IsPrior || isTop) {
+		this.web.CC = web.CC
 	}
 
 	// 重写规则
