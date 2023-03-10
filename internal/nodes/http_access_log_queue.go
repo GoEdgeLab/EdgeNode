@@ -25,9 +25,12 @@ type HTTPAccessLogQueue struct {
 // NewHTTPAccessLogQueue 获取新对象
 func NewHTTPAccessLogQueue() *HTTPAccessLogQueue {
 	// 队列中最大的值，超出此数量的访问日志会被丢弃
-	// TODO 需要可以在界面中设置
-	maxSize := 20000
-	queue := &HTTPAccessLogQueue{
+	var maxSize = 2_000 * (1 + utils.SystemMemoryGB()/2)
+	if maxSize > 20_000 {
+		maxSize = 20_000
+	}
+
+	var queue = &HTTPAccessLogQueue{
 		queue: make(chan *pb.HTTPAccessLog, maxSize),
 	}
 	goman.New(func() {
