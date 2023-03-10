@@ -76,7 +76,11 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 	value = ccCache.IncreaseInt64(ccKey, 1, expiresAt, false)
 
 	// 基于指纹统计
-	if hasRemoteAddr {
+	var enableFingerprint = true
+	if options.Has("enableFingerprint") && !options.GetBool("enableFingerprint") {
+		enableFingerprint = false
+	}
+	if hasRemoteAddr && enableFingerprint {
 		var fingerprint = req.WAFFingerprint()
 		if len(fingerprint) > 0 {
 			var fpKeyValues = []string{}

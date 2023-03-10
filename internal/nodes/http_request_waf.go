@@ -404,6 +404,11 @@ func (this *HTTPRequest) WAFOnAction(action interface{}) (goNext bool) {
 }
 
 func (this *HTTPRequest) WAFFingerprint() []byte {
+	// 目前只有HTTPS请求才有指纹
+	if !this.IsHTTPS {
+		return nil
+	}
+
 	var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
 	if requestConn == nil {
 		return nil
