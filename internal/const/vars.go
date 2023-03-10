@@ -15,7 +15,7 @@ var (
 
 	NodeId       int64 = 0
 	NodeIdString       = ""
-	IsMain             = len(os.Args) == 1
+	IsMain             = len(os.Args) == 1 || (len(os.Args) >= 2 && os.Args[1] == "pprof")
 
 	GlobalProductName = nodeconfigs.DefaultProductName
 
