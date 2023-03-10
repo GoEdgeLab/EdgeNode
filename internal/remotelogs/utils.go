@@ -20,6 +20,10 @@ import (
 var logChan = make(chan *pb.NodeLog, 64) // 队列数量不需要太长，因为日志通常仅仅为调试用
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	// 定期上传日志
 	var ticker = time.NewTicker(60 * time.Second)
 	if Tea.IsTesting() {

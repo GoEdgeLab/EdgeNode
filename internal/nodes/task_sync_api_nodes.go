@@ -3,6 +3,7 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
@@ -16,6 +17,10 @@ import (
 var sharedSyncAPINodesTask = NewSyncAPINodesTask()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventStart, func() {
 		goman.New(func() {
 			sharedSyncAPINodesTask.Start()

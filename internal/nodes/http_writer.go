@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/readers"
@@ -39,6 +40,10 @@ var webpMaxBufferSize int64 = 1_000_000_000
 var webpTotalBufferSize int64 = 0
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	var systemMemory = utils.SystemMemoryGB() / 8
 	if systemMemory > 0 {
 		webpMaxBufferSize = int64(systemMemory) * 1024 * 1024 * 1024

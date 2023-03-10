@@ -3,6 +3,7 @@
 package firewalls
 
 import (
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"runtime"
@@ -14,6 +15,10 @@ var firewallLocker = &sync.Mutex{}
 
 // 初始化
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		var firewall = Firewall()
 		if firewall.Name() != "mock" {

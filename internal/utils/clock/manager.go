@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -21,6 +22,10 @@ var hasSynced = false
 var sharedClockManager = NewClockManager()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		goman.New(sharedClockManager.Start)
 	})

@@ -15,6 +15,10 @@ import (
 )
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	var ticker = time.NewTicker(5 * time.Second)
 
 	events.On(events.EventLoaded, func() {

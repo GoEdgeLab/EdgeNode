@@ -15,7 +15,7 @@ var (
 
 	NodeId       int64 = 0
 	NodeIdString       = ""
-	IsDaemon           = len(os.Args) > 1 && os.Args[1] == "daemon"
+	IsMain             = len(os.Args) == 1
 
 	GlobalProductName = nodeconfigs.DefaultProductName
 

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
@@ -22,6 +23,10 @@ var (
 )
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventReload, func() {
 		nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 		if nodeConfig != nil {

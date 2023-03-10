@@ -3,6 +3,7 @@ package nodes
 import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -17,6 +18,10 @@ import (
 var sharedTOAManager = NewTOAManager()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventReload, func() {
 		err := sharedTOAManager.Run(sharedNodeConfig.TOA)
 		if err != nil {

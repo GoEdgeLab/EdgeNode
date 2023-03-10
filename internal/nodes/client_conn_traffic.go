@@ -15,6 +15,10 @@ import (
 
 // 发送监控流量
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventStart, func() {
 		var ticker = time.NewTicker(1 * time.Minute)
 		goman.New(func() {

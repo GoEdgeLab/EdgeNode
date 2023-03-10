@@ -4,6 +4,7 @@ package metrics
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"strconv"
@@ -13,6 +14,10 @@ import (
 var SharedManager = NewManager()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventQuit, func() {
 		SharedManager.Quit()
 	})

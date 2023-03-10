@@ -3,6 +3,7 @@ package caches
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
@@ -14,6 +15,10 @@ import (
 var SharedManager = NewManager()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventQuit, func() {
 		remotelogs.Println("CACHE", "quiting cache manager")
 		SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})

@@ -33,6 +33,10 @@ type recordIPTask struct {
 var recordIPTaskChan = make(chan *recordIPTask, 1024)
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		goman.New(func() {
 			rpcClient, err := rpc.SharedRPC()

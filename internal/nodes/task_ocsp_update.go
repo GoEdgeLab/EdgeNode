@@ -4,6 +4,7 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -15,6 +16,10 @@ import (
 var sharedOCSPTask = NewOCSPUpdateTask()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		sharedOCSPTask.version = sharedNodeConfig.OCSPVersion
 

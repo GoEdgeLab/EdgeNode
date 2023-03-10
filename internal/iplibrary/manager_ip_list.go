@@ -20,7 +20,7 @@ var SharedIPListManager = NewIPListManager()
 var IPListUpdateNotify = make(chan bool, 1)
 
 func init() {
-	if teaconst.IsDaemon {
+	if !teaconst.IsMain {
 		return
 	}
 

@@ -24,7 +24,7 @@ import (
 
 // check nft status, if being enabled we load it automatically
 func init() {
-	if teaconst.IsDaemon {
+	if !teaconst.IsMain {
 		return
 	}
 

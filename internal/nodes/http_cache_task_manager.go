@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -23,6 +24,10 @@ import (
 )
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventStart, func() {
 		goman.New(func() {
 			SharedHTTPCacheTaskManager.Start()

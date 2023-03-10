@@ -15,7 +15,7 @@ var instanceId = uint64(0)
 
 // New 新创建goroutine
 func New(f func()) {
-	if teaconst.IsDaemon {
+	if !teaconst.IsMain {
 		return
 	}
 
@@ -47,7 +47,7 @@ func New(f func()) {
 
 // NewWithArgs 创建带有参数的goroutine
 func NewWithArgs(f func(args ...interface{}), args ...interface{}) {
-	if teaconst.IsDaemon {
+	if !teaconst.IsMain {
 		return
 	}
 

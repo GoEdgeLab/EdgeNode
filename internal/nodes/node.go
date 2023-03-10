@@ -236,8 +236,6 @@ func (this *Node) Start() {
 
 // Daemon 实现守护进程
 func (this *Node) Daemon() {
-	teaconst.IsDaemon = true
-
 	var isDebug = lists.ContainsString(os.Args, "debug")
 	for {
 		conn, err := this.sock.Dial()

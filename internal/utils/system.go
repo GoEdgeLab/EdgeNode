@@ -3,12 +3,17 @@
 package utils
 
 import (
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
 var systemTotalMemory = -1
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	_ = SystemMemoryGB()
 }
 

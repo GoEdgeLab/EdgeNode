@@ -4,6 +4,7 @@ package agents
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -13,6 +14,10 @@ import (
 )
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		goman.New(func() {
 			SharedQueue.Start()

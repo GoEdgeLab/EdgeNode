@@ -5,6 +5,7 @@ package stats
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -21,6 +22,10 @@ var SharedBandwidthStatManager = NewBandwidthStatManager()
 const bandwidthTimestampDelim = 2 // N秒平均，更为精确
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		goman.New(func() {
 			SharedBandwidthStatManager.Start()

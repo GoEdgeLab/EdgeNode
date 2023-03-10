@@ -11,7 +11,7 @@ import (
 var sharedZSTDReaderPool *ReaderPool
 
 func init() {
-	if teaconst.IsDaemon {
+	if !teaconst.IsMain {
 		return
 	}
 

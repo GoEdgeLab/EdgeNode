@@ -9,6 +9,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/ddosconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls/nftables"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -27,6 +28,10 @@ import (
 var SharedDDoSProtectionManager = NewDDoSProtectionManager()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventReload, func() {
 		if nftablesInstance == nil {
 			return

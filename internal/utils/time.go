@@ -1,6 +1,7 @@
 package utils
 
 import (
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/iwind/TeaGo/types"
 	"time"
@@ -11,6 +12,10 @@ var unixTimeMilli = time.Now().UnixMilli()
 var unixTimeMilliString = types.String(unixTimeMilli)
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	var ticker = time.NewTicker(200 * time.Millisecond)
 	goman.New(func() {
 		for range ticker.C {

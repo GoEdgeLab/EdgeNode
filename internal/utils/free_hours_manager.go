@@ -15,6 +15,10 @@ import (
 var SharedFreeHoursManager = NewFreeHoursManager()
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	events.On(events.EventLoaded, func() {
 		goman.New(func() {
 			SharedFreeHoursManager.Start()

@@ -19,6 +19,10 @@ import (
 )
 
 func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
 	var manager = NewSystemServiceManager()
 	events.On(events.EventReload, func() {
 		goman.New(func() {
