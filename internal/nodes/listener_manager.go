@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -23,7 +24,15 @@ import (
 	"time"
 )
 
-var sharedListenerManager = NewListenerManager()
+var sharedListenerManager *ListenerManager
+
+func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
+	sharedListenerManager = NewListenerManager()
+}
 
 // ListenerManager 端口监听管理器
 type ListenerManager struct {
