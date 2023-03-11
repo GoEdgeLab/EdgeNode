@@ -232,7 +232,9 @@ Loop:
 				if dotIndex > -1 {
 					osInfo.Version = osInfo.Version[:dotIndex]
 				}
-				this.systemMap[serverId+"@"+osInfo.Name+"@"+osInfo.Version]++
+				if len(this.systemMap) < 100_000 { // 限制最大数据，防止攻击
+					this.systemMap[serverId+"@"+osInfo.Name+"@"+osInfo.Version]++
+				}
 			}
 
 			var browser, browserVersion = result.BrowserName, result.BrowserVersion
@@ -241,7 +243,9 @@ Loop:
 				if dotIndex > -1 {
 					browserVersion = browserVersion[:dotIndex]
 				}
-				this.browserMap[serverId+"@"+browser+"@"+browserVersion]++
+				if len(this.browserMap) < 100_000 { // 限制最大数据，防止攻击
+					this.browserMap[serverId+"@"+browser+"@"+browserVersion]++
+				}
 			}
 		case firewallRuleGroupString := <-this.firewallRuleGroupChan:
 			this.dailyFirewallRuleGroupMap[firewallRuleGroupString]++
