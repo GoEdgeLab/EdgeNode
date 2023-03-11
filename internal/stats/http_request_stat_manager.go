@@ -17,6 +17,7 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -264,15 +265,42 @@ func (this *HTTPRequestStatManager) Upload() error {
 		return err
 	}
 
-	// 月份相关
+	// 上传限制
+	var maxCities int16 = 20
+	var maxProviders int16 = 20
+	var maxSystems int16 = 20
+	var maxBrowsers int16 = 20
+	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
+	if nodeConfig != nil {
+		var serverConfig = nodeConfig.GlobalServerConfig // 复制是为了防止在中途修改
+		if serverConfig != nil {
+			var uploadConfig = serverConfig.Stat.Upload
+			if uploadConfig.MaxCities > 0 {
+				maxCities = uploadConfig.MaxCities
+			}
+			if uploadConfig.MaxProviders > 0 {
+				maxProviders = uploadConfig.MaxProviders
+			}
+			if uploadConfig.MaxSystems > 0 {
+				maxSystems = uploadConfig.MaxSystems
+			}
+			if uploadConfig.MaxBrowsers > 0 {
+				maxBrowsers = uploadConfig.MaxBrowsers
+			}
+		}
+	}
+
 	var pbCities = []*pb.UploadServerHTTPRequestStatRequest_RegionCity{}
 	var pbProviders = []*pb.UploadServerHTTPRequestStatRequest_RegionProvider{}
 	var pbSystems = []*pb.UploadServerHTTPRequestStatRequest_System{}
 	var pbBrowsers = []*pb.UploadServerHTTPRequestStatRequest_Browser{}
+
+	// 城市
 	for k, stat := range this.cityMap {
 		var pieces = strings.SplitN(k, "@", 4)
+		var serverId = types.Int64(pieces[0])
 		pbCities = append(pbCities, &pb.UploadServerHTTPRequestStatRequest_RegionCity{
-			ServerId:            types.Int64(pieces[0]),
+			ServerId:            serverId,
 			CountryName:         pieces[1],
 			ProvinceName:        pieces[2],
 			CityName:            pieces[3],
@@ -282,31 +310,108 @@ func (this *HTTPRequestStatManager) Upload() error {
 			AttackBytes:         stat.AttackBytes,
 		})
 	}
+	if len(this.cityMap) > int(maxCities) {
+		var newPBCities = []*pb.UploadServerHTTPRequestStatRequest_RegionCity{}
+		sort.Slice(pbCities, func(i, j int) bool {
+			return pbCities[i].CountRequests > pbCities[j].CountRequests
+		})
+		var serverCountMap = map[int64]int16{}
+		for _, city := range pbCities {
+			serverCountMap[city.ServerId]++
+			if serverCountMap[city.ServerId] > maxCities {
+				continue
+			}
+			newPBCities = append(newPBCities, city)
+		}
+		if len(pbCities) != len(newPBCities) {
+			pbCities = newPBCities
+		}
+	}
+
+	// 运营商
 	for k, count := range this.providerMap {
 		var pieces = strings.SplitN(k, "@", 2)
+		var serverId = types.Int64(pieces[0])
 		pbProviders = append(pbProviders, &pb.UploadServerHTTPRequestStatRequest_RegionProvider{
-			ServerId: types.Int64(pieces[0]),
+			ServerId: serverId,
 			Name:     pieces[1],
 			Count:    count,
 		})
 	}
+	if len(this.providerMap) > int(maxProviders) {
+		var newPBProviders = []*pb.UploadServerHTTPRequestStatRequest_RegionProvider{}
+		sort.Slice(pbProviders, func(i, j int) bool {
+			return pbProviders[i].Count > pbProviders[j].Count
+		})
+		var serverCountMap = map[int64]int16{}
+		for _, provider := range pbProviders {
+			serverCountMap[provider.ServerId]++
+			if serverCountMap[provider.ServerId] > maxProviders {
+				continue
+			}
+			newPBProviders = append(newPBProviders, provider)
+		}
+		if len(pbProviders) != len(newPBProviders) {
+			pbProviders = newPBProviders
+		}
+	}
+
+	// 操作系统
 	for k, count := range this.systemMap {
 		var pieces = strings.SplitN(k, "@", 3)
+		var serverId = types.Int64(pieces[0])
 		pbSystems = append(pbSystems, &pb.UploadServerHTTPRequestStatRequest_System{
-			ServerId: types.Int64(pieces[0]),
+			ServerId: serverId,
 			Name:     pieces[1],
 			Version:  pieces[2],
 			Count:    count,
 		})
 	}
+	if len(this.systemMap) > int(maxSystems) {
+		var newPBSystems = []*pb.UploadServerHTTPRequestStatRequest_System{}
+		sort.Slice(pbSystems, func(i, j int) bool {
+			return pbSystems[i].Count > pbSystems[j].Count
+		})
+		var serverCountMap = map[int64]int16{}
+		for _, system := range pbSystems {
+			serverCountMap[system.ServerId]++
+			if serverCountMap[system.ServerId] > maxSystems {
+				continue
+			}
+			newPBSystems = append(newPBSystems, system)
+		}
+		if len(pbSystems) != len(newPBSystems) {
+			pbSystems = newPBSystems
+		}
+	}
+
+	// 浏览器
 	for k, count := range this.browserMap {
 		var pieces = strings.SplitN(k, "@", 3)
+		var serverId = types.Int64(pieces[0])
 		pbBrowsers = append(pbBrowsers, &pb.UploadServerHTTPRequestStatRequest_Browser{
-			ServerId: types.Int64(pieces[0]),
+			ServerId: serverId,
 			Name:     pieces[1],
 			Version:  pieces[2],
 			Count:    count,
 		})
+	}
+	if len(this.browserMap) > int(maxBrowsers) {
+		var newPBBrowsers = []*pb.UploadServerHTTPRequestStatRequest_Browser{}
+		sort.Slice(pbBrowsers, func(i, j int) bool {
+			return pbBrowsers[i].Count > pbBrowsers[j].Count
+		})
+		var serverCountMap = map[int64]int16{}
+		for _, browser := range pbBrowsers {
+			serverCountMap[browser.ServerId]++
+			if serverCountMap[browser.ServerId] > maxBrowsers {
+				continue
+			}
+			newPBBrowsers = append(newPBBrowsers, browser)
+		}
+		if len(pbBrowsers) != len(newPBBrowsers) {
+			pbBrowsers = newPBBrowsers
+		}
 	}
 
 	// 防火墙相关
@@ -328,6 +433,15 @@ func (this *HTTPRequestStatManager) Upload() error {
 	this.systemMap = map[string]int64{}
 	this.browserMap = map[string]int64{}
 	this.dailyFirewallRuleGroupMap = map[string]int64{}
+
+	// 检查是否有数据
+	if len(pbCities) == 0 &&
+		len(pbProviders) == 0 &&
+		len(pbSystems) == 0 &&
+		len(pbBrowsers) == 0 &&
+		len(pbFirewallRuleGroups) == 0 {
+		return nil
+	}
 
 	// 上传数据
 	_, err = rpcClient.ServerRPC.UploadServerHTTPRequestStat(rpcClient.Context(), &pb.UploadServerHTTPRequestStatRequest{
