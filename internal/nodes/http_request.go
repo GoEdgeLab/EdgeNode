@@ -860,7 +860,7 @@ func (this *HTTPRequest) Format(source string) string {
 			}
 
 			// response.xxx.xxx
-			dotIndex := strings.Index(suffix, ".")
+			dotIndex = strings.Index(suffix, ".")
 			if dotIndex < 0 {
 				return "${" + varName + "}"
 			}
