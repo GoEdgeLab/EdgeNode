@@ -332,6 +332,12 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 			}
 		}
 	}
+
+	// 先清理以前的
+	if this.cacheWriter != nil {
+		_ = this.cacheWriter.Discard()
+	}
+
 	cacheWriter, err := storage.OpenWriter(cacheKey, expiresAt, this.StatusCode(), this.calculateHeaderLength(), totalSize, cacheRef.MaxSizeBytes(), this.isPartial)
 	if err != nil {
 		if err == caches.ErrEntityTooLarge && addStatusHeader {
@@ -345,9 +351,6 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 			this.Header().Set("X-Cache", "BYPASS, "+err.Error())
 		}
 		return
-	}
-	if this.cacheWriter != nil {
-		_ = this.cacheWriter.Discard()
 	}
 	this.cacheWriter = cacheWriter
 
