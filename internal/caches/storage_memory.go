@@ -508,7 +508,11 @@ func (this *MemoryStorage) flushItem(key string) {
 	if !ok {
 		return
 	}
-	if !item.IsDone || item.IsExpired() {
+	if !item.IsDone {
+		remotelogs.Error("CACHE", "flush items failed: open writer failed: item has not been done")
+		return
+	}
+	if item.IsExpired() {
 		return
 	}
 
