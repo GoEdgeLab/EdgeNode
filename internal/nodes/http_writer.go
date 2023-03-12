@@ -104,6 +104,18 @@ func NewHTTPWriter(req *HTTPRequest, httpResponseWriter http.ResponseWriter) *HT
 
 // Prepare 准备输出
 func (this *HTTPWriter) Prepare(resp *http.Response, size int64, status int, enableCache bool) (delayHeaders bool) {
+	// 清理以前数据，防止重试时发生异常错误
+	if this.compressionCacheWriter != nil {
+		_ = this.compressionCacheWriter.Discard()
+		this.compressionCacheWriter = nil
+	}
+
+	if this.cacheWriter != nil {
+		_ = this.cacheWriter.Discard()
+		this.cacheWriter = nil
+	}
+
+	// 新的请求相关数据
 	this.size = size
 	this.statusCode = status
 
@@ -333,6 +345,9 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 			this.Header().Set("X-Cache", "BYPASS, "+err.Error())
 		}
 		return
+	}
+	if this.cacheWriter != nil {
+		_ = this.cacheWriter.Discard()
 	}
 	this.cacheWriter = cacheWriter
 
@@ -696,6 +711,9 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		}
 
 		if compressionCacheWriter != nil {
+			if this.compressionCacheWriter != nil {
+				_ = this.compressionCacheWriter.Close()
+			}
 			this.compressionCacheWriter = compressionCacheWriter
 			var teeWriter = writers.NewTeeWriterCloser(this.writer, compressionCacheWriter)
 			teeWriter.OnFail(func(err error) {
