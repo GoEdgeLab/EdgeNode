@@ -5,6 +5,7 @@ package teaconst
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"os"
+	"strings"
 )
 
 var (
@@ -15,7 +16,7 @@ var (
 
 	NodeId       int64 = 0
 	NodeIdString       = ""
-	IsMain             = len(os.Args) == 1 || (len(os.Args) >= 2 && os.Args[1] == "pprof")
+	IsMain             = checkMain()
 
 	GlobalProductName = nodeconfigs.DefaultProductName
 
@@ -24,3 +25,15 @@ var (
 
 	DiskIsFast = false // 是否为高速硬盘
 )
+
+// 检查是否为主程序
+func checkMain() bool {
+	if len(os.Args) == 1 ||
+		(len(os.Args) >= 2 && os.Args[1] == "pprof") {
+		return true
+	}
+	exe, _ := os.Executable()
+	return strings.HasSuffix(exe, ".test") ||
+		strings.HasSuffix(exe, ".test.exe") ||
+		strings.Contains(exe, "___")
+}
