@@ -35,7 +35,7 @@ func init() {
 			err := uploadLogs()
 			tr.End()
 			if err != nil {
-				logs.Println("[LOG]" + err.Error())
+				logs.Println("[LOG]upload logs failed: " + err.Error())
 			}
 		}
 	})
@@ -191,7 +191,7 @@ func ServerError(serverId int64, tag string, description string, logType nodecon
 	if len(params) > 0 {
 		p, err := json.Marshal(params)
 		if err != nil {
-			logs.Println("[LOG]" + err.Error())
+			logs.Println("[LOG]ServerError(): json encode failed: " + err.Error())
 		} else {
 			paramsJSON = p
 		}
@@ -223,7 +223,7 @@ func ServerSuccess(serverId int64, tag string, description string, logType nodec
 	if len(params) > 0 {
 		p, err := json.Marshal(params)
 		if err != nil {
-			logs.Println("[LOG]" + err.Error())
+			logs.Println("[LOG]ServerSuccess(): json encode failed: " + err.Error())
 		} else {
 			paramsJSON = p
 		}
@@ -255,7 +255,7 @@ func ServerLog(serverId int64, tag string, description string, logType nodeconfi
 	if len(params) > 0 {
 		p, err := json.Marshal(params)
 		if err != nil {
-			logs.Println("[LOG]" + err.Error())
+			logs.Println("[LOG]ServerLog(): json encode failed: " + err.Error())
 		} else {
 			paramsJSON = p
 		}
