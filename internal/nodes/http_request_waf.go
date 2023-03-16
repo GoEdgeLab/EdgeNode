@@ -421,3 +421,8 @@ func (this *HTTPRequest) WAFFingerprint() []byte {
 
 	return nil
 }
+
+// DisableAccessLog 在当前请求中不使用访问日志
+func (this *HTTPRequest) DisableAccessLog() {
+	this.disableLog = true
+}

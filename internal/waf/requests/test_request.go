@@ -76,3 +76,11 @@ func (this *TestRequest) Format(s string) string {
 func (this *TestRequest) WAFOnAction(action interface{}) bool {
 	return true
 }
+
+func (this *TestRequest) WAFFingerprint() []byte {
+	return nil
+}
+
+func (this *TestRequest) DisableAccessLog() {
+
+}

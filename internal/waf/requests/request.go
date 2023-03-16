@@ -37,4 +37,7 @@ type Request interface {
 
 	// Format 格式化变量
 	Format(string) string
+
+	// DisableAccessLog 在当前请求中不使用访问日志
+	DisableAccessLog()
 }

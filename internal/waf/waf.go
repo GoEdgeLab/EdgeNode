@@ -250,12 +250,14 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) 
 	// validate captcha
 	var rawPath = req.WAFRaw().URL.Path
 	if rawPath == CaptchaPath {
+		req.DisableAccessLog()
 		captchaValidator.Run(req, writer)
 		return
 	}
 
 	// Get 302验证
 	if rawPath == Get302Path {
+		req.DisableAccessLog()
 		get302Validator.Run(req, writer)
 		return
 	}
