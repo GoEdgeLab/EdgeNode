@@ -177,10 +177,15 @@ func (this *Manager) TotalDiskSize() int64 {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
 
-	total := int64(0)
+	var total = int64(0)
 	for _, storage := range this.storageMap {
 		total += storage.TotalDiskSize()
 	}
+
+	if total < 0 {
+		total = 0
+	}
+
 	return total
 }
 
