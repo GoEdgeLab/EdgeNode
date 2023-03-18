@@ -191,7 +191,7 @@ func (this *Node) Start() {
 	}
 	teaconst.NodeId = nodeConfig.Id
 	teaconst.NodeIdString = types.String(teaconst.NodeId)
-	err, serverErrors := nodeConfig.Init()
+	err, serverErrors := nodeConfig.Init(nil)
 	if err != nil {
 		remotelogs.Error("NODE", "init node config failed: "+err.Error())
 		return
@@ -539,6 +539,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		Version:         -1, // 更新所有版本
 		Compress:        true,
 		NodeTaskVersion: taskVersion,
+		UseDataMap:      true,
 	})
 	if err != nil {
 		return errors.New("read config from rpc failed: " + err.Error())
@@ -589,7 +590,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		return err
 	}
 
-	err, serverErrors := nodeConfig.Init()
+	err, serverErrors := nodeConfig.Init(nil)
 	if err != nil {
 		return err
 	}
@@ -1210,7 +1211,7 @@ func (this *Node) reloadServer() {
 			}
 		}
 
-		err, serverErrors := newNodeConfig.Init()
+		err, serverErrors := newNodeConfig.Init(nil)
 		if err != nil {
 			remotelogs.Error("NODE", "apply server config error: "+err.Error())
 			return

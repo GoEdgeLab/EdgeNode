@@ -23,7 +23,7 @@ func TestBaseListener_FindServer(t *testing.T) {
 				{Name: types.String(i) + ".hello.com"},
 			},
 		}
-		_ = server.Init()
+		_ = server.Init(nil)
 		listener.Group.Add(server)
 	}
 

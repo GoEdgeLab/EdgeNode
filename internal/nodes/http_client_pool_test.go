@@ -11,12 +11,12 @@ func TestHTTPClientPool_Client(t *testing.T) {
 	pool := NewHTTPClientPool()
 
 	{
-		origin := &serverconfigs.OriginConfig{
+		var origin = &serverconfigs.OriginConfig{
 			Id:      1,
 			Version: 2,
 			Addr:    &serverconfigs.NetworkAddressConfig{Host: "127.0.0.1", PortRange: "1234"},
 		}
-		err := origin.Init()
+		err := origin.Init(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,7 +43,7 @@ func TestHTTPClientPool_cleanClients(t *testing.T) {
 		Version: 2,
 		Addr:    &serverconfigs.NetworkAddressConfig{Host: "127.0.0.1", PortRange: "1234"},
 	}
-	err := origin.Init()
+	err := origin.Init(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,17 +60,19 @@ func TestHTTPClientPool_cleanClients(t *testing.T) {
 func BenchmarkHTTPClientPool_Client(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	origin := &serverconfigs.OriginConfig{
+	var origin = &serverconfigs.OriginConfig{
 		Id:      1,
 		Version: 2,
 		Addr:    &serverconfigs.NetworkAddressConfig{Host: "127.0.0.1", PortRange: "1234"},
 	}
-	err := origin.Init()
+	err := origin.Init(nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	pool := NewHTTPClientPool()
+	b.ResetTimer()
+
+	var pool = NewHTTPClientPool()
 	for i := 0; i < b.N; i++ {
 		_, _ = pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false)
 	}
