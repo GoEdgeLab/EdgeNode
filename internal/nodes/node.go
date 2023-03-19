@@ -1205,8 +1205,10 @@ func (this *Node) reloadServer() {
 		}
 		for serverId, serverConfig := range updatingServerMap {
 			if serverConfig != nil {
+				remotelogs.Debug("NODE", "load server '" + types.String(serverId) + "'")
 				newNodeConfig.AddServer(serverConfig)
 			} else {
+				remotelogs.Debug("NODE", "remove server '" + types.String(serverId) + "'")
 				newNodeConfig.RemoveServer(serverId)
 			}
 		}
