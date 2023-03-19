@@ -602,9 +602,9 @@ func (this *Node) syncConfig(taskVersion int64) error {
 
 	// 刷新配置
 	if this.isLoaded {
-		remotelogs.Println("NODE", "reloading config ...")
+		remotelogs.Println("NODE", "reloading node config ...")
 	} else {
-		remotelogs.Println("NODE", "loading config ...")
+		remotelogs.Println("NODE", "loading node config ...")
 	}
 
 	this.onReload(nodeConfig, true)
