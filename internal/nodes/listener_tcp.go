@@ -114,14 +114,14 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 		serverName = tlsConn.ConnectionState().ServerName
 		if len(serverName) > 0 {
 			// 统计
-			stats.SharedTrafficStatManager.Add(server.Id, serverName, 0, 0, 1, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
+			stats.SharedTrafficStatManager.Add(server.UserId, server.Id, serverName, 0, 0, 1, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
 			recordStat = true
 		}
 	}
 
 	// 统计
 	if !recordStat {
-		stats.SharedTrafficStatManager.Add(server.Id, "", 0, 0, 1, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
+		stats.SharedTrafficStatManager.Add(server.UserId, server.Id, "", 0, 0, 1, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
 	}
 
 	originConn, err := this.connectOrigin(server.Id, serverName, server.ReverseProxy, conn.RemoteAddr().String())
@@ -176,7 +176,7 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 
 				// 记录流量
 				if server != nil {
-					stats.SharedTrafficStatManager.Add(server.Id, "", int64(n), 0, 0, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
+					stats.SharedTrafficStatManager.Add(server.UserId, server.Id, "", int64(n), 0, 0, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
 				}
 			}
 			if err != nil {

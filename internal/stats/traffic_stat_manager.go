@@ -22,6 +22,7 @@ import (
 var SharedTrafficStatManager = NewTrafficStatManager()
 
 type TrafficItem struct {
+	UserId               int64
 	Bytes                int64
 	CachedBytes          int64
 	CountRequests        int64
@@ -107,7 +108,7 @@ func (this *TrafficStatManager) Start() {
 }
 
 // Add 添加流量
-func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64, checkingTrafficLimit bool, planId int64) {
+func (this *TrafficStatManager) Add(userId int64, serverId int64, domain string, bytes int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64, checkingTrafficLimit bool, planId int64) {
 	if serverId == 0 {
 		return
 	}
@@ -128,7 +129,9 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 	// 总的流量
 	item, ok := this.itemMap[key]
 	if !ok {
-		item = &TrafficItem{}
+		item = &TrafficItem{
+			UserId: userId,
+		}
 		this.itemMap[key] = item
 	}
 	item.Bytes += bytes
@@ -200,6 +203,7 @@ func (this *TrafficStatManager) Upload() error {
 		}
 
 		pbServerStats = append(pbServerStats, &pb.ServerDailyStat{
+			UserId:               item.UserId,
 			ServerId:             serverId,
 			NodeRegionId:         regionId,
 			Bytes:                item.Bytes,
