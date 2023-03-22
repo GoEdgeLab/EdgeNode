@@ -12,6 +12,7 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,8 +45,8 @@ const trafficStatsMaxLife = 1200 // 最大只保存20分钟内的数据
 
 // TrafficStatManager 区域流量统计
 type TrafficStatManager struct {
-	itemMap    map[string]*TrafficItem // [timestamp serverId] => *TrafficItem
-	domainsMap map[string]*TrafficItem // timestamp @ serverId @ domain => *TrafficItem
+	itemMap    map[string]*TrafficItem           // [timestamp serverId] => *TrafficItem
+	domainsMap map[int64]map[string]*TrafficItem // serverIde =>  { timestamp @ domain => *TrafficItem }
 
 	pbItems       []*pb.ServerDailyStat
 	pbDomainItems []*pb.UploadServerDailyStatsRequest_DomainStat
@@ -59,7 +60,7 @@ type TrafficStatManager struct {
 func NewTrafficStatManager() *TrafficStatManager {
 	var manager = &TrafficStatManager{
 		itemMap:    map[string]*TrafficItem{},
-		domainsMap: map[string]*TrafficItem{},
+		domainsMap: map[int64]map[string]*TrafficItem{},
 	}
 
 	return manager
@@ -140,11 +141,17 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 	item.PlanId = planId
 
 	// 单个域名流量
-	var domainKey = strconv.FormatInt(timestamp, 10) + "@" + strconv.FormatInt(serverId, 10) + "@" + domain
-	domainItem, ok := this.domainsMap[domainKey]
+	var domainKey = types.String(timestamp) + "@" + domain
+	serverDomainMap, ok := this.domainsMap[serverId]
+	if !ok {
+		serverDomainMap = map[string]*TrafficItem{}
+		this.domainsMap[serverId] = serverDomainMap
+	}
+
+	domainItem, ok := serverDomainMap[domainKey]
 	if !ok {
 		domainItem = &TrafficItem{}
-		this.domainsMap[domainKey] = domainItem
+		serverDomainMap[domainKey] = domainItem
 	}
 	domainItem.Bytes += bytes
 	domainItem.CachedBytes += cachedBytes
@@ -176,7 +183,7 @@ func (this *TrafficStatManager) Upload() error {
 
 	// reset
 	this.itemMap = map[string]*TrafficItem{}
-	this.domainsMap = map[string]*TrafficItem{}
+	this.domainsMap = map[int64]map[string]*TrafficItem{}
 
 	this.locker.Unlock()
 
@@ -208,23 +215,43 @@ func (this *TrafficStatManager) Upload() error {
 	}
 
 	// 域名统计
+	const maxDomainsPerServer = 20
 	var pbDomainStats = []*pb.UploadServerDailyStatsRequest_DomainStat{}
-	for key, item := range domainMap {
-		var pieces = strings.SplitN(key, "@", 3)
-		if len(pieces) != 3 {
-			continue
+	for serverId, serverDomainMap := range domainMap {
+		// 如果超过单个服务最大值，则只取前N个
+		var shouldTrim = len(serverDomainMap) > maxDomainsPerServer
+		var tempItems []*pb.UploadServerDailyStatsRequest_DomainStat
+
+		for key, item := range serverDomainMap {
+			var pieces = strings.SplitN(key, "@", 2)
+			if len(pieces) != 2 {
+				continue
+			}
+			var pbItem = &pb.UploadServerDailyStatsRequest_DomainStat{
+				ServerId:            serverId,
+				Domain:              pieces[1],
+				Bytes:               item.Bytes,
+				CachedBytes:         item.CachedBytes,
+				CountRequests:       item.CountRequests,
+				CountCachedRequests: item.CountCachedRequests,
+				CountAttackRequests: item.CountAttackRequests,
+				AttackBytes:         item.AttackBytes,
+				CreatedAt:           types.Int64(pieces[0]),
+			}
+			if !shouldTrim {
+				pbDomainStats = append(pbDomainStats, pbItem)
+			} else {
+				tempItems = append(tempItems, pbItem)
+			}
 		}
-		pbDomainStats = append(pbDomainStats, &pb.UploadServerDailyStatsRequest_DomainStat{
-			ServerId:            types.Int64(pieces[1]),
-			Domain:              pieces[2],
-			Bytes:               item.Bytes,
-			CachedBytes:         item.CachedBytes,
-			CountRequests:       item.CountRequests,
-			CountCachedRequests: item.CountCachedRequests,
-			CountAttackRequests: item.CountAttackRequests,
-			AttackBytes:         item.AttackBytes,
-			CreatedAt:           types.Int64(pieces[0]),
-		})
+
+		if shouldTrim {
+			sort.Slice(tempItems, func(i, j int) bool {
+				return tempItems[i].CountRequests > tempItems[j].CountRequests
+			})
+
+			pbDomainStats = append(pbDomainStats, tempItems[:maxDomainsPerServer]...)
+		}
 	}
 
 	// 历史未提交记录

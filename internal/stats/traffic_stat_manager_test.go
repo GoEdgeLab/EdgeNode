@@ -1,6 +1,8 @@
 package stats
 
 import (
+	"github.com/iwind/TeaGo/rands"
+	"github.com/iwind/TeaGo/types"
 	"runtime"
 	"testing"
 )
@@ -16,7 +18,7 @@ func TestTrafficStatManager_Add(t *testing.T) {
 func TestTrafficStatManager_Upload(t *testing.T) {
 	manager := NewTrafficStatManager()
 	for i := 0; i < 100; i++ {
-		manager.Add(1, "goedge.cn", 1, 0, 0, 0, 0, 0, false, 0)
+		manager.Add(1, "goedge.cn"+types.String(rands.Int(0, 10)), 1, 0, 1, 0, 0, 0, false, 0)
 	}
 	err := manager.Upload()
 	if err != nil {
