@@ -182,14 +182,15 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	if n > 0 {
 		// 统计当前服务带宽
 		if this.serverId > 0 {
+			// TODO 需要加入在serverId绑定之前的带宽
 			if !this.isLO || Tea.IsTesting() { // 环路不统计带宽，避免缓存预热等行为产生带宽
 				atomic.AddUint64(&teaconst.OutTrafficBytes, uint64(n))
 
 				var cost = time.Since(before).Seconds()
 				if cost > 1 {
-					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(float64(n)/cost), int64(n))
+					stats.SharedBandwidthStatManager.AddBandwidth(this.userId, this.serverId, int64(float64(n)/cost), int64(n))
 				} else {
-					stats.SharedBandwidthStatManager.Add(this.userId, this.serverId, int64(n), int64(n))
+					stats.SharedBandwidthStatManager.AddBandwidth(this.userId, this.serverId, int64(n), int64(n))
 				}
 			}
 		}

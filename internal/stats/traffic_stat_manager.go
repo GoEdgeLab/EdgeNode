@@ -111,6 +111,9 @@ func (this *TrafficStatManager) Add(serverId int64, domain string, bytes int64, 
 		return
 	}
 
+	// 添加到带宽
+	SharedBandwidthStatManager.AddTraffic(serverId, cachedBytes, countRequests, countCachedRequests, countAttacks, attackBytes)
+
 	if bytes == 0 && countRequests == 0 {
 		return
 	}

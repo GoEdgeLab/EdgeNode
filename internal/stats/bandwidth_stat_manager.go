@@ -43,11 +43,17 @@ type BandwidthStat struct {
 	CurrentTimestamp int64
 	MaxBytes         int64
 	TotalBytes       int64
+
+	CachedBytes         int64
+	AttackBytes         int64
+	CountRequests       int64
+	CountCachedRequests int64
+	CountAttackRequests int64
 }
 
 // BandwidthStatManager 服务带宽统计
 type BandwidthStatManager struct {
-	m map[string]*BandwidthStat // key => *BandwidthStat
+	m map[string]*BandwidthStat // serverId@day@time => *BandwidthStat
 
 	pbStats []*pb.ServerBandwidthStat
 
@@ -82,7 +88,7 @@ func (this *BandwidthStatManager) Loop() error {
 
 	var now = time.Now()
 	var day = timeutil.Format("Ymd", now)
-	var currentTime = timeutil.FormatTime("Hi", now.Unix()/300*300)
+	var currentTime = timeutil.FormatTime("Hi", now.Unix()/300*300) // 300s = 5 minutes
 
 	if this.lastTime == currentTime {
 		return nil
@@ -106,15 +112,28 @@ func (this *BandwidthStatManager) Loop() error {
 	this.locker.Lock()
 	for key, stat := range this.m {
 		if stat.Day < day || stat.TimeAt < currentTime {
+			// 防止数据出现错误
+			if stat.CachedBytes > stat.TotalBytes {
+				stat.CachedBytes = stat.TotalBytes
+			}
+			if stat.AttackBytes > stat.TotalBytes {
+				stat.AttackBytes = stat.TotalBytes
+			}
+
 			pbStats = append(pbStats, &pb.ServerBandwidthStat{
-				Id:           0,
-				UserId:       stat.UserId,
-				ServerId:     stat.ServerId,
-				Day:          stat.Day,
-				TimeAt:       stat.TimeAt,
-				Bytes:        stat.MaxBytes / bandwidthTimestampDelim,
-				TotalBytes:   stat.TotalBytes,
-				NodeRegionId: regionId,
+				Id:                  0,
+				UserId:              stat.UserId,
+				ServerId:            stat.ServerId,
+				Day:                 stat.Day,
+				TimeAt:              stat.TimeAt,
+				Bytes:               stat.MaxBytes / bandwidthTimestampDelim,
+				TotalBytes:          stat.TotalBytes,
+				CachedBytes:         stat.CachedBytes,
+				AttackBytes:         stat.AttackBytes,
+				CountRequests:       stat.CountRequests,
+				CountCachedRequests: stat.CountCachedRequests,
+				CountAttackRequests: stat.CountAttackRequests,
+				NodeRegionId:        regionId,
 			})
 			delete(this.m, key)
 		}
@@ -138,8 +157,8 @@ func (this *BandwidthStatManager) Loop() error {
 	return nil
 }
 
-// Add 添加带宽数据
-func (this *BandwidthStatManager) Add(userId int64, serverId int64, peekBytes int64, totalBytes int64) {
+// AddBandwidth 添加带宽数据
+func (this *BandwidthStatManager) AddBandwidth(userId int64, serverId int64, peekBytes int64, totalBytes int64) {
 	if serverId <= 0 || (peekBytes == 0 && totalBytes == 0) {
 		return
 	}
@@ -184,6 +203,25 @@ func (this *BandwidthStatManager) Add(userId int64, serverId int64, peekBytes in
 			TotalBytes:       totalBytes,
 			CurrentTimestamp: timestamp,
 		}
+	}
+	this.locker.Unlock()
+}
+
+// AddTraffic 添加请求数据
+func (this *BandwidthStatManager) AddTraffic(serverId int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64) {
+	var now = time.Now()
+	var day = timeutil.Format("Ymd", now)
+	var timeAt = timeutil.FormatTime("Hi", now.Unix()/300*300)
+	var key = types.String(serverId) + "@" + day + "@" + timeAt
+	this.locker.Lock()
+	// 只有有记录了才会添加
+	stat, ok := this.m[key]
+	if ok {
+		stat.CachedBytes += cachedBytes
+		stat.CountRequests += countRequests
+		stat.CountCachedRequests += countCachedRequests
+		stat.CountAttackRequests += countAttacks
+		stat.AttackBytes += attackBytes
 	}
 	this.locker.Unlock()
 }
