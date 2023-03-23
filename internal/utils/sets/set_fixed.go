@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+// FixedSet
+// TODO 解决已存在元素不能按顺序弹出的问题
 type FixedSet struct {
 	maxSize int
 	locker  sync.RWMutex
