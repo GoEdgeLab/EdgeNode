@@ -35,7 +35,7 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 	}
 
 	// 是否在全局名单中
-	canGoNext, isInAllowedList := iplibrary.AllowIP(remoteAddr, this.ReqServer.Id)
+	canGoNext, isInAllowedList, _ := iplibrary.AllowIP(remoteAddr, this.ReqServer.Id)
 	if !canGoNext {
 		this.disableLog = true
 		this.Close()

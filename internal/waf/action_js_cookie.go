@@ -119,13 +119,7 @@ func (this *JSCookieAction) increaseFails(req requests.Request, policyId int64, 
 
 	var countFails = ttlcache.SharedCache.IncreaseInt64(key, 1, time.Now().Unix()+300, true)
 	if int(countFails) >= maxFails {
-		var useLocalFirewall = false
-
-		if this.Scope == firewallconfigs.FirewallScopeGlobal {
-			useLocalFirewall = true
-		}
-
-		SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, useLocalFirewall, groupId, setId, "JS_COOKIE验证连续失败超过"+types.String(maxFails)+"次")
+		SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, true, groupId, setId, "JS_COOKIE验证连续失败超过"+types.String(maxFails)+"次")
 		return false
 	}
 

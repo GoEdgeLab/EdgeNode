@@ -72,6 +72,25 @@ func (this *IPList) Contains(ip uint64) bool {
 	return item != nil
 }
 
+// ContainsExpires 判断是否包含某个IP
+func (this *IPList) ContainsExpires(ip uint64) (expiresAt int64, ok bool) {
+	this.locker.RLock()
+	if len(this.allItemsMap) > 0 {
+		this.locker.RUnlock()
+		return 0, true
+	}
+
+	var item = this.lookupIP(ip)
+
+	this.locker.RUnlock()
+
+	if item == nil {
+		return
+	}
+
+	return item.ExpiredAt, true
+}
+
 // ContainsIPStrings 是否包含一组IP中的任意一个，并返回匹配的第一个Item
 func (this *IPList) ContainsIPStrings(ipStrings []string) (item *IPItem, found bool) {
 	if len(ipStrings) == 0 {
@@ -155,7 +174,7 @@ func (this *IPList) addItem(item *IPItem, sortable bool) {
 	this.locker.Unlock()
 }
 
-//  对列表进行排序
+// 对列表进行排序
 func (this *IPList) sortItems() {
 	sort.Slice(this.sortedItems, func(i, j int) bool {
 		var item1 = this.sortedItems[i]

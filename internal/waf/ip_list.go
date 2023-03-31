@@ -10,7 +10,6 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 var SharedIPWhiteList = NewIPList(IPListTypeAllow)
@@ -95,6 +94,12 @@ func (this *IPList) RecordIP(ipType string,
 	this.Add(ipType, scope, serverId, ip, expiresAt)
 
 	if this.listType == IPListTypeDeny {
+		// 作用域
+		var scopeServerId int64
+		if scope == firewallconfigs.FirewallScopeService {
+			scopeServerId = serverId
+		}
+
 		// 加入队列等待上传
 		select {
 		case recordIPTaskChan <- &recordIPTask{
@@ -102,7 +107,7 @@ func (this *IPList) RecordIP(ipType string,
 			listId:                        firewallconfigs.GlobalListId,
 			expiresAt:                     expiresAt,
 			level:                         firewallconfigs.DefaultEventLevel,
-			serverId:                      serverId,
+			serverId:                      scopeServerId,
 			sourceServerId:                serverId,
 			sourceHTTPFirewallPolicyId:    policyId,
 			sourceHTTPFirewallRuleGroupId: groupId,
@@ -114,15 +119,8 @@ func (this *IPList) RecordIP(ipType string,
 		}
 
 		// 使用本地防火墙
-		if useLocalFirewall {
-			var seconds = expiresAt - time.Now().Unix()
-			if seconds > 0 {
-				// 最大3600，防止误封时间过长
-				if seconds > 3600 {
-					seconds = 3600
-				}
-				_ = firewalls.Firewall().DropSourceIP(ip, int(seconds), true)
-			}
+		if useLocalFirewall && expiresAt > 0 {
+			firewalls.DropTemporaryTo(ip, expiresAt)
 		}
 
 		// 关闭此IP相关连接

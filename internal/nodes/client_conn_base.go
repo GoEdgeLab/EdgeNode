@@ -4,6 +4,9 @@ package nodes
 
 import (
 	"crypto/tls"
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"net"
 )
 
@@ -60,6 +63,20 @@ func (this *BaseClientConn) SetServerId(serverId int64) {
 		}
 	case *ClientConn:
 		conn.SetServerId(serverId)
+	}
+
+	// 检查服务相关IP黑名单
+	if serverId > 0 && len(this.rawIP) > 0 {
+		var list = iplibrary.SharedServerListManager.FindBlackList(serverId, false)
+		if list != nil {
+			expiresAt, ok := list.ContainsExpires(configutils.IPString2Long(this.rawIP))
+			if ok {
+				_ = this.rawConn.Close()
+				if expiresAt > 0 {
+					firewalls.DropTemporaryTo(this.rawIP, expiresAt)
+				}
+			}
+		}
 	}
 }
 

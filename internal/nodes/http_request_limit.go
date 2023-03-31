@@ -9,7 +9,7 @@ import (
 
 func (this *HTTPRequest) doRequestLimit() (shouldStop bool) {
 	// 是否在全局名单中
-	_, isInAllowedList := iplibrary.AllowIP(this.RemoteAddr(), this.ReqServer.Id)
+	_, isInAllowedList, _ := iplibrary.AllowIP(this.RemoteAddr(), this.ReqServer.Id)
 	if isInAllowedList {
 		return false
 	}

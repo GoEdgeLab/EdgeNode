@@ -30,7 +30,7 @@ type recordIPTask struct {
 	sourceHTTPFirewallRuleSetId   int64
 }
 
-var recordIPTaskChan = make(chan *recordIPTask, 1024)
+var recordIPTaskChan = make(chan *recordIPTask, 2048)
 
 func init() {
 	if !teaconst.IsMain {
@@ -45,32 +45,56 @@ func init() {
 				return
 			}
 
-			for task := range recordIPTaskChan {
-				ipType := "ipv4"
-				if strings.Contains(task.ip, ":") {
-					ipType = "ipv6"
-				}
-				var reason = task.reason
-				if len(reason) == 0 {
-					reason = "触发WAF规则自动加入"
-				}
-				_, err = rpcClient.IPItemRPC.CreateIPItem(rpcClient.Context(), &pb.CreateIPItemRequest{
-					IpListId:                      task.listId,
-					IpFrom:                        task.ip,
-					IpTo:                          "",
-					ExpiredAt:                     task.expiresAt,
-					Reason:                        reason,
-					Type:                          ipType,
-					EventLevel:                    task.level,
-					ServerId:                      task.serverId,
-					SourceNodeId:                  teaconst.NodeId,
-					SourceServerId:                task.sourceServerId,
-					SourceHTTPFirewallPolicyId:    task.sourceHTTPFirewallPolicyId,
-					SourceHTTPFirewallRuleGroupId: task.sourceHTTPFirewallRuleGroupId,
-					SourceHTTPFirewallRuleSetId:   task.sourceHTTPFirewallRuleSetId,
-				})
-				if err != nil {
-					remotelogs.Error("WAF_RECORD_IP_ACTION", "create ip item failed: "+err.Error())
+			const maxItems = 512 // 每次上传的最大IP数
+
+			for {
+				var pbItems = []*pb.CreateIPItemsRequest_IPItem{}
+
+				func() {
+					for {
+						select {
+						case task := <-recordIPTaskChan:
+							var ipType = "ipv4"
+							if strings.Contains(task.ip, ":") {
+								ipType = "ipv6"
+							}
+							var reason = task.reason
+							if len(reason) == 0 {
+								reason = "触发WAF规则自动加入"
+							}
+
+							pbItems = append(pbItems, &pb.CreateIPItemsRequest_IPItem{
+								IpListId:                      task.listId,
+								IpFrom:                        task.ip,
+								IpTo:                          "",
+								ExpiredAt:                     task.expiresAt,
+								Reason:                        reason,
+								Type:                          ipType,
+								EventLevel:                    task.level,
+								ServerId:                      task.serverId,
+								SourceNodeId:                  teaconst.NodeId,
+								SourceServerId:                task.sourceServerId,
+								SourceHTTPFirewallPolicyId:    task.sourceHTTPFirewallPolicyId,
+								SourceHTTPFirewallRuleGroupId: task.sourceHTTPFirewallRuleGroupId,
+								SourceHTTPFirewallRuleSetId:   task.sourceHTTPFirewallRuleSetId,
+							})
+
+							if len(pbItems) >= maxItems {
+								return
+							}
+						default:
+							return
+						}
+					}
+				}()
+
+				if len(pbItems) > 0 {
+					_, err = rpcClient.IPItemRPC.CreateIPItems(rpcClient.Context(), &pb.CreateIPItemsRequest{IpItems: pbItems})
+					if err != nil {
+						remotelogs.Error("WAF_RECORD_IP_ACTION", "create ip item failed: "+err.Error())
+					}
+				} else {
+					time.Sleep(1 * time.Second)
 				}
 			}
 		})
