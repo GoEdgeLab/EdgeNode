@@ -55,6 +55,7 @@ var nodeConfigChangedNotify = make(chan bool, 8)
 var nodeConfigUpdatedAt int64
 var DaemonIsOn = false
 var DaemonPid = 0
+var nodeInstance *Node
 
 // Node 节点
 type Node struct {
@@ -79,12 +80,13 @@ type Node struct {
 }
 
 func NewNode() *Node {
-	return &Node{
+	nodeInstance = &Node{
 		sock:              gosock.NewTmpSock(teaconst.ProcessName),
 		oldMaxThreads:     -1,
 		oldMaxCPU:         -1,
 		updatingServerMap: map[int64]*serverconfigs.ServerConfig{},
 	}
+	return nodeInstance
 }
 
 // Test 检查配置
@@ -457,6 +459,11 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 					return err
 				}
 			}
+		}
+	case "plusChanged":
+		err := this.notifyPlusChange()
+		if err != nil {
+			return err
 		}
 	default:
 		remotelogs.Error("NODE", "task '"+types.String(task.Id)+"', type '"+task.Type+"' has not been handled")
@@ -1188,6 +1195,9 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig, reloadAll bool) {
 		// API Node地址，这里不限制是否为空，因为在为空时仍然要有对应的处理
 		this.changeAPINodeAddrs(config.APINodeAddrs)
 	}
+
+	// 刷新IP库
+	this.reloadIPLibrary()
 }
 
 // reload server config
@@ -1205,10 +1215,10 @@ func (this *Node) reloadServer() {
 		}
 		for serverId, serverConfig := range updatingServerMap {
 			if serverConfig != nil {
-				remotelogs.Debug("NODE", "load server '" + types.String(serverId) + "'")
+				remotelogs.Debug("NODE", "load server '"+types.String(serverId)+"'")
 				newNodeConfig.AddServer(serverConfig)
 			} else {
-				remotelogs.Debug("NODE", "remove server '" + types.String(serverId) + "'")
+				remotelogs.Debug("NODE", "remove server '"+types.String(serverId)+"'")
 				newNodeConfig.RemoveServer(serverId)
 			}
 		}
