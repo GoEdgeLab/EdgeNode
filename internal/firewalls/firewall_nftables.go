@@ -13,6 +13,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
+	"github.com/google/nftables/expr"
 	"github.com/iwind/TeaGo/types"
 	"net"
 	"os/exec"
@@ -229,6 +230,16 @@ func (this *NFTablesFirewall) init() error {
 			// rule
 			var ruleName = []byte(setAction)
 			rule, err := chain.GetRuleWithUserData(ruleName)
+
+			// 将以前的drop规则删掉，替换成后面的reject
+			if err == nil && setAction != "allow" && rule != nil && rule.VerDict() == expr.VerdictDrop {
+				deleteErr := chain.DeleteRule(rule)
+				if deleteErr == nil {
+					err = nftables.ErrRuleNotFound
+					rule = nil
+				}
+			}
+
 			if err != nil {
 				if nftables.IsNotFound(err) {
 					if tableDef.IsIPv4 {
