@@ -86,12 +86,6 @@ func (this *ListenerManager) Start(node *nodeconfigs.NodeConfig) error {
 	}**/
 	this.lastConfig = node
 
-	// 初始化
-	err, _ := node.Init(nil)
-	if err != nil {
-		return err
-	}
-
 	// 所有的新地址
 	groupAddrs := []string{}
 	availableServerGroups := node.AvailableGroups()
