@@ -114,6 +114,12 @@ func (this *HTTPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 
 // ServerHTTP 处理HTTP请求
 func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
+	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
+	if globalServerConfig != nil && !globalServerConfig.HTTPAll.SupportsLowVersionHTTP && (rawReq.ProtoMajor < 1 /** 0.x **/ || (rawReq.ProtoMajor == 1 && rawReq.ProtoMinor == 0 /** 1.0 **/)) {
+		http.Error(rawWriter, rawReq.Proto+" request is not supported.", http.StatusBadRequest)
+		return
+	}
+
 	// 不支持Connect
 	if rawReq.Method == http.MethodConnect {
 		http.Error(rawWriter, "Method Not Allowed", http.StatusMethodNotAllowed)
