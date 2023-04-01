@@ -48,7 +48,7 @@ func init() {
 			const maxItems = 512 // 每次上传的最大IP数
 
 			for {
-				var pbItems = []*pb.CreateIPItemsRequest_IPItem{}
+				var pbItemMap = map[string]*pb.CreateIPItemsRequest_IPItem{} // ip => IPItem
 
 				func() {
 					for {
@@ -63,7 +63,7 @@ func init() {
 								reason = "触发WAF规则自动加入"
 							}
 
-							pbItems = append(pbItems, &pb.CreateIPItemsRequest_IPItem{
+							pbItemMap[task.ip] = &pb.CreateIPItemsRequest_IPItem{
 								IpListId:                      task.listId,
 								IpFrom:                        task.ip,
 								IpTo:                          "",
@@ -77,9 +77,9 @@ func init() {
 								SourceHTTPFirewallPolicyId:    task.sourceHTTPFirewallPolicyId,
 								SourceHTTPFirewallRuleGroupId: task.sourceHTTPFirewallRuleGroupId,
 								SourceHTTPFirewallRuleSetId:   task.sourceHTTPFirewallRuleSetId,
-							})
+							}
 
-							if len(pbItems) >= maxItems {
+							if len(pbItemMap) >= maxItems {
 								return
 							}
 						default:
@@ -88,7 +88,11 @@ func init() {
 					}
 				}()
 
-				if len(pbItems) > 0 {
+				if len(pbItemMap) > 0 {
+					var pbItems = []*pb.CreateIPItemsRequest_IPItem{}
+					for _, pbItem := range pbItemMap {
+						pbItems = append(pbItems, pbItem)
+					}
 					_, err = rpcClient.IPItemRPC.CreateIPItems(rpcClient.Context(), &pb.CreateIPItemsRequest{IpItems: pbItems})
 					if err != nil {
 						remotelogs.Error("WAF_RECORD_IP_ACTION", "create ip item failed: "+err.Error())

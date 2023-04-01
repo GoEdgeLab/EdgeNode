@@ -546,7 +546,7 @@ func (this *DDoSProtectionManager) updateAllowIPList(allIPList []string) error {
 				_, ok := oldMap[ip]
 				if !ok {
 					// 不存在则添加
-					err = set.AddIPElement(ip, nil)
+					err = set.AddIPElement(ip, nil, false)
 					if err != nil {
 						return errors.New("add ip '" + ip + "' failed: " + err.Error())
 					}

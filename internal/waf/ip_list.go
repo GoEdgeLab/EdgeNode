@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/iwind/TeaGo/types"
 	"sync"
@@ -33,6 +34,9 @@ type IPList struct {
 
 	id     uint64
 	locker sync.RWMutex
+
+	lastIP   string // 加入到 recordIPTaskChan 之前尽可能去重
+	lastTime int64
 }
 
 // NewIPList 获取新对象
@@ -101,26 +105,29 @@ func (this *IPList) RecordIP(ipType string,
 		}
 
 		// 加入队列等待上传
-		select {
-		case recordIPTaskChan <- &recordIPTask{
-			ip:                            ip,
-			listId:                        firewallconfigs.GlobalListId,
-			expiresAt:                     expiresAt,
-			level:                         firewallconfigs.DefaultEventLevel,
-			serverId:                      scopeServerId,
-			sourceServerId:                serverId,
-			sourceHTTPFirewallPolicyId:    policyId,
-			sourceHTTPFirewallRuleGroupId: groupId,
-			sourceHTTPFirewallRuleSetId:   setId,
-			reason:                        reason,
-		}:
-		default:
+		if this.lastIP != ip || utils.UnixTime()-this.lastTime > 3 /** 3秒外才允许重复添加 **/ {
+			select {
+			case recordIPTaskChan <- &recordIPTask{
+				ip:                            ip,
+				listId:                        firewallconfigs.GlobalListId,
+				expiresAt:                     expiresAt,
+				level:                         firewallconfigs.DefaultEventLevel,
+				serverId:                      scopeServerId,
+				sourceServerId:                serverId,
+				sourceHTTPFirewallPolicyId:    policyId,
+				sourceHTTPFirewallRuleGroupId: groupId,
+				sourceHTTPFirewallRuleSetId:   setId,
+				reason:                        reason,
+			}:
+				this.lastIP = ip
+				this.lastTime = utils.UnixTime()
+			default:
+			}
 
-		}
-
-		// 使用本地防火墙
-		if useLocalFirewall && expiresAt > 0 {
-			firewalls.DropTemporaryTo(ip, expiresAt)
+			// 使用本地防火墙
+			if useLocalFirewall && expiresAt > 0 {
+				firewalls.DropTemporaryTo(ip, expiresAt)
+			}
 		}
 
 		// 关闭此IP相关连接

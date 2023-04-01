@@ -56,7 +56,7 @@ func (this *Set) Name() string {
 	return this.rawSet.Name
 }
 
-func (this *Set) AddElement(key []byte, options *ElementOptions) error {
+func (this *Set) AddElement(key []byte, options *ElementOptions, overwrite bool) error {
 	var rawElement = nft.SetElement{
 		Key: key,
 	}
@@ -73,7 +73,7 @@ func (this *Set) AddElement(key []byte, options *ElementOptions) error {
 	err = this.conn.Commit()
 	if err != nil {
 		// retry if exists
-		if strings.Contains(err.Error(), "file exists") {
+		if overwrite && strings.Contains(err.Error(), "file exists") {
 			deleteErr := this.conn.Raw().SetDeleteElements(this.rawSet, []nft.SetElement{
 				{
 					Key: key,
@@ -93,16 +93,16 @@ func (this *Set) AddElement(key []byte, options *ElementOptions) error {
 	return err
 }
 
-func (this *Set) AddIPElement(ip string, options *ElementOptions) error {
+func (this *Set) AddIPElement(ip string, options *ElementOptions, overwrite bool) error {
 	var ipObj = net.ParseIP(ip)
 	if ipObj == nil {
 		return errors.New("invalid ip '" + ip + "'")
 	}
 
 	if utils.IsIPv4(ip) {
-		return this.AddElement(ipObj.To4(), options)
+		return this.AddElement(ipObj.To4(), options, overwrite)
 	} else {
-		return this.AddElement(ipObj.To16(), options)
+		return this.AddElement(ipObj.To16(), options, overwrite)
 	}
 }
 

@@ -335,14 +335,14 @@ func (this *NFTablesFirewall) AllowSourceIP(ip string) error {
 		if this.allowIPv6Set == nil {
 			return errors.New("ipv6 ip set is nil")
 		}
-		return this.allowIPv6Set.AddElement(data.To16(), nil)
+		return this.allowIPv6Set.AddElement(data.To16(), nil, false)
 	}
 
 	// ipv4
 	if this.allowIPv4Set == nil {
 		return errors.New("ipv4 ip set is nil")
 	}
-	return this.allowIPv4Set.AddElement(data.To4(), nil)
+	return this.allowIPv4Set.AddElement(data.To4(), nil, false)
 }
 
 // RejectSourceIP 拒绝某个源IP连接
@@ -388,7 +388,7 @@ func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int, async 
 		}
 		return this.denyIPv6Set.AddElement(data.To16(), &nftables.ElementOptions{
 			Timeout: time.Duration(timeoutSeconds) * time.Second,
-		})
+		}, false)
 	}
 
 	// ipv4
@@ -397,7 +397,7 @@ func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int, async 
 	}
 	return this.denyIPv4Set.AddElement(data.To4(), &nftables.ElementOptions{
 		Timeout: time.Duration(timeoutSeconds) * time.Second,
-	})
+	}, false)
 }
 
 // RemoveSourceIP 删除某个源IP
