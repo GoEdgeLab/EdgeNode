@@ -235,13 +235,13 @@ func (this *NFTablesFirewall) init() error {
 						if setAction == "allow" {
 							rule, err = chain.AddAcceptIPv4SetRule(setName, ruleName)
 						} else {
-							rule, err = chain.AddDropIPv4SetRule(setName, ruleName)
+							rule, err = chain.AddRejectIPv4SetRule(setName, ruleName)
 						}
 					} else if tableDef.IsIPv6 {
 						if setAction == "allow" {
 							rule, err = chain.AddAcceptIPv6SetRule(setName, ruleName)
 						} else {
-							rule, err = chain.AddDropIPv6SetRule(setName, ruleName)
+							rule, err = chain.AddRejectIPv6SetRule(setName, ruleName)
 						}
 					}
 					if err != nil {
