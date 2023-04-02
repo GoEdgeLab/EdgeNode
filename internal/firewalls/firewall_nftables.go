@@ -1,6 +1,5 @@
 // Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 //go:build linux
-// +build linux
 
 package firewalls
 
@@ -16,12 +15,32 @@ import (
 	"github.com/google/nftables/expr"
 	"github.com/iwind/TeaGo/types"
 	"net"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
 	"time"
 )
+
+// NftExePath 查找nftables可执行文件路径
+func NftExePath() string {
+	path, _ := exec.LookPath("nft")
+	if len(path) > 0 {
+		return path
+	}
+
+	for _, possiblePath := range []string{
+		"/usr/sbin/nft",
+	} {
+		_, err := os.Stat(possiblePath)
+		if err == nil {
+			return possiblePath
+		}
+	}
+
+	return ""
+}
 
 // check nft status, if being enabled we load it automatically
 func init() {
@@ -38,8 +57,8 @@ func init() {
 					ticker.Stop()
 					break
 				}
-				_, err := exec.LookPath("nft")
-				if err == nil {
+				var nftExe = NftExePath()
+				if len(nftExe) > 0 {
 					nftablesFirewall, err := NewNFTablesFirewall()
 					if err != nil {
 						continue
@@ -121,9 +140,9 @@ type NFTablesFirewall struct {
 
 func (this *NFTablesFirewall) init() error {
 	// check nft
-	nftPath, err := exec.LookPath("nft")
-	if err != nil {
-		return errors.New("nft not found")
+	var nftPath = NftExePath()
+	if len(nftPath) == 0 {
+		return errors.New("'nft' not found")
 	}
 	this.version = this.readVersion(nftPath)
 
@@ -276,7 +295,7 @@ func (this *NFTablesFirewall) init() error {
 		for ipItem := range this.dropIPQueue {
 			switch ipItem.action {
 			case "drop":
-				err = this.DropSourceIP(ipItem.ip, ipItem.timeoutSeconds, false)
+				err := this.DropSourceIP(ipItem.ip, ipItem.timeoutSeconds, false)
 				if err != nil {
 					remotelogs.Warn("NFTABLES", "drop ip '"+ipItem.ip+"' failed: "+err.Error())
 				}

@@ -20,7 +20,6 @@ import (
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"net"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -91,7 +90,7 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 	}
 	remotelogs.Println("FIREWALL", "change DDoS protection config")
 
-	if len(this.nftExe()) == 0 {
+	if len(NftExePath()) == 0 {
 		return errors.New("can not find nft command")
 	}
 
@@ -157,7 +156,7 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 
 // 添加TCP规则
 func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig) error {
-	var nftExe = this.nftExe()
+	var nftExe = NftExePath()
 	if len(nftExe) == 0 {
 		return nil
 	}
@@ -556,9 +555,4 @@ func (this *DDoSProtectionManager) updateAllowIPList(allIPList []string) error {
 	}
 
 	return nil
-}
-
-func (this *DDoSProtectionManager) nftExe() string {
-	path, _ := exec.LookPath("nft")
-	return path
 }
