@@ -3,6 +3,7 @@
 package stats
 
 import (
+	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -10,9 +11,11 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
+	"os"
 	"sync"
 	"time"
 )
@@ -31,24 +34,31 @@ func init() {
 			SharedBandwidthStatManager.Start()
 		})
 	})
+
+	events.On(events.EventQuit, func() {
+		err := SharedBandwidthStatManager.Save()
+		if err != nil {
+			remotelogs.Error("STAT", "save bandwidth stats failed: "+err.Error())
+		}
+	})
 }
 
 type BandwidthStat struct {
-	Day      string
-	TimeAt   string
-	UserId   int64
-	ServerId int64
+	Day      string `json:"day"`
+	TimeAt   string `json:"timeAt"`
+	UserId   int64  `json:"userId"`
+	ServerId int64  `json:"serverId"`
 
-	CurrentBytes     int64
-	CurrentTimestamp int64
-	MaxBytes         int64
-	TotalBytes       int64
+	CurrentBytes     int64 `json:"currentBytes"`
+	CurrentTimestamp int64 `json:"currentTimestamp"`
+	MaxBytes         int64 `json:"maxBytes"`
+	TotalBytes       int64 `json:"totalBytes"`
 
-	CachedBytes         int64
-	AttackBytes         int64
-	CountRequests       int64
-	CountCachedRequests int64
-	CountAttackRequests int64
+	CachedBytes         int64 `json:"cachedBytes"`
+	AttackBytes         int64 `json:"attackBytes"`
+	CountRequests       int64 `json:"countRequests"`
+	CountCachedRequests int64 `json:"countCachedRequests"`
+	CountAttackRequests int64 `json:"countAttackRequests"`
 }
 
 // BandwidthStatManager 服务带宽统计
@@ -61,16 +71,25 @@ type BandwidthStatManager struct {
 
 	ticker *time.Ticker
 	locker sync.Mutex
+
+	cacheFile string // 上一次的缓存文件
 }
 
 func NewBandwidthStatManager() *BandwidthStatManager {
 	return &BandwidthStatManager{
-		m:      map[string]*BandwidthStat{},
-		ticker: time.NewTicker(1 * time.Minute), // 时间小于1分钟是为了更快速地上传结果
+		m:         map[string]*BandwidthStat{},
+		ticker:    time.NewTicker(1 * time.Minute), // 时间小于1分钟是为了更快速地上传结果
+		cacheFile: Tea.Root + "/data/bandwidth.dat",
 	}
 }
 
 func (this *BandwidthStatManager) Start() {
+	// 从上次数据中恢复
+	this.locker.Lock()
+	this.recover()
+	this.locker.Unlock()
+
+	// 循环上报数据
 	for range this.ticker.C {
 		err := this.Loop()
 		if err != nil && !rpc.IsConnError(err) {
@@ -242,4 +261,43 @@ func (this *BandwidthStatManager) Map() map[int64]int64 /** serverId => max byte
 	}
 
 	return m
+}
+
+// Save 保存到本地磁盘
+func (this *BandwidthStatManager) Save() error {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	data, err := json.Marshal(this.m)
+	if err != nil {
+		return err
+	}
+
+	_ = os.Remove(this.cacheFile)
+	return os.WriteFile(this.cacheFile, data, 0666)
+}
+
+// 从本地缓存文件中恢复数据
+func (this *BandwidthStatManager) recover() {
+	cacheData, err := os.ReadFile(this.cacheFile)
+	if err == nil {
+		var m = map[string]*BandwidthStat{}
+		err = json.Unmarshal(cacheData, &m)
+		if err == nil && len(m) > 0 {
+			var lastTime = ""
+			for _, stat := range m {
+				if len(lastTime) == 0 || stat.TimeAt > lastTime {
+					lastTime = stat.TimeAt
+				}
+			}
+			if len(lastTime) > 0 {
+				var availableTime = timeutil.FormatTime("Hi", (time.Now().Unix()-300) /** 只保留5分钟的 **/ /300*300) // 300s = 5 minutes
+				if lastTime >= availableTime {
+					this.m = m
+					this.lastTime = lastTime
+				}
+			}
+		}
+		_ = os.Remove(this.cacheFile)
+	}
 }
