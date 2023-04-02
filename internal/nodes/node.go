@@ -44,6 +44,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -136,6 +137,9 @@ func (this *Node) Start() {
 	if err != nil {
 		remotelogs.Error("NODE", "initialize ip library failed: "+err.Error())
 	}
+
+	// 调整系统参数
+	this.checkSystem()
 
 	// 检查硬盘类型
 	this.checkDisk()
@@ -1239,6 +1243,56 @@ func (this *Node) reloadServer() {
 		err = sharedListenerManager.Start(newNodeConfig)
 		if err != nil {
 			remotelogs.Error("NODE", "apply server config error: "+err.Error())
+		}
+	}
+}
+
+// 检查系统
+func (this *Node) checkSystem() {
+	if runtime.GOOS != "linux" || os.Getgid() != 0 {
+		return
+	}
+
+	type variable struct {
+		name     string
+		minValue int
+		maxValue int
+	}
+
+	const dir = "/proc/sys"
+
+	for _, v := range []variable{
+		{name: "net.core.somaxconn", minValue: 2048},
+		{name: "net.ipv4.tcp_max_syn_backlog", minValue: 2048},
+		{name: "net.core.netdev_max_backlog", minValue: 4096},
+		{name: "net.ipv4.tcp_fin_timeout", maxValue: 10},
+		{name: "net.ipv4.tcp_max_tw_buckets", minValue: 65535},
+		{name: "net.core.rmem_default", minValue: 4 << 20},
+		{name: "net.core.wmem_default", minValue: 4 << 20},
+		{name: "net.core.rmem_max", minValue: 32 << 20},
+		{name: "net.core.wmem_max", minValue: 32 << 20},
+	} {
+		var path = dir + "/" + strings.Replace(v.name, ".", "/", -1)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		data = bytes.TrimSpace(data)
+		if len(data) == 0 {
+			continue
+		}
+
+		var oldValue = types.Int(string(data))
+		if v.minValue > 0 && oldValue < v.minValue {
+			err = os.WriteFile(path, []byte(types.String(v.minValue)), 0666)
+			if err == nil {
+				remotelogs.Println("NODE", "change kernel parameter '"+v.name+"' from '"+types.String(oldValue)+"' to '"+types.String(v.minValue)+"'")
+			}
+		} else if v.maxValue > 0 && oldValue > v.maxValue {
+			err = os.WriteFile(path, []byte(types.String(v.maxValue)), 0666)
+			if err == nil {
+				remotelogs.Println("NODE", "change kernel parameter '"+v.name+"' from '"+types.String(oldValue)+"' to '"+types.String(v.maxValue)+"'")
+			}
 		}
 	}
 }
