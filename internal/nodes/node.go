@@ -464,6 +464,30 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 				}
 			}
 		}
+	case "uamPolicyChanged":
+		remotelogs.Println("NODE", "updating uam policies ...")
+		resp, err := rpcClient.NodeRPC.FindNodeUAMPolicies(rpcClient.Context(), &pb.FindNodeUAMPoliciesRequest{})
+		if err != nil {
+			return err
+		}
+		var uamPolicyMap = map[int64]*nodeconfigs.UAMPolicy{}
+		for _, policy := range resp.UamPolicies {
+			if len(policy.UamPolicyJSON) > 0 {
+				var uamPolicy = &nodeconfigs.UAMPolicy{}
+				err = json.Unmarshal(policy.UamPolicyJSON, uamPolicy)
+				if err != nil {
+					remotelogs.Error("NODE", "decode uam policy failed: "+err.Error())
+					continue
+				}
+				err = uamPolicy.Init()
+				if err != nil {
+					remotelogs.Error("NODE", "initialize uam policy failed: "+err.Error())
+					continue
+				}
+				uamPolicyMap[policy.NodeClusterId] = uamPolicy
+			}
+		}
+		sharedNodeConfig.UpdateUAMPolicies(uamPolicyMap)
 	case "plusChanged":
 		err := this.notifyPlusChange()
 		if err != nil {
@@ -628,6 +652,9 @@ func (this *Node) syncConfig(taskVersion int64) error {
 	}
 
 	this.isLoaded = true
+
+	// 整体更新不需要再更新单个服务
+	this.updatingServerMap = map[int64]*serverconfigs.ServerConfig{}
 
 	return nil
 }
