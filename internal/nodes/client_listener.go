@@ -45,17 +45,14 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 		canGoNext, inAllowList, expiresAt := iplibrary.AllowIP(ip, 0)
 		isInAllowList = inAllowList
 		if !canGoNext {
-			if expiresAt > 0 {
-				firewalls.DropTemporaryTo(ip, expiresAt)
-			}
+			firewalls.DropTemporaryTo(ip, expiresAt)
 		} else {
 			if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) {
-				expiresAt, ok := waf.SharedIPBlackList.ContainsExpires(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)
+				var ok = false
+				expiresAt, ok = waf.SharedIPBlackList.ContainsExpires(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)
 				if ok {
 					canGoNext = false
-					if expiresAt > 0 {
-						firewalls.DropTemporaryTo(ip, expiresAt)
-					}
+					firewalls.DropTemporaryTo(ip, expiresAt)
 				}
 			}
 		}

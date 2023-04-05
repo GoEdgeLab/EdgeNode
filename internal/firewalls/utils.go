@@ -8,8 +8,9 @@ import (
 
 // DropTemporaryTo 使用本地防火墙临时拦截IP数据包
 func DropTemporaryTo(ip string, expiresAt int64) {
-	if expiresAt <= 1 {
-		return
+	// 如果为0，则表示是长期有效
+	if expiresAt <= 0 {
+		expiresAt = time.Now().Unix() + 3600
 	}
 
 	var timeout = expiresAt - time.Now().Unix()

@@ -179,7 +179,10 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		if requestConn != nil {
 			clientConn, ok := requestConn.(ClientConnInterface)
 			if ok {
-				clientConn.SetServerId(server.Id)
+				var goNext = clientConn.SetServerId(server.Id)
+				if !goNext {
+					return
+				}
 				clientConn.SetUserId(server.UserId)
 			}
 		}

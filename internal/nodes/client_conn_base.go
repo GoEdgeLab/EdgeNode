@@ -4,7 +4,6 @@ package nodes
 
 import (
 	"crypto/tls"
-	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"net"
@@ -51,7 +50,20 @@ func (this *BaseClientConn) Bind(serverId int64, remoteAddr string, maxConnsPerS
 }
 
 // SetServerId 设置服务ID
-func (this *BaseClientConn) SetServerId(serverId int64) {
+func (this *BaseClientConn) SetServerId(serverId int64) (goNext bool) {
+	goNext = true
+
+	// 检查服务相关IP黑名单
+	if serverId > 0 && len(this.rawIP) > 0 {
+		// 是否在白名单中
+		ok, _, expiresAt := iplibrary.AllowIP(this.rawIP, serverId)
+		if !ok {
+			_ = this.rawConn.Close()
+			firewalls.DropTemporaryTo(this.rawIP, expiresAt)
+			return false
+		}
+	}
+
 	this.serverId = serverId
 
 	// 设置包装前连接
@@ -65,19 +77,7 @@ func (this *BaseClientConn) SetServerId(serverId int64) {
 		conn.SetServerId(serverId)
 	}
 
-	// 检查服务相关IP黑名单
-	if serverId > 0 && len(this.rawIP) > 0 {
-		var list = iplibrary.SharedServerListManager.FindBlackList(serverId, false)
-		if list != nil {
-			expiresAt, ok := list.ContainsExpires(configutils.IPString2Long(this.rawIP))
-			if ok {
-				_ = this.rawConn.Close()
-				if expiresAt > 0 {
-					firewalls.DropTemporaryTo(this.rawIP, expiresAt)
-				}
-			}
-		}
-	}
+	return true
 }
 
 // ServerId 读取当前连接绑定的服务ID

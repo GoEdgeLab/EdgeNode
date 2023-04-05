@@ -125,7 +125,7 @@ func (this *IPList) RecordIP(ipType string,
 			}
 
 			// 使用本地防火墙
-			if useLocalFirewall && expiresAt > 0 {
+			if useLocalFirewall {
 				firewalls.DropTemporaryTo(ip, expiresAt)
 			}
 		}

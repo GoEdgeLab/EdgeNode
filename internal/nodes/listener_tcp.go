@@ -75,7 +75,10 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 	// 绑定连接和服务
 	clientConn, ok := conn.(ClientConnInterface)
 	if ok {
-		clientConn.SetServerId(server.Id)
+		var goNext = clientConn.SetServerId(server.Id)
+		if !goNext {
+			return nil
+		}
 		clientConn.SetUserId(server.UserId)
 	} else {
 		tlsConn, ok := conn.(*tls.Conn)
@@ -84,7 +87,10 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 			if internalConn != nil {
 				clientConn, ok = internalConn.(ClientConnInterface)
 				if ok {
-					clientConn.SetServerId(server.Id)
+					var goNext = clientConn.SetServerId(server.Id)
+					if !goNext {
+						return nil
+					}
 					clientConn.SetUserId(server.UserId)
 				}
 			}
