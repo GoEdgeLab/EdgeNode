@@ -41,7 +41,7 @@ func (this *HTTPRequest) doMismatch() {
 			if ttlcache.SharedCache.IncreaseInt64("MISMATCH_DOMAIN:"+remoteIP, int64(1), time.Now().Unix()+60, false) > maxAttempts {
 				// 在加入之前再次检查黑名单
 				if !waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteIP) {
-					waf.SharedIPBlackList.RecordIP(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteIP, time.Now().Unix()+int64(3600), 0, true, 0, 0, "access mismatch domain '"+this.RawReq.Host+"' too frequently")
+					waf.SharedIPBlackList.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteIP, time.Now().Unix()+3600)
 				}
 			}
 		}
