@@ -137,12 +137,15 @@ Loop:
 	return nil
 }
 
+// ToValidUTF8 处理访问日志中的非UTF-8字节
 func (this *HTTPAccessLogQueue) ToValidUTF8(accessLog *pb.HTTPAccessLog) {
 	accessLog.RemoteUser = utils.ToValidUTF8string(accessLog.RemoteUser)
 	accessLog.RequestURI = utils.ToValidUTF8string(accessLog.RequestURI)
 	accessLog.RequestPath = utils.ToValidUTF8string(accessLog.RequestPath)
 	accessLog.RequestFilename = utils.ToValidUTF8string(accessLog.RequestFilename)
 	accessLog.RequestBody = bytes.ToValidUTF8(accessLog.RequestBody, []byte{})
+	accessLog.Host = utils.ToValidUTF8string(accessLog.Host)
+	accessLog.Hostname = utils.ToValidUTF8string(accessLog.Hostname)
 
 	for _, v := range accessLog.SentHeader {
 		for index, s := range v.Values {
@@ -166,5 +169,9 @@ func (this *HTTPAccessLogQueue) ToValidUTF8(accessLog *pb.HTTPAccessLog) {
 		for index, s := range v.Values {
 			v.Values[index] = utils.ToValidUTF8string(s)
 		}
+	}
+
+	for k, v := range accessLog.Errors {
+		accessLog.Errors[k] = utils.ToValidUTF8string(v)
 	}
 }
