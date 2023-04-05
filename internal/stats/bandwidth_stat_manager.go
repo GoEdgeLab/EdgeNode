@@ -36,6 +36,8 @@ func init() {
 	})
 
 	events.On(events.EventQuit, func() {
+		SharedBandwidthStatManager.Cancel()
+
 		err := SharedBandwidthStatManager.Save()
 		if err != nil {
 			remotelogs.Error("STAT", "save bandwidth stats failed: "+err.Error())
@@ -275,6 +277,11 @@ func (this *BandwidthStatManager) Save() error {
 
 	_ = os.Remove(this.cacheFile)
 	return os.WriteFile(this.cacheFile, data, 0666)
+}
+
+// Cancel 取消上传
+func (this *BandwidthStatManager) Cancel() {
+	this.ticker.Stop()
 }
 
 // 从本地缓存文件中恢复数据
