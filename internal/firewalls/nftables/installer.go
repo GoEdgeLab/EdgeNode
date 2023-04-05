@@ -38,8 +38,7 @@ func init() {
 		}
 
 		if os.Getgid() == 0 { // root user only
-			_, err := exec.LookPath("nft")
-			if err == nil {
+			if len(NftExePath()) > 0 {
 				return
 			}
 			goman.New(func() {
@@ -51,6 +50,25 @@ func init() {
 			})
 		}
 	})
+}
+
+// NftExePath 查找nftables可执行文件路径
+func NftExePath() string {
+	path, _ := exec.LookPath("nft")
+	if len(path) > 0 {
+		return path
+	}
+
+	for _, possiblePath := range []string{
+		"/usr/sbin/nft",
+	} {
+		_, err := os.Stat(possiblePath)
+		if err == nil {
+			return possiblePath
+		}
+	}
+
+	return ""
 }
 
 type Installer struct {
@@ -67,8 +85,7 @@ func (this *Installer) Install() error {
 	}
 
 	// 检查是否已经存在
-	_, err := exec.LookPath("nft")
-	if err == nil {
+	if len(NftExePath()) > 0  {
 		return nil
 	}
 

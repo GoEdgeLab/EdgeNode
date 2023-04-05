@@ -90,7 +90,7 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 	}
 	remotelogs.Println("FIREWALL", "change DDoS protection config")
 
-	if len(NftExePath()) == 0 {
+	if len(nftables.NftExePath()) == 0 {
 		return errors.New("can not find nft command")
 	}
 
@@ -156,7 +156,7 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 
 // 添加TCP规则
 func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig) error {
-	var nftExe = NftExePath()
+	var nftExe = nftables.NftExePath()
 	if len(nftExe) == 0 {
 		return nil
 	}

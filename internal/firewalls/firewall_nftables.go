@@ -16,32 +16,11 @@ import (
 	"github.com/google/nftables/expr"
 	"github.com/iwind/TeaGo/types"
 	"net"
-	"os"
-	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
 	"time"
 )
-
-// NftExePath 查找nftables可执行文件路径
-func NftExePath() string {
-	path, _ := exec.LookPath("nft")
-	if len(path) > 0 {
-		return path
-	}
-
-	for _, possiblePath := range []string{
-		"/usr/sbin/nft",
-	} {
-		_, err := os.Stat(possiblePath)
-		if err == nil {
-			return possiblePath
-		}
-	}
-
-	return ""
-}
 
 // check nft status, if being enabled we load it automatically
 func init() {
@@ -58,7 +37,7 @@ func init() {
 					ticker.Stop()
 					break
 				}
-				var nftExe = NftExePath()
+				var nftExe = nftables.NftExePath()
 				if len(nftExe) > 0 {
 					nftablesFirewall, err := NewNFTablesFirewall()
 					if err != nil {
@@ -141,7 +120,7 @@ type NFTablesFirewall struct {
 
 func (this *NFTablesFirewall) init() error {
 	// check nft
-	var nftPath = NftExePath()
+	var nftPath = nftables.NftExePath()
 	if len(nftPath) == 0 {
 		return errors.New("'nft' not found")
 	}
