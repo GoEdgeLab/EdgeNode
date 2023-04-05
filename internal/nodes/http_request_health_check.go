@@ -21,6 +21,8 @@ func (this *HTTPRequest) doHealthCheck(key string, isHealthCheck *bool) (stop bo
 	}
 	*isHealthCheck = true
 
+	this.web.StatRef = nil
+
 	if !data.GetBool("accessLogIsOn") {
 		this.disableLog = true
 	}
