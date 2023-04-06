@@ -21,6 +21,7 @@ import (
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"net"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -60,6 +61,8 @@ func init() {
 type DDoSProtectionManager struct {
 	lastAllowIPList []string
 	lastConfig      []byte
+
+	locker sync.Mutex
 }
 
 // NewDDoSProtectionManager 获取新对象
@@ -69,6 +72,12 @@ func NewDDoSProtectionManager() *DDoSProtectionManager {
 
 // Apply 应用配置
 func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) error {
+	// 加锁防止并发更改
+	if !this.locker.TryLock() {
+		return nil
+	}
+	defer this.locker.Unlock()
+
 	// 同集群节点IP白名单
 	var allowIPListChanged = false
 	nodeConfig, _ := nodeconfigs.SharedNodeConfig()

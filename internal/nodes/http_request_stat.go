@@ -6,7 +6,7 @@ import (
 
 // 统计
 func (this *HTTPRequest) doStat() {
-	if this.ReqServer == nil {
+	if this.ReqServer == nil || this.web == nil || this.web.StatRef == nil {
 		return
 	}
 
