@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/Tea"
-	"golang.org/x/net/http2"
 	"io"
 	"log"
 	"net"
@@ -84,13 +82,7 @@ func (this *HTTPListener) Serve() error {
 	if this.isHTTPS {
 		this.httpServer.TLSConfig = this.buildTLSConfig()
 
-		// support http/2
-		err := http2.ConfigureServer(this.httpServer, nil)
-		if err != nil {
-			remotelogs.Error("HTTP_LISTENER", "configure http2 error: "+err.Error())
-		}
-
-		err = this.httpServer.ServeTLS(this.Listener, "", "")
+		err := this.httpServer.ServeTLS(this.Listener, "", "")
 		if err != nil && err != http.ErrServerClosed {
 			return err
 		}

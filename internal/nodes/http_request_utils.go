@@ -208,3 +208,13 @@ func httpAcceptEncoding(acceptEncodings string, encoding string) bool {
 	}
 	return false
 }
+
+// 跳转到某个URL
+func httpRedirect(writer http.ResponseWriter, req *http.Request, url string, code int) {
+	if len(writer.Header().Get("Content-Type")) == 0 {
+		// 设置Content-Type，是为了让页面不输出链接
+		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	}
+
+	http.Redirect(writer, req, url, code)
+}
