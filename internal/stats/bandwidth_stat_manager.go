@@ -292,6 +292,9 @@ func (this *BandwidthStatManager) recover() {
 		if err == nil && len(m) > 0 {
 			var lastTime = ""
 			for _, stat := range m {
+				if stat.Day != utils.Ymd() {
+					continue
+				}
 				if len(lastTime) == 0 || stat.TimeAt > lastTime {
 					lastTime = stat.TimeAt
 				}
