@@ -8,7 +8,7 @@ import (
 )
 
 func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.HTTPRedirectToHTTPSConfig) (shouldBreak bool) {
-	host := this.RawReq.Host
+	var host = this.RawReq.Host
 
 	// 检查域名是否匹配
 	if !redirectToHTTPSConfig.MatchDomain(host) {
@@ -22,7 +22,7 @@ func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.
 			host = redirectToHTTPSConfig.Host
 		}
 	} else if redirectToHTTPSConfig.Port > 0 {
-		lastIndex := strings.LastIndex(host, ":")
+		var lastIndex = strings.LastIndex(host, ":")
 		if lastIndex > 0 {
 			host = host[:lastIndex]
 		}
@@ -30,18 +30,18 @@ func (this *HTTPRequest) doRedirectToHTTPS(redirectToHTTPSConfig *serverconfigs.
 			host = host + ":" + strconv.Itoa(redirectToHTTPSConfig.Port)
 		}
 	} else {
-		lastIndex := strings.LastIndex(host, ":")
+		var lastIndex = strings.LastIndex(host, ":")
 		if lastIndex > 0 {
 			host = host[:lastIndex]
 		}
 	}
 
-	statusCode := http.StatusMovedPermanently
+	var statusCode = http.StatusMovedPermanently
 	if redirectToHTTPSConfig.Status > 0 {
 		statusCode = redirectToHTTPSConfig.Status
 	}
 
-	newURL := "https://" + host + this.RawReq.RequestURI
+	var newURL = "https://" + host + this.RawReq.RequestURI
 	this.processResponseHeaders(this.writer.Header(), statusCode)
 	http.Redirect(this.writer, this.RawReq, newURL, statusCode)
 

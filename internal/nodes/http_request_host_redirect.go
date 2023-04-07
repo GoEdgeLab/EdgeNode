@@ -25,6 +25,16 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 		if !u.MatchRequest(this.Format) {
 			continue
 		}
+
+		var status = u.Status
+		if status <= 0 {
+			if searchEngineRegex.MatchString(this.RawReq.UserAgent()) {
+				status = http.StatusMovedPermanently
+			} else {
+				status = http.StatusTemporaryRedirect
+			}
+		}
+
 		if len(u.Type) == 0 || u.Type == serverconfigs.HTTPHostRedirectTypeURL {
 			if u.MatchPrefix { // 匹配前缀
 				if strings.HasPrefix(fullURL, u.BeforeURL) {
@@ -38,11 +48,8 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 						return false
 					}
 
-					if u.Status <= 0 {
-						u.Status = http.StatusTemporaryRedirect
-					}
-					this.processResponseHeaders(this.writer.Header(), u.Status)
-					http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
+					this.processResponseHeaders(this.writer.Header(), status)
+					http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 					return true
 				}
 			} else if u.MatchRegexp { // 正则匹配
@@ -83,11 +90,8 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					}
 				}
 
-				if u.Status <= 0 {
-					u.Status = http.StatusTemporaryRedirect
-				}
-				this.processResponseHeaders(this.writer.Header(), u.Status)
-				http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
+				this.processResponseHeaders(this.writer.Header(), status)
+				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 				return true
 			} else { // 精准匹配
 				if fullURL == u.RealBeforeURL() {
@@ -104,11 +108,8 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 						}
 					}
 
-					if u.Status <= 0 {
-						u.Status = http.StatusTemporaryRedirect
-					}
-					this.processResponseHeaders(this.writer.Header(), u.Status)
-					http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
+					this.processResponseHeaders(this.writer.Header(), status)
+					http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 					return true
 				}
 			}
@@ -142,10 +143,8 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					// 终止匹配
 					return false
 				}
-				if u.Status <= 0 {
-					u.Status = http.StatusTemporaryRedirect
-				}
-				this.processResponseHeaders(this.writer.Header(), u.Status)
+
+				this.processResponseHeaders(this.writer.Header(), status)
 
 				// 参数
 				var qIndex = strings.Index(this.uri, "?")
@@ -153,7 +152,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					afterURL += this.uri[qIndex:]
 				}
 
-				http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
+				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 				return true
 			}
 		} else if u.Type == serverconfigs.HTTPHostRedirectTypePort {
@@ -200,11 +199,9 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					// 终止匹配
 					return false
 				}
-				if u.Status <= 0 {
-					u.Status = http.StatusTemporaryRedirect
-				}
-				this.processResponseHeaders(this.writer.Header(), u.Status)
-				http.Redirect(this.RawWriter, this.RawReq, afterURL, u.Status)
+
+				this.processResponseHeaders(this.writer.Header(), status)
+				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 				return true
 			}
 		}

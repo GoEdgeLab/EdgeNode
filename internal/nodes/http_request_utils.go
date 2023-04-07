@@ -15,7 +15,11 @@ import (
 	"sync/atomic"
 )
 
-// 其中的每个括号里的内容都在被引用，不能轻易修改
+// 搜索引擎和爬虫正则
+var searchEngineRegex = regexp.MustCompile(`(?i)(60spider|adldxbot|adsbot-google|applebot|admantx|alexa|baidu|bingbot|bingpreview|facebookexternalhit|googlebot|proximic|slurp|sogou|twitterbot|yandex)`)
+var spiderRegexp = regexp.MustCompile(`(?i)(python|pycurl|http-client|httpclient|apachebench|nethttp|http_request|java|perl|ruby|scrapy|php|rust)`)
+
+// 内容范围正则，其中的每个括号里的内容都在被引用，不能轻易修改
 var contentRangeRegexp = regexp.MustCompile(`^bytes (\d+)-(\d+)/(\d+|\*)`)
 
 // 分解Range
