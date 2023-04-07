@@ -3,6 +3,7 @@ package stats
 import (
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
+	"math/rand"
 	"runtime"
 	"testing"
 )
@@ -30,8 +31,12 @@ func TestTrafficStatManager_Upload(t *testing.T) {
 func BenchmarkTrafficStatManager_Add(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	manager := NewTrafficStatManager()
-	for i := 0; i < b.N; i++ {
-		manager.Add(1, 1, "goedge.cn", 1024, 1, 0, 0, 0, 0, false, 0)
-	}
+	var manager = NewTrafficStatManager()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			manager.Add(1, 1, "goedge.cn"+types.String(rand.Int63()%10), 1024, 1, 0, 0, 0, 0, false, 0)
+		}
+	})
 }

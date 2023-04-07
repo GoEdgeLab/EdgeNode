@@ -3,7 +3,9 @@
 package stats_test
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -29,5 +31,55 @@ func TestBandwidthStatManager_Loop(t *testing.T) {
 	err := manager.Loop()
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func BenchmarkBandwidthStatManager_Slice(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	for i := 0; i < b.N; i++ {
+		var pbStats = []*pb.ServerBandwidthStat{}
+		for j := 0; j < 100; j++ {
+			var stat = &stats.BandwidthStat{}
+			pbStats = append(pbStats, &pb.ServerBandwidthStat{
+				Id:                  0,
+				UserId:              stat.UserId,
+				ServerId:            stat.ServerId,
+				Day:                 stat.Day,
+				TimeAt:              stat.TimeAt,
+				Bytes:               stat.MaxBytes / 2,
+				TotalBytes:          stat.TotalBytes,
+				CachedBytes:         stat.CachedBytes,
+				AttackBytes:         stat.AttackBytes,
+				CountRequests:       stat.CountRequests,
+				CountCachedRequests: stat.CountCachedRequests,
+				CountAttackRequests: stat.CountAttackRequests,
+				NodeRegionId:        1,
+			})
+		}
+	}
+}
+
+func BenchmarkBandwidthStatManager_Slice2(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	for i := 0; i < b.N; i++ {
+		var statsSlice = []*stats.BandwidthStat{}
+		for j := 0; j < 100; j++ {
+			var stat = &stats.BandwidthStat{}
+			statsSlice = append(statsSlice, stat)
+		}
+	}
+}
+
+func BenchmarkBandwidthStatManager_Slice3(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	for i := 0; i < b.N; i++ {
+		var statsSlice = make([]*stats.BandwidthStat, 2000)
+		for j := 0; j < 100; j++ {
+			var stat = &stats.BandwidthStat{}
+			statsSlice[j] = stat
+		}
 	}
 }
