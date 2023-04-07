@@ -34,6 +34,17 @@ func TestBandwidthStatManager_Loop(t *testing.T) {
 	}
 }
 
+func BenchmarkBandwidthStatManager_Add(b *testing.B) {
+	var manager = stats.NewBandwidthStatManager()
+	b.RunParallel(func(pb *testing.PB) {
+		var i int
+		for pb.Next() {
+			i++
+			manager.AddBandwidth(1, int64(i%100), 10, 10)
+		}
+	})
+}
+
 func BenchmarkBandwidthStatManager_Slice(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 

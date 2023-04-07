@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
@@ -184,10 +185,9 @@ func (this *BandwidthStatManager) AddBandwidth(userId int64, serverId int64, pee
 		return
 	}
 
-	var now = time.Now()
-	var timestamp = now.Unix() / bandwidthTimestampDelim * bandwidthTimestampDelim // 将时间戳均分成N等份
-	var day = timeutil.Format("Ymd", now)
-	var timeAt = timeutil.FormatTime("Hi", now.Unix()/300*300)
+	var timestamp = utils.UnixTime() / bandwidthTimestampDelim * bandwidthTimestampDelim // 将时间戳均分成N等份
+	var day = utils.Ymd()
+	var timeAt = utils.Round5Hi()
 	var key = types.String(serverId) + "@" + day + "@" + timeAt
 
 	// 增加TCP Header尺寸，这里默认MTU为1500，且默认为IPv4
@@ -230,9 +230,8 @@ func (this *BandwidthStatManager) AddBandwidth(userId int64, serverId int64, pee
 
 // AddTraffic 添加请求数据
 func (this *BandwidthStatManager) AddTraffic(serverId int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64) {
-	var now = time.Now()
-	var day = timeutil.Format("Ymd", now)
-	var timeAt = timeutil.FormatTime("Hi", now.Unix()/300*300)
+	var day = utils.Ymd()
+	var timeAt = utils.Round5Hi()
 	var key = types.String(serverId) + "@" + day + "@" + timeAt
 	this.locker.Lock()
 	// 只有有记录了才会添加

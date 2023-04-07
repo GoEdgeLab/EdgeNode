@@ -4,12 +4,15 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/iwind/TeaGo/types"
+	timeutil "github.com/iwind/TeaGo/utils/time"
 	"time"
 )
 
 var unixTime = time.Now().Unix()
 var unixTimeMilli = time.Now().UnixMilli()
 var unixTimeMilliString = types.String(unixTimeMilli)
+var ymd = timeutil.Format("Ymd")
+var round5Hi = timeutil.FormatTime("Hi", time.Now().Unix()/300*300)
 
 func init() {
 	if !teaconst.IsMain {
@@ -22,6 +25,8 @@ func init() {
 			unixTime = time.Now().Unix()
 			unixTimeMilli = time.Now().UnixMilli()
 			unixTimeMilliString = types.String(unixTimeMilli)
+			ymd = timeutil.Format("Ymd")
+			round5Hi = timeutil.FormatTime("Hi", time.Now().Unix()/300*300)
 		}
 	})
 }
@@ -65,4 +70,14 @@ func GMTUnixTime(timestamp int64) int64 {
 func GMTTime(t time.Time) time.Time {
 	_, offset := time.Now().Zone()
 	return t.Add(-time.Duration(offset) * time.Second)
+}
+
+// Ymd 读取YYYYMMDD
+func Ymd() string {
+	return ymd
+}
+
+// Round5Hi 读取5分钟间隔时间
+func Round5Hi() string {
+	return round5Hi
 }
