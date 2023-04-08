@@ -1,6 +1,6 @@
 package ttlcache
 
 type Item struct {
-	Value     interface{}
+	Value     any
 	expiredAt int64
 }

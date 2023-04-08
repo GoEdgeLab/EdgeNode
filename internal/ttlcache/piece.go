@@ -5,7 +5,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/types"
 	"sync"
-	"time"
 )
 
 type Piece struct {
@@ -27,7 +26,7 @@ func NewPiece(maxItems int) *Piece {
 
 func (this *Piece) Add(key uint64, item *Item) (ok bool) {
 	this.locker.Lock()
-	if len(this.m) >= this.maxItems {
+	if this.maxItems > 0 && len(this.m) >= this.maxItems {
 		this.locker.Unlock()
 		return
 	}
@@ -42,7 +41,7 @@ func (this *Piece) Add(key uint64, item *Item) (ok bool) {
 func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64, extend bool) (result int64) {
 	this.locker.Lock()
 	item, ok := this.m[key]
-	if ok && item.expiredAt > time.Now().Unix() {
+	if ok && item.expiredAt > fasttime.Now().Unix() {
 		result = types.Int64(item.Value) + delta
 		item.Value = result
 		if extend {
@@ -91,7 +90,7 @@ func (this *Piece) Count() (count int) {
 }
 
 func (this *Piece) GC() {
-	var currentTime = time.Now().Unix()
+	var currentTime = fasttime.Now().Unix()
 	if this.lastGCTime == 0 {
 		this.lastGCTime = currentTime - 3600
 	}

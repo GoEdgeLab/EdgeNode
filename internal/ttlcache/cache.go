@@ -3,7 +3,6 @@ package ttlcache
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
-	"time"
 )
 
 var SharedCache = NewCache()
@@ -11,8 +10,10 @@ var SharedCache = NewCache()
 // Cache TTL缓存
 // 最大的缓存时间为30 * 86400
 // Piece数据结构：
-//      Piece1            |  Piece2 | Piece3 | ...
-//  [ Item1, Item2, ... ] |   ...
+//
+//	    Piece1            |  Piece2 | Piece3 | ...
+//	[ Item1, Item2, ... ] |   ...
+//
 // KeyMap列表数据结构
 // { timestamp1 => [key1, key2, ...] }, ...
 type Cache struct {
@@ -70,7 +71,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 	return cache
 }
 
-func (this *Cache) Write(key string, value interface{}, expiredAt int64) (ok bool) {
+func (this *Cache) Write(key string, value any, expiredAt int64) (ok bool) {
 	if this.isDestroyed {
 		return
 	}
@@ -84,8 +85,8 @@ func (this *Cache) Write(key string, value interface{}, expiredAt int64) (ok boo
 	if expiredAt > maxExpiredAt {
 		expiredAt = maxExpiredAt
 	}
-	uint64Key := HashKey([]byte(key))
-	pieceIndex := uint64Key % this.countPieces
+	var uint64Key = HashKey([]byte(key))
+	var pieceIndex = uint64Key % this.countPieces
 	return this.pieces[pieceIndex].Add(uint64Key, &Item{
 		Value:     value,
 		expiredAt: expiredAt,
@@ -97,22 +98,22 @@ func (this *Cache) IncreaseInt64(key string, delta int64, expiredAt int64, exten
 		return 0
 	}
 
-	currentTimestamp := time.Now().Unix()
+	var currentTimestamp = fasttime.Now().Unix()
 	if expiredAt <= currentTimestamp {
 		return 0
 	}
 
-	maxExpiredAt := currentTimestamp + 30*86400
+	var maxExpiredAt = currentTimestamp + 30*86400
 	if expiredAt > maxExpiredAt {
 		expiredAt = maxExpiredAt
 	}
-	uint64Key := HashKey([]byte(key))
-	pieceIndex := uint64Key % this.countPieces
+	var uint64Key = HashKey([]byte(key))
+	var pieceIndex = uint64Key % this.countPieces
 	return this.pieces[pieceIndex].IncreaseInt64(uint64Key, delta, expiredAt, extend)
 }
 
 func (this *Cache) Read(key string) (item *Item) {
-	uint64Key := HashKey([]byte(key))
+	var uint64Key = HashKey([]byte(key))
 	return this.pieces[uint64Key%this.countPieces].Read(uint64Key)
 }
 
@@ -121,7 +122,7 @@ func (this *Cache) readIntKey(key uint64) (value *Item) {
 }
 
 func (this *Cache) Delete(key string) {
-	uint64Key := HashKey([]byte(key))
+	var uint64Key = HashKey([]byte(key))
 	this.pieces[uint64Key%this.countPieces].Delete(uint64Key)
 }
 
@@ -138,7 +139,7 @@ func (this *Cache) Count() (count int) {
 
 func (this *Cache) GC() {
 	this.pieces[this.gcPieceIndex].GC()
-	newIndex := this.gcPieceIndex + 1
+	var newIndex = this.gcPieceIndex + 1
 	if newIndex >= int(this.countPieces) {
 		newIndex = 0
 	}
