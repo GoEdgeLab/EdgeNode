@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -328,7 +329,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 设置cache.age变量
-	var age = strconv.FormatInt(utils.UnixTime()-reader.LastModified(), 10)
+	var age = strconv.FormatInt(fasttime.Now().Unix()-reader.LastModified(), 10)
 	this.varMapping["cache.age"] = age
 
 	if addStatusHeader {

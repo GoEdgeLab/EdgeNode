@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -184,7 +184,7 @@ var httpRequestTimestamp int64
 var httpRequestId int32 = 1_000_000
 
 func httpRequestNextId() string {
-	unixTime, unixTimeString := utils.UnixTimeMilliString()
+	unixTime, unixTimeString := fasttime.Now().UnixMilliString()
 	if unixTime > httpRequestTimestamp {
 		atomic.StoreInt32(&httpRequestId, 1_000_000)
 		httpRequestTimestamp = unixTime

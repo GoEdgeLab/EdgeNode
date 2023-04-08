@@ -3,7 +3,7 @@
 package caches
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/linkedlist"
 )
 
@@ -19,7 +19,7 @@ func NewOpenFilePool(filename string) *OpenFilePool {
 	var pool = &OpenFilePool{
 		filename: filename,
 		c:        make(chan *OpenFile, 1024),
-		version:  utils.UnixTimeMilli(),
+		version:  fasttime.Now().UnixMilli(),
 	}
 	pool.linkItem = linkedlist.NewItem(pool)
 	return pool

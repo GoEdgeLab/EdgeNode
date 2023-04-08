@@ -1,6 +1,8 @@
 package iplibrary
 
-import "github.com/TeaOSLab/EdgeNode/internal/utils"
+import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+)
 
 type IPItemType = string
 
@@ -45,7 +47,7 @@ func (this *IPItem) containsIPv4(ip uint64) bool {
 			return false
 		}
 	}
-	if this.ExpiredAt > 0 && this.ExpiredAt < utils.UnixTime() {
+	if this.ExpiredAt > 0 && this.ExpiredAt < fasttime.Now().Unix() {
 		return false
 	}
 	return true
@@ -56,7 +58,7 @@ func (this *IPItem) containsIPv6(ip uint64) bool {
 	if this.IPFrom != ip {
 		return false
 	}
-	if this.ExpiredAt > 0 && this.ExpiredAt < utils.UnixTime() {
+	if this.ExpiredAt > 0 && this.ExpiredAt < fasttime.Now().Unix() {
 		return false
 	}
 	return true
@@ -64,7 +66,7 @@ func (this *IPItem) containsIPv6(ip uint64) bool {
 
 // 检查是否包所有IP
 func (this *IPItem) containsAll() bool {
-	if this.ExpiredAt > 0 && this.ExpiredAt < utils.UnixTime() {
+	if this.ExpiredAt > 0 && this.ExpiredAt < fasttime.Now().Unix() {
 		return false
 	}
 	return true

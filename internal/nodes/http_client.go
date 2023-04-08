@@ -1,7 +1,7 @@
 package nodes
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"net/http"
 )
 
@@ -15,7 +15,7 @@ type HTTPClient struct {
 func NewHTTPClient(rawClient *http.Client) *HTTPClient {
 	return &HTTPClient{
 		rawClient: rawClient,
-		accessAt:  utils.UnixTime(),
+		accessAt:  fasttime.Now().Unix(),
 	}
 }
 
@@ -26,7 +26,7 @@ func (this *HTTPClient) RawClient() *http.Client {
 
 // UpdateAccessTime 更新访问时间
 func (this *HTTPClient) UpdateAccessTime() {
-	this.accessAt = utils.UnixTime()
+	this.accessAt = fasttime.Now().Unix()
 }
 
 // AccessTime 获取访问时间

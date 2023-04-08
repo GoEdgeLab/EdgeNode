@@ -3,6 +3,7 @@ package iplibrary
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"sort"
 	"sync"
 )
@@ -129,7 +130,7 @@ func (this *IPList) addItem(item *IPItem, sortable bool) {
 		return
 	}
 
-	if item.ExpiredAt > 0 && item.ExpiredAt < utils.UnixTime() {
+	if item.ExpiredAt > 0 && item.ExpiredAt < fasttime.Now().Unix() {
 		return
 	}
 

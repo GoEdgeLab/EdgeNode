@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
@@ -32,7 +33,7 @@ type MemoryItem struct {
 }
 
 func (this *MemoryItem) IsExpired() bool {
-	return this.ExpiresAt < utils.UnixTime()
+	return this.ExpiresAt < fasttime.Now().Unix()
 }
 
 type MemoryStorage struct {
@@ -119,7 +120,7 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 		return nil, ErrNotFound
 	}
 
-	if useStale || (item.ExpiresAt > utils.UnixTime()) {
+	if useStale || (item.ExpiresAt > fasttime.Now().Unix()) {
 		reader := NewMemoryReader(item)
 		err := reader.Init()
 		if err != nil {

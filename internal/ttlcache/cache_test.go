@@ -1,7 +1,7 @@
 package ttlcache
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/rands"
@@ -195,7 +195,7 @@ func BenchmarkCache_Add(b *testing.B) {
 
 	var cache = NewCache()
 	for i := 0; i < b.N; i++ {
-		cache.Write(strconv.Itoa(i), i, utils.UnixTime()+int64(i%1024))
+		cache.Write(strconv.Itoa(i), i, fasttime.Now().Unix()+int64(i%1024))
 	}
 }
 
@@ -207,7 +207,7 @@ func BenchmarkCache_Add_Parallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			var j = atomic.AddInt64(&i, 1)
-			cache.Write(types.String(j), j, utils.UnixTime()+i%1024)
+			cache.Write(types.String(j), j, fasttime.Now().Unix()+i%1024)
 		}
 	})
 }

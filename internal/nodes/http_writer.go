@@ -13,6 +13,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/readers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/writers"
 	_ "github.com/biessek/golang-ico"
@@ -299,7 +300,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 		}
 	}
 
-	var expiresAt = utils.UnixTime() + life
+	var expiresAt = fasttime.Now().Unix() + life
 
 	if this.req.isLnRequest {
 		// 返回上级节点过期时间

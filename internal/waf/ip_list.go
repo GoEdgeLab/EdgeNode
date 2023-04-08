@@ -6,8 +6,8 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/types"
 	"sync"
 	"sync/atomic"
@@ -105,7 +105,7 @@ func (this *IPList) RecordIP(ipType string,
 		}
 
 		// 加入队列等待上传
-		if this.lastIP != ip || utils.UnixTime()-this.lastTime > 3 /** 3秒外才允许重复添加 **/ {
+		if this.lastIP != ip || fasttime.Now().Unix()-this.lastTime > 3 /** 3秒外才允许重复添加 **/ {
 			select {
 			case recordIPTaskChan <- &recordIPTask{
 				ip:                            ip,
@@ -120,7 +120,7 @@ func (this *IPList) RecordIP(ipType string,
 				reason:                        reason,
 			}:
 				this.lastIP = ip
-				this.lastTime = utils.UnixTime()
+				this.lastTime = fasttime.Now().Unix()
 			default:
 			}
 

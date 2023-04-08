@@ -8,7 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/monitor"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -122,7 +122,7 @@ func (this *TrafficStatManager) Add(userId int64, serverId int64, domain string,
 
 	this.totalRequests++
 
-	var timestamp = utils.FloorUnixTime(300)
+	var timestamp = fasttime.Now().UnixFloor(300)
 	var key = strconv.FormatInt(timestamp, 10) + strconv.FormatInt(serverId, 10)
 	this.locker.Lock()
 

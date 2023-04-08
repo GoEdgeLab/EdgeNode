@@ -2,6 +2,7 @@ package ttlcache
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"time"
 )
 
@@ -74,7 +75,7 @@ func (this *Cache) Write(key string, value interface{}, expiredAt int64) (ok boo
 		return
 	}
 
-	var currentTimestamp = utils.UnixTime()
+	var currentTimestamp = fasttime.Now().Unix()
 	if expiredAt <= currentTimestamp {
 		return
 	}

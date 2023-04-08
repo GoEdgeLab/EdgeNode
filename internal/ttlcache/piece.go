@@ -1,8 +1,8 @@
 package ttlcache
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/types"
 	"sync"
 	"time"
@@ -75,7 +75,7 @@ func (this *Piece) Delete(key uint64) {
 func (this *Piece) Read(key uint64) (item *Item) {
 	this.locker.RLock()
 	item = this.m[key]
-	if item != nil && item.expiredAt < utils.UnixTime() {
+	if item != nil && item.expiredAt < fasttime.Now().Unix() {
 		item = nil
 	}
 	this.locker.RUnlock()

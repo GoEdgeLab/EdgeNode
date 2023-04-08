@@ -1,7 +1,7 @@
 package expires
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/logs"
 	timeutil "github.com/iwind/TeaGo/utils/time"
@@ -197,7 +197,7 @@ func BenchmarkList_GC(b *testing.B) {
 	for m := 0; m < 1_000; m++ {
 		var list = NewList()
 		for j := 0; j < 10_000; j++ {
-			list.Add(uint64(j), utils.UnixTime()+100)
+			list.Add(uint64(j), fasttime.Now().Unix()+100)
 		}
 		lists = append(lists, list)
 	}

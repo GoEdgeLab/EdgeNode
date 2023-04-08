@@ -1,7 +1,7 @@
 package caches
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"strings"
 	"time"
 )
@@ -36,7 +36,7 @@ type Item struct {
 }
 
 func (this *Item) IsExpired() bool {
-	return this.ExpiredAt < utils.UnixTime()
+	return this.ExpiredAt < fasttime.Now().Unix()
 }
 
 func (this *Item) TotalSize() int64 {

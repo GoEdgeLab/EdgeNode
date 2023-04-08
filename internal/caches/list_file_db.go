@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
@@ -246,7 +247,7 @@ func (this *FileListDB) AddAsync(hash string, item *Item) error {
 		item.StaleAt = item.ExpiredAt
 	}
 
-	this.writeBatch.Add(this.insertSQL, hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime(), timeutil.Format("YW"))
+	this.writeBatch.Add(this.insertSQL, hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, fasttime.Now().Unix(), timeutil.Format("YW"))
 	return nil
 
 }
@@ -258,7 +259,7 @@ func (this *FileListDB) AddSync(hash string, item *Item) error {
 		item.StaleAt = item.ExpiredAt
 	}
 
-	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, utils.UnixTime(), timeutil.Format("YW"))
+	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, fasttime.Now().Unix(), timeutil.Format("YW"))
 	if err != nil {
 		return this.WrapError(err)
 	}
@@ -377,8 +378,8 @@ func (this *FileListDB) CleanPrefix(prefix string) error {
 		return nil
 	}
 	var count = int64(10000)
-	var staleLife = 600             // TODO 需要可以设置
-	var unixTime = utils.UnixTime() // 只删除当前的，不删除新的
+	var staleLife = 600                  // TODO 需要可以设置
+	var unixTime = fasttime.Now().Unix() // 只删除当前的，不删除新的
 	for {
 		result, err := this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, unixTime+int64(staleLife), unixTime, prefix)
 		if err != nil {
@@ -424,8 +425,8 @@ func (this *FileListDB) CleanMatchKey(key string) error {
 	queryKey = strings.Replace(queryKey, "*", "%", 1)
 
 	// TODO 检查大批量数据下的操作性能
-	var staleLife = 600             // TODO 需要可以设置
-	var unixTime = utils.UnixTime() // 只删除当前的，不删除新的
+	var staleLife = 600                  // TODO 需要可以设置
+	var unixTime = fasttime.Now().Unix() // 只删除当前的，不删除新的
 
 	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryKey)
 	if err != nil {
@@ -466,8 +467,8 @@ func (this *FileListDB) CleanMatchPrefix(prefix string) error {
 	queryPrefix += "%"
 
 	// TODO 检查大批量数据下的操作性能
-	var staleLife = 600             // TODO 需要可以设置
-	var unixTime = utils.UnixTime() // 只删除当前的，不删除新的
+	var staleLife = 600                  // TODO 需要可以设置
+	var unixTime = fasttime.Now().Unix() // 只删除当前的，不删除新的
 
 	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryPrefix)
 	return err
