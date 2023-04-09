@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func TestHTTPAccessLogQueue_Push(t *testing.T) {
@@ -133,6 +134,16 @@ func TestHTTPAccessLogQueue_Memory(t *testing.T) {
 	}()
 
 	time.Sleep(5 * time.Second)
+}
+
+func TestUTF8_IsValid(t *testing.T) {
+	t.Log(utf8.ValidString("abc"))
+
+	var noneUTF8Bytes = []byte{}
+	for i := 0; i < 254; i++ {
+		noneUTF8Bytes = append(noneUTF8Bytes, uint8(i))
+	}
+	t.Log(utf8.ValidString(string(noneUTF8Bytes)))
 }
 
 func BenchmarkHTTPAccessLogQueue_ToValidUTF8(b *testing.B) {

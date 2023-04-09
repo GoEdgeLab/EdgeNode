@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var sharedHTTPAccessLogQueue = NewHTTPAccessLogQueue()
@@ -139,6 +140,7 @@ Loop:
 
 // ToValidUTF8 处理访问日志中的非UTF-8字节
 func (this *HTTPAccessLogQueue) ToValidUTF8(accessLog *pb.HTTPAccessLog) {
+	accessLog.RemoteAddr = utils.ToValidUTF8string(accessLog.RemoteAddr)
 	accessLog.RemoteUser = utils.ToValidUTF8string(accessLog.RemoteUser)
 	accessLog.RequestURI = utils.ToValidUTF8string(accessLog.RequestURI)
 	accessLog.RequestPath = utils.ToValidUTF8string(accessLog.RequestPath)
@@ -147,7 +149,12 @@ func (this *HTTPAccessLogQueue) ToValidUTF8(accessLog *pb.HTTPAccessLog) {
 	accessLog.Host = utils.ToValidUTF8string(accessLog.Host)
 	accessLog.Hostname = utils.ToValidUTF8string(accessLog.Hostname)
 
-	for _, v := range accessLog.SentHeader {
+	for k, v := range accessLog.SentHeader {
+		if !utf8.ValidString(k) {
+			delete(accessLog.SentHeader, k)
+			continue
+		}
+
 		for index, s := range v.Values {
 			v.Values[index] = utils.ToValidUTF8string(s)
 		}
@@ -159,13 +166,21 @@ func (this *HTTPAccessLogQueue) ToValidUTF8(accessLog *pb.HTTPAccessLog) {
 	accessLog.ContentType = utils.ToValidUTF8string(accessLog.ContentType)
 
 	for k, c := range accessLog.Cookie {
+		if !utf8.ValidString(k) {
+			delete(accessLog.Cookie, k)
+			continue
+		}
 		accessLog.Cookie[k] = utils.ToValidUTF8string(c)
 	}
 
 	accessLog.Args = utils.ToValidUTF8string(accessLog.Args)
 	accessLog.QueryString = utils.ToValidUTF8string(accessLog.QueryString)
 
-	for _, v := range accessLog.Header {
+	for k, v := range accessLog.Header {
+		if !utf8.ValidString(k) {
+			delete(accessLog.Header, k)
+			continue
+		}
 		for index, s := range v.Values {
 			v.Values[index] = utils.ToValidUTF8string(s)
 		}
