@@ -209,29 +209,33 @@ func (this *HTTPRequestStatManager) Loop() error {
 
 		var result = iplib.LookupIP(ip)
 		if result != nil && result.IsOk() {
-			var key = serverId + "@" + types.String(result.CountryId()) + "@" + types.String(result.ProvinceId()) + "@" + types.String(result.CityId())
 			this.locker.Lock()
-			stat, ok := this.cityMap[key]
-			if !ok {
-				// 检查数量
-				if this.serverCityCountMap[key] > 128 { // 限制单个服务的城市数量，防止数量过多
-					this.locker.Unlock()
-					return nil
-				}
-				this.serverCityCountMap[key]++ // 需要放在限制之后，因为使用的是int16
+			if result.CountryId() > 0 {
+				var key = serverId + "@" + types.String(result.CountryId()) + "@" + types.String(result.ProvinceId()) + "@" + types.String(result.CityId())
+				stat, ok := this.cityMap[key]
+				if !ok {
+					// 检查数量
+					if this.serverCityCountMap[key] > 128 { // 限制单个服务的城市数量，防止数量过多
+						this.locker.Unlock()
+						return nil
+					}
+					this.serverCityCountMap[key]++ // 需要放在限制之后，因为使用的是int16
 
-				stat = &StatItem{}
-				this.cityMap[key] = stat
-			}
-			stat.Bytes += types.Int64(pieces[2])
-			stat.CountRequests++
-			if types.Int8(pieces[3]) == 1 {
-				stat.AttackBytes += types.Int64(pieces[2])
-				stat.CountAttackRequests++
+					stat = &StatItem{}
+					this.cityMap[key] = stat
+				}
+				stat.Bytes += types.Int64(pieces[2])
+				stat.CountRequests++
+				if types.Int8(pieces[3]) == 1 {
+					stat.AttackBytes += types.Int64(pieces[2])
+					stat.CountAttackRequests++
+				}
 			}
 
 			if result.ProviderId() > 0 {
 				this.providerMap[serverId+"@"+types.String(result.ProviderId())]++
+			} else if utils.IsLocalIP(ip) { // 局域网IP
+				this.providerMap[serverId+"@258"]++
 			}
 			this.locker.Unlock()
 		}
