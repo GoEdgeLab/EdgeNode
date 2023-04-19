@@ -54,6 +54,9 @@ type HTTPRequestStatManager struct {
 	totalAttackRequests int64
 
 	locker sync.Mutex
+
+	monitorTicker *time.Ticker
+	uploadTicker  *time.Ticker
 }
 
 // NewHTTPRequestStatManager 获取新对象
@@ -77,12 +80,12 @@ func NewHTTPRequestStatManager() *HTTPRequestStatManager {
 // Start 启动
 func (this *HTTPRequestStatManager) Start() {
 	// 上传请求总数
-	var monitorTicker = time.NewTicker(1 * time.Minute)
+	this.monitorTicker = time.NewTicker(1 * time.Minute)
 	events.OnKey(events.EventQuit, this, func() {
-		monitorTicker.Stop()
+		this.monitorTicker.Stop()
 	})
 	goman.New(func() {
-		for range monitorTicker.C {
+		for range this.monitorTicker.C {
 			if this.totalAttackRequests > 0 {
 				monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemAttackRequests, maps.Map{"total": this.totalAttackRequests})
 				this.totalAttackRequests = 0
@@ -90,19 +93,19 @@ func (this *HTTPRequestStatManager) Start() {
 		}
 	})
 
-	var uploadTicker = time.NewTicker(30 * time.Minute)
+	this.uploadTicker = time.NewTicker(30 * time.Minute)
 	if Tea.IsTesting() {
-		uploadTicker = time.NewTicker(10 * time.Second) // 在测试环境下缩短Ticker时间，以方便我们调试
+		this.uploadTicker = time.NewTicker(10 * time.Second) // 在测试环境下缩短Ticker时间，以方便我们调试
 	}
 	remotelogs.Println("HTTP_REQUEST_STAT_MANAGER", "start ...")
 	events.OnKey(events.EventQuit, this, func() {
 		remotelogs.Println("HTTP_REQUEST_STAT_MANAGER", "quit")
-		uploadTicker.Stop()
+		this.uploadTicker.Stop()
 	})
 
 	// 上传Ticker
 	goman.New(func() {
-		for range uploadTicker.C {
+		for range this.uploadTicker.C {
 			var tr = trackers.Begin("UPLOAD_REQUEST_STATS")
 			err := this.Upload()
 			tr.End()
@@ -378,7 +381,7 @@ func (this *HTTPRequestStatManager) Upload() error {
 		sort.Slice(pbCities, func(i, j int) bool {
 			return pbCities[i].CountRequests > pbCities[j].CountRequests
 		})
-		var serverCountMap = map[int64]int16{}
+		var serverCountMap = map[int64]int16{} // serverId => count
 		for _, city := range pbCities {
 			serverCountMap[city.ServerId]++
 			if serverCountMap[city.ServerId] > maxCities {
