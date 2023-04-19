@@ -40,7 +40,10 @@ func (this *Expiration) Remove(key []byte) {
 
 func (this *Expiration) Contains(key []byte) bool {
 	this.locker.RLock()
-	_, ok := this.m[string(key)]
+	expires, ok := this.m[string(key)]
+	if ok && expires.Year() > 2000 && time.Now().After(expires) {
+		ok = false
+	}
 	this.locker.RUnlock()
 	return ok
 }
@@ -55,7 +58,7 @@ func (this *Expiration) gc() {
 
 	var now = time.Now().Add(-10 * time.Second) // gc elements expired before 10 seconds ago
 	for key, expires := range this.m {
-		if expires.Year() >= 2000 && now.After(expires) {
+		if expires.Year() > 2000 && now.After(expires) {
 			delete(this.m, key)
 		}
 	}

@@ -18,6 +18,14 @@ func TestExpiration_Add(t *testing.T) {
 		t.Log(expiration.Contains([]byte{'a', 'b', 'c'}))
 	}
 	{
+		expiration.Add([]byte{'a', 'b', 'c'}, time.Now().Add(1*time.Second))
+		t.Log(expiration.Contains([]byte{'a', 'b', 'c'}))
+	}
+	{
+		expiration.Add([]byte{'a', 'b', 'c'}, time.Time{})
+		t.Log(expiration.Contains([]byte{'a', 'b', 'c'}))
+	}
+	{
 		expiration.Add([]byte{'a', 'b', 'c'}, time.Now().Add(-1*time.Second))
 		t.Log(expiration.Contains([]byte{'a', 'b', 'c'}))
 	}
