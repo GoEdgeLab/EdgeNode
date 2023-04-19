@@ -79,3 +79,15 @@ func TestIPListDB_ReadMaxVersion(t *testing.T) {
 	}
 	t.Log(db.ReadMaxVersion())
 }
+
+func TestIPListDB_UpdateMaxVersion(t *testing.T) {
+	db, err := iplibrary.NewIPListDB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.UpdateMaxVersion(1027)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(db.ReadMaxVersion())
+}

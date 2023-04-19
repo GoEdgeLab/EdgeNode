@@ -88,11 +88,15 @@ type blockIPItem struct {
 }
 
 func NewNFTablesFirewall() (*NFTablesFirewall, error) {
+	conn, err := nftables.NewConn()
+	if err != nil {
+		return nil, err
+	}
 	var firewall = &NFTablesFirewall{
-		conn:        nftables.NewConn(),
+		conn:        conn,
 		dropIPQueue: make(chan *blockIPItem, 4096),
 	}
-	err := firewall.init()
+	err = firewall.init()
 	if err != nil {
 		return nil, err
 	}

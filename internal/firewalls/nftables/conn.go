@@ -15,10 +15,14 @@ type Conn struct {
 	rawConn *nft.Conn
 }
 
-func NewConn() *Conn {
-	return &Conn{
-		rawConn: &nft.Conn{},
+func NewConn() (*Conn, error) {
+	conn, err := nft.New()
+	if err != nil {
+		return nil, err
 	}
+	return &Conn{
+		rawConn: conn,
+	}, nil
 }
 
 func (this *Conn) Raw() *nft.Conn {

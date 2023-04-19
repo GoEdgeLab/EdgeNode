@@ -1,6 +1,5 @@
 // Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 //go:build linux
-// +build linux
 
 package nftables
 
@@ -35,17 +34,25 @@ type Set struct {
 	conn   *Conn
 	rawSet *nft.Set
 	batch  *SetBatch
+
+	expiration *Expiration
 }
 
 func NewSet(conn *Conn, rawSet *nft.Set) *Set {
-	return &Set{
-		conn:   conn,
-		rawSet: rawSet,
+	var set = &Set{
+		conn:       conn,
+		rawSet:     rawSet,
+		expiration: nil,
 		batch: &SetBatch{
 			conn:   conn,
 			rawSet: rawSet,
 		},
 	}
+
+	// retrieve set elements to improve "delete" speed
+	set.initElements()
+
+	return set
 }
 
 func (this *Set) Raw() *nft.Set {
@@ -57,11 +64,21 @@ func (this *Set) Name() string {
 }
 
 func (this *Set) AddElement(key []byte, options *ElementOptions, overwrite bool) error {
+	// check if already exists
+	if this.expiration != nil && !overwrite && this.expiration.Contains(key) {
+		return nil
+	}
+
+	var expiresTime = time.Time{}
 	var rawElement = nft.SetElement{
 		Key: key,
 	}
 	if options != nil {
 		rawElement.Timeout = options.Timeout
+
+		if options.Timeout > 0 {
+			expiresTime = time.UnixMilli(time.Now().UnixMilli() + options.Timeout.Milliseconds())
+		}
 	}
 	err := this.conn.Raw().SetAddElements(this.rawSet, []nft.SetElement{
 		rawElement,
@@ -71,9 +88,19 @@ func (this *Set) AddElement(key []byte, options *ElementOptions, overwrite bool)
 	}
 
 	err = this.conn.Commit()
-	if err != nil {
+	if err == nil {
+		if this.expiration != nil {
+			this.expiration.Add(key, expiresTime)
+		}
+	} else {
+		var isFileExistsErr = strings.Contains(err.Error(), "file exists")
+		if !overwrite && isFileExistsErr {
+			// ignore file exists error
+			return nil
+		}
+
 		// retry if exists
-		if overwrite && strings.Contains(err.Error(), "file exists") {
+		if overwrite && isFileExistsErr {
 			deleteErr := this.conn.Raw().SetDeleteElements(this.rawSet, []nft.SetElement{
 				{
 					Key: key,
@@ -85,6 +112,11 @@ func (this *Set) AddElement(key []byte, options *ElementOptions, overwrite bool)
 				})
 				if err == nil {
 					err = this.conn.Commit()
+					if err == nil {
+						if this.expiration != nil {
+							this.expiration.Add(key, expiresTime)
+						}
+					}
 				}
 			}
 		}
@@ -107,6 +139,11 @@ func (this *Set) AddIPElement(ip string, options *ElementOptions, overwrite bool
 }
 
 func (this *Set) DeleteElement(key []byte) error {
+	// if set element does not exist, we return immediately
+	if this.expiration != nil && !this.expiration.Contains(key) {
+		return nil
+	}
+
 	err := this.conn.Raw().SetDeleteElements(this.rawSet, []nft.SetElement{
 		{
 			Key: key,
@@ -116,9 +153,17 @@ func (this *Set) DeleteElement(key []byte) error {
 		return err
 	}
 	err = this.conn.Commit()
-	if err != nil {
+	if err == nil {
+		if this.expiration != nil {
+			this.expiration.Remove(key)
+		}
+	} else {
 		if strings.Contains(err.Error(), "no such file or directory") {
 			err = nil
+
+			if this.expiration != nil {
+				this.expiration.Remove(key)
+			}
 		}
 	}
 	return err

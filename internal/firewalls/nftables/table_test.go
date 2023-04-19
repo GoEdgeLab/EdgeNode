@@ -1,6 +1,5 @@
 // Copyright 2022 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 //go:build linux
-// +build linux
 
 package nftables_test
 
@@ -10,7 +9,10 @@ import (
 )
 
 func getIPv4Table(t *testing.T) *nftables.Table {
-	var conn = nftables.NewConn()
+	conn, err := nftables.NewConn()
+	if err != nil {
+		t.Fatal(err)
+	}
 	table, err := conn.GetTable("test_ipv4", nftables.TableFamilyIPv4)
 	if err != nil {
 		if err == nftables.ErrTableNotFound {

@@ -47,17 +47,20 @@ type IPListManager struct {
 
 	db *IPListDB
 
-	version  int64
-	pageSize int64
+	lastVersion   int64
+	fetchPageSize int64
 
 	listMap map[int64]*IPList
 	locker  sync.Mutex
+
+	isFirstTime bool
 }
 
 func NewIPListManager() *IPListManager {
 	return &IPListManager{
-		pageSize: 1000,
-		listMap:  map[int64]*IPList{},
+		fetchPageSize: 5_000,
+		listMap:       map[int64]*IPList{},
+		isFirstTime:   true,
 	}
 }
 
@@ -117,11 +120,11 @@ func (this *IPListManager) init() {
 		_ = db.DeleteExpiredItems()
 
 		// 本地数据库中最大版本号
-		this.version = db.ReadMaxVersion()
+		this.lastVersion = db.ReadMaxVersion()
 
 		// 从本地数据库中加载
 		var offset int64 = 0
-		var size int64 = 1000
+		var size int64 = 2_000
 		for {
 			items, err := db.ReadItems(offset, size)
 			var l = len(items)
@@ -148,6 +151,11 @@ func (this *IPListManager) loop() error {
 		return nil
 	}
 
+	// 第一次同步则打印信息
+	if this.isFirstTime {
+		remotelogs.Println("IP_LIST_MANAGER", "initializing ip items ...")
+	}
+
 	for {
 		hasNext, err := this.fetch()
 		if err != nil {
@@ -159,6 +167,12 @@ func (this *IPListManager) loop() error {
 		time.Sleep(1 * time.Second)
 	}
 
+	// 第一次同步则打印信息
+	if this.isFirstTime {
+		this.isFirstTime = false
+		remotelogs.Println("IP_LIST_MANAGER", "finished initializing ip items")
+	}
+
 	return nil
 }
 
@@ -168,8 +182,8 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		return false, err
 	}
 	itemsResp, err := rpcClient.IPItemRPC.ListIPItemsAfterVersion(rpcClient.Context(), &pb.ListIPItemsAfterVersionRequest{
-		Version: this.version,
-		Size:    this.pageSize,
+		Version: this.lastVersion,
+		Size:    this.fetchPageSize,
 	})
 	if err != nil {
 		if rpc.IsConnError(err) {
@@ -211,6 +225,7 @@ func (this *IPListManager) DeleteExpiredItems() {
 	}
 }
 
+// 处理IP条目
 func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 	var changedLists = map[*IPList]zero.Zero{}
 	for _, item := range items {
@@ -280,8 +295,8 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 
 	if fromRemote {
 		var latestVersion = items[len(items)-1].Version
-		if latestVersion > this.version {
-			this.version = latestVersion
+		if latestVersion > this.lastVersion {
+			this.lastVersion = latestVersion
 		}
 	}
 }

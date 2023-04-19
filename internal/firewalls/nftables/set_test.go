@@ -34,7 +34,7 @@ func getIPv4Set(t *testing.T) *nftables.Set {
 
 func TestSet_AddElement(t *testing.T) {
 	var set = getIPv4Set(t)
-	err := set.AddElement(net.ParseIP("192.168.2.31").To4(), &nftables.ElementOptions{Timeout: 86400 * time.Second})
+	err := set.AddElement(net.ParseIP("192.168.2.31").To4(), &nftables.ElementOptions{Timeout: 86400 * time.Second}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

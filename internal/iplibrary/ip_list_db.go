@@ -17,13 +17,17 @@ import (
 type IPListDB struct {
 	db *dbs.DB
 
-	itemTableName string
+	itemTableName    string
+	versionTableName string
 
-	deleteExpiredItemsStmt *dbs.Stmt
-	deleteItemStmt         *dbs.Stmt
-	insertItemStmt         *dbs.Stmt
-	selectItemsStmt        *dbs.Stmt
-	selectMaxVersionStmt   *dbs.Stmt
+	deleteExpiredItemsStmt   *dbs.Stmt
+	deleteItemStmt           *dbs.Stmt
+	insertItemStmt           *dbs.Stmt
+	selectItemsStmt          *dbs.Stmt
+	selectMaxItemVersionStmt *dbs.Stmt
+
+	selectVersionStmt *dbs.Stmt
+	updateVersionStmt *dbs.Stmt
 
 	cleanTicker *time.Ticker
 
@@ -34,9 +38,10 @@ type IPListDB struct {
 
 func NewIPListDB() (*IPListDB, error) {
 	var db = &IPListDB{
-		itemTableName: "ipItems",
-		dir:           filepath.Clean(Tea.Root + "/data"),
-		cleanTicker:   time.NewTicker(24 * time.Hour),
+		itemTableName:    "ipItems",
+		versionTableName: "versions",
+		dir:              filepath.Clean(Tea.Root + "/data"),
+		cleanTicker:      time.NewTicker(24 * time.Hour),
 	}
 	err := db.init()
 	return db, err
@@ -108,6 +113,15 @@ ON "` + this.itemTableName + `" (
 		return err
 	}
 
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS "` + this.versionTableName + `" (
+  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  "version" integer DEFAULT 0
+);
+`)
+	if err != nil {
+		return err
+	}
+
 	// 初始化SQL语句
 	this.deleteExpiredItemsStmt, err = this.db.Prepare(`DELETE FROM "` + this.itemTableName + `" WHERE  "expiredAt">0 AND "expiredAt"<?`)
 	if err != nil {
@@ -129,7 +143,20 @@ ON "` + this.itemTableName + `" (
 		return err
 	}
 
-	this.selectMaxVersionStmt, err = this.db.Prepare(`SELECT "version" FROM "` + this.itemTableName + `" ORDER BY "id" DESC LIMIT 1`)
+	this.selectMaxItemVersionStmt, err = this.db.Prepare(`SELECT "version" FROM "` + this.itemTableName + `" ORDER BY "id" DESC LIMIT 1`)
+	if err != nil {
+		return err
+	}
+
+	this.selectVersionStmt, err = this.db.Prepare(`SELECT "version" FROM "` + this.versionTableName + `" LIMIT 1`)
+	if err != nil {
+		return err
+	}
+
+	this.updateVersionStmt, err = this.db.Prepare(`REPLACE INTO "` + this.versionTableName + `" ("id", "version") VALUES (1, ?)`)
+	if err != nil {
+		return err
+	}
 
 	this.db = db
 
@@ -172,11 +199,15 @@ func (this *IPListDB) AddItem(item *pb.IPItem) error {
 
 	// 如果是删除，则不再创建新记录
 	if item.IsDeleted {
-		return nil
+		return this.UpdateMaxVersion(item.Version)
 	}
 
 	_, err = this.insertItemStmt.Exec(item.ListId, item.ListType, item.IsGlobal, item.Type, item.Id, item.IpFrom, item.IpTo, item.ExpiredAt, item.EventLevel, item.IsDeleted, item.Version, item.NodeId, item.ServerId)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return this.UpdateMaxVersion(item.Version)
 }
 
 func (this *IPListDB) ReadItems(offset int64, size int64) (items []*pb.IPItem, err error) {
@@ -210,27 +241,63 @@ func (this *IPListDB) ReadMaxVersion() int64 {
 		return 0
 	}
 
-	var row = this.selectMaxVersionStmt.QueryRow()
-	if row == nil {
-		return 0
+	// from version table
+	{
+		var row = this.selectVersionStmt.QueryRow()
+		if row == nil {
+			return 0
+		}
+		var version int64
+		err := row.Scan(&version)
+		if err == nil {
+			return version
+		}
 	}
-	var version int64
-	err := row.Scan(&version)
-	if err != nil {
-		return 0
+
+	// from items table
+	{
+		var row = this.selectMaxItemVersionStmt.QueryRow()
+		if row == nil {
+			return 0
+		}
+		var version int64
+		err := row.Scan(&version)
+		if err != nil {
+			return 0
+		}
+
+		return version
 	}
-	return version
+}
+
+// UpdateMaxVersion 修改版本号
+func (this *IPListDB) UpdateMaxVersion(version int64) error {
+	if this.isClosed {
+		return nil
+	}
+
+	_, err := this.updateVersionStmt.Exec(version)
+	return err
 }
 
 func (this *IPListDB) Close() error {
 	this.isClosed = true
 
 	if this.db != nil {
-		_ = this.deleteExpiredItemsStmt.Close()
-		_ = this.deleteItemStmt.Close()
-		_ = this.insertItemStmt.Close()
-		_ = this.selectItemsStmt.Close()
-		_ = this.selectMaxVersionStmt.Close()
+		for _, stmt := range []*dbs.Stmt{
+			this.deleteExpiredItemsStmt,
+			this.deleteItemStmt,
+			this.insertItemStmt,
+			this.selectItemsStmt,
+			this.selectMaxItemVersionStmt, // ipItems table
+
+			this.selectVersionStmt, // versions table
+			this.updateVersionStmt,
+		} {
+			if stmt != nil {
+				_ = stmt.Close()
+			}
+		}
 
 		return this.db.Close()
 	}

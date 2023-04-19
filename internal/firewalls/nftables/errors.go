@@ -4,7 +4,10 @@
 
 package nftables
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 var ErrTableNotFound = errors.New("table not found")
 var ErrChainNotFound = errors.New("chain not found")
@@ -15,5 +18,5 @@ func IsNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
-	return err == ErrTableNotFound || err == ErrChainNotFound || err == ErrSetNotFound || err == ErrRuleNotFound
+	return err == ErrTableNotFound || err == ErrChainNotFound || err == ErrSetNotFound || err == ErrRuleNotFound || strings.Contains(err.Error(), "no such file or directory")
 }
