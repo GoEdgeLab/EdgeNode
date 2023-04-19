@@ -204,22 +204,22 @@ func (this *HTTPRequestStatManager) Loop() error {
 		if len(pieces) < 4 {
 			return nil
 		}
-		var serverId = pieces[0]
+		var serverIdString = pieces[0]
 		var ip = pieces[1]
 
 		var result = iplib.LookupIP(ip)
 		if result != nil && result.IsOk() {
 			this.locker.Lock()
 			if result.CountryId() > 0 {
-				var key = serverId + "@" + types.String(result.CountryId()) + "@" + types.String(result.ProvinceId()) + "@" + types.String(result.CityId())
+				var key = serverIdString + "@" + types.String(result.CountryId()) + "@" + types.String(result.ProvinceId()) + "@" + types.String(result.CityId())
 				stat, ok := this.cityMap[key]
 				if !ok {
 					// 检查数量
-					if this.serverCityCountMap[key] > 128 { // 限制单个服务的城市数量，防止数量过多
+					if this.serverCityCountMap[serverIdString] > 128 { // 限制单个服务的城市数量，防止数量过多
 						this.locker.Unlock()
 						return nil
 					}
-					this.serverCityCountMap[key]++ // 需要放在限制之后，因为使用的是int16
+					this.serverCityCountMap[serverIdString]++ // 需要放在限制之后，因为使用的是int16
 
 					stat = &StatItem{}
 					this.cityMap[key] = stat
@@ -233,9 +233,9 @@ func (this *HTTPRequestStatManager) Loop() error {
 			}
 
 			if result.ProviderId() > 0 {
-				this.providerMap[serverId+"@"+types.String(result.ProviderId())]++
+				this.providerMap[serverIdString+"@"+types.String(result.ProviderId())]++
 			} else if utils.IsLocalIP(ip) { // 局域网IP
-				this.providerMap[serverId+"@258"]++
+				this.providerMap[serverIdString+"@258"]++
 			}
 			this.locker.Unlock()
 		}
@@ -244,7 +244,7 @@ func (this *HTTPRequestStatManager) Loop() error {
 		if atIndex < 0 {
 			return nil
 		}
-		var serverId = userAgentString[:atIndex]
+		var serverIdString = userAgentString[:atIndex]
 		var userAgent = userAgentString[atIndex+1:]
 
 		var result = SharedUserAgentParser.Parse(userAgent)
@@ -256,11 +256,11 @@ func (this *HTTPRequestStatManager) Loop() error {
 			}
 			this.locker.Lock()
 
-			var systemKey = serverId + "@" + osInfo.Name + "@" + osInfo.Version
+			var systemKey = serverIdString + "@" + osInfo.Name + "@" + osInfo.Version
 			_, ok := this.systemMap[systemKey]
 			if !ok {
-				if this.serverSystemCountMap[serverId] < 128 { // 限制最大数据，防止攻击
-					this.serverSystemCountMap[serverId]++
+				if this.serverSystemCountMap[serverIdString] < 128 { // 限制最大数据，防止攻击
+					this.serverSystemCountMap[serverIdString]++
 					ok = true
 				}
 			}
@@ -278,11 +278,11 @@ func (this *HTTPRequestStatManager) Loop() error {
 			}
 			this.locker.Lock()
 
-			var browserKey = serverId + "@" + browser + "@" + browserVersion
+			var browserKey = serverIdString + "@" + browser + "@" + browserVersion
 			_, ok := this.browserMap[browserKey]
 			if !ok {
-				if this.serverBrowserCountMap[serverId] < 256 { // 限制最大数据，防止攻击
-					this.serverBrowserCountMap[serverId]++
+				if this.serverBrowserCountMap[serverIdString] < 256 { // 限制最大数据，防止攻击
+					this.serverBrowserCountMap[serverIdString]++
 					ok = true
 				}
 			}
