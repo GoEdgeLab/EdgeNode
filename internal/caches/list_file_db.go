@@ -226,6 +226,20 @@ func (this *FileListDB) Init() error {
 		err := this.hashMap.Load(this)
 		if err != nil {
 			remotelogs.Error("LIST_FILE_DB", "load hash map failed: "+err.Error()+"(file: "+this.dbPath+")")
+
+			// 自动修复错误
+			// TODO 将来希望能尽可能恢复以往数据库中的内容
+			if strings.Contains(err.Error(), "database is closed") || strings.Contains(err.Error(), "database disk image is malformed") {
+				_ = this.Close()
+				this.deleteDB()
+				remotelogs.Println("LIST_FILE_DB", "recreating the database (file:"+this.dbPath+") ...")
+				err = this.Open(this.dbPath)
+				if err != nil {
+					remotelogs.Error("LIST_FILE_DB", "recreate the database failed: "+err.Error()+" (file:"+this.dbPath+")")
+				} else {
+					_ = this.Init()
+				}
+			}
 		}
 	}()
 
@@ -682,4 +696,11 @@ func (this *FileListDB) shouldRecover() bool {
 	}
 	_ = result.Close()
 	return shouldRecover
+}
+
+// 删除数据库文件
+func (this *FileListDB) deleteDB() {
+	_ = os.Remove(this.dbPath)
+	_ = os.Remove(this.dbPath + "-shm")
+	_ = os.Remove(this.dbPath + "-wal")
 }
