@@ -14,6 +14,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	connutils "github.com/TeaOSLab/EdgeNode/internal/utils/conns"
 	"github.com/iwind/TeaGo/Tea"
 	"io"
 	"net"
@@ -61,7 +62,12 @@ func NewHTTPCacheTaskManager() *HTTPCacheTaskManager {
 					if err != nil {
 						return nil, err
 					}
-					return net.Dial(network, "127.0.0.1:"+port)
+					conn, err := net.Dial(network, "127.0.0.1:"+port)
+					if err != nil {
+						return nil, err
+					}
+
+					return connutils.NewNoStat(conn), nil
 				},
 				MaxIdleConns:          128,
 				MaxIdleConnsPerHost:   32,

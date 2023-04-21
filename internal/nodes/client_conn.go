@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	connutils "github.com/TeaOSLab/EdgeNode/internal/utils/conns"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
@@ -34,6 +35,7 @@ type ClientConn struct {
 	hasRead bool
 
 	isLO          bool // 是否为环路
+	isNoStat      bool // 是否不统计带宽
 	isInAllowList bool
 
 	hasResetSYNFlood bool
@@ -53,15 +55,15 @@ type ClientConn struct {
 func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool) net.Conn {
 	// 是否为环路
 	var remoteAddr = rawConn.RemoteAddr().String()
-	var isLO = strings.HasPrefix(remoteAddr, "127.0.0.1:") || strings.HasPrefix(remoteAddr, "[::1]:")
 
 	var conn = &ClientConn{
 		BaseClientConn: BaseClientConn{rawConn: rawConn},
 		isTLS:          isTLS,
 		isHTTP:         isHTTP,
-		isLO:           isLO,
+		isLO:           strings.HasPrefix(remoteAddr, "127.0.0.1:") || strings.HasPrefix(remoteAddr, "[::1]:"),
+		isNoStat:       connutils.IsNoStatConn(rawConn.RemoteAddr().String()),
 		isInAllowList:  isInAllowList,
-		createdAt:      time.Now().Unix(),
+		createdAt:      fasttime.Now().Unix(),
 	}
 
 	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
@@ -85,7 +87,7 @@ func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool
 
 func (this *ClientConn) Read(b []byte) (n int, err error) {
 	if this.isDebugging {
-		this.lastReadAt = time.Now().Unix()
+		this.lastReadAt = fasttime.Now().Unix()
 
 		defer func() {
 			if err != nil {
@@ -151,7 +153,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	}
 
 	if this.isDebugging {
-		this.lastWriteAt = time.Now().Unix()
+		this.lastWriteAt = fasttime.Now().Unix()
 
 		defer func() {
 			if err != nil {
@@ -184,7 +186,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 		// 统计当前服务带宽
 		if this.serverId > 0 {
 			// TODO 需要加入在serverId绑定之前的带宽
-			if !this.isLO || Tea.IsTesting() { // 环路不统计带宽，避免缓存预热等行为产生带宽
+			if !this.isNoStat || Tea.IsTesting() { // 环路不统计带宽，避免缓存预热等行为产生带宽
 				atomic.AddUint64(&teaconst.OutTrafficBytes, uint64(n))
 
 				var cost = time.Since(before).Seconds()
@@ -309,7 +311,7 @@ func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloo
 			_ = this.SetLinger(0)
 			_ = this.Close()
 
-			waf.SharedIPBlackList.RecordIP(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip, time.Now().Unix()+int64(timeout), 0, true, 0, 0, "疑似SYN Flood攻击，当前1分钟"+types.String(result)+"次空连接")
+			waf.SharedIPBlackList.RecordIP(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip, fasttime.Now().Unix()+int64(timeout), 0, true, 0, 0, "疑似SYN Flood攻击，当前1分钟"+types.String(result)+"次空连接")
 		}
 	}
 }
