@@ -146,12 +146,20 @@ func (this *Cache) Count() (count int) {
 }
 
 func (this *Cache) GC() {
-	this.pieces[this.gcPieceIndex].GC()
-	var newIndex = this.gcPieceIndex + 1
-	if newIndex >= int(this.countPieces) {
-		newIndex = 0
+	var index = this.gcPieceIndex
+	var maxPiecesPerGC = 4
+	for i := index; i < index+maxPiecesPerGC; i++ {
+		if i >= int(this.countPieces) {
+			break
+		}
+		this.pieces[i].GC()
 	}
-	this.gcPieceIndex = newIndex
+
+	index += maxPiecesPerGC
+	if index >= int(this.countPieces) {
+		index = 0
+	}
+	this.gcPieceIndex = index
 }
 
 func (this *Cache) Clean() {
