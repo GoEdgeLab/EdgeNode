@@ -17,6 +17,8 @@ func init() {
 	_ = SystemMemoryGB()
 }
 
+// SystemMemoryGB 系统内存GB数量
+// 必须保证不小于1
 func SystemMemoryGB() int {
 	if systemTotalMemory > 0 {
 		return systemTotalMemory
@@ -24,10 +26,10 @@ func SystemMemoryGB() int {
 
 	stat, err := mem.VirtualMemory()
 	if err != nil {
-		return 0
+		return 1
 	}
 
-	systemTotalMemory = int(stat.Total / 1024 / 1024 / 1024)
+	systemTotalMemory = int(stat.Total / (1<<30))
 	if systemTotalMemory <= 0 {
 		systemTotalMemory = 1
 	}

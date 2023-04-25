@@ -5,7 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 )
 
-var SharedCache = NewCache()
+var SharedCache = NewBigCache()
 
 // Cache TTL缓存
 // 最大的缓存时间为30 * 86400
@@ -25,6 +25,14 @@ type Cache struct {
 	gcPieceIndex int
 }
 
+func NewBigCache() *Cache {
+	var delta = utils.SystemMemoryGB() / 2
+	if delta <= 0 {
+		delta = 1
+	}
+	return NewCache(NewMaxItemsOption(delta * 1_000_000))
+}
+
 func NewCache(opt ...OptionInterface) *Cache {
 	var countPieces = 256
 	var maxItems = 1_000_000
@@ -34,7 +42,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 		// 我们限制内存过小的服务能够使用的数量
 		maxItems = 500_000
 	} else {
-		var delta = totalMemory / 8
+		var delta = totalMemory / 4
 		if delta > 0 {
 			maxItems *= delta
 		}
