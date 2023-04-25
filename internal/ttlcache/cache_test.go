@@ -16,8 +16,8 @@ import (
 func TestNewCache(t *testing.T) {
 	var cache = NewCache()
 	cache.Write("a", 1, time.Now().Unix()+3600)
-	cache.Write("b", 2, time.Now().Unix()+3601)
-	cache.Write("a", 1, time.Now().Unix()+3602)
+	cache.Write("b", 2, time.Now().Unix()+1)
+	cache.Write("c", 1, time.Now().Unix()+3602)
 	cache.Write("d", 1, time.Now().Unix()+1)
 
 	for _, piece := range cache.pieces {
@@ -28,8 +28,14 @@ func TestNewCache(t *testing.T) {
 		}
 	}
 	t.Log("a:", cache.Read("a"))
-	time.Sleep(2 * time.Second)
-	t.Log("d:", cache.Read("d")) // should be nil
+	time.Sleep(5 * time.Second)
+
+	for i := 0; i < len(cache.pieces); i++ {
+		cache.GC()
+	}
+
+	t.Log("b:", cache.Read("b"))
+	t.Log("d:", cache.Read("d"))
 	t.Log("left:", cache.Count(), "items")
 }
 
