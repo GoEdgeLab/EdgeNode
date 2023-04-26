@@ -14,8 +14,6 @@ var SharedCache = NewBigCache()
 //	    Piece1            |  Piece2 | Piece3 | ...
 //	[ Item1, Item2, ... ] |   ...
 //
-// KeyMap列表数据结构
-// { timestamp1 => [key1, key2, ...] }, ...
 type Cache struct {
 	isDestroyed bool
 	pieces      []*Piece
@@ -147,7 +145,7 @@ func (this *Cache) Count() (count int) {
 
 func (this *Cache) GC() {
 	var index = this.gcPieceIndex
-	var maxPiecesPerGC = 4
+	const maxPiecesPerGC = 4
 	for i := index; i < index+maxPiecesPerGC; i++ {
 		if i >= int(this.countPieces) {
 			break
