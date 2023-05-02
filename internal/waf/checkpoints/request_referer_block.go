@@ -18,7 +18,14 @@ type RequestRefererBlockCheckpoint struct {
 // RequestValue 计算checkpoint值
 // 选项：allowEmpty, allowSameDomain, allowDomains
 func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+	var checkOrigin = options.GetBool("checkOrigin")
 	var referer = req.WAFRaw().Referer()
+	if len(referer) == 0 && checkOrigin {
+		var origin = req.WAFRaw().Header.Get("Origin")
+		if len(origin) > 0 && origin != "null" {
+			referer = "https://" + origin // 因为Origin都只有域名部分，所以为了下面的URL 分析需要加上https://
+		}
+	}
 
 	if len(referer) == 0 {
 		if options.GetBool("allowEmpty") {

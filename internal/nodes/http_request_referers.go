@@ -15,6 +15,13 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 	const cacheSeconds = "3600" // 时间不能过长，防止修改设置后长期无法生效
 
 	var refererURL = this.RawReq.Header.Get("Referer")
+	if len(refererURL) == 0 && this.web.Referers.CheckOrigin {
+		var origin = this.RawReq.Header.Get("Origin")
+		if len(origin) > 0 && origin != "null" {
+			refererURL = "https://" + origin // 因为Origin都只有域名部分，所以为了下面的URL 分析需要加上https://
+		}
+	}
+
 	if len(refererURL) == 0 {
 		if this.web.Referers.MatchDomain(this.ReqHost, "") {
 			return
