@@ -17,7 +17,9 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/net"
 	"golang.org/x/sys/unix"
+	"math"
 	"os"
 	"runtime"
 	"strings"
@@ -25,11 +27,13 @@ import (
 )
 
 type NodeStatusExecutor struct {
-	isFirstTime bool
+	isFirstTime     bool
+	lastUpdatedTime time.Time
 
-	cpuUpdatedTime   time.Time
 	cpuLogicalCount  int
 	cpuPhysicalCount int
+
+	lastIOCounterStat net.IOCountersStat
 
 	apiCallStat *rpc.CallStat
 
@@ -45,7 +49,7 @@ func NewNodeStatusExecutor() *NodeStatusExecutor {
 
 func (this *NodeStatusExecutor) Listen() {
 	this.isFirstTime = true
-	this.cpuUpdatedTime = time.Now()
+	this.lastUpdatedTime = time.Now()
 	this.update()
 
 	events.OnKey(events.EventQuit, this, func() {
@@ -119,6 +123,11 @@ func (this *NodeStatusExecutor) update() {
 	this.updateCacheSpace(status)
 	cacheSpaceTR.End()
 
+	this.updateAllTraffic(status)
+
+	// 修改更新时间
+	this.lastUpdatedTime = time.Now()
+
 	status.UpdatedAt = time.Now().Unix()
 	status.Timestamp = status.UpdatedAt
 
@@ -173,8 +182,6 @@ func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
 	})
 
 	if this.cpuLogicalCount == 0 && this.cpuPhysicalCount == 0 {
-		this.cpuUpdatedTime = time.Now()
-
 		status.CPULogicalCount, err = cpu.Counts(true)
 		if err != nil {
 			status.Error = "cpu.Counts(): " + err.Error()
@@ -281,4 +288,45 @@ func (this *NodeStatusExecutor) updateCacheSpace(status *nodeconfigs.NodeStatus)
 	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemCacheDir, maps.Map{
 		"dirs": result,
 	})
+}
+
+// 流量
+func (this *NodeStatusExecutor) updateAllTraffic(status *nodeconfigs.NodeStatus) {
+	counters, err := net.IOCounters(true)
+	if err != nil {
+		remotelogs.Warn("NODE_STATUS_EXECUTOR", err.Error())
+		return
+	}
+
+	var allCounter = net.IOCountersStat{}
+	for _, counter := range counters {
+		// 跳过lo
+		if counter.Name == "lo" {
+			continue
+		}
+		allCounter.BytesRecv += counter.BytesRecv
+		allCounter.BytesSent += counter.BytesSent
+	}
+	if allCounter.BytesSent == 0 && allCounter.BytesRecv == 0 {
+		return
+	}
+
+	if this.lastIOCounterStat.BytesSent > 0 {
+		// 记录监控数据
+		if allCounter.BytesSent >= this.lastIOCounterStat.BytesSent && allCounter.BytesRecv >= this.lastIOCounterStat.BytesRecv {
+			var costSeconds = int(math.Ceil(time.Since(this.lastUpdatedTime).Seconds()))
+			if costSeconds > 0 {
+				var bytesSent = allCounter.BytesSent - this.lastIOCounterStat.BytesSent
+				var bytesRecv = allCounter.BytesRecv - this.lastIOCounterStat.BytesRecv
+
+				monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemAllTraffic, maps.Map{
+					"inBytes":     bytesRecv,
+					"outBytes":    bytesSent,
+					"avgInBytes":  bytesRecv / uint64(costSeconds),
+					"avgOutBytes": bytesSent / uint64(costSeconds),
+				})
+			}
+		}
+	}
+	this.lastIOCounterStat = allCounter
 }
