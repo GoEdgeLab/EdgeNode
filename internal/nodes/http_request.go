@@ -866,7 +866,23 @@ func (this *HTTPRequest) Format(source string) string {
 			}
 			switch suffix[:dotIndex] {
 			case "header":
-				return this.writer.Header().Get(suffix[dotIndex+1:])
+				var headers = this.writer.Header()
+				var headerKey = suffix[dotIndex+1:]
+				v, found := headers[headerKey]
+				if found {
+					if len(v) == 0 {
+						return ""
+					}
+					return v[0]
+				}
+				var canonicalHeaderKey = http.CanonicalHeaderKey(headerKey)
+				if canonicalHeaderKey != headerKey {
+					v = headers[canonicalHeaderKey]
+					if len(v) > 0 {
+						return v[0]
+					}
+				}
+				return ""
 			}
 		}
 
