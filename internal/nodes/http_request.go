@@ -1743,7 +1743,7 @@ func (this *HTTPRequest) processResponseHeaders(responseHeader http.Header, stat
 
 			// Allow-Methods
 			if len(corsConfig.AllowMethods) == 0 {
-				responseHeader.Set("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, HEAD, OPTIONS")
+				responseHeader.Set("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, HEAD, OPTIONS, PATCH")
 			} else {
 				responseHeader.Set("Access-Control-Allow-Methods", strings.Join(corsConfig.AllowMethods, ", "))
 			}
