@@ -1650,6 +1650,20 @@ func (this *HTTPRequest) processRequestHeaders(reqHeader http.Header) {
 				}
 			}
 		}
+
+		// 非标Header
+		if len(this.web.RequestHeaderPolicy.NonStandardHeaders) > 0 {
+			for _, name := range this.web.RequestHeaderPolicy.NonStandardHeaders {
+				var canonicalKey = http.CanonicalHeaderKey(name)
+				if canonicalKey != name {
+					v, ok := reqHeader[canonicalKey]
+					if ok {
+						delete(reqHeader, canonicalKey)
+						reqHeader[name] = v
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1746,6 +1760,20 @@ func (this *HTTPRequest) processResponseHeaders(responseHeader http.Header, stat
 				responseHeader[header.Name] = append(responseHeader[header.Name], headerValue)
 			} else {
 				responseHeader[header.Name] = []string{headerValue}
+			}
+		}
+
+		// 非标Header
+		if len(this.web.ResponseHeaderPolicy.NonStandardHeaders) > 0 {
+			for _, name := range this.web.ResponseHeaderPolicy.NonStandardHeaders {
+				var canonicalKey = http.CanonicalHeaderKey(name)
+				if canonicalKey != name {
+					v, ok := responseHeader[canonicalKey]
+					if ok {
+						delete(responseHeader, canonicalKey)
+						responseHeader[name] = v
+					}
+				}
 			}
 		}
 
