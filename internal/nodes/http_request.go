@@ -1288,6 +1288,12 @@ func (this *HTTPRequest) requestQueryParam(name string) string {
 func (this *HTTPRequest) requestHeader(key string) string {
 	v, found := this.RawReq.Header[key]
 	if !found {
+		// 转换为canonical header再尝试
+		var canonicalHeaderKey = http.CanonicalHeaderKey(key)
+		if canonicalHeaderKey != key {
+			return strings.Join(this.RawReq.Header[canonicalHeaderKey], ";")
+		}
+
 		return ""
 	}
 	return strings.Join(v, ";")
