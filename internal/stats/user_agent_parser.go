@@ -68,6 +68,8 @@ func (this *UserAgentParser) Parse(userAgent string) (result UserAgentParserResu
 	this.locker.RUnlock()
 
 	this.locker.Lock()
+	defer this.locker.Unlock()
+
 	this.parser.Parse(userAgent)
 	result.OS = this.parser.OSInfo()
 	result.BrowserName, result.BrowserVersion = this.parser.Browser()
@@ -95,7 +97,6 @@ func (this *UserAgentParser) Parse(userAgent string) (result UserAgentParserResu
 			this.cacheMap1 = map[string]UserAgentParserResult{}
 		}
 	}
-	this.locker.Unlock()
 
 	return
 }
