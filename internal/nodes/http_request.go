@@ -1728,7 +1728,7 @@ func (this *HTTPRequest) processResponseHeaders(responseHeader http.Header, stat
 		}
 
 		// CORS
-		if this.web.ResponseHeaderPolicy.CORS != nil && this.web.ResponseHeaderPolicy.CORS.IsOn {
+		if this.web.ResponseHeaderPolicy.CORS != nil && this.web.ResponseHeaderPolicy.CORS.IsOn && (!this.web.ResponseHeaderPolicy.CORS.OptionsMethodOnly || this.RawReq.Method == http.MethodOptions) {
 			var corsConfig = this.web.ResponseHeaderPolicy.CORS
 
 			// Allow-Origin
@@ -1751,6 +1751,16 @@ func (this *HTTPRequest) processResponseHeaders(responseHeader http.Header, stat
 			// Max-Age
 			if corsConfig.MaxAge > 0 {
 				responseHeader.Set("Access-Control-Max-Age", types.String(corsConfig.MaxAge))
+			}
+
+			// Expose-Headers
+			if len(corsConfig.ExposeHeaders) > 0 {
+				responseHeader.Set("Access-Control-Expose-Headers", strings.Join(corsConfig.ExposeHeaders, ", "))
+			}
+
+			// Request-Method
+			if len(corsConfig.RequestMethod) > 0 {
+				responseHeader.Set("Access-Control-Request-Method", strings.ToUpper(corsConfig.RequestMethod))
 			}
 
 			// Allow-Credentials
