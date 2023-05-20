@@ -4,6 +4,7 @@ package stats
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/mssola/user_agent"
 	"sync"
 )
@@ -14,8 +15,8 @@ var SharedUserAgentParser = NewUserAgentParser()
 type UserAgentParser struct {
 	parser *user_agent.UserAgent
 
-	cacheMap1     map[string]UserAgentParserResult
-	cacheMap2     map[string]UserAgentParserResult
+	cacheMap1     map[uint64]UserAgentParserResult
+	cacheMap2     map[uint64]UserAgentParserResult
 	maxCacheItems int
 
 	cacheCursor int
@@ -25,8 +26,8 @@ type UserAgentParser struct {
 func NewUserAgentParser() *UserAgentParser {
 	var parser = &UserAgentParser{
 		parser:      &user_agent.UserAgent{},
-		cacheMap1:   map[string]UserAgentParserResult{},
-		cacheMap2:   map[string]UserAgentParserResult{},
+		cacheMap1:   map[uint64]UserAgentParserResult{},
+		cacheMap2:   map[uint64]UserAgentParserResult{},
 		cacheCursor: 0,
 	}
 
@@ -53,14 +54,16 @@ func (this *UserAgentParser) Parse(userAgent string) (result UserAgentParserResu
 		return
 	}
 
+	var userAgentKey = fnv.HashString(userAgent)
+
 	this.locker.RLock()
-	cacheResult, ok := this.cacheMap1[userAgent]
+	cacheResult, ok := this.cacheMap1[userAgentKey]
 	if ok {
 		this.locker.RUnlock()
 		return cacheResult
 	}
 
-	cacheResult, ok = this.cacheMap2[userAgent]
+	cacheResult, ok = this.cacheMap2[userAgentKey]
 	if ok {
 		this.locker.RUnlock()
 		return cacheResult
@@ -85,16 +88,16 @@ func (this *UserAgentParser) Parse(userAgent string) (result UserAgentParserResu
 	}
 
 	if this.cacheCursor == 0 {
-		this.cacheMap1[userAgent] = result
+		this.cacheMap1[userAgentKey] = result
 		if len(this.cacheMap1) >= this.maxCacheItems {
 			this.cacheCursor = 1
-			this.cacheMap2 = map[string]UserAgentParserResult{}
+			this.cacheMap2 = map[uint64]UserAgentParserResult{}
 		}
 	} else {
-		this.cacheMap2[userAgent] = result
+		this.cacheMap2[userAgentKey] = result
 		if len(this.cacheMap2) >= this.maxCacheItems {
 			this.cacheCursor = 0
-			this.cacheMap1 = map[string]UserAgentParserResult{}
+			this.cacheMap1 = map[uint64]UserAgentParserResult{}
 		}
 	}
 

@@ -47,7 +47,15 @@ func TestUserAgentParser_Memory(t *testing.T) {
 func BenchmarkUserAgentParser_Parse(b *testing.B) {
 	var parser = NewUserAgentParser()
 	for i := 0; i < b.N; i++ {
-		parser.Parse("Mozilla/5.0 (Windows NT 10.0; WOW64; rv:49.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36 Test/" + types.String(rands.Int(0, 40000)))
+		parser.Parse("Mozilla/5.0 (Windows NT 10.0; WOW64; rv:49.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36 Test/" + types.String(rands.Int(0, 1_000_000)))
+	}
+	b.Log(len(parser.cacheMap1), len(parser.cacheMap2))
+}
+
+func BenchmarkUserAgentParser_Parse2(b *testing.B) {
+	var parser = NewUserAgentParser()
+	for i := 0; i < b.N; i++ {
+		parser.Parse("Mozilla/5.0 (Windows NT 10.0; WOW64; rv:49.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36 Test/" + types.String(rands.Int(0, 100_000)))
 	}
 	b.Log(len(parser.cacheMap1), len(parser.cacheMap2))
 }
