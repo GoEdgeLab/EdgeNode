@@ -5,7 +5,7 @@ package stats
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
-	"github.com/mssola/user_agent"
+	"github.com/mssola/useragent"
 	"sync"
 )
 
@@ -13,7 +13,7 @@ var SharedUserAgentParser = NewUserAgentParser()
 
 // UserAgentParser UserAgent解析器
 type UserAgentParser struct {
-	parser *user_agent.UserAgent
+	parser *useragent.UserAgent
 
 	cacheMap1     map[uint64]UserAgentParserResult
 	cacheMap2     map[uint64]UserAgentParserResult
@@ -25,7 +25,7 @@ type UserAgentParser struct {
 
 func NewUserAgentParser() *UserAgentParser {
 	var parser = &UserAgentParser{
-		parser:      &user_agent.UserAgent{},
+		parser:      &useragent.UserAgent{},
 		cacheMap1:   map[uint64]UserAgentParserResult{},
 		cacheMap2:   map[uint64]UserAgentParserResult{},
 		cacheCursor: 0,

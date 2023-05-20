@@ -26,7 +26,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/mdlayher/netlink v1.7.1
 	github.com/miekg/dns v1.1.43
-	github.com/mssola/user_agent v0.5.3
+	github.com/mssola/useragent v1.0.0
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/shirou/gopsutil/v3 v3.22.2
 	golang.org/x/image v0.7.0
