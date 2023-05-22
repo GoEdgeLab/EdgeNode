@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -16,10 +17,36 @@ var urlPrefixRegexp = regexp.MustCompile("^(?i)(http|https|ftp)://")
 // 请求特殊页面
 func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 	if len(this.web.Pages) == 0 {
+		// 集群自定义页面
+		if this.nodeConfig != nil && this.ReqServer != nil {
+			var httpPagesPolicy = this.nodeConfig.FindHTTPPagesPolicyWithClusterId(this.ReqServer.ClusterId)
+			if httpPagesPolicy != nil && httpPagesPolicy.IsOn && len(httpPagesPolicy.Pages) > 0 {
+				return this.doPageLookup(httpPagesPolicy.Pages, status)
+			}
+		}
+
 		return false
 	}
 
-	for _, page := range this.web.Pages {
+	// 查找当前网站自定义页面
+	shouldStop = this.doPageLookup(this.web.Pages, status)
+	if shouldStop {
+		return
+	}
+
+	// 集群自定义页面
+	if this.nodeConfig != nil && this.ReqServer != nil {
+		var httpPagesPolicy = this.nodeConfig.FindHTTPPagesPolicyWithClusterId(this.ReqServer.ClusterId)
+		if httpPagesPolicy != nil && httpPagesPolicy.IsOn && len(httpPagesPolicy.Pages) > 0 {
+			return this.doPageLookup(httpPagesPolicy.Pages, status)
+		}
+	}
+
+	return
+}
+
+func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, status int) (shouldStop bool) {
+	for _, page := range pages {
 		if page.Match(status) {
 			if len(page.BodyType) == 0 || page.BodyType == shared.BodyTypeURL {
 				if urlPrefixRegexp.MatchString(page.URL) {

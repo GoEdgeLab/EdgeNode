@@ -80,6 +80,8 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 		err = this.execUserServersStateChangedTask(rpcClient, task)
 	case "uamPolicyChanged":
 		err = this.execUAMPolicyChangedTask(rpcClient)
+	case "httpPagesPolicyChanged":
+		err = this.execHTTPPagesPolicyChangedTask(rpcClient)
 	case "updatingServers":
 		err = this.execUpdatingServersTask(rpcClient)
 	case "plusChanged":
@@ -184,6 +186,34 @@ func (this *Node) execUAMPolicyChangedTask(rpcClient *rpc.RPCClient) error {
 		}
 	}
 	sharedNodeConfig.UpdateUAMPolicies(uamPolicyMap)
+	return nil
+}
+
+// 自定义页面策略变更
+func (this *Node) execHTTPPagesPolicyChangedTask(rpcClient *rpc.RPCClient) error {
+	remotelogs.Println("NODE", "updating http pages policies ...")
+	resp, err := rpcClient.NodeRPC.FindNodeHTTPPagesPolicies(rpcClient.Context(), &pb.FindNodeHTTPPagesPoliciesRequest{})
+	if err != nil {
+		return err
+	}
+	var httpPagesPolicyMap = map[int64]*nodeconfigs.HTTPPagesPolicy{}
+	for _, policy := range resp.HttpPagesPolicies {
+		if len(policy.HttpPagesPolicyJSON) > 0 {
+			var httpPagesPolicy = nodeconfigs.NewHTTPPagesPolicy()
+			err = json.Unmarshal(policy.HttpPagesPolicyJSON, httpPagesPolicy)
+			if err != nil {
+				remotelogs.Error("NODE", "decode http pages policy failed: "+err.Error())
+				continue
+			}
+			err = httpPagesPolicy.Init()
+			if err != nil {
+				remotelogs.Error("NODE", "initialize http pages policy failed: "+err.Error())
+				continue
+			}
+			httpPagesPolicyMap[policy.NodeClusterId] = httpPagesPolicy
+		}
+	}
+	sharedNodeConfig.UpdateHTTPPagesPolicies(httpPagesPolicyMap)
 	return nil
 }
 
