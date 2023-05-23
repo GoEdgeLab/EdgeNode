@@ -80,6 +80,8 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 		err = this.execUserServersStateChangedTask(rpcClient, task)
 	case "uamPolicyChanged":
 		err = this.execUAMPolicyChangedTask(rpcClient)
+	case "httpCCPolicyChanged":
+		err = this.execHTTPCCPolicyChangedTask(rpcClient)
 	case "httpPagesPolicyChanged":
 		err = this.execHTTPPagesPolicyChangedTask(rpcClient)
 	case "updatingServers":
@@ -186,6 +188,34 @@ func (this *Node) execUAMPolicyChangedTask(rpcClient *rpc.RPCClient) error {
 		}
 	}
 	sharedNodeConfig.UpdateUAMPolicies(uamPolicyMap)
+	return nil
+}
+
+// HTTP CC策略变更
+func (this *Node) execHTTPCCPolicyChangedTask(rpcClient *rpc.RPCClient) error {
+	remotelogs.Println("NODE", "updating http cc policies ...")
+	resp, err := rpcClient.NodeRPC.FindNodeHTTPCCPolicies(rpcClient.Context(), &pb.FindNodeHTTPCCPoliciesRequest{})
+	if err != nil {
+		return err
+	}
+	var httpCCPolicyMap = map[int64]*nodeconfigs.HTTPCCPolicy{}
+	for _, policy := range resp.HttpCCPolicies {
+		if len(policy.HttpCCPolicyJSON) > 0 {
+			var httpCCPolicy = nodeconfigs.NewHTTPCCPolicy()
+			err = json.Unmarshal(policy.HttpCCPolicyJSON, httpCCPolicy)
+			if err != nil {
+				remotelogs.Error("NODE", "decode http cc policy failed: "+err.Error())
+				continue
+			}
+			err = httpCCPolicy.Init()
+			if err != nil {
+				remotelogs.Error("NODE", "initialize http cc policy failed: "+err.Error())
+				continue
+			}
+			httpCCPolicyMap[policy.NodeClusterId] = httpCCPolicy
+		}
+	}
+	sharedNodeConfig.UpdateHTTPCCPolicies(httpCCPolicyMap)
 	return nil
 }
 
