@@ -113,20 +113,11 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 
 	// 通过代理服务域名配置匹配
 	server, _ := this.findNamedServer(domain)
-	if server == nil || server.SSLPolicy() == nil || !server.SSLPolicy().IsOn {
-		// 找不到或者此时的服务没有配置证书，需要搜索所有的Server，通过SSL证书内容中的DNSName匹配
-		// TODO 需要思考这种情况下是否允许访问
-		for _, server := range group.Servers() {
-			if server.SSLPolicy() == nil || !server.SSLPolicy().IsOn {
-				continue
-			}
-			cert, ok := server.SSLPolicy().MatchDomain(domain)
-			if ok {
-				return server.SSLPolicy(), cert, nil
-			}
-		}
-
+	if server == nil {
 		return nil, nil, errors.New("no server found for '" + domain + "'")
+	}
+	if server.SSLPolicy() == nil || !server.SSLPolicy().IsOn {
+		return nil, nil, errors.New("no cert found for '" + domain + "'")
 	}
 
 	// 证书是否匹配
