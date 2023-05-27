@@ -58,59 +58,6 @@ func TestRegexp_ParseKeywords(t *testing.T) {
 }
 
 func TestRegexp_Special(t *testing.T) {
-	var unescape = func(v string) string {
-		//replace urlencoded characters
-
-		var chars = [][2]string{
-			{`\s`, `(\s|%09|%0A|\+)`},
-			{`\(`, `(\(|%28)`},
-			{`=`, `(=|%3D)`},
-			{`<`, `(<|%3C)`},
-			{`\*`, `(\*|%2A)`},
-			{`\\`, `(\\|%2F)`},
-			{`!`, `(!|%21)`},
-			{`/`, `(/|%2F)`},
-			{`;`, `(;|%3B)`},
-			{`\+`, `(\+|%20)`},
-		}
-
-		for _, c := range chars {
-			if !strings.Contains(v, c[0]) {
-				continue
-			}
-			var pieces = strings.Split(v, c[0])
-
-			// 修复piece中错误的\
-			for pieceIndex, piece := range pieces {
-				var l = len(piece)
-				if l == 0 {
-					continue
-				}
-				if piece[l-1] != '\\' {
-					continue
-				}
-
-				// 计算\的数量
-				var countBackSlashes = 0
-				for i := l - 1; i >= 0; i-- {
-					if piece[i] == '\\' {
-						countBackSlashes++
-					} else {
-						break
-					}
-				}
-				if countBackSlashes%2 == 1 {
-					// 去掉最后一个
-					pieces[pieceIndex] = piece[:len(piece)-1]
-				}
-			}
-
-			v = strings.Join(pieces, c[1])
-		}
-
-		return v
-	}
-
 	for _, s := range []string{
 		`\\s`,
 		`\s\W`,
@@ -121,13 +68,24 @@ func TestRegexp_Special(t *testing.T) {
 		`aaaa\\\=\W`,
 		`aaaa\\\\=\W`,
 	} {
-		var es = unescape(s)
+		var es = testUnescape(t, s)
 		t.Log(s, "=>", es)
 		_, err := re.Compile(es)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
+}
+
+func TestRegexp_Special2(t *testing.T) {
+	r, err := re.Compile(testUnescape(t, `/api/ios/a
+/api/ios/b
+/api/ios/c
+/report`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(r.Keywords())
 }
 
 func TestRegexp_ParseKeywords2(t *testing.T) {
@@ -232,6 +190,14 @@ func BenchmarkRegexp_MatchString_VS_FindSubString2(b *testing.B) {
 	}
 }
 
+func TestSplitAndJoin(t *testing.T) {
+	var pieces = strings.Split(`/api/ios/a
+/api/ios/b
+/api/ios/c
+/report`, "/")
+	t.Log(strings.Join(pieces, `(/|%2F)`))
+}
+
 func testCompareStrings(s1 []string, s2 []string) bool {
 	if len(s1) != len(s2) {
 		return false
@@ -242,4 +208,56 @@ func testCompareStrings(s1 []string, s2 []string) bool {
 		}
 	}
 	return true
+}
+
+func testUnescape(t *testing.T, v string) string {
+	// replace urlencoded characters
+	var unescapeChars = [][2]string{
+		{`\s`, `(\s|%09|%0A|\+)`},
+		{`\(`, `(\(|%28)`},
+		{`=`, `(=|%3D)`},
+		{`<`, `(<|%3C)`},
+		{`\*`, `(\*|%2A)`},
+		{`\\`, `(\\|%2F)`},
+		{`!`, `(!|%21)`},
+		{`/`, `(/|%2F)`},
+		{`;`, `(;|%3B)`},
+		{`\+`, `(\+|%20)`},
+	}
+
+	for _, c := range unescapeChars {
+		if !strings.Contains(v, c[0]) {
+			continue
+		}
+		var pieces = strings.Split(v, c[0])
+
+		// 修复piece中错误的\
+		for pieceIndex, piece := range pieces {
+			var l = len(piece)
+			if l == 0 {
+				continue
+			}
+			if piece[l-1] != '\\' {
+				continue
+			}
+
+			// 计算\的数量
+			var countBackSlashes = 0
+			for i := l - 1; i >= 0; i-- {
+				if piece[i] == '\\' {
+					countBackSlashes++
+				} else {
+					break
+				}
+			}
+			if countBackSlashes%2 == 1 {
+				// 去掉最后一个
+				pieces[pieceIndex] = piece[:len(piece)-1]
+			}
+		}
+
+		v = strings.Join(pieces, c[1])
+	}
+
+	return v
 }

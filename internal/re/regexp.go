@@ -164,6 +164,8 @@ func (this *Regexp) ParseKeywords(exp string) (keywords []string) {
 		return this.ParseKeywords(reg.Sub[0].String())
 	}
 
+	const maxComposedKeywords = 32
+
 	switch reg.Op {
 	case syntax.OpConcat:
 		var prevKeywords = []string{}
@@ -190,6 +192,11 @@ func (this *Regexp) ParseKeywords(exp string) (keywords []string) {
 					for _, prevKeyword := range prevKeywords {
 						for _, subKeyword := range subKeywords {
 							keywords = append(keywords, prevKeyword+subKeyword)
+
+							// 限制不能超出最大关键词
+							if len(keywords) > maxComposedKeywords {
+								return nil
+							}
 						}
 					}
 					prevKeywords = keywords
