@@ -17,7 +17,6 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 	if this.web.MergeSlashes {
 		urlPath = utils.CleanPath(urlPath)
 	}
-	var fullURL = this.requestScheme() + "://" + this.ReqHost + urlPath
 	for _, u := range this.web.HostRedirects {
 		if !u.IsOn {
 			continue
@@ -35,10 +34,17 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 			}
 		}
 
+		var fullURL = ""
+		if u.BeforeHasQuery() {
+			fullURL = this.URL()
+		} else {
+			fullURL = this.requestScheme() + "://" + this.ReqHost + urlPath
+		}
+
 		if len(u.Type) == 0 || u.Type == serverconfigs.HTTPHostRedirectTypeURL {
 			if u.MatchPrefix { // 匹配前缀
 				if strings.HasPrefix(fullURL, u.BeforeURL) {
-					afterURL := u.AfterURL
+					var afterURL = u.AfterURL
 					if u.KeepRequestURI {
 						afterURL += this.RawReq.URL.RequestURI()
 					}
@@ -104,7 +110,12 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					if u.KeepArgs {
 						var qIndex = strings.Index(this.uri, "?")
 						if qIndex >= 0 {
-							afterURL += this.uri[qIndex:]
+							var afterQIndex = strings.Index(u.AfterURL, "?")
+							if afterQIndex >= 0 {
+								afterURL = u.AfterURL[:afterQIndex] + this.uri[qIndex:]
+							} else {
+								afterURL += this.uri[qIndex:]
+							}
 						}
 					}
 
