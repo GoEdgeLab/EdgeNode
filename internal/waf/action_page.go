@@ -15,6 +15,9 @@ type PageAction struct {
 }
 
 func (this *PageAction) Init(waf *WAF) error {
+	if this.Status <= 0 {
+		this.Status = http.StatusForbidden
+	}
 	return nil
 }
 

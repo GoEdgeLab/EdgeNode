@@ -15,6 +15,7 @@ const (
 	ActionRecordIP         ActionString = "record_ip" // 记录IP
 	ActionTag              ActionString = "tag"       // 标签
 	ActionPage             ActionString = "page"      // 显示网页
+	ActionRedirect         ActionString = "redirect"  // 跳转
 	ActionAllow            ActionString = "allow"     // allow
 	ActionGoGroup          ActionString = "go_group"  // go to next rule group
 	ActionGoSet            ActionString = "go_set"    // go to next rule set
@@ -86,6 +87,12 @@ var AllActions = []*ActionDefinition{
 		Code:     ActionPage,
 		Instance: new(PageAction),
 		Type:     reflect.TypeOf(new(PageAction)).Elem(),
+	},
+	{
+		Name:     "跳转",
+		Code:     ActionRedirect,
+		Instance: new(RedirectAction),
+		Type:     reflect.TypeOf(new(RedirectAction)).Elem(),
 	},
 	{
 		Name:     "跳到下一个规则分组",
