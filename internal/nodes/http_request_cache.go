@@ -40,7 +40,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var addStatusHeader = this.web.Cache.AddStatusHeader
 	if addStatusHeader {
 		defer func() {
-			cacheStatus := this.varMapping["cache.status"]
+			var cacheStatus = this.varMapping["cache.status"]
 			if cacheStatus != "HIT" {
 				this.writer.Header().Set("X-Cache", cacheStatus)
 			}
@@ -48,7 +48,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// 检查服务独立的缓存条件
-	refType := ""
+	var refType = ""
 	for _, cacheRef := range this.web.Cache.CacheRefs {
 		if !cacheRef.IsOn {
 			continue
@@ -131,7 +131,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	this.varMapping["cache.key"] = key
 
 	// 读取缓存
-	storage := caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
+	var storage = caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
 	if storage == nil {
 		this.cacheRef = nil
 		return
@@ -301,13 +301,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	this.writer.SetSentHeaderBytes(reader.HeaderSize())
 	var headerPool = this.bytePool(reader.HeaderSize())
 	var headerBuf = headerPool.Get()
-	err = reader.ReadHeader(headerBuf, func(n int) (goNext bool, err error) {
+	err = reader.ReadHeader(headerBuf, func(n int) (goNext bool, readErr error) {
 		headerData = append(headerData, headerBuf[:n]...)
 		for {
-			nIndex := bytes.Index(headerData, []byte{'\n'})
+			var nIndex = bytes.Index(headerData, []byte{'\n'})
 			if nIndex >= 0 {
-				row := headerData[:nIndex]
-				spaceIndex := bytes.Index(row, []byte{':'})
+				var row = headerData[:nIndex]
+				var spaceIndex = bytes.Index(row, []byte{':'})
 				if spaceIndex <= 0 {
 					return false, errors.New("invalid header '" + string(row) + "'")
 				}
@@ -460,9 +460,9 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 			var pool = this.bytePool(fileSize)
 			var bodyBuf = pool.Get()
-			err = reader.ReadBodyRange(bodyBuf, ranges[0].Start(), ranges[0].End(), func(n int) (goNext bool, err error) {
-				_, err = this.writer.Write(bodyBuf[:n])
-				if err != nil {
+			err = reader.ReadBodyRange(bodyBuf, ranges[0].Start(), ranges[0].End(), func(n int) (goNext bool, readErr error) {
+				_, readErr = this.writer.Write(bodyBuf[:n])
+				if readErr != nil {
 					return false, errWritingToClient
 				}
 				return true, nil
@@ -485,7 +485,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			var boundary = httpRequestGenBoundary()
 			respHeader.Set("Content-Type", "multipart/byteranges; boundary="+boundary)
 			respHeader.Del("Content-Length")
-			contentType := respHeader.Get("Content-Type")
+			var contentType = respHeader.Get("Content-Type")
 
 			this.writer.WriteHeader(http.StatusPartialContent)
 
@@ -516,9 +516,9 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 				var pool = this.bytePool(fileSize)
 				var bodyBuf = pool.Get()
-				err := reader.ReadBodyRange(bodyBuf, r.Start(), r.End(), func(n int) (goNext bool, err error) {
-					_, err = this.writer.Write(bodyBuf[:n])
-					if err != nil {
+				err = reader.ReadBodyRange(bodyBuf, r.Start(), r.End(), func(n int) (goNext bool, readErr error) {
+					_, readErr = this.writer.Write(bodyBuf[:n])
+					if readErr != nil {
 						return false, errWritingToClient
 					}
 					return true, nil
