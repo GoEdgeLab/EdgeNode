@@ -32,6 +32,7 @@ type HTTPListener struct {
 	addr       string
 	isHTTP     bool
 	isHTTPS    bool
+	isHTTP3    bool
 	httpServer *http.Server
 }
 
@@ -199,6 +200,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		ServerAddr: this.addr,
 		IsHTTP:     this.isHTTP,
 		IsHTTPS:    this.isHTTPS,
+		IsHTTP3:    this.isHTTP3,
 
 		nodeConfig: sharedNodeConfig,
 	}

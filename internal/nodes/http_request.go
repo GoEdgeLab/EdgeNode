@@ -46,6 +46,7 @@ type HTTPRequest struct {
 	ServerAddr string // 实际启动的服务器监听地址
 	IsHTTP     bool
 	IsHTTPS    bool
+	IsHTTP3    bool
 
 	// 共享参数
 	nodeConfig *nodeconfigs.NodeConfig
@@ -1828,6 +1829,11 @@ func (this *HTTPRequest) processResponseHeaders(responseHeader http.Header, stat
 		this.ReqServer.HTTPS.SSLPolicy.HSTS.Match(this.ReqHost) {
 		responseHeader.Set(this.ReqServer.HTTPS.SSLPolicy.HSTS.HeaderKey(), this.ReqServer.HTTPS.SSLPolicy.HSTS.HeaderValue())
 	}
+
+	// HTTP/3
+	if this.IsHTTPS && !this.IsHTTP3 && this.ReqServer.SupportsHTTP3() {
+		this.processHTTP3Headers(responseHeader)
+	}
 }
 
 // 添加错误信息
@@ -1897,7 +1903,7 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 
 // 检查连接是否已关闭
 func (this *HTTPRequest) isConnClosed() bool {
-	requestConn := this.RawReq.Context().Value(HTTPConnContextKey)
+	var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
 	if requestConn == nil {
 		return true
 	}

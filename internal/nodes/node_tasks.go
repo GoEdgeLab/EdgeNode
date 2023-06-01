@@ -82,6 +82,8 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 		err = this.execUAMPolicyChangedTask(rpcClient)
 	case "httpCCPolicyChanged":
 		err = this.execHTTPCCPolicyChangedTask(rpcClient)
+	case "http3PolicyChanged":
+		err = this.execHTTP3PolicyChangedTask(rpcClient)
 	case "httpPagesPolicyChanged":
 		err = this.execHTTPPagesPolicyChangedTask(rpcClient)
 	case "updatingServers":
@@ -128,15 +130,6 @@ func (this *Node) execNodeVersionChangedTask() error {
 	return nil
 }
 
-// 脚本库变更
-func (this *Node) execScriptsChangedTask() error {
-	err := this.reloadCommonScripts()
-	if err != nil {
-		return errors.New("reload common scripts failed: " + err.Error())
-	}
-	return nil
-}
-
 // 节点级别变更
 func (this *Node) execNodeLevelChangedTask(rpcClient *rpc.RPCClient) error {
 	levelInfoResp, err := rpcClient.NodeRPC.FindNodeLevelInfo(rpcClient.Context(), &pb.FindNodeLevelInfoRequest{})
@@ -160,90 +153,6 @@ func (this *Node) execNodeLevelChangedTask(rpcClient *rpc.RPCClient) error {
 		sharedNodeConfig.ParentNodes = parentNodes
 	}
 
-	return nil
-}
-
-// UAM策略变更
-func (this *Node) execUAMPolicyChangedTask(rpcClient *rpc.RPCClient) error {
-	remotelogs.Println("NODE", "updating uam policies ...")
-	resp, err := rpcClient.NodeRPC.FindNodeUAMPolicies(rpcClient.Context(), &pb.FindNodeUAMPoliciesRequest{})
-	if err != nil {
-		return err
-	}
-	var uamPolicyMap = map[int64]*nodeconfigs.UAMPolicy{}
-	for _, policy := range resp.UamPolicies {
-		if len(policy.UamPolicyJSON) > 0 {
-			var uamPolicy = &nodeconfigs.UAMPolicy{}
-			err = json.Unmarshal(policy.UamPolicyJSON, uamPolicy)
-			if err != nil {
-				remotelogs.Error("NODE", "decode uam policy failed: "+err.Error())
-				continue
-			}
-			err = uamPolicy.Init()
-			if err != nil {
-				remotelogs.Error("NODE", "initialize uam policy failed: "+err.Error())
-				continue
-			}
-			uamPolicyMap[policy.NodeClusterId] = uamPolicy
-		}
-	}
-	sharedNodeConfig.UpdateUAMPolicies(uamPolicyMap)
-	return nil
-}
-
-// HTTP CC策略变更
-func (this *Node) execHTTPCCPolicyChangedTask(rpcClient *rpc.RPCClient) error {
-	remotelogs.Println("NODE", "updating http cc policies ...")
-	resp, err := rpcClient.NodeRPC.FindNodeHTTPCCPolicies(rpcClient.Context(), &pb.FindNodeHTTPCCPoliciesRequest{})
-	if err != nil {
-		return err
-	}
-	var httpCCPolicyMap = map[int64]*nodeconfigs.HTTPCCPolicy{}
-	for _, policy := range resp.HttpCCPolicies {
-		if len(policy.HttpCCPolicyJSON) > 0 {
-			var httpCCPolicy = nodeconfigs.NewHTTPCCPolicy()
-			err = json.Unmarshal(policy.HttpCCPolicyJSON, httpCCPolicy)
-			if err != nil {
-				remotelogs.Error("NODE", "decode http cc policy failed: "+err.Error())
-				continue
-			}
-			err = httpCCPolicy.Init()
-			if err != nil {
-				remotelogs.Error("NODE", "initialize http cc policy failed: "+err.Error())
-				continue
-			}
-			httpCCPolicyMap[policy.NodeClusterId] = httpCCPolicy
-		}
-	}
-	sharedNodeConfig.UpdateHTTPCCPolicies(httpCCPolicyMap)
-	return nil
-}
-
-// 自定义页面策略变更
-func (this *Node) execHTTPPagesPolicyChangedTask(rpcClient *rpc.RPCClient) error {
-	remotelogs.Println("NODE", "updating http pages policies ...")
-	resp, err := rpcClient.NodeRPC.FindNodeHTTPPagesPolicies(rpcClient.Context(), &pb.FindNodeHTTPPagesPoliciesRequest{})
-	if err != nil {
-		return err
-	}
-	var httpPagesPolicyMap = map[int64]*nodeconfigs.HTTPPagesPolicy{}
-	for _, policy := range resp.HttpPagesPolicies {
-		if len(policy.HttpPagesPolicyJSON) > 0 {
-			var httpPagesPolicy = nodeconfigs.NewHTTPPagesPolicy()
-			err = json.Unmarshal(policy.HttpPagesPolicyJSON, httpPagesPolicy)
-			if err != nil {
-				remotelogs.Error("NODE", "decode http pages policy failed: "+err.Error())
-				continue
-			}
-			err = httpPagesPolicy.Init()
-			if err != nil {
-				remotelogs.Error("NODE", "initialize http pages policy failed: "+err.Error())
-				continue
-			}
-			httpPagesPolicyMap[policy.NodeClusterId] = httpPagesPolicy
-		}
-	}
-	sharedNodeConfig.UpdateHTTPPagesPolicies(httpPagesPolicyMap)
 	return nil
 }
 
