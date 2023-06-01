@@ -290,7 +290,9 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 	if newPortStrings == this.lastPortStrings {
 		return
 	}
+	this.locker.Lock()
 	this.lastPortStrings = newPortStrings
+	this.locker.Unlock()
 
 	remotelogs.Println("FIREWALLD", "opening ports automatically ...")
 	defer func() {
@@ -302,8 +304,10 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 	var udpPortRanges = utils.MergePorts(udpPorts)
 
 	defer func() {
+		this.locker.Lock()
 		this.lastTCPPortRanges = tcpPortRanges
 		this.lastUDPPortRanges = udpPortRanges
+		this.locker.Unlock()
 	}()
 
 	// 删除老的不存在的端口
@@ -338,4 +342,29 @@ func (this *ListenerManager) addToFirewalld(groupAddrs []string) {
 	// 添加新的
 	_ = this.firewalld.AllowPortRangesPermanently(tcpPortRanges, "tcp")
 	_ = this.firewalld.AllowPortRangesPermanently(udpPortRanges, "udp")
+}
+
+func (this *ListenerManager) reloadFirewalld() {
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	var nodeConfig = sharedNodeConfig
+
+	// 所有的新地址
+	var groupAddrs = []string{}
+	var availableServerGroups = nodeConfig.AvailableGroups()
+	if !nodeConfig.IsOn {
+		availableServerGroups = []*serverconfigs.ServerAddressGroup{}
+	}
+
+	if len(availableServerGroups) == 0 {
+		remotelogs.Println("LISTENER_MANAGER", "no available servers to startup")
+	}
+
+	for _, group := range availableServerGroups {
+		var addr = group.FullAddr()
+		groupAddrs = append(groupAddrs, addr)
+	}
+
+	go this.addToFirewalld(groupAddrs)
 }
