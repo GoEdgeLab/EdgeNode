@@ -54,12 +54,13 @@ func (this *BaseClientConn) SetServerId(serverId int64) (goNext bool) {
 	goNext = true
 
 	// 检查服务相关IP黑名单
-	if serverId > 0 && len(this.rawIP) > 0 {
+	var rawIP = this.RawIP()
+	if serverId > 0 && len(rawIP) > 0 {
 		// 是否在白名单中
-		ok, _, expiresAt := iplibrary.AllowIP(this.rawIP, serverId)
+		ok, _, expiresAt := iplibrary.AllowIP(rawIP, serverId)
 		if !ok {
 			_ = this.rawConn.Close()
-			firewalls.DropTemporaryTo(this.rawIP, expiresAt)
+			firewalls.DropTemporaryTo(rawIP, expiresAt)
 			return false
 		}
 	}
@@ -123,8 +124,8 @@ func (this *BaseClientConn) TCPConn() (tcpConn *net.TCPConn, ok bool) {
 	switch conn := this.rawConn.(type) {
 	case *tls.Conn:
 		var internalConn = conn.NetConn()
-		clientConn, ok := internalConn.(*ClientConn)
-		if ok {
+		clientConn, isClientConn := internalConn.(*ClientConn)
+		if isClientConn {
 			return clientConn.TCPConn()
 		}
 		tcpConn, ok = internalConn.(*net.TCPConn)
