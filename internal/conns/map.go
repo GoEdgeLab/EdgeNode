@@ -3,6 +3,7 @@
 package conns
 
 import (
+	"github.com/iwind/TeaGo/types"
 	"net"
 	"sync"
 )
@@ -10,14 +11,14 @@ import (
 var SharedMap = NewMap()
 
 type Map struct {
-	m map[string]map[int]net.Conn // ip => { port => Conn  }
+	m map[string]map[string]net.Conn // ip => { network_port => Conn  }
 
 	locker sync.RWMutex
 }
 
 func NewMap() *Map {
 	return &Map{
-		m: map[string]map[int]net.Conn{},
+		m: map[string]map[string]net.Conn{},
 	}
 }
 
@@ -25,21 +26,19 @@ func (this *Map) Add(conn net.Conn) {
 	if conn == nil {
 		return
 	}
-	tcpAddr, ok := conn.RemoteAddr().(*net.TCPAddr)
+
+	key, ip, ok := this.connAddr(conn)
 	if !ok {
 		return
 	}
-
-	var ip = tcpAddr.IP.String()
-	var port = tcpAddr.Port
 
 	this.locker.Lock()
 	defer this.locker.Unlock()
 	connMap, ok := this.m[ip]
 	if !ok {
-		this.m[ip] = map[int]net.Conn{port: conn}
+		this.m[ip] = map[string]net.Conn{key: conn}
 	} else {
-		connMap[port] = conn
+		connMap[key] = conn
 	}
 }
 
@@ -47,13 +46,10 @@ func (this *Map) Remove(conn net.Conn) {
 	if conn == nil {
 		return
 	}
-	tcpAddr, ok := conn.RemoteAddr().(*net.TCPAddr)
+	key, ip, ok := this.connAddr(conn)
 	if !ok {
 		return
 	}
-
-	var ip = tcpAddr.IP.String()
-	var port = tcpAddr.Port
 
 	this.locker.Lock()
 	defer this.locker.Unlock()
@@ -62,7 +58,7 @@ func (this *Map) Remove(conn net.Conn) {
 	if !ok {
 		return
 	}
-	delete(connMap, port)
+	delete(connMap, key)
 
 	if len(connMap) == 0 {
 		delete(this.m, ip)
@@ -120,4 +116,25 @@ func (this *Map) AllConns() []net.Conn {
 	}
 
 	return result
+}
+
+func (this *Map) connAddr(conn net.Conn) (key string, ip string, ok bool) {
+	if conn == nil {
+		return
+	}
+
+	var addr = conn.RemoteAddr()
+	switch realAddr := addr.(type) {
+	case *net.TCPAddr:
+		return addr.Network() + types.String(realAddr.Port), realAddr.IP.String(), true
+	case *net.UDPAddr:
+		return addr.Network() + types.String(realAddr.Port), realAddr.IP.String(), true
+	default:
+		var s = addr.String()
+		host, port, err := net.SplitHostPort(s)
+		if err != nil {
+			return
+		}
+		return addr.Network() + port, host, true
+	}
 }

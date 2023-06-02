@@ -693,6 +693,7 @@ func (this *Node) listenSock() error {
 					var lastReadAt int64
 					var lastWriteAt int64
 					var lastErrString = ""
+					var protocol = "tcp"
 					clientConn, ok := conn.(*ClientConn)
 					if ok {
 						createdAt = clientConn.CreatedAt()
@@ -703,6 +704,8 @@ func (this *Node) listenSock() error {
 						if lastErr != nil {
 							lastErrString = lastErr.Error()
 						}
+					} else {
+						protocol = "udp"
 					}
 					var age int64 = -1
 					var lastReadAge int64 = -1
@@ -719,6 +722,7 @@ func (this *Node) listenSock() error {
 					}
 
 					connMaps = append(connMaps, maps.Map{
+						"protocol": protocol,
 						"addr":     conn.RemoteAddr().String(),
 						"age":      age,
 						"readAge":  lastReadAge,
