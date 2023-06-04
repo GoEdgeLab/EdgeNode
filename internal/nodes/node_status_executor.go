@@ -33,7 +33,10 @@ type NodeStatusExecutor struct {
 	cpuLogicalCount  int
 	cpuPhysicalCount int
 
-	lastIOCounterStat net.IOCountersStat
+	// 流量统计
+	lastIOCounterStat   net.IOCountersStat
+	lastUDPInDatagrams  int64
+	lastUDPOutDatagrams int64
 
 	apiCallStat *rpc.CallStat
 
@@ -44,6 +47,9 @@ func NewNodeStatusExecutor() *NodeStatusExecutor {
 	return &NodeStatusExecutor{
 		ticker:      time.NewTicker(30 * time.Second),
 		apiCallStat: rpc.NewCallStat(10),
+
+		lastUDPInDatagrams:  -1,
+		lastUDPOutDatagrams: -1,
 	}
 }
 
@@ -292,14 +298,14 @@ func (this *NodeStatusExecutor) updateCacheSpace(status *nodeconfigs.NodeStatus)
 
 // 流量
 func (this *NodeStatusExecutor) updateAllTraffic(status *nodeconfigs.NodeStatus) {
-	counters, err := net.IOCounters(true)
+	trafficCounters, err := net.IOCounters(true)
 	if err != nil {
 		remotelogs.Warn("NODE_STATUS_EXECUTOR", err.Error())
 		return
 	}
 
 	var allCounter = net.IOCountersStat{}
-	for _, counter := range counters {
+	for _, counter := range trafficCounters {
 		// 跳过lo
 		if counter.Name == "lo" {
 			continue
@@ -319,11 +325,49 @@ func (this *NodeStatusExecutor) updateAllTraffic(status *nodeconfigs.NodeStatus)
 				var bytesSent = allCounter.BytesSent - this.lastIOCounterStat.BytesSent
 				var bytesRecv = allCounter.BytesRecv - this.lastIOCounterStat.BytesRecv
 
+				// UDP
+				var udpInDatagrams int64 = 0
+				var udpOutDatagrams int64 = 0
+				protoStats, protoErr := net.ProtoCounters([]string{"udp"})
+				if protoErr == nil {
+					for _, protoStat := range protoStats {
+						if protoStat.Protocol == "udp" {
+							udpInDatagrams = protoStat.Stats["InDatagrams"]
+							udpOutDatagrams = protoStat.Stats["OutDatagrams"]
+							if udpInDatagrams < 0 {
+								udpInDatagrams = 0
+							}
+							if udpOutDatagrams < 0 {
+								udpOutDatagrams = 0
+							}
+						}
+					}
+				}
+
+				var avgUDPInDatagrams int64 = 0
+				var avgUDPOutDatagrams int64 = 0
+				if this.lastUDPInDatagrams >= 0 && this.lastUDPOutDatagrams >= 0 {
+					avgUDPInDatagrams = (udpInDatagrams - this.lastUDPInDatagrams) / int64(costSeconds)
+					avgUDPOutDatagrams = (udpOutDatagrams - this.lastUDPOutDatagrams) / int64(costSeconds)
+					if avgUDPInDatagrams < 0 {
+						avgUDPInDatagrams = 0
+					}
+					if avgUDPOutDatagrams < 0 {
+						avgUDPOutDatagrams = 0
+					}
+				}
+
+				this.lastUDPInDatagrams = udpInDatagrams
+				this.lastUDPOutDatagrams = udpOutDatagrams
+
 				monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemAllTraffic, maps.Map{
 					"inBytes":     bytesRecv,
 					"outBytes":    bytesSent,
 					"avgInBytes":  bytesRecv / uint64(costSeconds),
 					"avgOutBytes": bytesSent / uint64(costSeconds),
+
+					"avgUDPInDatagrams":  avgUDPInDatagrams,
+					"avgUDPOutDatagrams": avgUDPOutDatagrams,
 				})
 			}
 		}
