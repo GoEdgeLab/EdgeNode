@@ -12,6 +12,10 @@ const (
 	LNExpiresHeader = "X-Edge-Ln-Expires"
 )
 
+func existsLnNodeIP(nodeIP string) bool {
+	return false
+}
+
 func (this *HTTPRequest) checkLnRequest() bool {
 	return false
 }

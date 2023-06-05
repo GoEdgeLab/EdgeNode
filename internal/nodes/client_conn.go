@@ -32,6 +32,7 @@ type ClientConn struct {
 
 	isTLS   bool
 	isHTTP  bool
+	isLn    bool // 是否为Ln连接
 	hasRead bool
 
 	isLO          bool // 是否为环路
@@ -61,11 +62,14 @@ func NewClientConn(rawConn net.Conn, isHTTP bool, isTLS bool, isInAllowList bool
 		isTLS:          isTLS,
 		isHTTP:         isHTTP,
 		isLO:           strings.HasPrefix(remoteAddr, "127.0.0.1:") || strings.HasPrefix(remoteAddr, "[::1]:"),
-		isNoStat:       connutils.IsNoStatConn(rawConn.RemoteAddr().String()),
+		isNoStat:       connutils.IsNoStatConn(remoteAddr),
 		isInAllowList:  isInAllowList,
 		createdAt:      fasttime.Now().Unix(),
 	}
 
+	conn.isLn = existsLnNodeIP(conn.RawIP())
+
+	// 超时等设置
 	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
 	if globalServerConfig != nil {
 		var performanceConfig = globalServerConfig.Performance
@@ -108,7 +112,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// 设置读超时时间
-	if this.isHTTP && !this.isPersistent && !this.isShortReading && this.autoReadTimeout {
+	if !this.isLn && this.isHTTP && !this.isPersistent && !this.isShortReading && this.autoReadTimeout {
 		this.setHTTPReadTimeout()
 	}
 
@@ -129,7 +133,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	// 忽略白名单和局域网
-	if this.isHTTP && !this.isInAllowList && !utils.IsLocalIP(this.RawIP()) {
+	if !this.isLn && this.isHTTP && !this.isInAllowList && !utils.IsLocalIP(this.RawIP()) {
 		// SYN Flood检测
 		if this.serverId == 0 || !this.hasResetSYNFlood {
 			var synFloodConfig = sharedNodeConfig.SYNFloodConfig()
@@ -165,7 +169,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	}
 
 	// 设置写超时时间
-	if this.autoWriteTimeout {
+	if !this.isLn && this.autoWriteTimeout {
 		// TODO L2 -> L1 写入时不限制时间
 		var timeoutSeconds = len(b) / 1024
 		if timeoutSeconds < 3 {
@@ -175,7 +179,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	}
 
 	// 延长读超时时间
-	if this.isHTTP && !this.isPersistent && this.autoReadTimeout {
+	if !this.isLn && this.isHTTP && !this.isPersistent && this.autoReadTimeout {
 		this.setHTTPReadTimeout()
 	}
 
@@ -242,7 +246,7 @@ func (this *ClientConn) SetDeadline(t time.Time) error {
 
 func (this *ClientConn) SetReadDeadline(t time.Time) error {
 	// 如果开启了HTTP自动读超时选项，则自动控制超时时间
-	if this.isHTTP && !this.isPersistent && this.autoReadTimeout {
+	if !this.isLn && this.isHTTP && !this.isPersistent && this.autoReadTimeout {
 		this.isShortReading = false
 
 		var unixTime = t.Unix()
