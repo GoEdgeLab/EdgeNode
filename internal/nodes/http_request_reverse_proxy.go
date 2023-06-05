@@ -66,19 +66,21 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 
 	// 二级节点
 	var hasMultipleLnNodes = false
-	if this.cacheRef != nil {
+	if this.cacheRef != nil || (this.nodeConfig != nil && this.nodeConfig.GlobalServerConfig != nil && this.nodeConfig.GlobalServerConfig.HTTPAll.ForceLnRequest) {
 		origin, lnNodeId, hasMultipleLnNodes = this.getLnOrigin(failedLnNodeIds)
 		if origin != nil {
 			// 强制变更原来访问的域名
 			requestHost = this.ReqHost
 		}
 
-		// 回源Header中去除If-None-Match和If-Modified-Since
-		if !this.cacheRef.EnableIfNoneMatch {
-			this.DeleteHeader("If-None-Match")
-		}
-		if !this.cacheRef.EnableIfModifiedSince {
-			this.DeleteHeader("If-Modified-Since")
+		if this.cacheRef != nil {
+			// 回源Header中去除If-None-Match和If-Modified-Since
+			if !this.cacheRef.EnableIfNoneMatch {
+				this.DeleteHeader("If-None-Match")
+			}
+			if !this.cacheRef.EnableIfModifiedSince {
+				this.DeleteHeader("If-Modified-Since")
+			}
 		}
 	}
 
