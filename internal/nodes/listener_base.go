@@ -116,7 +116,7 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 		return nil, nil, errors.New("no tls server name found")
 	}
 
-	// 通过代理服务域名配置匹配
+	// 通过网站域名配置匹配
 	server, _ := this.findNamedServer(domain)
 	if server == nil {
 		// 找不到或者此时的服务没有配置证书，需要搜索所有的Server，通过SSL证书内容中的DNSName匹配
@@ -138,7 +138,7 @@ func (this *BaseListener) matchSSL(domain string) (*sslconfigs.SSLPolicy, *tls.C
 	if server.SSLPolicy() == nil || !server.SSLPolicy().IsOn {
 		// 找不到或者此时的服务没有配置证书，需要搜索所有的Server，通过SSL证书内容中的DNSName匹配
 		// 此功能仅为了兼容以往版本（v1.0.4），不应该作为常态启用
-		if  globalServerConfig != nil && globalServerConfig.HTTPAll.MatchCertFromAllServers {
+		if globalServerConfig != nil && globalServerConfig.HTTPAll.MatchCertFromAllServers {
 			for _, searchingServer := range group.Servers() {
 				if searchingServer.SSLPolicy() == nil || !searchingServer.SSLPolicy().IsOn {
 					continue
@@ -174,19 +174,26 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 		return
 	}
 
-	var matchDomainStrictly = sharedNodeConfig.GlobalServerConfig != nil && sharedNodeConfig.GlobalServerConfig.HTTPAll.MatchDomainStrictly
+	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
+	var matchDomainStrictly = globalServerConfig != nil && globalServerConfig.HTTPAll.MatchDomainStrictly
 
-	if sharedNodeConfig.GlobalServerConfig != nil &&
-		len(sharedNodeConfig.GlobalServerConfig.HTTPAll.DefaultDomain) > 0 &&
-		(!matchDomainStrictly || configutils.MatchDomains(sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowMismatchDomains, name) || (sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowNodeIP && net.ParseIP(name) != nil)) {
-		var defaultDomain = sharedNodeConfig.GlobalServerConfig.HTTPAll.DefaultDomain
-		serverConfig, serverName = this.findNamedServerMatched(defaultDomain)
-		if serverConfig != nil {
+	if globalServerConfig != nil &&
+		len(globalServerConfig.HTTPAll.DefaultDomain) > 0 &&
+		(!matchDomainStrictly || configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) || (globalServerConfig.HTTPAll.AllowNodeIP && net.ParseIP(name) != nil)) {
+		if globalServerConfig.HTTPAll.AllowNodeIP &&
+			globalServerConfig.HTTPAll.NodeIPShowPage &&
+			net.ParseIP(name) != nil {
 			return
+		} else {
+			var defaultDomain = globalServerConfig.HTTPAll.DefaultDomain
+			serverConfig, serverName = this.findNamedServerMatched(defaultDomain)
+			if serverConfig != nil {
+				return
+			}
 		}
 	}
 
-	if matchDomainStrictly && !configutils.MatchDomains(sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowMismatchDomains, name) && (!sharedNodeConfig.GlobalServerConfig.HTTPAll.AllowNodeIP || net.ParseIP(name) == nil) {
+	if matchDomainStrictly && !configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) && (!globalServerConfig.HTTPAll.AllowNodeIP || net.ParseIP(name) == nil) {
 		return
 	}
 

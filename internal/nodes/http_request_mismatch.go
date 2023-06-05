@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
+	"net"
 	"net/http"
 	"time"
 )
@@ -32,7 +33,14 @@ func (this *HTTPRequest) doMismatch() {
 	}
 
 	// 根据配置进行相应的处理
-	if sharedNodeConfig.GlobalServerConfig != nil && sharedNodeConfig.GlobalServerConfig.HTTPAll.MatchDomainStrictly {
+	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
+	if globalServerConfig != nil && globalServerConfig.HTTPAll.MatchDomainStrictly {
+		// 是否正在访问IP
+		if globalServerConfig.HTTPAll.NodeIPShowPage && net.ParseIP(this.ReqHost) != nil {
+			_, _ = this.writer.WriteString(globalServerConfig.HTTPAll.NodeIPPageHTML)
+			return
+		}
+
 		// 检查cc
 		// TODO 可以在管理端配置是否开启以及最多尝试次数
 		// 要考虑到服务在切换集群时，域名未生效状态时，用户访问的仍然是老集群中的节点，就会产生找不到域名的情况
@@ -47,7 +55,7 @@ func (this *HTTPRequest) doMismatch() {
 		}
 
 		// 处理当前连接
-		var httpAllConfig = sharedNodeConfig.GlobalServerConfig.HTTPAll
+		var httpAllConfig = globalServerConfig.HTTPAll
 		var mismatchAction = httpAllConfig.DomainMismatchAction
 		if mismatchAction != nil && mismatchAction.Code == "page" {
 			if mismatchAction.Options != nil {
