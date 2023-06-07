@@ -5,6 +5,7 @@ package caches_test
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
@@ -17,6 +18,11 @@ import (
 
 func TestFileList_Init(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -29,6 +35,11 @@ func TestFileList_Init(t *testing.T) {
 
 func TestFileList_Add(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -59,15 +70,20 @@ func TestFileList_Add(t *testing.T) {
 }
 
 func TestFileList_Add_Many(t *testing.T) {
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
+	if !testutils.IsSingleTesting() {
+		return
 	}
+
+	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
 	}()
+
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var before = time.Now()
 	for i := 0; i < 10_000_000; i++ {
@@ -92,14 +108,14 @@ func TestFileList_Add_Many(t *testing.T) {
 
 func TestFileList_Exist(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		_ = list.Close()
-	}()
 
 	total, _ := list.Count()
 	t.Log("total:", total)
@@ -130,13 +146,19 @@ func TestFileList_Exist_Many_DB(t *testing.T) {
 	// 测试在多个数据库下的性能
 	var listSlice = []caches.ListInterface{}
 	for i := 1; i <= 10; i++ {
-		list := caches.NewFileList(Tea.Root + "/data/data" + strconv.Itoa(i))
+		var list = caches.NewFileList(Tea.Root + "/data/data" + strconv.Itoa(i))
 		err := list.Init()
 		if err != nil {
 			t.Fatal(err)
 		}
 		listSlice = append(listSlice, list)
 	}
+
+	defer func() {
+		for _, list := range listSlice {
+			_ = list.Close()
+		}
+	}()
 
 	var wg = sync.WaitGroup{}
 	var threads = 8
@@ -181,14 +203,15 @@ func TestFileList_Exist_Many_DB(t *testing.T) {
 
 func TestFileList_CleanPrefix(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	defer func() {
 		_ = list.Close()
 	}()
+
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	before := time.Now()
 	err = list.CleanPrefix("123")
@@ -200,14 +223,14 @@ func TestFileList_CleanPrefix(t *testing.T) {
 
 func TestFileList_Remove(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		_ = list.Close()
-	}()
 
 	list.OnRemove(func(item *caches.Item) {
 		t.Logf("remove %#v", item)
@@ -224,13 +247,15 @@ func TestFileList_Remove(t *testing.T) {
 
 func TestFileList_Purge(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		_ = list.Close()
-	}()
 
 	var count = 0
 	_, err = list.Purge(caches.CountFileDB*2, func(hash string) error {
@@ -246,13 +271,15 @@ func TestFileList_Purge(t *testing.T) {
 
 func TestFileList_PurgeLFU(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		_ = list.Close()
-	}()
 
 	err = list.IncreaseHit(stringutil.Md5("123456"))
 	if err != nil {
@@ -273,14 +300,15 @@ func TestFileList_PurgeLFU(t *testing.T) {
 
 func TestFileList_Stat(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	defer func() {
 		_ = list.Close()
 	}()
+
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	stat, err := list.Stat(nil)
 	if err != nil {
@@ -291,6 +319,11 @@ func TestFileList_Stat(t *testing.T) {
 
 func TestFileList_Count(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data")
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -305,7 +338,12 @@ func TestFileList_Count(t *testing.T) {
 }
 
 func TestFileList_CleanAll(t *testing.T) {
-	list := caches.NewFileList(Tea.Root + "/data")
+	var list = caches.NewFileList(Tea.Root + "/data")
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -320,6 +358,11 @@ func TestFileList_CleanAll(t *testing.T) {
 
 func TestFileList_IncreaseHit(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -333,7 +376,13 @@ func TestFileList_IncreaseHit(t *testing.T) {
 	defer func() {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
 	}()
-	for i := 0; i < 1000_000; i++ {
+
+	var count = 1_000_000
+
+	if !testutils.IsSingleTesting() {
+		count = 10
+	}
+	for i := 0; i < count; i++ {
 		err = list.IncreaseHit(stringutil.Md5("abc" + types.String(i)))
 	}
 	if err != nil {
@@ -344,6 +393,11 @@ func TestFileList_IncreaseHit(t *testing.T) {
 
 func TestFileList_UpgradeV3(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p43").(*caches.FileList)
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -363,6 +417,11 @@ func TestFileList_UpgradeV3(t *testing.T) {
 
 func BenchmarkFileList_Exist(b *testing.B) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.Init()
 	if err != nil {
 		b.Fatal(err)

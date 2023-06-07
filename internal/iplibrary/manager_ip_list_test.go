@@ -30,7 +30,6 @@ func TestIPListManager_check(t *testing.T) {
 func TestIPListManager_loop(t *testing.T) {
 	manager := NewIPListManager()
 	manager.Start()
-	manager.pageSize = 10
 	err := manager.loop()
 	if err != nil {
 		t.Fatal(err)

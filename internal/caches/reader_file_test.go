@@ -8,21 +8,29 @@ import (
 )
 
 func TestFileReader(t *testing.T) {
-	storage := NewFileStorage(&serverconfigs.HTTPCachePolicy{
+	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
 		Options: map[string]interface{}{
 			"dir": Tea.Root + "/caches",
 		},
 	})
+
+	defer storage.Stop()
+
 	err := storage.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	_, path, _ := storage.keyPath("my-key")
 
 	fp, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log("file '" + path + "' not exists")
+			return
+		}
 		t.Fatal(err)
 	}
 	defer func() {
@@ -58,6 +66,10 @@ func TestFileReader_ReadHeader(t *testing.T) {
 	var path = "/Users/WorkSpace/EdgeProject/EdgeCache/p43/12/6b/126bbed90fc80f2bdfb19558948b0d49.cache"
 	fp, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log("'" + path + "' not exists")
+			return
+		}
 		t.Fatal(err)
 	}
 	defer func() {
@@ -66,6 +78,11 @@ func TestFileReader_ReadHeader(t *testing.T) {
 	var reader = NewFileReader(fp)
 	err = reader.Init()
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log("file '" + path + "' not exists")
+			return
+		}
+
 		t.Fatal(err)
 	}
 	var buf = make([]byte, 16*1024)
@@ -79,13 +96,16 @@ func TestFileReader_ReadHeader(t *testing.T) {
 }
 
 func TestFileReader_Range(t *testing.T) {
-	storage := NewFileStorage(&serverconfigs.HTTPCachePolicy{
+	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
 		Options: map[string]interface{}{
 			"dir": Tea.Root + "/caches",
 		},
 	})
+
+	defer storage.Stop()
+
 	err := storage.Init()
 	if err != nil {
 		t.Fatal(err)
@@ -109,6 +129,10 @@ func TestFileReader_Range(t *testing.T) {
 
 	fp, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log("'" + path + "' not exists")
+			return
+		}
 		t.Fatal(err)
 	}
 	defer func() {

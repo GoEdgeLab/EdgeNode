@@ -2,6 +2,7 @@ package caches
 
 import (
 	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
@@ -107,7 +108,9 @@ func TestMemoryList_Purge_Large_List(t *testing.T) {
 		})
 	}
 
-	time.Sleep(1 * time.Hour)
+	if testutils.IsSingleTesting() {
+		time.Sleep(1 * time.Hour)
+	}
 }
 
 func TestMemoryList_Stat(t *testing.T) {
@@ -255,9 +258,11 @@ func TestMemoryList_GC(t *testing.T) {
 	//runtime.GC()
 	t.Log("gc cost:", time.Since(before).Seconds()*1000, "ms")
 
-	timeout := time.NewTimer(2 * time.Minute)
-	<-timeout.C
-	t.Log("2 minutes passed")
+	if testutils.IsSingleTesting() {
+		timeout := time.NewTimer(2 * time.Minute)
+		<-timeout.C
+		t.Log("2 minutes passed")
 
-	time.Sleep(30 * time.Minute)
+		time.Sleep(30 * time.Minute)
+	}
 }

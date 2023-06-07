@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/rands"
 	"testing"
@@ -79,6 +80,10 @@ func TestTask_Add(t *testing.T) {
 }
 
 func TestTask_Add_Many(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var task = metrics.NewTask(&serverconfigs.MetricItemConfig{
 		Id:         1,
 		IsOn:       false,

@@ -899,7 +899,10 @@ func (this *FileStorage) Stop() {
 		memoryStorage.Stop()
 	})
 
-	_ = this.list.Reset()
+	if this.list != nil {
+		_ = this.list.Reset()
+	}
+
 	if this.purgeTicker != nil {
 		this.purgeTicker.Stop()
 	}
@@ -907,7 +910,9 @@ func (this *FileStorage) Stop() {
 		this.hotTicker.Stop()
 	}
 
-	_ = this.list.Close()
+	if this.list != nil {
+		_ = this.list.Close()
+	}
 
 	var openFileCache = this.openFileCache
 	if openFileCache != nil {

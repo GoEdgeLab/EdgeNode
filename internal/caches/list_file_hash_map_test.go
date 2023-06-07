@@ -59,14 +59,15 @@ func TestFileListHashMap_BigInt(t *testing.T) {
 
 func TestFileListHashMap_Load(t *testing.T) {
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	defer func() {
 		_ = list.Close()
 	}()
+
+	err := list.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	var m = caches.NewFileListHashMap()
 	var before = time.Now()

@@ -4,6 +4,7 @@ package caches_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"testing"
 	"time"
 )
@@ -23,7 +24,9 @@ func TestNewOpenFileCache_Close(t *testing.T) {
 	cache.Get("d.txt")
 	cache.Close("a.txt")
 
-	time.Sleep(100 * time.Second)
+	if testutils.IsSingleTesting() {
+		time.Sleep(100 * time.Second)
+	}
 }
 
 func TestNewOpenFileCache_CloseAll(t *testing.T) {
