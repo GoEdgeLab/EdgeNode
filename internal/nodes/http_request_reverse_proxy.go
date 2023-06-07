@@ -117,14 +117,20 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		requestHostHasVariables = origin.RequestHostHasVariables()
 	}
 
+	// 处理OSS
+	var isHTTPOrigin = origin.OSS == nil
+
 	// 处理Scheme
-	if origin.Addr == nil {
+	if isHTTPOrigin && origin.Addr == nil {
 		err := errors.New(this.URL() + ": Origin '" + strconv.FormatInt(origin.Id, 10) + "' does not has a address")
 		remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", err.Error())
 		this.write50x(err, http.StatusBadGateway, "Origin site did not has a valid address", "源站尚未配置地址", true)
 		return
 	}
-	this.RawReq.URL.Scheme = origin.Addr.Protocol.Primary().Scheme()
+
+	if isHTTPOrigin {
+		this.RawReq.URL.Scheme = origin.Addr.Protocol.Primary().Scheme()
+	}
 
 	// StripPrefix
 	if len(stripPrefix) > 0 {
@@ -161,63 +167,66 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		this.uri = utils.CleanPath(this.uri)
 	}
 
-	// 获取源站地址
-	var originAddr = origin.Addr.PickAddress()
-	if origin.Addr.HostHasVariables() {
-		originAddr = this.Format(originAddr)
-	}
-
-	// 端口跟随
-	if origin.FollowPort {
-		var originHostIndex = strings.Index(originAddr, ":")
-		if originHostIndex < 0 {
-			var originErr = errors.New(this.URL() + ": Invalid origin address '" + originAddr + "', lacking port")
-			remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", originErr.Error())
-			this.write50x(originErr, http.StatusBadGateway, "No port in origin site address", "源站地址中没有配置端口", true)
-			return
+	var originAddr = ""
+	if isHTTPOrigin {
+		// 获取源站地址
+		originAddr = origin.Addr.PickAddress()
+		if origin.Addr.HostHasVariables() {
+			originAddr = this.Format(originAddr)
 		}
-		originAddr = originAddr[:originHostIndex+1] + types.String(this.requestServerPort())
-	}
-	this.originAddr = originAddr
 
-	// RequestHost
-	if len(requestHost) > 0 {
-		if requestHostHasVariables {
-			this.RawReq.Host = this.Format(requestHost)
+		// 端口跟随
+		if origin.FollowPort {
+			var originHostIndex = strings.Index(originAddr, ":")
+			if originHostIndex < 0 {
+				var originErr = errors.New(this.URL() + ": Invalid origin address '" + originAddr + "', lacking port")
+				remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", originErr.Error())
+				this.write50x(originErr, http.StatusBadGateway, "No port in origin site address", "源站地址中没有配置端口", true)
+				return
+			}
+			originAddr = originAddr[:originHostIndex+1] + types.String(this.requestServerPort())
+		}
+		this.originAddr = originAddr
+
+		// RequestHost
+		if len(requestHost) > 0 {
+			if requestHostHasVariables {
+				this.RawReq.Host = this.Format(requestHost)
+			} else {
+				this.RawReq.Host = requestHost
+			}
+
+			// 是否移除端口
+			if this.reverseProxy.RequestHostExcludingPort {
+				this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
+			}
+
+			this.RawReq.URL.Host = this.RawReq.Host
+		} else if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeOrigin {
+			// 源站主机名
+			var hostname = originAddr
+			if origin.Addr.Protocol.IsHTTPFamily() {
+				hostname = strings.TrimSuffix(hostname, ":80")
+			} else if origin.Addr.Protocol.IsHTTPSFamily() {
+				hostname = strings.TrimSuffix(hostname, ":443")
+			}
+
+			this.RawReq.Host = hostname
+
+			// 是否移除端口
+			if this.reverseProxy.RequestHostExcludingPort {
+				this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
+			}
+
+			this.RawReq.URL.Host = this.RawReq.Host
 		} else {
-			this.RawReq.Host = requestHost
-		}
+			this.RawReq.URL.Host = this.ReqHost
 
-		// 是否移除端口
-		if this.reverseProxy.RequestHostExcludingPort {
-			this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
-		}
-
-		this.RawReq.URL.Host = this.RawReq.Host
-	} else if this.reverseProxy.RequestHostType == serverconfigs.RequestHostTypeOrigin {
-		// 源站主机名
-		var hostname = originAddr
-		if origin.Addr.Protocol.IsHTTPFamily() {
-			hostname = strings.TrimSuffix(hostname, ":80")
-		} else if origin.Addr.Protocol.IsHTTPSFamily() {
-			hostname = strings.TrimSuffix(hostname, ":443")
-		}
-
-		this.RawReq.Host = hostname
-
-		// 是否移除端口
-		if this.reverseProxy.RequestHostExcludingPort {
-			this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
-		}
-
-		this.RawReq.URL.Host = this.RawReq.Host
-	} else {
-		this.RawReq.URL.Host = this.ReqHost
-
-		// 是否移除端口
-		if this.reverseProxy.RequestHostExcludingPort {
-			this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
-			this.RawReq.URL.Host = utils.ParseAddrHost(this.RawReq.URL.Host)
+			// 是否移除端口
+			if this.reverseProxy.RequestHostExcludingPort {
+				this.RawReq.Host = utils.ParseAddrHost(this.RawReq.Host)
+				this.RawReq.URL.Host = utils.ParseAddrHost(this.RawReq.URL.Host)
+			}
 		}
 	}
 
@@ -243,30 +252,42 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	}
 
 	// 判断是否为Websocket请求
-	if this.RawReq.Header.Get("Upgrade") == "websocket" {
+	if isHTTPOrigin && this.RawReq.Header.Get("Upgrade") == "websocket" {
 		shouldRetry = this.doWebsocket(requestHost, isLastRetry)
 		return
 	}
 
-	// 获取请求客户端
-	client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
-	if err != nil {
-		remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Create client failed: "+err.Error())
-		this.write50x(err, http.StatusBadGateway, "Failed to create origin site client", "构造源站客户端失败", true)
+	var resp *http.Response
+	var requestErr error
+	if isHTTPOrigin { // 普通HTTP(S)源站
+		// 获取请求客户端
+		client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
+		if err != nil {
+			remotelogs.ErrorServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Create client failed: "+err.Error())
+			this.write50x(err, http.StatusBadGateway, "Failed to create origin site client", "构造源站客户端失败", true)
+			return
+		}
+
+		// 开始请求
+		resp, requestErr = client.Do(this.RawReq)
+	} else if origin.OSS != nil { // OSS源站
+		resp, requestErr = this.doOSSOrigin(origin)
+		if requestErr == nil && resp == nil {
+			return
+		}
+	} else {
+		this.writeCode(http.StatusBadGateway, "The type of origin site has not been supported.", "设置的源站类型尚未支持。")
 		return
 	}
-
-	// 开始请求
-	resp, err := client.Do(this.RawReq)
-	if err != nil {
+	if requestErr != nil {
 		// 客户端取消请求，则不提示
-		httpErr, ok := err.(*url.Error)
+		httpErr, ok := requestErr.(*url.Error)
 		if !ok {
 			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
 			})
-			this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
-			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+err.Error())
+			this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
+			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+requestErr.Error())
 		} else if httpErr.Err != context.Canceled {
 			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 				this.reverseProxy.ResetScheduling()
@@ -282,21 +303,21 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				}
 
 				if httpErr.Err != io.EOF {
-					remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
+					remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+requestErr.Error())
 				}
 
 				return
 			}
 
 			if httpErr.Timeout() {
-				this.write50x(err, http.StatusGatewayTimeout, "Read origin site timeout", "源站读取超时", true)
+				this.write50x(requestErr, http.StatusGatewayTimeout, "Read origin site timeout", "源站读取超时", true)
 			} else if httpErr.Temporary() {
-				this.write50x(err, http.StatusServiceUnavailable, "Origin site unavailable now", "源站当前不可用", true)
+				this.write50x(requestErr, http.StatusServiceUnavailable, "Origin site unavailable now", "源站当前不可用", true)
 			} else {
-				this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
+				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 			if httpErr.Err != io.EOF {
-				remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+err.Error())
+				remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+requestErr.Error())
 			}
 		} else {
 			// 是否为客户端方面的错误
@@ -316,7 +337,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			}
 
 			if !isClientError {
-				this.write50x(err, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
+				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 		}
 		if resp != nil && resp.Body != nil {
@@ -348,7 +369,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	// WAF对出站进行检查
 	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 		if this.doWAFResponse(resp) {
-			err = resp.Body.Close()
+			err := resp.Body.Close()
 			if err != nil {
 				remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing Error (WAF): "+err.Error())
 			}
@@ -358,7 +379,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 
 	// 特殊页面
 	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
-		err = resp.Body.Close()
+		err := resp.Body.Close()
 		if err != nil {
 			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error (Page): "+err.Error())
 		}
@@ -439,6 +460,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	// 输出到客户端
 	var pool = this.bytePool(resp.ContentLength)
 	var buf = pool.Get()
+	var err error
 	if shouldAutoFlush {
 		for {
 			n, readErr := resp.Body.Read(buf)
