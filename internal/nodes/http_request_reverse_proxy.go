@@ -271,8 +271,9 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		// 开始请求
 		resp, requestErr = client.Do(this.RawReq)
 	} else if origin.OSS != nil { // OSS源站
-		resp, requestErr = this.doOSSOrigin(origin)
-		if requestErr == nil && resp == nil {
+		var goNext bool
+		resp, goNext, requestErr = this.doOSSOrigin(origin)
+		if (requestErr == nil && resp == nil) || !goNext {
 			return
 		}
 	} else {

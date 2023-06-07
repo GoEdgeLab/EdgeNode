@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func (this *HTTPRequest) doOSSOrigin(origin *serverconfigs.OriginConfig) (*http.Response, error) {
+func (this *HTTPRequest) doOSSOrigin(origin *serverconfigs.OriginConfig) (resp *http.Response, goNext bool, err error) {
 	// stub
 	return nil, errors.New("not implemented")
 }
