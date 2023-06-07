@@ -283,15 +283,19 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		// 客户端取消请求，则不提示
 		httpErr, ok := requestErr.(*url.Error)
 		if !ok {
-			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
-				this.reverseProxy.ResetScheduling()
-			})
+			if isHTTPOrigin {
+				SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
+					this.reverseProxy.ResetScheduling()
+				})
+			}
 			this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+requestErr.Error())
 		} else if httpErr.Err != context.Canceled {
-			SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
-				this.reverseProxy.ResetScheduling()
-			})
+			if isHTTPOrigin {
+				SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
+					this.reverseProxy.ResetScheduling()
+				})
+			}
 
 			// 是否需要重试
 			if (originId > 0 || (lnNodeId > 0 && hasMultipleLnNodes)) && !isLastRetry {
@@ -360,7 +364,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	this.originStatus = int32(resp.StatusCode)
 
 	// 恢复源站状态
-	if !origin.IsOk {
+	if !origin.IsOk && isHTTPOrigin {
 		SharedOriginStateManager.Success(origin, func() {
 			this.reverseProxy.ResetScheduling()
 		})
