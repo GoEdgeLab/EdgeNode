@@ -257,9 +257,17 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		return
 	}
 
+
+
 	var resp *http.Response
 	var requestErr error
 	if isHTTPOrigin { // 普通HTTP(S)源站
+		// 修复空User-Agent问题
+		_, existsUserAgent := this.RawReq.Header["User-Agent"]
+		if !existsUserAgent {
+			this.RawReq.Header["User-Agent"] = []string{""}
+		}
+
 		// 获取请求客户端
 		client, err := SharedHTTPClientPool.Client(this, origin, originAddr, this.reverseProxy.ProxyProtocol, this.reverseProxy.FollowRedirects)
 		if err != nil {
