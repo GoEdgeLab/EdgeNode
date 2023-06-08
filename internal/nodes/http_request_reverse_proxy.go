@@ -257,10 +257,9 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		return
 	}
 
-
-
 	var resp *http.Response
 	var requestErr error
+	var requestErrCode string
 	if isHTTPOrigin { // 普通HTTP(S)源站
 		// 修复空User-Agent问题
 		_, existsUserAgent := this.RawReq.Header["User-Agent"]
@@ -280,12 +279,14 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		resp, requestErr = client.Do(this.RawReq)
 	} else if origin.OSS != nil { // OSS源站
 		var goNext bool
-		resp, goNext, requestErr = this.doOSSOrigin(origin)
-		if (requestErr == nil && resp == nil) || !goNext {
-			return
+		resp, goNext, requestErrCode, requestErr = this.doOSSOrigin(origin)
+		if requestErr == nil {
+			if resp == nil || !goNext {
+				return
+			}
 		}
 	} else {
-		this.writeCode(http.StatusBadGateway, "The type of origin site has not been supported.", "设置的源站类型尚未支持。")
+		this.writeCode(http.StatusBadGateway, "The type of origin site has not been supported", "设置的源站类型尚未支持")
 		return
 	}
 	if requestErr != nil {
@@ -297,7 +298,12 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 					this.reverseProxy.ResetScheduling()
 				})
 			}
-			this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
+
+			if len(requestErrCode) > 0 {
+				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site (error code: "+requestErrCode+")", "源站读取失败（错误代号："+requestErrCode+"）", true)
+			} else {
+				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
+			}
 			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+requestErr.Error())
 		} else if httpErr.Err != context.Canceled {
 			if isHTTPOrigin {
