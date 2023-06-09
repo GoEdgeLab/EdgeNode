@@ -843,6 +843,14 @@ func (this *HTTPWriter) WriteHeader(statusCode int) {
 
 // Send 直接发送内容，并终止请求
 func (this *HTTPWriter) Send(status int, body string) {
+	this.req.processResponseHeaders(this.Header(), status)
+
+	// content-length
+	_, hasContentLength := this.Header()["Content-Length"]
+	if !hasContentLength {
+		this.Header()["Content-Length"] = []string{types.String(len(body))}
+	}
+
 	this.WriteHeader(status)
 	_, _ = this.WriteString(body)
 	this.isFinished = true
@@ -888,6 +896,7 @@ func (this *HTTPWriter) SendResp(resp *http.Response) (int64, error) {
 	for k, v := range resp.Header {
 		this.SetHeader(k, v)
 	}
+
 	this.WriteHeader(resp.StatusCode)
 	var bufPool = this.req.bytePool(resp.ContentLength)
 	var buf = bufPool.Get()
