@@ -289,6 +289,10 @@ Loop:
 	for {
 		select {
 		case log := <-logChan:
+			if log.NodeId <= 0 {
+				continue
+			}
+
 			// 是否已存在
 			var hash = xxhash.Sum64String(types.String(log.ServerId) + "_" + log.Description)
 			var found = false
@@ -312,6 +316,7 @@ Loop:
 			break Loop
 		}
 	}
+
 	if len(logList) == 0 {
 		return nil
 	}
