@@ -55,7 +55,7 @@ function build() {
 	cp -R "$ROOT"/pages "$DIST"/
 
 	# we support TOA on linux/amd64 only
-	if [ "$OS" == "linux" -a "$ARCH" == "amd64" ]
+	if [ "$OS" == "linux" ] && [ "$ARCH" == "amd64" ]
 	then
 		cp -R "$ROOT"/edge-toa "$DIST"
 	fi
@@ -114,7 +114,10 @@ function build() {
 	if [ ! -z $CC_PATH ]; then
 		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" "$ROOT"/../cmd/edge-node/main.go
 	else
-		env GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $TAG -o "$DIST"/bin/${NAME} -ldflags="-s -w" "$ROOT"/../cmd/edge-node/main.go
+		if [[ `uname` == *"Linux"* ]] && [ "$OS" == "linux" ] && [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ]] &&  [ "$TAG" == "plus" ]; then
+			BUILD_TAG="plus,script"
+		fi
+		env GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags="-s -w" "$ROOT"/../cmd/edge-node/main.go
 	fi
 
 	# delete hidden files
