@@ -54,7 +54,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 						return false
 					}
 
-					this.processResponseHeaders(this.writer.Header(), status)
+					this.ProcessResponseHeaders(this.writer.Header(), status)
 					http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 					return true
 				}
@@ -96,7 +96,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					}
 				}
 
-				this.processResponseHeaders(this.writer.Header(), status)
+				this.ProcessResponseHeaders(this.writer.Header(), status)
 				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 				return true
 			} else { // 精准匹配
@@ -119,7 +119,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 						}
 					}
 
-					this.processResponseHeaders(this.writer.Header(), status)
+					this.ProcessResponseHeaders(this.writer.Header(), status)
 					http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 					return true
 				}
@@ -155,7 +155,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					return false
 				}
 
-				this.processResponseHeaders(this.writer.Header(), status)
+				this.ProcessResponseHeaders(this.writer.Header(), status)
 
 				// 参数
 				var qIndex = strings.Index(this.uri, "?")
@@ -211,7 +211,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					return false
 				}
 
-				this.processResponseHeaders(this.writer.Header(), status)
+				this.ProcessResponseHeaders(this.writer.Header(), status)
 				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
 				return true
 			}

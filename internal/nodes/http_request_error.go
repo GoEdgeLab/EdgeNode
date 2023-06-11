@@ -57,7 +57,7 @@ func (this *HTTPRequest) writeCode(statusCode int, enMessage string, zhMessage s
 		return "${" + varName + "}"
 	})
 
-	this.processResponseHeaders(this.writer.Header(), statusCode)
+	this.ProcessResponseHeaders(this.writer.Header(), statusCode)
 	this.writer.WriteHeader(statusCode)
 
 	_, _ = this.writer.Write([]byte(pageContent))
@@ -110,7 +110,7 @@ func (this *HTTPRequest) write50x(err error, statusCode int, enMessage string, z
 		return "${" + varName + "}"
 	})
 
-	this.processResponseHeaders(this.writer.Header(), statusCode)
+	this.ProcessResponseHeaders(this.writer.Header(), statusCode)
 	this.writer.WriteHeader(statusCode)
 
 	_, _ = this.writer.Write([]byte(pageContent))

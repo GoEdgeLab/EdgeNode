@@ -36,6 +36,7 @@ func (this *PageAction) WillChange() bool {
 
 // Perform the action
 func (this *PageAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+	request.ProcessResponseHeaders(writer.Header(), this.Status)
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	writer.WriteHeader(this.Status)
 	_, _ = writer.Write([]byte(request.Format(this.Body)))

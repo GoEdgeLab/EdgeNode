@@ -13,7 +13,7 @@ func (this *HTTPRequest) doTrafficLimit() {
 	this.tags = append(this.tags, "bandwidth")
 
 	var statusCode = 509
-	this.processResponseHeaders(this.writer.Header(), statusCode)
+	this.ProcessResponseHeaders(this.writer.Header(), statusCode)
 
 	this.writer.WriteHeader(statusCode)
 	if len(config.NoticePageBody) != 0 {

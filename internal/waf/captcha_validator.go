@@ -26,6 +26,7 @@ func NewCaptchaValidator() *CaptchaValidator {
 func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWriter) {
 	var info = req.WAFRaw().URL.Query().Get("info")
 	if len(info) == 0 {
+		req.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
 		writer.WriteHeader(http.StatusBadRequest)
 		_, _ = writer.Write([]byte("invalid request"))
 		return
@@ -183,8 +184,7 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 		}
 	}
 
-	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = writer.Write([]byte(`<!DOCTYPE html>
+	var msgHTML = `<!DOCTYPE html>
 <html>
 <head>
 	<title>` + msgTitle + `</title>
@@ -206,7 +206,13 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 </head>
 <body>` + body + `
 </body>
-</html>`))
+</html>`
+
+	req.ProcessResponseHeaders(writer.Header(), http.StatusOK)
+	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	writer.Header().Set("Content-Length", types.String(len(msgHTML)))
+	writer.WriteHeader(http.StatusOK)
+	_, _ = writer.Write([]byte(msgHTML))
 }
 
 func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {

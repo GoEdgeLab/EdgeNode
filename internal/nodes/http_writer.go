@@ -843,7 +843,7 @@ func (this *HTTPWriter) WriteHeader(statusCode int) {
 
 // Send 直接发送内容，并终止请求
 func (this *HTTPWriter) Send(status int, body string) {
-	this.req.processResponseHeaders(this.Header(), status)
+	this.req.ProcessResponseHeaders(this.Header(), status)
 
 	// content-length
 	_, hasContentLength := this.Header()["Content-Length"]

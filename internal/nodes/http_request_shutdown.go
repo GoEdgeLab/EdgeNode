@@ -28,10 +28,10 @@ func (this *HTTPRequest) doShutdown() {
 		if len(shutdown.URL) == 0 {
 			// 自定义响应Headers
 			if shutdown.Status > 0 {
-				this.processResponseHeaders(this.writer.Header(), shutdown.Status)
+				this.ProcessResponseHeaders(this.writer.Header(), shutdown.Status)
 				this.writer.WriteHeader(shutdown.Status)
 			} else {
-				this.processResponseHeaders(this.writer.Header(), http.StatusOK)
+				this.ProcessResponseHeaders(this.writer.Header(), http.StatusOK)
 				this.writer.WriteHeader(http.StatusOK)
 			}
 			_, err := this.writer.WriteString("The site have been shutdown.")
@@ -59,10 +59,10 @@ func (this *HTTPRequest) doShutdown() {
 
 		// 自定义响应Headers
 		if shutdown.Status > 0 {
-			this.processResponseHeaders(this.writer.Header(), shutdown.Status)
+			this.ProcessResponseHeaders(this.writer.Header(), shutdown.Status)
 			this.writer.WriteHeader(shutdown.Status)
 		} else {
-			this.processResponseHeaders(this.writer.Header(), http.StatusOK)
+			this.ProcessResponseHeaders(this.writer.Header(), http.StatusOK)
 			this.writer.WriteHeader(http.StatusOK)
 		}
 		buf := utils.BytePool1k.Get()
@@ -85,10 +85,10 @@ func (this *HTTPRequest) doShutdown() {
 	} else if shutdown.BodyType == shared.BodyTypeHTML {
 		// 自定义响应Headers
 		if shutdown.Status > 0 {
-			this.processResponseHeaders(this.writer.Header(), shutdown.Status)
+			this.ProcessResponseHeaders(this.writer.Header(), shutdown.Status)
 			this.writer.WriteHeader(shutdown.Status)
 		} else {
-			this.processResponseHeaders(this.writer.Header(), http.StatusOK)
+			this.ProcessResponseHeaders(this.writer.Header(), http.StatusOK)
 			this.writer.WriteHeader(http.StatusOK)
 		}
 

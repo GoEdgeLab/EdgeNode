@@ -146,6 +146,7 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 	var expiresAt = time.Now().Unix() + int64(timeout)
 
 	if this.Type == "black" {
+		request.ProcessResponseHeaders(writer.Header(), http.StatusForbidden)
 		writer.WriteHeader(http.StatusForbidden)
 
 		request.WAFClose()

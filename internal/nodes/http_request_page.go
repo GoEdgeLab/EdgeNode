@@ -87,11 +87,11 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 					// 修改状态码
 					if page.NewStatus > 0 {
 						// 自定义响应Headers
-						this.processResponseHeaders(this.writer.Header(), page.NewStatus)
+						this.ProcessResponseHeaders(this.writer.Header(), page.NewStatus)
 						this.writer.Prepare(nil, stat.Size(), page.NewStatus, true)
 						this.writer.WriteHeader(page.NewStatus)
 					} else {
-						this.processResponseHeaders(this.writer.Header(), status)
+						this.ProcessResponseHeaders(this.writer.Header(), status)
 						this.writer.Prepare(nil, stat.Size(), status, true)
 						this.writer.WriteHeader(status)
 					}
@@ -126,11 +126,11 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 				// 修改状态码
 				if page.NewStatus > 0 {
 					// 自定义响应Headers
-					this.processResponseHeaders(this.writer.Header(), page.NewStatus)
+					this.ProcessResponseHeaders(this.writer.Header(), page.NewStatus)
 					this.writer.Prepare(nil, int64(len(content)), page.NewStatus, true)
 					this.writer.WriteHeader(page.NewStatus)
 				} else {
-					this.processResponseHeaders(this.writer.Header(), status)
+					this.ProcessResponseHeaders(this.writer.Header(), status)
 					this.writer.Prepare(nil, int64(len(content)), status, true)
 					this.writer.WriteHeader(status)
 				}

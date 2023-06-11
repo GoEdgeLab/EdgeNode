@@ -137,7 +137,7 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 			return
 		}
 
-		this.processResponseHeaders(resp.Header, resp.StatusCode)
+		this.ProcessResponseHeaders(resp.Header, resp.StatusCode)
 		this.writer.statusCode = resp.StatusCode
 
 		// 将响应写回客户端

@@ -82,8 +82,10 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 
 		// output response
 		if this.StatusCode > 0 {
+			request.ProcessResponseHeaders(writer.Header(), this.StatusCode)
 			writer.WriteHeader(this.StatusCode)
 		} else {
+			request.ProcessResponseHeaders(writer.Header(), http.StatusForbidden)
 			writer.WriteHeader(http.StatusForbidden)
 		}
 		if len(this.URL) > 0 {

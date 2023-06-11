@@ -38,6 +38,9 @@ type Request interface {
 	// Format 格式化变量
 	Format(string) string
 
+	// ProcessResponseHeaders 处理响应Header
+	ProcessResponseHeaders(headers http.Header, status int)
+
 	// DisableAccessLog 在当前请求中不使用访问日志
 	DisableAccessLog()
 }

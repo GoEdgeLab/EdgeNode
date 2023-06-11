@@ -22,6 +22,7 @@ func NewGet302Validator() *Get302Validator {
 func (this *Get302Validator) Run(request requests.Request, writer http.ResponseWriter) {
 	var info = request.WAFRaw().URL.Query().Get("info")
 	if len(info) == 0 {
+		request.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
 		writer.WriteHeader(http.StatusBadRequest)
 		_, _ = writer.Write([]byte("invalid request"))
 		return
@@ -34,6 +35,7 @@ func (this *Get302Validator) Run(request requests.Request, writer http.ResponseW
 
 	var timestamp = m.GetInt64("timestamp")
 	if time.Now().Unix()-timestamp > 5 { // 超过5秒认为失效
+		request.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
 		writer.WriteHeader(http.StatusBadRequest)
 		_, _ = writer.Write([]byte("invalid request"))
 		return

@@ -451,7 +451,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 
 	// 响应Header
 	this.writer.AddHeaders(resp.Header)
-	this.processResponseHeaders(this.writer.Header(), resp.StatusCode)
+	this.ProcessResponseHeaders(this.writer.Header(), resp.StatusCode)
 
 	// 是否需要刷新
 	var shouldAutoFlush = this.reverseProxy.AutoFlush || this.RawReq.Header.Get("Accept") == "text/event-stream"
