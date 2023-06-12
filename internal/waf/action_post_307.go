@@ -92,6 +92,7 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		Value:  info,
 	})
 
+	request.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
 	http.Redirect(writer, request.WAFRaw(), request.WAFRaw().URL.String(), http.StatusTemporaryRedirect)
 
 	flusher, ok := writer.(http.Flusher)

@@ -33,12 +33,15 @@ func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWrit
 	}
 	m, err := utils.SimpleDecryptMap(info)
 	if err != nil {
+		req.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
+		writer.WriteHeader(http.StatusBadRequest)
 		_, _ = writer.Write([]byte("invalid request"))
 		return
 	}
 
 	var timestamp = m.GetInt64("timestamp")
 	if timestamp < time.Now().Unix()-600 { // 10分钟之后信息过期
+		req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
 		http.Redirect(writer, req.WAFRaw(), m.GetString("url"), http.StatusTemporaryRedirect)
 		return
 	}
@@ -51,16 +54,19 @@ func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWrit
 
 	var waf = SharedWAFManager.FindWAF(policyId)
 	if waf == nil {
+		req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
 		http.Redirect(writer, req.WAFRaw(), originURL, http.StatusTemporaryRedirect)
 		return
 	}
 	var actionConfig = waf.FindAction(actionId)
 	if actionConfig == nil {
+		req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
 		http.Redirect(writer, req.WAFRaw(), originURL, http.StatusTemporaryRedirect)
 		return
 	}
 	captchaActionConfig, ok := actionConfig.(*CaptchaAction)
 	if !ok {
+		req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
 		http.Redirect(writer, req.WAFRaw(), originURL, http.StatusTemporaryRedirect)
 		return
 	}
@@ -232,6 +238,7 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int
 			// 加入到白名单
 			SharedIPWhiteList.RecordIP("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
 
+			req.ProcessResponseHeaders(writer.Header(), http.StatusSeeOther)
 			http.Redirect(writer, req.WAFRaw(), originURL, http.StatusSeeOther)
 
 			return false
@@ -241,6 +248,7 @@ func (this *CaptchaValidator) validate(actionConfig *CaptchaAction, policyId int
 				return false
 			}
 
+			req.ProcessResponseHeaders(writer.Header(), http.StatusSeeOther)
 			http.Redirect(writer, req.WAFRaw(), req.WAFRaw().URL.String(), http.StatusSeeOther)
 		}
 	}

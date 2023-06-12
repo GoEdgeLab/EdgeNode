@@ -75,14 +75,15 @@ func (this *JSCookieAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		}
 	}
 
+	req.ProcessResponseHeaders(writer.Header(), http.StatusOK)
+
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	writer.Header().Set("Cache-Control", "no-cache")
 
 	var timestamp = types.String(time.Now().Unix())
 
 	var cookieValue = timestamp + "@" + types.String(set.Id) + "@" + fmt.Sprintf("%x", md5.Sum([]byte(timestamp+"@"+types.String(set.Id)+"@"+nodeConfig.NodeId)))
-
-	_, _ = writer.Write([]byte(`<!DOCTYPE html>
+	var respHTML = `<!DOCTYPE html>
 <html>
 <head>
 <title></title>
@@ -94,7 +95,10 @@ window.location.reload();
 </head>
 <body>
 </body>
-</html>`))
+</html>`
+	writer.Header().Set("Content-Length", types.String(len(respHTML)))
+	writer.WriteHeader(http.StatusOK)
+	_, _ = writer.Write([]byte(respHTML))
 
 	// 记录失败次数
 	this.increaseFails(req, waf.Id, group.Id, set.Id)

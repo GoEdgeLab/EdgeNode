@@ -134,6 +134,7 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	// 占用一次失败次数
 	CaptchaIncreaseFails(req, this, waf.Id, group.Id, set.Id, CaptchaPageCodeInit)
 
+	req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
 	http.Redirect(writer, req.WAFRaw(), CaptchaPath+"?info="+url.QueryEscape(info), http.StatusTemporaryRedirect)
 
 	return false, false

@@ -29,6 +29,8 @@ func (this *Get302Validator) Run(request requests.Request, writer http.ResponseW
 	}
 	m, err := utils.SimpleDecryptMap(info)
 	if err != nil {
+		request.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
+		writer.WriteHeader(http.StatusBadRequest)
 		_, _ = writer.Write([]byte("invalid request"))
 		return
 	}
@@ -51,5 +53,7 @@ func (this *Get302Validator) Run(request requests.Request, writer http.ResponseW
 
 	// 返回原始URL
 	var url = m.GetString("url")
+
+	request.ProcessResponseHeaders(writer.Header(), http.StatusFound)
 	http.Redirect(writer, request.WAFRaw(), url, http.StatusFound)
 }
