@@ -241,16 +241,19 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		reader, err = storage.OpenReader(key, useStale, false)
 		if err != nil && this.cacheRef.AllowPartialContent {
 			// 尝试读取分片的缓存内容
-			if len(rangeHeader) == 0 {
+			if len(rangeHeader) == 0 && this.cacheRef.ForcePartialContent {
 				// 默认读取开头
 				rangeHeader = "bytes=0-"
 			}
-			pReader, ranges := this.tryPartialReader(storage, key, useStale, rangeHeader)
-			if pReader != nil {
-				isPartialCache = true
-				reader = pReader
-				partialRanges = ranges
-				err = nil
+
+			if len(rangeHeader) > 0 {
+				pReader, ranges := this.tryPartialReader(storage, key, useStale, rangeHeader)
+				if pReader != nil {
+					isPartialCache = true
+					reader = pReader
+					partialRanges = ranges
+					err = nil
+				}
 			}
 		}
 
