@@ -9,6 +9,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,6 +22,9 @@ var spiderRegexp = regexp.MustCompile(`(?i)(python|pycurl|http-client|httpclient
 
 // 内容范围正则，其中的每个括号里的内容都在被引用，不能轻易修改
 var contentRangeRegexp = regexp.MustCompile(`^bytes (\d+)-(\d+)/(\d+|\*)`)
+
+// URL协议前缀
+var urlSchemeRegexp = regexp.MustCompile("^(?i)(http|https|ftp)://")
 
 // 分解Range
 func httpRequestParseRangeHeader(rangeValue string) (result []rangeutils.Range, ok bool) {
@@ -221,4 +225,17 @@ func httpRedirect(writer http.ResponseWriter, req *http.Request, url string, cod
 	}
 
 	http.Redirect(writer, req, url, code)
+}
+
+// 分析URL中的Host部分
+func httpParseHost(urlString string) (host string, err error) {
+	if !urlSchemeRegexp.MatchString(urlString) {
+		urlString = "https://" + urlString
+	}
+
+	u, err := url.Parse(urlString)
+	if err != nil && u != nil {
+		return "", err
+	}
+	return u.Host, nil
 }

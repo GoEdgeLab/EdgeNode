@@ -9,10 +9,7 @@ import (
 	"github.com/iwind/TeaGo/logs"
 	"net/http"
 	"os"
-	"regexp"
 )
-
-var urlPrefixRegexp = regexp.MustCompile("^(?i)(http|https|ftp)://")
 
 // 请求特殊页面
 func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
@@ -49,7 +46,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 	for _, page := range pages {
 		if page.Match(status) {
 			if len(page.BodyType) == 0 || page.BodyType == shared.BodyTypeURL {
-				if urlPrefixRegexp.MatchString(page.URL) {
+				if urlSchemeRegexp.MatchString(page.URL) {
 					var newStatus = page.NewStatus
 					if newStatus <= 0 {
 						newStatus = status

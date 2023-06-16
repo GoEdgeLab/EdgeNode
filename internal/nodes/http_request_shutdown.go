@@ -19,7 +19,7 @@ func (this *HTTPRequest) doShutdown() {
 
 	if len(shutdown.BodyType) == 0 || shutdown.BodyType == shared.BodyTypeURL {
 		// URL
-		if urlPrefixRegexp.MatchString(shutdown.URL) {
+		if urlSchemeRegexp.MatchString(shutdown.URL) {
 			this.doURL(http.MethodGet, shutdown.URL, "", shutdown.Status, true)
 			return
 		}

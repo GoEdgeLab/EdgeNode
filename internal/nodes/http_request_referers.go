@@ -12,13 +12,29 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 		return
 	}
 
+	var origin = this.RawReq.Header.Get("Origin")
+
 	const cacheSeconds = "3600" // 时间不能过长，防止修改设置后长期无法生效
+
+	// 处理用到Origin的特殊功能
+	if this.web.Referers.CheckOrigin && len(origin) > 0 {
+		// 处理Websocket
+		if this.web.Websocket != nil && this.web.Websocket.IsOn && this.RawReq.Header.Get("Upgrade") == "websocket" {
+			originHost, _ := httpParseHost(origin)
+			if len(originHost) > 0 && this.web.Websocket.MatchOrigin(originHost) {
+				return
+			}
+		}
+	}
 
 	var refererURL = this.RawReq.Header.Get("Referer")
 	if len(refererURL) == 0 && this.web.Referers.CheckOrigin {
-		var origin = this.RawReq.Header.Get("Origin")
 		if len(origin) > 0 && origin != "null" {
-			refererURL = "https://" + origin // 因为Origin都只有域名部分，所以为了下面的URL 分析需要加上https://
+			if urlSchemeRegexp.MatchString(origin) {
+				refererURL = origin
+			} else {
+				refererURL = "https://" + origin
+			}
 		}
 	}
 

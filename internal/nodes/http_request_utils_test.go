@@ -145,6 +145,23 @@ func TestHTTPRequest_httpRequestNextId_Concurrent(t *testing.T) {
 	a.IsTrue(countDuplicated == 0)
 }
 
+func TestHTTPParseURL(t *testing.T) {
+	for _, s := range []string{
+		"",
+		"null",
+		"example.com",
+		"https://example.com",
+		"https://example.com/hello",
+	} {
+		host, err := httpParseHost(s)
+		if err == nil {
+			t.Log(s, "=>", host)
+		} else {
+			t.Log(s, "=>")
+		}
+	}
+}
+
 func BenchmarkHTTPRequest_httpRequestNextId(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
