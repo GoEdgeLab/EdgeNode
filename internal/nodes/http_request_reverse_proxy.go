@@ -275,6 +275,13 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			return
 		}
 
+		// 尝试自动纠正源站地址中的scheme
+		if this.RawReq.URL.Scheme == "http" && strings.HasSuffix(originAddr, ":443") {
+			this.RawReq.URL.Scheme = "https"
+		} else if this.RawReq.URL.Scheme == "https" && strings.HasSuffix(originAddr, ":80") {
+			this.RawReq.URL.Scheme = "http"
+		}
+
 		// 开始请求
 		resp, requestErr = client.Do(this.RawReq)
 	} else if origin.OSS != nil { // OSS源站
