@@ -480,6 +480,17 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// remote addr
 	if web.RemoteAddr != nil && (web.RemoteAddr.IsPrior || isTop) && web.RemoteAddr.IsOn {
 		this.web.RemoteAddr = web.RemoteAddr
+
+		// check if from proxy
+		if len(this.web.RemoteAddr.Value) > 0 && this.web.RemoteAddr.Value != "${rawRemoteAddr}" {
+			var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+			if requestConn != nil {
+				requestClientConn, ok := requestConn.(ClientConnInterface)
+				if ok {
+					requestClientConn.SetIsPersistent(true)
+				}
+			}
+		}
 	}
 
 	// charset
