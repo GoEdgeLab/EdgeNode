@@ -74,15 +74,12 @@ type BandwidthStatManager struct {
 
 	ticker *time.Ticker
 	locker sync.Mutex
-
-	cacheFile string // 上一次的缓存文件
 }
 
 func NewBandwidthStatManager() *BandwidthStatManager {
 	return &BandwidthStatManager{
-		m:         map[string]*BandwidthStat{},
-		ticker:    time.NewTicker(1 * time.Minute), // 时间小于1分钟是为了更快速地上传结果
-		cacheFile: Tea.Root + "/data/bandwidth.dat",
+		m:      map[string]*BandwidthStat{},
+		ticker: time.NewTicker(1 * time.Minute), // 时间小于1分钟是为了更快速地上传结果
 	}
 }
 
@@ -271,13 +268,17 @@ func (this *BandwidthStatManager) Save() error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
+	if len(this.m) == 0 {
+		return nil
+	}
+
 	data, err := json.Marshal(this.m)
 	if err != nil {
 		return err
 	}
 
-	_ = os.Remove(this.cacheFile)
-	return os.WriteFile(this.cacheFile, data, 0666)
+	_ = os.Remove(this.cacheFile())
+	return os.WriteFile(this.cacheFile(), data, 0666)
 }
 
 // Cancel 取消上传
@@ -287,7 +288,7 @@ func (this *BandwidthStatManager) Cancel() {
 
 // 从本地缓存文件中恢复数据
 func (this *BandwidthStatManager) recover() {
-	cacheData, err := os.ReadFile(this.cacheFile)
+	cacheData, err := os.ReadFile(this.cacheFile())
 	if err == nil {
 		var m = map[string]*BandwidthStat{}
 		err = json.Unmarshal(cacheData, &m)
@@ -309,6 +310,12 @@ func (this *BandwidthStatManager) recover() {
 				}
 			}
 		}
-		_ = os.Remove(this.cacheFile)
+		_ = os.Remove(this.cacheFile())
 	}
+}
+
+// 获取缓存文件
+// 不能在init()中初始化，避免无法获得正确的路径
+func (this *BandwidthStatManager) cacheFile() string {
+	return Tea.Root + "/data/bandwidth.dat"
 }
