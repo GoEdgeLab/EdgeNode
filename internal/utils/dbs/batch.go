@@ -14,26 +14,28 @@ type batchItem struct {
 }
 
 type Batch struct {
-	db *sql.DB
+	db *DB
 	n  int
 
 	enableStat bool
 
 	onFail func(err error)
 
-	queue chan *batchItem
-	close chan bool
+	queue      chan *batchItem
+	closeEvent chan bool
 
 	isClosed bool
 }
 
-func NewBatch(db *sql.DB, n int) *Batch {
-	return &Batch{
-		db:    db,
-		n:     n,
-		queue: make(chan *batchItem),
-		close: make(chan bool, 1),
+func NewBatch(db *DB, n int) *Batch {
+	var batch = &Batch{
+		db:         db,
+		n:          n,
+		queue:      make(chan *batchItem),
+		closeEvent: make(chan bool, 1),
 	}
+	db.batches = append(db.batches, batch)
+	return batch
 }
 
 func (this *Batch) EnableStat(b bool) {
@@ -68,7 +70,7 @@ For:
 		// closed
 		if this.isClosed {
 			if lastTx != nil {
-				_ = lastTx.Commit()
+				_ = this.commitTx(lastTx)
 				lastTx = nil
 			}
 
@@ -86,6 +88,9 @@ For:
 
 			err := this.execItem(lastTx, item)
 			if err != nil {
+				if IsClosedErr(err) {
+					return
+				}
 				this.processErr(item.query, err)
 			}
 
@@ -93,9 +98,12 @@ For:
 
 			if count == n {
 				count = 0
-				err = lastTx.Commit()
+				err = this.commitTx(lastTx)
 				lastTx = nil
 				if err != nil {
+					if IsClosedErr(err) {
+						return
+					}
 					this.processErr("commit", err)
 				}
 			}
@@ -104,16 +112,19 @@ For:
 				continue For
 			}
 			count = 0
-			err := lastTx.Commit()
+			err := this.commitTx(lastTx)
 			lastTx = nil
 			if err != nil {
+				if IsClosedErr(err) {
+					return
+				}
 				this.processErr("commit", err)
 			}
-		case <-this.close:
+		case <-this.closeEvent:
 			// closed
 
 			if lastTx != nil {
-				_ = lastTx.Commit()
+				_ = this.commitTx(lastTx)
 				lastTx = nil
 			}
 
@@ -122,17 +133,21 @@ For:
 	}
 }
 
-func (this *Batch) Close() {
+func (this *Batch) close() {
 	this.isClosed = true
 
 	select {
-	case this.close <- true:
+	case this.closeEvent <- true:
 	default:
 
 	}
 }
 
 func (this *Batch) beginTx() *sql.Tx {
+	if !this.db.BeginUpdating() {
+		return nil
+	}
+
 	tx, err := this.db.Begin()
 	if err != nil {
 		this.processErr("begin transaction", err)
@@ -141,9 +156,18 @@ func (this *Batch) beginTx() *sql.Tx {
 	return tx
 }
 
+func (this *Batch) commitTx(tx *sql.Tx) error {
+	// always commit without checking database closing status
+	this.db.EndUpdating()
+	return tx.Commit()
+}
+
 func (this *Batch) execItem(tx *sql.Tx, item *batchItem) error {
-	if this.isClosed {
-		return nil
+	// check database status
+	if this.db.BeginUpdating() {
+		defer this.db.EndUpdating()
+	} else {
+		return errDBIsClosed
 	}
 
 	if this.enableStat {

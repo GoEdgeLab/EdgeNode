@@ -8,14 +8,16 @@ import (
 )
 
 type Stmt struct {
+	db      *DB
 	rawStmt *sql.Stmt
 	query   string
 
 	enableStat bool
 }
 
-func NewStmt(rawStmt *sql.Stmt, query string) *Stmt {
+func NewStmt(db *DB, rawStmt *sql.Stmt, query string) *Stmt {
 	return &Stmt{
+		db:      db,
 		rawStmt: rawStmt,
 		query:   query,
 	}
@@ -26,6 +28,13 @@ func (this *Stmt) EnableStat() {
 }
 
 func (this *Stmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
+	// check database status
+	if this.db.BeginUpdating() {
+		defer this.db.EndUpdating()
+	} else {
+		return nil, errDBIsClosed
+	}
+
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}
@@ -33,6 +42,13 @@ func (this *Stmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Res
 }
 
 func (this *Stmt) Exec(args ...interface{}) (sql.Result, error) {
+	// check database status
+	if this.db.BeginUpdating() {
+		defer this.db.EndUpdating()
+	} else {
+		return nil, errDBIsClosed
+	}
+
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}

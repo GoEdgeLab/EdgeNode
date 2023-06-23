@@ -110,7 +110,7 @@ func (this *FileListDB) Open(dbPath string) error {
 		}
 	}
 
-	this.writeBatch = dbs.NewBatch(writeDB.RawDB(), 4)
+	this.writeBatch = dbs.NewBatch(writeDB, 4)
 	this.writeBatch.OnFail(func(err error) {
 		remotelogs.Warn("LIST_FILE_DB", "run batch failed: "+err.Error()+" ("+filepath.Base(this.dbPath)+")")
 	})
@@ -537,10 +537,6 @@ func (this *FileListDB) Close() error {
 	}
 	if this.listOlderItemsStmt != nil {
 		_ = this.listOlderItemsStmt.Close()
-	}
-
-	if this.writeBatch != nil {
-		this.writeBatch.Close()
 	}
 
 	var errStrings []string

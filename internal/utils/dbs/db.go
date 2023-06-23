@@ -5,19 +5,31 @@ package dbs
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fileutils"
 	_ "github.com/mattn/go-sqlite3"
 	"strings"
+	"sync"
+	"time"
 )
+
+var errDBIsClosed = errors.New("the database is closed")
 
 type DB struct {
 	locker *fileutils.Locker
 	rawDB  *sql.DB
 
+	statusLocker  sync.Mutex
+	countUpdating int32
+
+	isClosing bool
+
 	enableStat bool
+
+	batches []*Batch
 }
 
 func OpenWriter(dsn string) (*DB, error) {
@@ -63,10 +75,10 @@ func NewDB(rawDB *sql.DB) *DB {
 	}
 
 	events.OnKey(events.EventQuit, fmt.Sprintf("db_%p", db), func() {
-		_ = rawDB.Close()
+		_ = db.Close()
 	})
 	events.OnKey(events.EventTerminated, fmt.Sprintf("db_%p", db), func() {
-		_ = rawDB.Close()
+		_ = db.Close()
 	})
 
 	return db
@@ -81,6 +93,13 @@ func (this *DB) EnableStat(b bool) {
 }
 
 func (this *DB) Begin() (*sql.Tx, error) {
+	// check database status
+	if this.BeginUpdating() {
+		defer this.EndUpdating()
+	} else {
+		return nil, errDBIsClosed
+	}
+
 	return this.rawDB.Begin()
 }
 
@@ -90,7 +109,7 @@ func (this *DB) Prepare(query string) (*Stmt, error) {
 		return nil, err
 	}
 
-	var s = NewStmt(stmt, query)
+	var s = NewStmt(this, stmt, query)
 	if this.enableStat {
 		s.EnableStat()
 	}
@@ -98,13 +117,28 @@ func (this *DB) Prepare(query string) (*Stmt, error) {
 }
 
 func (this *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	// check database status
+	if this.BeginUpdating() {
+		defer this.EndUpdating()
+	} else {
+		return nil, errDBIsClosed
+	}
+
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(query).End()
 	}
+
 	return this.rawDB.ExecContext(ctx, query, args...)
 }
 
 func (this *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+	// check database status
+	if this.BeginUpdating() {
+		defer this.EndUpdating()
+	} else {
+		return nil, errDBIsClosed
+	}
+
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(query).End()
 	}
@@ -125,7 +159,32 @@ func (this *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 	return this.rawDB.QueryRow(query, args...)
 }
 
+// Close the database
 func (this *DB) Close() error {
+	// check database status
+	this.statusLocker.Lock()
+	if this.isClosing {
+		this.statusLocker.Unlock()
+		return nil
+	}
+	this.isClosing = true
+	this.statusLocker.Unlock()
+
+	// waiting for updating operations to finish
+	for {
+		this.statusLocker.Lock()
+		var countUpdating = this.countUpdating
+		this.statusLocker.Unlock()
+		if countUpdating <= 0 {
+			break
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	for _, batch := range this.batches {
+		batch.close()
+	}
+
 	events.Remove(fmt.Sprintf("db_%p", this))
 
 	defer func() {
@@ -135,6 +194,24 @@ func (this *DB) Close() error {
 	}()
 
 	return this.rawDB.Close()
+}
+
+func (this *DB) BeginUpdating() bool {
+	this.statusLocker.Lock()
+	defer this.statusLocker.Unlock()
+
+	if this.isClosing {
+		return false
+	}
+
+	this.countUpdating++
+	return true
+}
+
+func (this *DB) EndUpdating() {
+	this.statusLocker.Lock()
+	this.countUpdating--
+	this.statusLocker.Unlock()
 }
 
 func (this *DB) RawDB() *sql.DB {
