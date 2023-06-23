@@ -18,7 +18,7 @@ func init() {
 		return
 	}
 
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		SharedManager.Quit()
 	})
 }

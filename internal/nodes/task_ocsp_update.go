@@ -27,10 +27,9 @@ func init() {
 			sharedOCSPTask.Start()
 		})
 	})
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		sharedOCSPTask.Stop()
 	})
-
 }
 
 // OCSPUpdateTask 更新OCSP任务

@@ -30,7 +30,7 @@ type DB struct {
 func NewDB(path string) *DB {
 	var db = &DB{path: path}
 
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		_ = db.Close()
 	})
 

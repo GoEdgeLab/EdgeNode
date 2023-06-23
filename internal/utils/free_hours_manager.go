@@ -24,7 +24,7 @@ func init() {
 			SharedFreeHoursManager.Start()
 		})
 	})
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		SharedFreeHoursManager.Stop()
 	})
 }

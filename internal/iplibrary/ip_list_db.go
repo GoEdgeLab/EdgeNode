@@ -161,7 +161,7 @@ ON "` + this.itemTableName + `" (
 	this.db = db
 
 	goman.New(func() {
-		events.On(events.EventQuit, func() {
+		events.OnClose(func() {
 			_ = this.Close()
 			this.cleanTicker.Stop()
 		})

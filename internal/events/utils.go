@@ -24,6 +24,11 @@ func On(event Event, callback func()) {
 	OnKey(event, nil, callback)
 }
 
+func OnClose(callback func()) {
+	On(EventQuit, callback)
+	On(EventTerminated, callback)
+}
+
 // OnKey 使用Key增加事件回调
 func OnKey(event Event, key interface{}, callback func()) {
 	if key == nil {

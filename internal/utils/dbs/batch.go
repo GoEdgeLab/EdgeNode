@@ -45,6 +45,9 @@ func (this *Batch) OnFail(callback func(err error)) {
 }
 
 func (this *Batch) Add(query string, args ...any) {
+	if this.isClosed {
+		return
+	}
 	this.queue <- &batchItem{
 		query: query,
 		args:  args,
@@ -139,6 +142,10 @@ func (this *Batch) beginTx() *sql.Tx {
 }
 
 func (this *Batch) execItem(tx *sql.Tx, item *batchItem) error {
+	if this.isClosed {
+		return nil
+	}
+
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(item.query).End()
 	}

@@ -36,7 +36,7 @@ func init() {
 		})
 	})
 
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		SharedBandwidthStatManager.Cancel()
 
 		err := SharedBandwidthStatManager.Save()

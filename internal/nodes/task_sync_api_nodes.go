@@ -26,7 +26,7 @@ func init() {
 			sharedSyncAPINodesTask.Start()
 		})
 	})
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		sharedSyncAPINodesTask.Stop()
 	})
 }

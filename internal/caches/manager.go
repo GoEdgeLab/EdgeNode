@@ -19,7 +19,7 @@ func init() {
 		return
 	}
 
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		remotelogs.Println("CACHE", "quiting cache manager")
 		SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{})
 	})

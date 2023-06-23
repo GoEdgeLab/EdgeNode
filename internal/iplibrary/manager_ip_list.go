@@ -29,7 +29,7 @@ func init() {
 			SharedIPListManager.Start()
 		})
 	})
-	events.On(events.EventQuit, func() {
+	events.OnClose(func() {
 		SharedIPListManager.Stop()
 	})
 

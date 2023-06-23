@@ -504,6 +504,10 @@ func (this *FileListDB) CleanAll() error {
 }
 
 func (this *FileListDB) Close() error {
+	if this.isClosed {
+		return nil
+	}
+
 	this.isClosed = true
 	this.isReady = false
 
