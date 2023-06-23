@@ -151,6 +151,7 @@ func (this *Batch) beginTx() *sql.Tx {
 	tx, err := this.db.Begin()
 	if err != nil {
 		this.processErr("begin transaction", err)
+		this.db.EndUpdating()
 		return nil
 	}
 	return tx
