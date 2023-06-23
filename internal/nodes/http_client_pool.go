@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/pires/go-proxyproto"
+	"golang.org/x/net/http2"
 	"net"
 	"net/http"
 	"runtime"
@@ -164,6 +165,11 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 			ReadBufferSize:        8 * 1024,
 			Proxy:                 nil,
 		},
+	}
+
+	// support http/2
+	if origin.HTTP2Enabled && origin.Addr != nil && origin.Addr.Protocol == serverconfigs.ProtocolHTTPS {
+		_ = http2.ConfigureTransport(transport.Transport)
 	}
 
 	rawClient = &http.Client{
