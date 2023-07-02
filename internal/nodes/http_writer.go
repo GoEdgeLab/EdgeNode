@@ -786,12 +786,18 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 	if this.rawWriter == nil {
 		return
 	}
+	var newHeaders = this.rawWriter.Header()
 	for key, value := range header {
 		if key == "Connection" {
 			continue
 		}
-		for _, v := range value {
-			this.rawWriter.Header().Add(key, v)
+		switch key {
+		case "ETag":
+			newHeaders[key] =value
+		default:
+			for _, v := range value {
+				newHeaders.Add(key, v)
+			}
 		}
 	}
 }
