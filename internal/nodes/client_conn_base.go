@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"net"
+	"time"
 )
 
 type BaseClientConn struct {
@@ -146,6 +147,8 @@ func (this *BaseClientConn) SetLinger(seconds int) error {
 
 func (this *BaseClientConn) SetIsPersistent(isPersistent bool) {
 	this.isPersistent = isPersistent
+
+	_ = this.rawConn.SetDeadline(time.Time{})
 }
 
 // SetFingerprint 设置指纹信息

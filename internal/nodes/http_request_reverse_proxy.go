@@ -461,7 +461,19 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	this.ProcessResponseHeaders(this.writer.Header(), resp.StatusCode)
 
 	// 是否需要刷新
-	var shouldAutoFlush = this.reverseProxy.AutoFlush || this.RawReq.Header.Get("Accept") == "text/event-stream"
+	var shouldAutoFlush = this.reverseProxy.AutoFlush || (resp.Header != nil && strings.Contains(resp.Header.Get("Content-Type"), "stream"))
+
+	// 设置当前连接为Persistence
+	if shouldAutoFlush && this.nodeConfig != nil && this.nodeConfig.HasConnTimeoutSettings() {
+		var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+		if requestConn == nil {
+			return
+		}
+		requestClientConn, ok := requestConn.(ClientConnInterface)
+		if ok {
+			requestClientConn.SetIsPersistent(true)
+		}
+	}
 
 	// 准备
 	var delayHeaders = this.writer.Prepare(resp, resp.ContentLength, resp.StatusCode, true)

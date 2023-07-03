@@ -793,7 +793,7 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 		}
 		switch key {
 		case "ETag":
-			newHeaders[key] =value
+			newHeaders[key] = value
 		default:
 			for _, v := range value {
 				newHeaders.Add(key, v)
