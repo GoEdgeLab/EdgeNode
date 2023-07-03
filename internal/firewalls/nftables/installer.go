@@ -13,7 +13,6 @@ import (
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/logs"
 	"os"
-	"os/exec"
 	"runtime"
 	"time"
 )
@@ -55,7 +54,7 @@ func init() {
 
 // NftExePath 查找nftables可执行文件路径
 func NftExePath() string {
-	path, _ := exec.LookPath("nft")
+	path, _ := executils.LookPath("nft")
 	if len(path) > 0 {
 		return path
 	}
@@ -93,14 +92,14 @@ func (this *Installer) Install() error {
 	var cmd *executils.Cmd
 
 	// check dnf
-	dnfExe, err := exec.LookPath("dnf")
+	dnfExe, err := executils.LookPath("dnf")
 	if err == nil {
 		cmd = executils.NewCmd(dnfExe, "-y", "install", "nftables")
 	}
 
 	// check apt
 	if cmd == nil {
-		aptExe, err := exec.LookPath("apt")
+		aptExe, err := executils.LookPath("apt")
 		if err == nil {
 			cmd = executils.NewCmd(aptExe, "install", "nftables")
 		}
@@ -108,7 +107,7 @@ func (this *Installer) Install() error {
 
 	// check yum
 	if cmd == nil {
-		yumExe, err := exec.LookPath("yum")
+		yumExe, err := executils.LookPath("yum")
 		if err == nil {
 			cmd = executils.NewCmd(yumExe, "-y", "install", "nftables")
 		}

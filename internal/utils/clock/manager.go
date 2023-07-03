@@ -13,7 +13,6 @@ import (
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"net"
-	"os/exec"
 	"runtime"
 	"time"
 )
@@ -86,7 +85,7 @@ func (this *ClockManager) Sync() error {
 
 	// check chrony
 	if config.CheckChrony {
-		chronycExe, err := exec.LookPath("chronyc")
+		chronycExe, err := executils.LookPath("chronyc")
 		if err == nil && len(chronycExe) > 0 {
 			var chronyCmd = executils.NewTimeoutCmd(3*time.Second, chronycExe, "tracking")
 			err = chronyCmd.Run()
@@ -101,11 +100,11 @@ func (this *ClockManager) Sync() error {
 		server = "pool.ntp.org"
 	}
 
-	ntpdate, err := exec.LookPath("ntpdate")
+	ntpdate, err := executils.LookPath("ntpdate")
 	if err != nil {
 		// 使用 date 命令设置
 		// date --set TIME
-		dateExe, err := exec.LookPath("date")
+		dateExe, err := executils.LookPath("date")
 		if err == nil {
 			currentTime, err := this.ReadServer(server)
 			if err != nil {

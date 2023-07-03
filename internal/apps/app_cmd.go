@@ -3,6 +3,7 @@ package apps
 import (
 	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -215,7 +216,7 @@ func (this *AppCmd) runStop() {
 
 	// 从systemd中停止
 	if runtime.GOOS == "linux" {
-		systemctl, _ := exec.LookPath("systemctl")
+		systemctl, _ := executils.LookPath("systemctl")
 		if len(systemctl) > 0 {
 			go func() {
 				// 有可能会长时间执行，这里不阻塞进程

@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/types"
-	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -55,7 +54,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 
 	// 创建ipset
 	{
-		path, err := exec.LookPath("ipset")
+		path, err := executils.LookPath("ipset")
 		if err != nil {
 			return err
 		}
@@ -99,7 +98,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 
 	// firewalld
 	if this.config.AutoAddToFirewalld {
-		path, err := exec.LookPath("firewall-cmd")
+		path, err := executils.LookPath("firewall-cmd")
 		if err != nil {
 			return err
 		}
@@ -179,7 +178,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 
 	// iptables
 	if this.config.AutoAddToIPTables {
-		path, err := exec.LookPath("iptables")
+		path, err := executils.LookPath("iptables")
 		if err != nil {
 			return err
 		}
@@ -311,7 +310,7 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 	var path = this.config.Path
 	var err error
 	if len(path) == 0 {
-		path, err = exec.LookPath("ipset")
+		path, err = executils.LookPath("ipset")
 		if err != nil {
 			// 找不到ipset命令错误只提示一次
 			if this.ipsetNotfound {

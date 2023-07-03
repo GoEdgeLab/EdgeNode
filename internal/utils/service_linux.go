@@ -24,7 +24,7 @@ func (this *ServiceManager) Install(exePath string, args []string) error {
 		return errors.New("only root users can install the service")
 	}
 
-	systemd, err := exec.LookPath("systemctl")
+	systemd, err := executils.LookPath("systemctl")
 	if err != nil {
 		return this.installInitService(exePath, args)
 	}
@@ -39,7 +39,7 @@ func (this *ServiceManager) Start() error {
 	}
 
 	if files.NewFile(systemdServiceFile).Exists() {
-		systemd, err := exec.LookPath("systemctl")
+		systemd, err := executils.LookPath("systemctl")
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ func (this *ServiceManager) Uninstall() error {
 	}
 
 	if files.NewFile(systemdServiceFile).Exists() {
-		systemd, err := exec.LookPath("systemctl")
+		systemd, err := executils.LookPath("systemctl")
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func (this *ServiceManager) installInitService(exePath string, args []string) er
 		return err
 	}
 
-	chkCmd, err := exec.LookPath("chkconfig")
+	chkCmd, err := executils.LookPath("chkconfig")
 	if err != nil {
 		return err
 	}

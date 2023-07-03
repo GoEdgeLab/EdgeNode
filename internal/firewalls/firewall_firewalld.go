@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/types"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -32,7 +31,7 @@ func NewFirewalld() *Firewalld {
 		cmdQueue: make(chan *firewalldCmd, 4096),
 	}
 
-	path, err := exec.LookPath("firewall-cmd")
+	path, err := executils.LookPath("firewall-cmd")
 	if err == nil && len(path) > 0 {
 		var cmd = executils.NewTimeoutCmd(3*time.Second, path, "--state")
 		err := cmd.Run()

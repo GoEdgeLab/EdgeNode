@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
-	"os/exec"
 	"runtime"
 	"time"
 )
@@ -82,7 +81,7 @@ func (this *FirewalldAction) runActionSingleIP(action string, listType IPListTyp
 	path := this.config.Path
 	var err error
 	if len(path) == 0 {
-		path, err = exec.LookPath("firewall-cmd")
+		path, err = executils.LookPath("firewall-cmd")
 		if err != nil {
 			if this.firewalldNotFound {
 				return nil

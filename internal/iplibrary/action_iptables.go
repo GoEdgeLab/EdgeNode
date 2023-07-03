@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
-	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -87,7 +86,7 @@ func (this *IPTablesAction) runActionSingleIP(action string, listType IPListType
 	var path = this.config.Path
 	var err error
 	if len(path) == 0 {
-		path, err = exec.LookPath("iptables")
+		path, err = executils.LookPath("iptables")
 		if err != nil {
 			if this.iptablesNotFound {
 				return nil

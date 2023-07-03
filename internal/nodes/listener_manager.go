@@ -15,7 +15,6 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"net/url"
-	"os/exec"
 	"regexp"
 	"runtime"
 	"sort"
@@ -213,7 +212,7 @@ func (this *ListenerManager) findProcessNameWithPort(isUdp bool, port string) st
 		return ""
 	}
 
-	path, err := exec.LookPath("ss")
+	path, err := executils.LookPath("ss")
 	if err != nil {
 		return ""
 	}

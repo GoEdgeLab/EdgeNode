@@ -20,7 +20,6 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
 	"net/url"
-	"os/exec"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -336,7 +335,7 @@ func (this *APIStream) handleNewNodeTask(message *pb.NodeStreamMessage) error {
 
 // 检查Systemd服务
 func (this *APIStream) handleCheckSystemdService(message *pb.NodeStreamMessage) error {
-	systemctl, err := exec.LookPath("systemctl")
+	systemctl, err := executils.LookPath("systemctl")
 	if err != nil {
 		this.replyFail(message.RequestId, "'systemctl' not found")
 		return nil
@@ -378,7 +377,7 @@ func (this *APIStream) handleCheckLocalFirewall(message *pb.NodeStreamMessage) e
 			return nil
 		}
 
-		nft, err := exec.LookPath("nft")
+		nft, err := executils.LookPath("nft")
 		if err != nil {
 			this.replyFail(message.RequestId, "'nft' not found: "+err.Error())
 			return nil

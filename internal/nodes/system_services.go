@@ -13,7 +13,6 @@ import (
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/maps"
 	"os"
-	"os/exec"
 	"runtime"
 	"time"
 )
@@ -84,7 +83,7 @@ func (this *SystemServiceManager) setupSystemd(params maps.Map) error {
 	}
 
 	// 检查当前的service
-	systemctl, err := exec.LookPath("systemctl")
+	systemctl, err := executils.LookPath("systemctl")
 	if err != nil {
 		return err
 	}

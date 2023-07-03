@@ -6,12 +6,13 @@ package nftables_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls/nftables"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"os/exec"
 	"testing"
 )
 
 func TestConn_Test(t *testing.T) {
-	_, err := exec.LookPath("nft")
+	_, err := executils.LookPath("nft")
 	if err == nil {
 		t.Log("ok")
 		return
