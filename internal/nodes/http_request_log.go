@@ -14,6 +14,11 @@ const (
 
 // 日志
 func (this *HTTPRequest) log() {
+	// 检查全局配置
+	if this.nodeConfig != nil && this.nodeConfig.GlobalServerConfig != nil && !this.nodeConfig.GlobalServerConfig.HTTPAccessLog.IsOn {
+		return
+	}
+
 	var ref *serverconfigs.HTTPAccessLogRef
 	if !this.forceLog {
 		if this.disableLog {

@@ -197,7 +197,7 @@ func (this *Node) execGlobalServerConfigChangedTask(rpcClient *rpc.RPCClient) er
 		return err
 	}
 	if len(resp.GlobalServerConfigJSON) > 0 {
-		var globalServerConfig = serverconfigs.DefaultGlobalServerConfig()
+		var globalServerConfig = serverconfigs.NewGlobalServerConfig()
 		err = json.Unmarshal(resp.GlobalServerConfigJSON, globalServerConfig)
 		if err != nil {
 			return errors.New("decode global server config failed: " + err.Error())
