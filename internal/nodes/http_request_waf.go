@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
@@ -171,8 +170,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 						var currentURL = this.URL()
 						if regionConfig.MatchCountryURL(currentURL) {
 							// 检查国家/地区级别封禁
-							var countryId = result.CountryId()
-							if countryId > 0 && lists.ContainsInt64(regionConfig.DenyCountryIds, countryId) {
+							if !regionConfig.IsAllowedCountry(result.CountryId(), result.ProvinceId()) {
 								this.firewallPolicyId = firewallPolicy.Id
 
 								this.writeCode(http.StatusForbidden, "The region has been denied.", "当前区域禁止访问")
@@ -192,8 +190,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 						if regionConfig.MatchProvinceURL(currentURL) {
 							// 检查省份封禁
-							var provinceId = result.ProvinceId()
-							if provinceId > 0 && lists.ContainsInt64(regionConfig.DenyProvinceIds, provinceId) {
+							if !regionConfig.IsAllowedProvince(result.CountryId(), result.ProvinceId()) {
 								this.firewallPolicyId = firewallPolicy.Id
 
 								this.writeCode(http.StatusForbidden, "The region has been denied.", "当前区域禁止访问")
