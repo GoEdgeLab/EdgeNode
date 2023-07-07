@@ -67,8 +67,8 @@ func (this *HTTPRequest) doURL(method string, url string, host string, statusCod
 	}
 
 	// 输出内容
-	pool := this.bytePool(resp.ContentLength)
-	buf := pool.Get()
+	var pool = this.bytePool(resp.ContentLength)
+	var buf = pool.Get()
 	if supportVariables {
 		_, err = utils.CopyWithFilter(this.writer, resp.Body, buf, func(p []byte) []byte {
 			return []byte(this.Format(string(p)))

@@ -6,9 +6,10 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/logs"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 )
 
 // 请求特殊页面
@@ -54,30 +55,30 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 					this.doURL(http.MethodGet, page.URL, "", newStatus, true)
 					return true
 				} else {
-					file := Tea.Root + Tea.DS + page.URL
-					fp, err := os.Open(file)
-					if err != nil {
-						logs.Error(err)
-						msg := "404 page not found: '" + page.URL + "'"
-
+					var realpath = path.Clean(page.URL)
+					if !strings.HasPrefix(realpath, "/pages/") && !strings.HasPrefix(realpath, "pages/") { // only files under "/pages/" can be used
+						var msg = "404 page not found: '" + page.URL + "'"
 						this.writer.WriteHeader(http.StatusNotFound)
-						_, err := this.writer.Write([]byte(msg))
-						if err != nil {
-							logs.Error(err)
-						}
+						_, _ = this.writer.Write([]byte(msg))
 						return true
 					}
+					var file = Tea.Root + Tea.DS + realpath
+					fp, err := os.Open(file)
+					if err != nil {
+						var msg = "404 page not found: '" + page.URL + "'"
+						this.writer.WriteHeader(http.StatusNotFound)
+						_, _ = this.writer.Write([]byte(msg))
+						return true
+					}
+					defer func() {
+						_ = fp.Close()
+					}()
 
 					stat, err := fp.Stat()
 					if err != nil {
-						logs.Error(err)
-						msg := "404 could not read page content: '" + page.URL + "'"
-
+						var msg = "404 could not read page content: '" + page.URL + "'"
 						this.writer.WriteHeader(http.StatusNotFound)
-						_, err := this.writer.Write([]byte(msg))
-						if err != nil {
-							logs.Error(err)
-						}
+						_, _ = this.writer.Write([]byte(msg))
 						return true
 					}
 
@@ -92,7 +93,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 						this.writer.Prepare(nil, stat.Size(), status, true)
 						this.writer.WriteHeader(status)
 					}
-					buf := utils.BytePool1k.Get()
+					var buf = utils.BytePool1k.Get()
 					_, err = utils.CopyWithFilter(this.writer, fp, buf, func(p []byte) []byte {
 						return []byte(this.Format(string(p)))
 					})
@@ -103,10 +104,6 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 						}
 					} else {
 						this.writer.SetOk()
-					}
-					err = fp.Close()
-					if err != nil {
-						logs.Error(err)
 					}
 				}
 

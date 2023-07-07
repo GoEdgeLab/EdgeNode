@@ -5,14 +5,15 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
-	"github.com/iwind/TeaGo/logs"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 )
 
 // 调用临时关闭页面
 func (this *HTTPRequest) doShutdown() {
-	shutdown := this.web.Shutdown
+	var shutdown = this.web.Shutdown
 	if shutdown == nil {
 		return
 	}
@@ -34,28 +35,30 @@ func (this *HTTPRequest) doShutdown() {
 				this.ProcessResponseHeaders(this.writer.Header(), http.StatusOK)
 				this.writer.WriteHeader(http.StatusOK)
 			}
-			_, err := this.writer.WriteString("The site have been shutdown.")
-			if err != nil {
-				logs.Error(err)
-			}
-
+			_, _ = this.writer.WriteString("The site have been shutdown.")
 			return
 		}
 
 		// 从本地文件中读取
-		file := Tea.Root + Tea.DS + shutdown.URL
-		fp, err := os.Open(file)
-		if err != nil {
-			logs.Error(err)
-			msg := "404 page not found: '" + shutdown.URL + "'"
-
+		var realpath = path.Clean(shutdown.URL)
+		if !strings.HasPrefix(realpath, "/pages/") && !strings.HasPrefix(realpath, "pages/") { // only files under "/pages/" can be used
+			var msg = "404 page not found: '" + shutdown.URL + "'"
 			this.writer.WriteHeader(http.StatusNotFound)
-			_, err = this.writer.Write([]byte(msg))
-			if err != nil {
-				logs.Error(err)
-			}
+			_, _ = this.writer.Write([]byte(msg))
 			return
 		}
+		var file = Tea.Root + Tea.DS + shutdown.URL
+		fp, err := os.Open(file)
+		if err != nil {
+			var msg = "404 page not found: '" + shutdown.URL + "'"
+			this.writer.WriteHeader(http.StatusNotFound)
+			_, _ = this.writer.Write([]byte(msg))
+			return
+		}
+
+		defer func() {
+			_ = fp.Close()
+		}()
 
 		// 自定义响应Headers
 		if shutdown.Status > 0 {
@@ -65,7 +68,7 @@ func (this *HTTPRequest) doShutdown() {
 			this.ProcessResponseHeaders(this.writer.Header(), http.StatusOK)
 			this.writer.WriteHeader(http.StatusOK)
 		}
-		buf := utils.BytePool1k.Get()
+		var buf = utils.BytePool1k.Get()
 		_, err = utils.CopyWithFilter(this.writer, fp, buf, func(p []byte) []byte {
 			return []byte(this.Format(string(p)))
 		})
@@ -76,11 +79,6 @@ func (this *HTTPRequest) doShutdown() {
 			}
 		} else {
 			this.writer.SetOk()
-		}
-
-		err = fp.Close()
-		if err != nil {
-			remotelogs.Warn("HTTP_REQUEST_SHUTDOWN", "close file failed: "+err.Error())
 		}
 	} else if shutdown.BodyType == shared.BodyTypeHTML {
 		// 自定义响应Headers
