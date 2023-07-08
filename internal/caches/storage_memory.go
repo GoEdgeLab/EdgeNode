@@ -200,13 +200,6 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	}
 
 	// 检查是否超出最大值
-	totalKeys, err := this.list.Count()
-	if err != nil {
-		return nil, err
-	}
-	if this.policy.MaxKeys > 0 && totalKeys > this.policy.MaxKeys {
-		return nil, NewCapacityError("write memory cache failed: too many keys in cache storage")
-	}
 	capacityBytes := this.memoryCapacityBytes()
 	if bodySize < 0 {
 		bodySize = 0
@@ -216,7 +209,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	}
 
 	// 先删除
-	err = this.deleteWithoutLocker(key)
+	err := this.deleteWithoutLocker(key)
 	if err != nil {
 		return nil, err
 	}

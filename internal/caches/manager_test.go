@@ -52,9 +52,8 @@ func TestManager_UpdatePolicies(t *testing.T) {
 				},
 			},
 			{
-				Id:      2,
-				Type:    serverconfigs.CachePolicyStorageFile,
-				MaxKeys: 1,
+				Id:   2,
+				Type: serverconfigs.CachePolicyStorageFile,
 				Options: map[string]interface{}{
 					"dir": Tea.Root + "/caches",
 				},
@@ -95,9 +94,9 @@ func TestManager_ChangePolicy_Memory(t *testing.T) {
 func TestManager_ChangePolicy_File(t *testing.T) {
 	var policies = []*serverconfigs.HTTPCachePolicy{
 		{
-			Id:       1,
-			Type:     serverconfigs.CachePolicyStorageFile,
-			Options:  map[string]interface{}{
+			Id:   1,
+			Type: serverconfigs.CachePolicyStorageFile,
+			Options: map[string]interface{}{
 				"dir": Tea.Root + "/data/cache-index/p1",
 			},
 			Capacity: &shared.SizeCapacity{Count: 1, Unit: shared.SizeCapacityUnitGB},
@@ -106,9 +105,9 @@ func TestManager_ChangePolicy_File(t *testing.T) {
 	SharedManager.UpdatePolicies(policies)
 	SharedManager.UpdatePolicies([]*serverconfigs.HTTPCachePolicy{
 		{
-			Id:       1,
-			Type:     serverconfigs.CachePolicyStorageFile,
-			Options:  map[string]interface{}{
+			Id:   1,
+			Type: serverconfigs.CachePolicyStorageFile,
+			Options: map[string]interface{}{
 				"dir": Tea.Root + "/data/cache-index/p1",
 			},
 			Capacity: &shared.SizeCapacity{Count: 2, Unit: shared.SizeCapacityUnitGB},
