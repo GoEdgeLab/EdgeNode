@@ -31,7 +31,7 @@ func NewBatch(db *DB, n int) *Batch {
 	var batch = &Batch{
 		db:         db,
 		n:          n,
-		queue:      make(chan *batchItem),
+		queue:      make(chan *batchItem, 16),
 		closeEvent: make(chan bool, 1),
 	}
 	db.batches = append(db.batches, batch)

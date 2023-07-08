@@ -11,7 +11,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/iwind/TeaGo/types"
 	"os"
-	"sync/atomic"
 	"time"
 )
 
@@ -21,7 +20,6 @@ const CountFileDB = 20
 type FileList struct {
 	dir    string
 	dbList [CountFileDB]*FileListDB
-	total  int64
 
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
@@ -76,12 +74,6 @@ func (this *FileList) Init() error {
 		this.dbList[i] = db
 	}
 
-	// 读取总数量
-	this.total = 0
-	for _, db := range this.dbList {
-		this.total += db.total
-	}
-
 	// 升级老版本数据库
 	goman.New(func() {
 		this.upgradeOldDB()
@@ -102,12 +94,10 @@ func (this *FileList) Add(hash string, item *Item) error {
 		return nil
 	}
 
-	err := db.AddAsync(hash, item)
+	err := db.AddSync(hash, item)
 	if err != nil {
 		return err
 	}
-
-	atomic.AddInt64(&this.total, 1)
 
 	// 这里不增加点击量，以减少对数据库的操作次数
 
@@ -296,8 +286,6 @@ func (this *FileList) CleanAll() error {
 		}
 	}
 
-	atomic.StoreInt64(&this.total, 0)
-
 	return nil
 }
 
@@ -332,7 +320,15 @@ func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
 // Count 总数量
 // 常用的方法，所以避免直接查询数据库
 func (this *FileList) Count() (int64, error) {
-	return atomic.LoadInt64(&this.total), nil
+	var total int64
+	for _, db := range this.dbList {
+		count, err := db.Total()
+		if err != nil {
+			return 0, err
+		}
+		total += count
+	}
+	return total, nil
 }
 
 // IncreaseHit 增加点击量
@@ -392,29 +388,10 @@ func (this *FileList) remove(hash string) (notFound bool, err error) {
 	// 从缓存中删除
 	this.memoryCache.Delete(hash)
 
-	var row = db.selectByHashStmt.QueryRow(hash)
-	if row.Err() != nil {
-		if row.Err() == sql.ErrNoRows {
-			return true, nil
-		}
-		return false, row.Err()
-	}
-
-	var item = &Item{Type: ItemTypeFile}
-	err = row.Scan(&item.Key, &item.HeaderSize, &item.BodySize, &item.MetaSize, &item.ExpiredAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return true, nil
-		}
-		return false, err
-	}
-
-	err = db.DeleteAsync(hash)
+	err = db.DeleteSync(hash)
 	if err != nil {
 		return false, db.WrapError(err)
 	}
-
-	atomic.AddInt64(&this.total, -1)
 
 	err = db.DeleteHitAsync(hash)
 	if err != nil {
@@ -422,7 +399,8 @@ func (this *FileList) remove(hash string) (notFound bool, err error) {
 	}
 
 	if this.onRemove != nil {
-		this.onRemove(item)
+		// when remove file item, no any extra information needed
+		this.onRemove(nil)
 	}
 
 	return false, nil

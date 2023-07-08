@@ -35,8 +35,6 @@ type FileListDB struct {
 	itemsTableName string
 	hitsTableName  string
 
-	total int64
-
 	isClosed bool
 	isReady  bool
 
@@ -151,18 +149,6 @@ func (this *FileListDB) Init() error {
 		return errors.New("init tables failed: " + err.Error())
 	}
 
-	// 读取总数量
-	row := this.readDB.QueryRow(`SELECT COUNT(*) FROM "` + this.itemsTableName + `"`)
-	if row.Err() != nil {
-		return row.Err()
-	}
-	var total int64
-	err = row.Scan(&total)
-	if err != nil {
-		return err
-	}
-	this.total = total
-
 	// 常用语句
 	this.existsByHashStmt, err = this.readDB.Prepare(`SELECT "expiredAt" FROM "` + this.itemsTableName + `" INDEXED BY "hash" WHERE "hash"=? AND expiredAt>? LIMIT 1`)
 	if err != nil {
@@ -250,20 +236,15 @@ func (this *FileListDB) IsReady() bool {
 	return this.isReady
 }
 
-func (this *FileListDB) Total() int64 {
-	return this.total
-}
-
-func (this *FileListDB) AddAsync(hash string, item *Item) error {
-	this.hashMap.Add(hash)
-
-	if item.StaleAt == 0 {
-		item.StaleAt = item.ExpiredAt
+func (this *FileListDB) Total() (int64, error) {
+	// 读取总数量
+	var row = this.readDB.QueryRow(`SELECT COUNT(*) FROM "` + this.itemsTableName + `"`)
+	if row.Err() != nil {
+		return 0, row.Err()
 	}
-
-	this.writeBatch.Add(this.insertSQL, hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, fasttime.Now().Unix(), timeutil.Format("YW"))
-	return nil
-
+	var total int64
+	err := row.Scan(&total)
+	return total, err
 }
 
 func (this *FileListDB) AddSync(hash string, item *Item) error {
@@ -278,13 +259,6 @@ func (this *FileListDB) AddSync(hash string, item *Item) error {
 		return this.WrapError(err)
 	}
 
-	return nil
-}
-
-func (this *FileListDB) DeleteAsync(hash string) error {
-	this.hashMap.Delete(hash)
-
-	this.writeBatch.Add(this.deleteByHashSQL, hash)
 	return nil
 }
 
