@@ -13,12 +13,12 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/net"
-	"golang.org/x/sys/unix"
 	"math"
 	"os"
 	"runtime"
@@ -279,16 +279,15 @@ func (this *NodeStatusExecutor) updateCacheSpace(status *nodeconfigs.NodeStatus)
 	var result = []maps.Map{}
 	var cachePaths = caches.SharedManager.FindAllCachePaths()
 	for _, path := range cachePaths {
-		var stat unix.Statfs_t
-		err := unix.Statfs(path, &stat)
+		stat, err := fsutils.Stat(path)
 		if err != nil {
 			return
 		}
 		result = append(result, maps.Map{
 			"path":  path,
-			"total": stat.Blocks * uint64(stat.Bsize),
-			"avail": stat.Bavail * uint64(stat.Bsize),
-			"used":  (stat.Blocks - stat.Bavail) * uint64(stat.Bsize),
+			"total": stat.TotalSize(),
+			"avail": stat.AvailableSize(),
+			"used":  stat.UsedSize(),
 		})
 	}
 	monitor.SharedValueQueue.Add(nodeconfigs.NodeValueItemCacheDir, maps.Map{
