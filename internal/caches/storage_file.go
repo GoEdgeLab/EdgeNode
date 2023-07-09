@@ -1418,14 +1418,14 @@ func (this *FileStorage) checkDiskSpace() {
 	if this.options != nil && len(this.options.Dir) > 0 {
 		stat, err := fsutils.Stat(this.options.Dir)
 		if err == nil {
-			this.mainDiskIsFull = stat.AvailableSize() < MinDiskSpace
+			this.mainDiskIsFull = stat.FreeSize() < MinDiskSpace
 		}
 	}
 	var subDirs = this.subDirs // copy slice
 	for _, subDir := range subDirs {
 		stat, err := fsutils.Stat(subDir.Path)
 		if err == nil {
-			subDir.IsFull = stat.AvailableSize() < MinDiskSpace
+			subDir.IsFull = stat.FreeSize() < MinDiskSpace
 		}
 	}
 }

@@ -14,7 +14,7 @@ func TestStat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("available:", stat.AvailableSize()/(1<<30), "total:", stat.TotalSize()/(1<<30), "used:", stat.UsedSize()/(1<<30))
+	t.Log("free:", stat.FreeSize()/(1<<30), "total:", stat.TotalSize()/(1<<30), "used:", stat.UsedSize()/(1<<30))
 }
 
 func TestStatCache(t *testing.T) {
@@ -23,7 +23,7 @@ func TestStatCache(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Log("available:", stat.AvailableSize()/(1<<30), "total:", stat.TotalSize()/(1<<30), "used:", stat.UsedSize()/(1<<30))
+		t.Log("free:", stat.FreeSize()/(1<<30), "total:", stat.TotalSize()/(1<<30), "used:", stat.UsedSize()/(1<<30))
 	}
 }
 

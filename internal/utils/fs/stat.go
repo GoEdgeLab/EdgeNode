@@ -65,8 +65,8 @@ func NewStatResult(rawStat *unix.Statfs_t) *StatResult {
 	}
 }
 
-func (this *StatResult) AvailableSize() uint64 {
-	return this.rawStat.Bavail * this.blockSize
+func (this *StatResult) FreeSize() uint64 {
+	return this.rawStat.Bfree * this.blockSize
 }
 
 func (this *StatResult) TotalSize() uint64 {
@@ -74,8 +74,8 @@ func (this *StatResult) TotalSize() uint64 {
 }
 
 func (this *StatResult) UsedSize() uint64 {
-	if this.rawStat.Bavail <= this.rawStat.Blocks {
-		return (this.rawStat.Blocks - this.rawStat.Bavail) * this.blockSize
+	if this.rawStat.Bfree <= this.rawStat.Blocks {
+		return (this.rawStat.Blocks - this.rawStat.Bfree) * this.blockSize
 	}
 	return 0
 }

@@ -286,7 +286,7 @@ func (this *NodeStatusExecutor) updateCacheSpace(status *nodeconfigs.NodeStatus)
 		result = append(result, maps.Map{
 			"path":  path,
 			"total": stat.TotalSize(),
-			"avail": stat.AvailableSize(),
+			"avail": stat.FreeSize(),
 			"used":  stat.UsedSize(),
 		})
 	}
