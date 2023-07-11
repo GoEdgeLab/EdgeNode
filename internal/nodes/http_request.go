@@ -509,6 +509,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 		this.web.Compression = web.Compression
 	}
 
+	// optimizer
+	if web.Optimization != nil && (web.Optimization.IsPrior || (isTop && web.Optimization.IsOn())) {
+		this.web.Optimization = web.Optimization
+	}
+
 	// webp
 	if web.WebP != nil && (web.WebP.IsPrior || isTop) {
 		this.web.WebP = web.WebP

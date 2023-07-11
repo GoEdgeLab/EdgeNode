@@ -412,6 +412,15 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		return
 	}
 
+	// Page optimization
+	if this.web.Optimization != nil && resp.Body != nil && this.cacheRef != nil /** must under cache **/ {
+		err := this.web.Optimization.FilterResponse(resp)
+		if err != nil {
+			this.write50x(err, http.StatusBadGateway, "Page Optimization: Fail to read content from origin", "内容优化：从源站读取内容失败", false)
+			return
+		}
+	}
+
 	// 设置Charset
 	// TODO 这里应该可以设置文本类型的列表，以及是否强制覆盖所有文本类型的字符集
 	if this.web.Charset != nil && this.web.Charset.IsOn && len(this.web.Charset.Charset) > 0 {
