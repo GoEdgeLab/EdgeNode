@@ -1717,6 +1717,11 @@ func (this *HTTPRequest) fixRequestHeader(header http.Header) {
 
 // ProcessResponseHeaders 处理自定义Response Header
 func (this *HTTPRequest) ProcessResponseHeaders(responseHeader http.Header, statusCode int) {
+	// Server Name
+	if this.nodeConfig != nil && this.nodeConfig.GlobalServerConfig != nil && len(this.nodeConfig.GlobalServerConfig.HTTPAll.ServerName) > 0 {
+		responseHeader.Set("Server", this.nodeConfig.GlobalServerConfig.HTTPAll.ServerName)
+	}
+
 	// 删除/添加/替换Header
 	// TODO 实现AddTrailers
 	if this.web.ResponseHeaderPolicy != nil && this.web.ResponseHeaderPolicy.IsOn {
