@@ -25,6 +25,10 @@ var commonFileExtensionsMap = map[string]zero.Zero{
 	".woff2": zero.New(),
 	".js":    zero.New(),
 	".css":   zero.New(),
+	".ttf":   zero.New(),
+	".otf":   zero.New(),
+	".fnt":   zero.New(),
+	".svg":   zero.New(),
 }
 
 // CC2Checkpoint 新的CC
