@@ -4,7 +4,6 @@ package waf
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/types"
@@ -27,7 +26,7 @@ func CaptchaIncreaseFails(req requests.Request, actionConfig *CaptchaAction, pol
 		if maxFails <= 3 {
 			maxFails = 3 // 不能小于3，防止意外刷新出现
 		}
-		var countFails = ttlcache.SharedCache.IncreaseInt64(CaptchaCacheKey(req, pageCode), 1, time.Now().Unix()+300, true)
+		var countFails = SharedCounter.IncreaseKey(CaptchaCacheKey(req, pageCode), 300)
 		if int(countFails) >= maxFails {
 			SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, true, groupId, setId, "CAPTCHA验证连续失败超过"+types.String(maxFails)+"次")
 			return false
@@ -38,9 +37,9 @@ func CaptchaIncreaseFails(req requests.Request, actionConfig *CaptchaAction, pol
 
 // CaptchaDeleteCacheKey 清除计数
 func CaptchaDeleteCacheKey(req requests.Request) {
-	ttlcache.SharedCache.Delete(CaptchaCacheKey(req, CaptchaPageCodeInit))
-	ttlcache.SharedCache.Delete(CaptchaCacheKey(req, CaptchaPageCodeShow))
-	ttlcache.SharedCache.Delete(CaptchaCacheKey(req, CaptchaPageCodeSubmit))
+	SharedCounter.ResetKey(CaptchaCacheKey(req, CaptchaPageCodeInit))
+	SharedCounter.ResetKey(CaptchaCacheKey(req, CaptchaPageCodeShow))
+	SharedCounter.ResetKey(CaptchaCacheKey(req, CaptchaPageCodeSubmit))
 }
 
 // CaptchaCacheKey 获取Captcha缓存Key

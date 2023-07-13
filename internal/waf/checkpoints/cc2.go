@@ -4,17 +4,16 @@ package checkpoints
 
 import (
 	"fmt"
-	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
-var ccCache = ttlcache.NewCache()
+var cc2Counter = counters.NewCounter().WithGC()
 
 var commonFileExtensionsMap = map[string]zero.Zero{
 	".ico":   zero.New(),
@@ -47,9 +46,11 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 		return
 	}
 
-	var period = options.GetInt64("period")
+	var period = options.GetInt("period")
 	if period <= 0 {
 		period = 60
+	} else if period > 7*86400 {
+		period = 7 * 86400
 	}
 
 	var threshold = options.GetInt64("threshold")
@@ -71,9 +72,8 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 		}
 	}
 
-	var expiresAt = time.Now().Unix() + period
 	var ccKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(keyValues, "@")
-	value = ccCache.IncreaseInt64(ccKey, 1, expiresAt, false)
+	value = cc2Counter.IncreaseKey(ccKey, period)
 
 	// 基于指纹统计
 	var enableFingerprint = true
@@ -92,8 +92,8 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 				fpKeyValues = append(fpKeyValues, req.Format(types.String(key)))
 			}
 			var fpCCKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(fpKeyValues, "@")
-			var fpValue = ccCache.IncreaseInt64(fpCCKey, 1, expiresAt, false)
-			if fpValue > value.(int64) {
+			var fpValue = cc2Counter.IncreaseKey(fpCCKey, period)
+			if fpValue > value.(uint64) {
 				value = fpValue
 			}
 		}

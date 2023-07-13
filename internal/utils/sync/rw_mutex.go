@@ -50,3 +50,7 @@ func (this *RWMutex) TryLock(index int) bool {
 func (this *RWMutex) TryRLock(index int) bool {
 	return this.lockers[index%this.countLockers].TryRLock()
 }
+
+func (this *RWMutex) RWMutex(index int) *sync.RWMutex {
+	return this.lockers[index%this.countLockers]
+}

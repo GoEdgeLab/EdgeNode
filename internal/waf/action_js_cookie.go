@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/types"
 	"net/http"
@@ -121,7 +120,7 @@ func (this *JSCookieAction) increaseFails(req requests.Request, policyId int64, 
 
 	var key = "JS_COOKIE:FAILS:" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId()) + ":" + req.WAFRaw().URL.String()
 
-	var countFails = ttlcache.SharedCache.IncreaseInt64(key, 1, time.Now().Unix()+300, true)
+	var countFails = SharedCounter.IncreaseKey(key, 300)
 	if int(countFails) >= maxFails {
 		SharedIPBlackList.RecordIP(IPTypeAll, firewallconfigs.FirewallScopeService, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(failBlockTimeout), policyId, true, groupId, setId, "JS_COOKIE验证连续失败超过"+types.String(maxFails)+"次")
 		return false

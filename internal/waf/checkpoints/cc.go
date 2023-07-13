@@ -1,22 +1,19 @@
 package checkpoints
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"regexp"
-	"sync"
-	"time"
 )
+
+var ccCounter = counters.NewCounter().WithGC()
 
 // CCCheckpoint ${cc.arg}
 // TODO implement more traffic rules
 type CCCheckpoint struct {
 	Checkpoint
-
-	cache *ttlcache.Cache
-	once  sync.Once
 }
 
 func (this *CCCheckpoint) Init() {
@@ -24,31 +21,23 @@ func (this *CCCheckpoint) Init() {
 }
 
 func (this *CCCheckpoint) Start() {
-	if this.cache != nil {
-		this.cache.Destroy()
-	}
-	this.cache = ttlcache.NewCache()
+
 }
 
 func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
 	value = 0
 
-	if this.cache == nil {
-		this.once.Do(func() {
-			this.Start()
-		})
-		if this.cache == nil {
-			return
-		}
-	}
-
 	periodString, ok := options["period"]
 	if !ok {
 		return
 	}
-	period := types.Int64(periodString)
+	var period = types.Int(periodString)
 	if period < 1 {
 		return
+	}
+
+	if period > 7*86400 {
+		period = 7 * 86400
 	}
 
 	v, _ := options["userType"]
@@ -114,7 +103,7 @@ func (this *CCCheckpoint) RequestValue(req requests.Request, param string, optio
 		if len(key) == 0 {
 			key = req.WAFRemoteIP()
 		}
-		value = this.cache.IncreaseInt64(types.String(ruleId)+"@"+key, int64(1), time.Now().Unix()+period, false)
+		value = ccCounter.IncreaseKey(types.String(ruleId)+"@"+key, types.Int(period))
 	}
 
 	return
@@ -203,8 +192,5 @@ func (this *CCCheckpoint) Options() []OptionInterface {
 }
 
 func (this *CCCheckpoint) Stop() {
-	if this.cache != nil {
-		this.cache.Destroy()
-		this.cache = nil
-	}
+
 }

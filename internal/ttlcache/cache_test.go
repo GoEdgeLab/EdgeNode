@@ -213,7 +213,7 @@ func BenchmarkCache_Add_Parallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			var j = atomic.AddInt64(&i, 1)
-			cache.Write(types.String(j), j, fasttime.Now().Unix()+i%1024)
+			cache.Write(types.String(j%1e6), j, fasttime.Now().Unix()+i%1024)
 		}
 	})
 }

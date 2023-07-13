@@ -10,9 +10,9 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
-	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	connutils "github.com/TeaOSLab/EdgeNode/internal/utils/conns"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
@@ -23,6 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+var synFloodCounter = counters.NewCounter().WithGC()
 
 // ClientConn 客户端连接
 type ClientConn struct {
@@ -289,14 +291,13 @@ func (this *ClientConn) LastErr() error {
 }
 
 func (this *ClientConn) resetSYNFlood() {
-	ttlcache.SharedCache.Delete("SYN_FLOOD:" + this.RawIP())
+	synFloodCounter.ResetKey("SYN_FLOOD:" + this.RawIP())
 }
 
 func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloodConfig) {
 	var ip = this.RawIP()
 	if len(ip) > 0 && !iplibrary.IsInWhiteList(ip) && (!synFloodConfig.IgnoreLocal || !utils.IsLocalIP(ip)) {
-		var timestamp = fasttime.Now().UnixNextMinute()
-		var result = ttlcache.SharedCache.IncreaseInt64("SYN_FLOOD:"+ip, 1, timestamp, true)
+		var result = synFloodCounter.IncreaseKey("SYN_FLOOD:"+ip, 60)
 		var minAttempts = synFloodConfig.MinAttempts
 		if minAttempts < 5 {
 			minAttempts = 5
@@ -305,7 +306,7 @@ func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloo
 			// 非TLS，设置为两倍，防止误封
 			minAttempts = 2 * minAttempts
 		}
-		if result >= int64(minAttempts) {
+		if result >= types.Uint64(minAttempts) {
 			var timeout = synFloodConfig.TimeoutSeconds
 			if timeout <= 0 {
 				timeout = 600
