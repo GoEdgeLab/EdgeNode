@@ -12,6 +12,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
+	"time"
 )
 
 // 调用WAF
@@ -182,8 +183,8 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 									this.writeCode(http.StatusForbidden, "The region has been denied.", "当前区域禁止访问")
 								}
 
-								this.writer.Flush()
-								this.writer.Close()
+								// 延时返回，避免攻击
+								time.Sleep(1 * time.Second)
 
 								// 停止日志
 								if !logDenying {
@@ -209,8 +210,9 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 								} else {
 									this.writeCode(http.StatusForbidden, "The region has been denied.", "当前区域禁止访问")
 								}
-								this.writer.Flush()
-								this.writer.Close()
+
+								// 延时返回，避免攻击
+								time.Sleep(1 * time.Second)
 
 								// 停止日志
 								if !logDenying {
