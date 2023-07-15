@@ -3,10 +3,11 @@
 package counters
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	syncutils "github.com/TeaOSLab/EdgeNode/internal/utils/sync"
 	"github.com/cespare/xxhash"
-	"github.com/iwind/TeaGo/Tea"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Counter struct {
 
 	gcTicker *time.Ticker
 	gcIndex  int
+	gcLocker sync.Mutex
 }
 
 // NewCounter create new counter
@@ -24,6 +26,8 @@ func NewCounter() *Counter {
 	var count = runtime.NumCPU() * 4
 	if count < 8 {
 		count = 8
+	} else if count > 128 {
+		count = 128
 	}
 
 	var itemMaps = []map[uint64]*Item{}
@@ -45,10 +49,7 @@ func (this *Counter) WithGC() *Counter {
 	if this.gcTicker != nil {
 		return this
 	}
-	this.gcTicker = time.NewTicker(10 * time.Second)
-	if Tea.IsTesting() {
-		this.gcTicker = time.NewTicker(1 * time.Second)
-	}
+	this.gcTicker = time.NewTicker(1 * time.Second)
 	go func() {
 		for range this.gcTicker.C {
 			this.GC()
@@ -141,6 +142,7 @@ func (this *Counter) TotalItems() int {
 
 // GC garbage expired items
 func (this *Counter) GC() {
+	this.gcLocker.Lock()
 	var gcIndex = this.gcIndex
 
 	this.gcIndex++
@@ -148,11 +150,15 @@ func (this *Counter) GC() {
 		this.gcIndex = 0
 	}
 
+	this.gcLocker.Unlock()
+
+	var currentTime = fasttime.Now().Unix()
+
 	this.locker.RLock(gcIndex)
 	var itemMap = this.itemMaps[gcIndex]
 	var expiredKeys = []uint64{}
 	for key, item := range itemMap {
-		if item.IsExpired() {
+		if item.IsExpired(currentTime) {
 			expiredKeys = append(expiredKeys, key)
 		}
 	}

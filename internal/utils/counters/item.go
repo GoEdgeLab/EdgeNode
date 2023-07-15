@@ -72,6 +72,6 @@ func (this *Item) Reset() {
 	}
 }
 
-func (this *Item) IsExpired() bool {
-	return this.lastUpdateTime < fasttime.Now().Unix()-this.lifeSeconds-this.spanSeconds
+func (this *Item) IsExpired(currentTime int64) bool {
+	return this.lastUpdateTime < currentTime-this.lifeSeconds-this.spanSeconds
 }

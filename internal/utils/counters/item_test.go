@@ -35,12 +35,14 @@ func TestItem_IsExpired(t *testing.T) {
 		return
 	}
 
+	var currentTime = time.Now().Unix()
+
 	var item = counters.NewItem(10)
-	t.Log(item.IsExpired())
+	t.Log(item.IsExpired(currentTime))
 	time.Sleep(10 * time.Second)
-	t.Log(item.IsExpired())
+	t.Log(item.IsExpired(currentTime))
 	time.Sleep(2 * time.Second)
-	t.Log(item.IsExpired())
+	t.Log(item.IsExpired(currentTime))
 }
 
 func BenchmarkItem_Increase(b *testing.B) {

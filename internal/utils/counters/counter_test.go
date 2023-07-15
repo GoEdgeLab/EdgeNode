@@ -6,7 +6,9 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
+	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
+	timeutil "github.com/iwind/TeaGo/utils/time"
 	"runtime"
 	"sync/atomic"
 	"testing"
@@ -54,9 +56,21 @@ func TestCounter_GC(t *testing.T) {
 }
 
 func TestCounter_GC2(t *testing.T) {
-	var counter = counters.NewCounter()
-	for i := 0; i < runtime.NumCPU()*32; i++ {
-		counter.GC()
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var counter = counters.NewCounter().WithGC()
+	for i := 0; i < 1e5; i++ {
+		counter.Increase(uint64(i), rands.Int(10, 300))
+	}
+
+	var ticker = time.NewTicker(1 * time.Second)
+	for range ticker.C {
+		t.Log(timeutil.Format("H:i:s"), counter.TotalItems())
+		if counter.TotalItems() == 0 {
+			break
+		}
 	}
 }
 
@@ -140,4 +154,6 @@ func BenchmarkCounter_GC(b *testing.B) {
 			counter.GC()
 		}
 	})
+
+	//b.Log(counter.TotalItems())
 }
