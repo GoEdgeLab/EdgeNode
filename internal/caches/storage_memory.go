@@ -111,8 +111,15 @@ func (this *MemoryStorage) Init() error {
 
 // OpenReader 读取缓存
 func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool) (Reader, error) {
-	hash := this.hash(key)
+	var hash = this.hash(key)
 
+	// check if exists in list
+	exists, _ := this.list.Exist(types.String(hash))
+	if !exists {
+		return nil, ErrNotFound
+	}
+
+	// read from valuesMap
 	this.locker.RLock()
 	item := this.valuesMap[hash]
 	if item == nil || !item.IsDone {
@@ -121,7 +128,7 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 	}
 
 	if useStale || (item.ExpiresAt > fasttime.Now().Unix()) {
-		reader := NewMemoryReader(item)
+		var reader = NewMemoryReader(item)
 		err := reader.Init()
 		if err != nil {
 			this.locker.RUnlock()
@@ -193,10 +200,19 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	}()
 
 	// 检查是否过期
-	hash := this.hash(key)
+	var hash = this.hash(key)
 	item, ok := this.valuesMap[hash]
 	if ok && !item.IsExpired() {
-		return nil, ErrFileIsWriting
+		var hashString = types.String(hash)
+		exists, _ := this.list.Exist(hashString)
+		if !exists {
+			// remove from values map
+			delete(this.valuesMap, hash)
+			_ = this.list.Remove(hashString)
+			item = nil
+		} else {
+			return nil, ErrFileIsWriting
+		}
 	}
 
 	// 检查是否超出最大值
