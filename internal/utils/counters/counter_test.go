@@ -74,6 +74,20 @@ func TestCounter_GC2(t *testing.T) {
 	}
 }
 
+func TestCounterMemory(t *testing.T) {
+	var stat = &runtime.MemStats{}
+	runtime.ReadMemStats(stat)
+
+	var counter = counters.NewCounter()
+	for i := 0; i < 1e5; i++ {
+		counter.Increase(uint64(i), rands.Int(10, 300))
+	}
+
+	var stat1 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat1)
+	t.Log((stat1.TotalAlloc-stat.TotalAlloc)/(1<<20), "MB")
+}
+
 func BenchmarkCounter_Increase(b *testing.B) {
 	runtime.GOMAXPROCS(4)
 
