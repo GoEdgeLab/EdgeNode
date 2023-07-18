@@ -13,8 +13,8 @@ type FixedSet struct {
 	maxSize int
 	locker  sync.RWMutex
 
-	m    map[interface{}]zero.Zero
-	keys []interface{}
+	m    map[any]zero.Zero
+	keys []any
 }
 
 func NewFixedSet(maxSize int) *FixedSet {
@@ -23,11 +23,11 @@ func NewFixedSet(maxSize int) *FixedSet {
 	}
 	return &FixedSet{
 		maxSize: maxSize,
-		m:       map[interface{}]zero.Zero{},
+		m:       map[any]zero.Zero{},
 	}
 }
 
-func (this *FixedSet) Push(item interface{}) {
+func (this *FixedSet) Push(item any) {
 	this.locker.Lock()
 	_, ok := this.m[item]
 	if !ok {
@@ -44,7 +44,7 @@ func (this *FixedSet) Push(item interface{}) {
 	this.locker.Unlock()
 }
 
-func (this *FixedSet) Has(item interface{}) bool {
+func (this *FixedSet) Has(item any) bool {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
 
@@ -60,7 +60,7 @@ func (this *FixedSet) Size() int {
 
 func (this *FixedSet) Reset() {
 	this.locker.Lock()
-	this.m = map[interface{}]zero.Zero{}
+	this.m = map[any]zero.Zero{}
 	this.keys = nil
 	this.locker.Unlock()
 }
