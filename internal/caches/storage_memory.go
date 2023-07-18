@@ -158,7 +158,7 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 
 // OpenWriter 打开缓存写入器等待写入
 func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, headerSize int, bodySize int64, maxSize int64, isPartial bool) (Writer, error) {
-	if this.ignoreKeys.Has(key) {
+	if maxSize > 0 && this.ignoreKeys.Has(types.String(maxSize)+"$"+key) {
 		return nil, ErrEntityTooLarge
 	}
 
@@ -362,6 +362,9 @@ func (this *MemoryStorage) UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy
 	if newPolicy.CapacityBytes() == 0 {
 		_ = this.CleanAll()
 	}
+
+	// reset ignored keys
+	this.ignoreKeys.Reset()
 }
 
 // CanUpdatePolicy 检查策略是否可以更新
@@ -392,8 +395,8 @@ func (this *MemoryStorage) TotalMemorySize() int64 {
 }
 
 // IgnoreKey 忽略某个Key，即不缓存某个Key
-func (this *MemoryStorage) IgnoreKey(key string) {
-	this.ignoreKeys.Push(key)
+func (this *MemoryStorage) IgnoreKey(key string, maxSize int64) {
+	this.ignoreKeys.Push(types.String(maxSize) + "$" + key)
 }
 
 // CanSendfile 是否支持Sendfile

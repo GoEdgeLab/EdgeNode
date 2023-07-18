@@ -59,7 +59,7 @@ func (this *MemoryWriter) Write(data []byte) (n int, err error) {
 	// 检查尺寸
 	if this.maxSize > 0 && this.bodySize > this.maxSize {
 		err = ErrEntityTooLarge
-		this.storage.IgnoreKey(this.key)
+		this.storage.IgnoreKey(this.key, this.maxSize)
 		return len(data), err
 	}
 

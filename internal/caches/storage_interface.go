@@ -54,7 +54,7 @@ type StorageInterface interface {
 	AddToList(item *Item)
 
 	// IgnoreKey 忽略某个Key，即不缓存某个Key
-	IgnoreKey(key string)
+	IgnoreKey(key string, maxSize int64)
 
 	// CanSendfile 是否支持Sendfile
 	CanSendfile() bool

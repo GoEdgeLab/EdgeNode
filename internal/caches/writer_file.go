@@ -79,7 +79,7 @@ func (this *FileWriter) Write(data []byte) (n int, err error) {
 		err = ErrEntityTooLarge
 
 		if this.storage != nil {
-			this.storage.IgnoreKey(this.key)
+			this.storage.IgnoreKey(this.key, this.maxSize)
 		}
 	}
 

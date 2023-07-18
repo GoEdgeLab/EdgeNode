@@ -198,6 +198,9 @@ func (this *FileStorage) UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) 
 	if newPolicy.PersistenceAutoPurgeInterval != this.policy.PersistenceAutoPurgeInterval {
 		this.initPurgeTicker()
 	}
+
+	// reset ignored keys
+	this.ignoreKeys.Reset()
 }
 
 // Init 初始化
@@ -410,14 +413,14 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	}
 
 	// 是否已忽略
-	if this.ignoreKeys.Has(key) {
+	if maxSize > 0 && this.ignoreKeys.Has(types.String(maxSize)+"$"+key) {
 		return nil, ErrEntityTooLarge
 	}
 
 	// 先尝试内存缓存
 	// 我们限定仅小文件优先存在内存中
 	var maxMemorySize = FileToMemoryMaxSize
-	if maxSize > maxMemorySize {
+	if maxSize > 0 && maxSize < maxMemorySize {
 		maxMemorySize = maxSize
 	}
 	var memoryStorage = this.memoryStorage
@@ -642,7 +645,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 			sharedWritingFileKeyLocker.Unlock()
 		}), nil
 	} else {
-		return NewFileWriter(this, writer, key, expiredAt, metaHeaderSize, metaBodySize, -1, func() {
+		return NewFileWriter(this, writer, key, expiredAt, metaHeaderSize, metaBodySize, maxSize, func() {
 			sharedWritingFileKeyLocker.Lock()
 			delete(sharedWritingFileKeyMap, key)
 			if len(sharedWritingFileKeyMap) == 0 {
@@ -914,8 +917,8 @@ func (this *FileStorage) TotalMemorySize() int64 {
 }
 
 // IgnoreKey 忽略某个Key，即不缓存某个Key
-func (this *FileStorage) IgnoreKey(key string) {
-	this.ignoreKeys.Push(key)
+func (this *FileStorage) IgnoreKey(key string, maxSize int64) {
+	this.ignoreKeys.Push(types.String(maxSize) + "$" + key)
 }
 
 // CanSendfile 是否支持Sendfile

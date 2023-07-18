@@ -25,7 +25,7 @@ func (this *TeeReaderCloser) Read(p []byte) (n int, err error) {
 	n, err = this.r.Read(p)
 	if n > 0 {
 		_, wErr := this.w.Write(p[:n])
-		if err == nil && wErr != nil {
+		if (err == nil || err == io.EOF) && wErr != nil {
 			err = wErr
 		}
 	}

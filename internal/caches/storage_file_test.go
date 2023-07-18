@@ -42,7 +42,9 @@ func TestFileStorage_Init(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 	storage.purgeLoop()
-	t.Log(storage.list.(*FileList).total, "entries left")
+	t.Log(storage.list.(*FileList).Stat(func(hash string) bool {
+		return true
+	}))
 }
 
 func TestFileStorage_OpenWriter(t *testing.T) {
