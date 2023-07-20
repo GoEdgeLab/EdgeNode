@@ -38,8 +38,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 	// 添加 X-Cache Header
 	var addStatusHeader = this.web.Cache.AddStatusHeader
+	var cacheBypassDescription = ""
 	if addStatusHeader {
 		defer func() {
+			if len(cacheBypassDescription) > 0 {
+				this.writer.Header().Set("X-Cache", cacheBypassDescription)
+				return
+			}
 			var cacheStatus = this.varMapping["cache.status"]
 			if cacheStatus != "HIT" {
 				this.writer.Header().Set("X-Cache", cacheStatus)
@@ -94,6 +99,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	// 校验请求
 	if !this.cacheRef.MatchRequest(this.RawReq) {
 		this.cacheRef = nil
+		cacheBypassDescription = "BYPASS, not match"
 		return
 	}
 
@@ -106,6 +112,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	if this.cacheRef.EnableRequestCachePragma {
 		if this.RawReq.Header.Get("Cache-Control") == "no-cache" || this.RawReq.Header.Get("Pragma") == "no-cache" {
 			this.cacheRef = nil
+			cacheBypassDescription = "BYPASS, Cache-Control or Pragma"
 			return
 		}
 	}
@@ -119,6 +126,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var key = this.Format(this.cacheRef.Key)
 	if len(key) == 0 {
 		this.cacheRef = nil
+		cacheBypassDescription = "BYPASS, empty key"
 		return
 	}
 	var method = this.Method()
@@ -134,6 +142,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var storage = caches.SharedManager.FindStorageWithPolicy(cachePolicy.Id)
 	if storage == nil {
 		this.cacheRef = nil
+		cacheBypassDescription = "BYPASS, no policy found"
 		return
 	}
 	this.writer.cacheStorage = storage
