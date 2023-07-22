@@ -7,7 +7,7 @@ import (
 )
 
 func (this *HTTPRequest) doCheckUserAgent() (shouldStop bool) {
-	if this.web.UserAgent == nil {
+	if this.web.UserAgent == nil || !this.web.UserAgent.IsOn {
 		return
 	}
 
