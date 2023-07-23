@@ -60,14 +60,14 @@ func (this *TOAManager) Run(config *nodeconfigs.TOAConfig) error {
 		return nil
 	}
 
-	binPath := Tea.Root + "/edge-toa/edge-toa" // TODO 可以做成配置
+	var binPath = Tea.Root + "/edge-toa/edge-toa" // TODO 可以做成配置
 	_, err := os.Stat(binPath)
 	if err != nil {
 		return err
 	}
 	remotelogs.Println("TOA", "starting ...")
 	remotelogs.Println("TOA", "args: "+strings.Join(config.AsArgs(), " "))
-	cmd := executils.NewCmd(binPath, config.AsArgs()...)
+	var cmd = executils.NewCmd(binPath, config.AsArgs()...)
 	err = cmd.Start()
 	if err != nil {
 		return err

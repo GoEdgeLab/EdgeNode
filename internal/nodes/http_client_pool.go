@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/iwind/TeaGo/types"
 	"github.com/pires/go-proxyproto"
 	"golang.org/x/net/http2"
 	"net"
@@ -224,7 +226,7 @@ func (this *HTTPClientPool) handleTOA(req *HTTPRequest, ctx context.Context, net
 		for i := 1; i <= retries; i++ {
 			var port = int(toaConfig.RandLocalPort())
 			// TODO 思考是否支持X-Real-IP/X-Forwarded-IP
-			err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + req.requestRemoteAddr(true))
+			err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + configutils.QuoteIP(req.requestRemoteAddr(true)) + ":" + types.String(req.RemotePort()))
 			if err != nil {
 				remotelogs.Error("TOA", "add failed: "+err.Error())
 			} else {
