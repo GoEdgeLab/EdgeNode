@@ -4,11 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/iwind/TeaGo/types"
 	"github.com/pires/go-proxyproto"
 	"golang.org/x/net/http2"
 	"net"
@@ -134,14 +131,8 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 	var transport = &HTTPClientTransport{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// 支持TOA的连接
-				conn, err := this.handleTOA(req, ctx, network, originAddr, connectionTimeout)
-				if conn != nil || err != nil {
-					return conn, err
-				}
-
 				// 普通的连接
-				conn, err = (&net.Dialer{
+				conn, err := (&net.Dialer{
 					Timeout:   connectionTimeout,
 					KeepAlive: 1 * time.Minute,
 				}).DialContext(ctx, network, originAddr)
@@ -215,38 +206,6 @@ func (this *HTTPClientPool) cleanClients() {
 		}
 		this.locker.Unlock()
 	}
-}
-
-// 支持TOA
-func (this *HTTPClientPool) handleTOA(req *HTTPRequest, ctx context.Context, network string, originAddr string, connectionTimeout time.Duration) (net.Conn, error) {
-	// TODO 每个服务读取自身所属集群的TOA设置
-	var toaConfig = sharedTOAManager.Config()
-	if toaConfig != nil && toaConfig.IsOn {
-		var retries = 3
-		for i := 1; i <= retries; i++ {
-			var port = int(toaConfig.RandLocalPort())
-			// TODO 思考是否支持X-Real-IP/X-Forwarded-IP
-			err := sharedTOAManager.SendMsg("add:" + strconv.Itoa(port) + ":" + configutils.QuoteIP(req.requestRemoteAddr(true)) + ":" + types.String(req.RemotePort()))
-			if err != nil {
-				remotelogs.Error("TOA", "add failed: "+err.Error())
-			} else {
-				dialer := net.Dialer{
-					Timeout:   connectionTimeout,
-					KeepAlive: 1 * time.Minute,
-					LocalAddr: &net.TCPAddr{
-						Port: port,
-					},
-				}
-				conn, err := dialer.DialContext(ctx, network, originAddr)
-				// TODO 需要在合适的时机删除TOA记录
-				if err == nil || i == retries {
-					return conn, err
-				}
-			}
-		}
-	}
-
-	return nil, nil
 }
 
 // 支持PROXY Protocol
