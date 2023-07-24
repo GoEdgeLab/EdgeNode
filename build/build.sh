@@ -54,10 +54,11 @@ function build() {
 	cp -R "$ROOT"/www "$DIST"/
 	cp -R "$ROOT"/pages "$DIST"/
 
-	# we support TOA on linux/amd64 only
-	if [ "$OS" == "linux" ] && [ "$ARCH" == "amd64" ]
+	# we support TOA on linux only
+	if [ "$OS" == "linux" ] && [ -f "${ROOT}/edge-toa/edge-toa-${ARCH}" ]
 	then
-		cp -R "$ROOT"/edge-toa "$DIST"
+		mkdir "$DIST/edge-toa"
+		cp "${ROOT}/edge-toa/edge-toa-${ARCH}" "$DIST/edge-toa/edge-toa"
 	fi
 
 	echo "building ..."

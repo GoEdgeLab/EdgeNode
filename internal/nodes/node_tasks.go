@@ -90,6 +90,8 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 		err = this.execUpdatingServersTask(rpcClient)
 	case "plusChanged":
 		err = this.notifyPlusChange()
+	case "toaChanged":
+		err = this.execTOAChangedTask()
 	default:
 		remotelogs.Error("NODE", "task '"+types.String(task.Id)+"', type '"+task.Type+"' has not been handled")
 	}
