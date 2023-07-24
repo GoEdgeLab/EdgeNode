@@ -129,11 +129,6 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	// 检测是否为超时错误
 	var isTimeout = err != nil && os.IsTimeout(err)
 	var isHandshakeError = isTimeout && !this.hasRead
-	if isTimeout {
-		_ = this.SetLinger(0)
-	} else {
-		_ = this.SetLinger(nodeconfigs.DefaultTCPLinger)
-	}
 
 	// 忽略白名单和局域网
 	if !this.isPersistent && this.isHTTP && !this.isInAllowList && !utils.IsLocalIP(this.RawIP()) {
