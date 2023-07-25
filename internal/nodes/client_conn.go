@@ -130,6 +130,10 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 	var isTimeout = err != nil && os.IsTimeout(err)
 	var isHandshakeError = isTimeout && !this.hasRead
 
+	if err != nil {
+		_ = this.SetLinger(nodeconfigs.DefaultTCPLinger)
+	}
+
 	// 忽略白名单和局域网
 	if !this.isPersistent && this.isHTTP && !this.isInAllowList && !utils.IsLocalIP(this.RawIP()) {
 		// SYN Flood检测
