@@ -7,7 +7,7 @@ import "errors"
 // 常用的几个错误
 var (
 	ErrNotFound           = errors.New("cache not found")
-	ErrFileIsWriting      = errors.New("the file is writing")
+	ErrFileIsWriting      = errors.New("the cache file is updating")
 	ErrInvalidRange       = errors.New("invalid range")
 	ErrEntityTooLarge     = errors.New("entity too large")
 	ErrWritingUnavailable = errors.New("writing unavailable")
