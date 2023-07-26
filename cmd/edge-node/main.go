@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/nodes"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
@@ -364,6 +365,29 @@ func main() {
 			return
 		}
 		fmt.Println(string(statsJSON))
+	})
+	app.On("disk", func() {
+		var args = os.Args[2:]
+		if len(args) > 0 {
+			switch args[0] {
+			case "speed":
+				speedMB, isFast, err := fsutils.CheckDiskIsFast()
+				if err != nil {
+					fmt.Println("[ERROR]" + err.Error())
+				} else {
+					fmt.Printf("Speed: %.2fMB/s\n", speedMB)
+					if isFast {
+						fmt.Println("IsFast: true")
+					} else {
+						fmt.Println("IsFast: false")
+					}
+				}
+			default:
+				fmt.Println("Usage: edge-node disk [speed]")
+			}
+		} else {
+			fmt.Println("Usage: edge-node disk [speed]")
+		}
 	})
 	app.Run(func() {
 		var node = nodes.NewNode()
