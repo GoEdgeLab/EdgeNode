@@ -324,11 +324,11 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	// 待写入尺寸
 	var totalSize = size
-	if totalSize < 0 && this.isPartial {
+	if this.isPartial {
 		var contentRange = resp.Header.Get("Content-Range")
 		if len(contentRange) > 0 {
 			_, partialTotalSize := httpRequestParseContentRangeHeader(contentRange)
-			if partialTotalSize > 0 {
+			if partialTotalSize > 0 && partialTotalSize > totalSize {
 				totalSize = partialTotalSize
 			}
 		}
