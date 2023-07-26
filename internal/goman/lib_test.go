@@ -1,27 +1,28 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package goman
+package goman_test
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"testing"
 	"time"
 )
 
 func TestNew(t *testing.T) {
-	New(func() {
+	goman.New(func() {
 		t.Log("Hello")
 
-		t.Log(List())
+		t.Log(goman.List())
 	})
 
 	time.Sleep(1 * time.Second)
-	t.Log(List())
+	t.Log(goman.List())
 
 	time.Sleep(1 * time.Second)
 }
 
 func TestNewWithArgs(t *testing.T) {
-	NewWithArgs(func(args ...interface{}) {
+	goman.NewWithArgs(func(args ...interface{}) {
 		t.Log(args[0], args[1])
 	}, 1, 2)
 	time.Sleep(1 * time.Second)

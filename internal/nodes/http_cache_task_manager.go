@@ -19,6 +19,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -131,20 +132,28 @@ func (this *HTTPCacheTaskManager) Loop() error {
 
 	var pbResults = []*pb.UpdateHTTPCacheTaskKeysStatusRequest_KeyResult{}
 
+	var taskGroup = goman.NewTaskGroup()
 	for _, key := range keys {
-		err = this.processKey(key)
+		var taskKey = key
+		taskGroup.Run(func() {
+			processErr := this.processKey(taskKey)
+			var pbResult = &pb.UpdateHTTPCacheTaskKeysStatusRequest_KeyResult{
+				Id:            taskKey.Id,
+				NodeClusterId: taskKey.NodeClusterId,
+				Error:         "",
+			}
 
-		var pbResult = &pb.UpdateHTTPCacheTaskKeysStatusRequest_KeyResult{
-			Id:            key.Id,
-			NodeClusterId: key.NodeClusterId,
-			Error:         "",
-		}
+			if processErr != nil {
+				pbResult.Error = processErr.Error()
+			}
 
-		if err != nil {
-			pbResult.Error = err.Error()
-		}
-		pbResults = append(pbResults, pbResult)
+			taskGroup.Lock()
+			pbResults = append(pbResults, pbResult)
+			taskGroup.Unlock()
+		})
 	}
+
+	taskGroup.Wait()
 
 	_, err = rpcClient.HTTPCacheTaskKeyRPC.UpdateHTTPCacheTaskKeysStatus(rpcClient.Context(), &pb.UpdateHTTPCacheTaskKeysStatusRequest{KeyResults: pbResults})
 	if err != nil {
@@ -242,6 +251,7 @@ func (this *HTTPCacheTaskManager) fetchKey(key *pb.HTTPCacheTaskKey) error {
 	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
 	resp, err := this.httpClient.Do(req)
 	if err != nil {
+		err = this.simplifyErr(err)
 		return errors.New("request failed: " + fullKey + ": " + err.Error())
 	}
 
@@ -249,13 +259,32 @@ func (this *HTTPCacheTaskManager) fetchKey(key *pb.HTTPCacheTaskKey) error {
 		_ = resp.Body.Close()
 	}()
 
-	// 读取内容，以便于生成缓存
-	_, _ = io.Copy(io.Discard, resp.Body)
-
 	// 处理502
 	if resp.StatusCode == http.StatusBadGateway {
 		return errors.New("read origin site timeout")
 	}
 
+	// 读取内容，以便于生成缓存
+	_, err = io.Copy(io.Discard, resp.Body)
+	if err != nil {
+		if err != io.EOF {
+			err = this.simplifyErr(err)
+			return errors.New("request failed: " + fullKey + ": " + err.Error())
+		} else {
+			err = nil
+		}
+	}
+
 	return nil
+}
+
+func (this *HTTPCacheTaskManager) simplifyErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if os.IsTimeout(err) {
+		return errors.New("timeout to read origin site")
+	}
+
+	return err
 }
