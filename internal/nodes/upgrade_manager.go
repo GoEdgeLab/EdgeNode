@@ -29,6 +29,7 @@ var sharedUpgradeManager = NewUpgradeManager()
 type UpgradeManager struct {
 	isInstalling bool
 	lastFile     string
+	exe          string
 }
 
 // NewUpgradeManager 获取新对象
@@ -38,6 +39,14 @@ func NewUpgradeManager() *UpgradeManager {
 
 // Start 启动升级
 func (this *UpgradeManager) Start() {
+	// 必须放在文件解压之前读取可执行文件路径，防止解析之后，当前的可执行文件路径发生改变
+	exe, err := os.Executable()
+	if err != nil {
+		remotelogs.Error("UPGRADE_MANAGER", "can not find current executable file name")
+		return
+	}
+	this.exe = exe
+
 	// 测试环境下不更新
 	if Tea.IsTesting() {
 		return
@@ -49,7 +58,7 @@ func (this *UpgradeManager) Start() {
 	this.isInstalling = true
 
 	remotelogs.Println("UPGRADE_MANAGER", "upgrading node ...")
-	err := this.install()
+	err = this.install()
 	if err != nil {
 		remotelogs.Error("UPGRADE_MANAGER", "download failed: "+err.Error())
 
@@ -104,7 +113,7 @@ func (this *UpgradeManager) install() error {
 
 	remotelogs.Println("UPGRADE_MANAGER", "downloading new node ...")
 
-	var path = dir + "/edge-node" + ".tmp"
+	var path = dir + "/edge-node.tmp"
 	fp, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0777)
 	if err != nil {
 		return err
@@ -238,11 +247,6 @@ func (this *UpgradeManager) restart() error {
 	if DaemonIsOn && DaemonPid == os.Getppid() {
 		utils.Exit() // TODO 试着更优雅重启
 	} else {
-		exe, err := os.Executable()
-		if err != nil {
-			return err
-		}
-
 		// quit
 		events.Notify(events.EventQuit)
 
@@ -250,10 +254,9 @@ func (this *UpgradeManager) restart() error {
 		events.Notify(events.EventTerminated)
 
 		// 启动
-		exe = filepath.Dir(exe) + "/" + teaconst.ProcessName
-
+		var exe = filepath.Dir(this.exe) + "/" + teaconst.ProcessName
 		var cmd = executils.NewCmd(exe, "start")
-		err = cmd.Start()
+		err := cmd.Start()
 		if err != nil {
 			return err
 		}
