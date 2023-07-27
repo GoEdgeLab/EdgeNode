@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
+	"github.com/iwind/TeaGo/types"
 	"net"
 	"net/http"
 	"time"
@@ -35,9 +36,24 @@ func (this *HTTPRequest) doMismatch() {
 	// 根据配置进行相应的处理
 	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
 	if globalServerConfig != nil && globalServerConfig.HTTPAll.MatchDomainStrictly {
+		var statusCode = 404
+		var httpAllConfig = globalServerConfig.HTTPAll
+		var mismatchAction = httpAllConfig.DomainMismatchAction
+
+		if mismatchAction != nil && mismatchAction.Options != nil {
+			var mismatchStatusCode = mismatchAction.Options.GetInt("statusCode")
+			if mismatchStatusCode > 0 && mismatchStatusCode >= 100 && mismatchStatusCode < 1000 {
+				statusCode = mismatchStatusCode
+			}
+		}
+
 		// 是否正在访问IP
 		if globalServerConfig.HTTPAll.NodeIPShowPage && net.ParseIP(this.ReqHost) != nil {
-			_, _ = this.writer.WriteString(this.Format(globalServerConfig.HTTPAll.NodeIPPageHTML))
+			var contentHTML = this.Format(globalServerConfig.HTTPAll.NodeIPPageHTML)
+			this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+			this.writer.Header().Set("Content-Length", types.String(len(contentHTML)))
+			this.writer.WriteHeader(statusCode)
+			_, _ = this.writer.WriteString(contentHTML)
 			return
 		}
 
@@ -55,13 +71,13 @@ func (this *HTTPRequest) doMismatch() {
 		}
 
 		// 处理当前连接
-		var httpAllConfig = globalServerConfig.HTTPAll
-		var mismatchAction = httpAllConfig.DomainMismatchAction
 		if mismatchAction != nil && mismatchAction.Code == "page" {
 			if mismatchAction.Options != nil {
+				var contentHTML = this.Format(mismatchAction.Options.GetString("contentHTML"))
 				this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-				this.writer.WriteHeader(mismatchAction.Options.GetInt("statusCode"))
-				_, _ = this.writer.Write([]byte(this.Format(mismatchAction.Options.GetString("contentHTML"))))
+				this.writer.Header().Set("Content-Length", types.String(len(contentHTML)))
+				this.writer.WriteHeader(statusCode)
+				_, _ = this.writer.Write([]byte(contentHTML))
 			} else {
 				http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
 			}
