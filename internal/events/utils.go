@@ -24,6 +24,12 @@ func On(event Event, callback func()) {
 	OnKey(event, nil, callback)
 }
 
+func OnEvents(events []Event, callback func()) {
+	for _, event := range events {
+		On(event, callback)
+	}
+}
+
 func OnClose(callback func()) {
 	On(EventQuit, callback)
 	On(EventTerminated, callback)

@@ -1056,6 +1056,9 @@ func (this *Node) reloadServer() {
 		if err != nil {
 			remotelogs.Error("NODE", "apply server config error: "+err.Error())
 		}
+
+		// notify event
+		events.Notify(events.EventReloadSomeServers)
 	}
 }
 
