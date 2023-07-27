@@ -37,7 +37,7 @@ func (this *HTTPRequest) doMismatch() {
 	if globalServerConfig != nil && globalServerConfig.HTTPAll.MatchDomainStrictly {
 		// 是否正在访问IP
 		if globalServerConfig.HTTPAll.NodeIPShowPage && net.ParseIP(this.ReqHost) != nil {
-			_, _ = this.writer.WriteString(globalServerConfig.HTTPAll.NodeIPPageHTML)
+			_, _ = this.writer.WriteString(this.Format(globalServerConfig.HTTPAll.NodeIPPageHTML))
 			return
 		}
 
@@ -61,7 +61,7 @@ func (this *HTTPRequest) doMismatch() {
 			if mismatchAction.Options != nil {
 				this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 				this.writer.WriteHeader(mismatchAction.Options.GetInt("statusCode"))
-				_, _ = this.writer.Write([]byte(mismatchAction.Options.GetString("contentHTML")))
+				_, _ = this.writer.Write([]byte(this.Format(mismatchAction.Options.GetString("contentHTML"))))
 			} else {
 				http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
 			}
