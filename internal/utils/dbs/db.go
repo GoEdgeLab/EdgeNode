@@ -7,10 +7,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fileutils"
 	_ "github.com/mattn/go-sqlite3"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +23,7 @@ var errDBIsClosed = errors.New("the database is closed")
 type DB struct {
 	locker *fileutils.Locker
 	rawDB  *sql.DB
+	dsn    string
 
 	statusLocker  sync.Mutex
 	countUpdating int32
@@ -41,6 +44,10 @@ func OpenReader(dsn string) (*DB, error) {
 }
 
 func open(dsn string, lock bool) (*DB, error) {
+	if teaconst.IsQuiting {
+		return nil, errors.New("can not open database when process is quiting")
+	}
+
 	// locker
 	var locker *fileutils.Locker
 	if lock {
@@ -64,14 +71,15 @@ func open(dsn string, lock bool) (*DB, error) {
 		return nil, err
 	}
 
-	var db = NewDB(rawDB)
+	var db = NewDB(rawDB, dsn)
 	db.locker = locker
 	return db, nil
 }
 
-func NewDB(rawDB *sql.DB) *DB {
+func NewDB(rawDB *sql.DB, dsn string) *DB {
 	var db = &DB{
 		rawDB: rawDB,
+		dsn:   dsn,
 	}
 
 	events.OnKey(events.EventQuit, fmt.Sprintf("db_%p", db), func() {
@@ -192,6 +200,14 @@ func (this *DB) Close() error {
 			_ = this.locker.Release()
 		}
 	}()
+
+	// print log
+	if len(this.dsn) > 0 {
+		u, _ := url.Parse(this.dsn)
+		if u != nil && len(u.Path) > 0 {
+			remotelogs.Debug("DB", "close '"+u.Path)
+		}
+	}
 
 	return this.rawDB.Close()
 }
