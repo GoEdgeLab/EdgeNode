@@ -10,7 +10,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/TeaOSLab/EdgeNode/internal/utils/fileutils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	_ "github.com/mattn/go-sqlite3"
 	"net/url"
 	"strings"
@@ -21,7 +21,7 @@ import (
 var errDBIsClosed = errors.New("the database is closed")
 
 type DB struct {
-	locker *fileutils.Locker
+	locker *fsutils.Locker
 	rawDB  *sql.DB
 	dsn    string
 
@@ -49,7 +49,7 @@ func open(dsn string, lock bool) (*DB, error) {
 	}
 
 	// locker
-	var locker *fileutils.Locker
+	var locker *fsutils.Locker
 	if lock {
 		var path = dsn
 		var queryIndex = strings.Index(dsn, "?")
@@ -57,7 +57,7 @@ func open(dsn string, lock bool) (*DB, error) {
 			path = path[:queryIndex]
 		}
 		path = strings.TrimSpace(strings.TrimPrefix(path, "file:"))
-		locker = fileutils.NewLocker(path)
+		locker = fsutils.NewLocker(path)
 		err := locker.Lock()
 		if err != nil {
 			remotelogs.Warn("DB", "lock '"+path+"' failed: "+err.Error())

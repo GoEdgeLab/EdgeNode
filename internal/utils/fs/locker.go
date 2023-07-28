@@ -1,6 +1,6 @@
 // Copyright 2023 Liuxiangchao iwind.liu@gmail.com. All rights reserved. Official site: https://goedge.cn .
 
-package fileutils
+package fsutils
 
 import (
 	"os"
