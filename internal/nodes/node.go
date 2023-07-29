@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	iplib "github.com/TeaOSLab/EdgeCommon/pkg/iplibrary"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
@@ -27,7 +26,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	_ "github.com/TeaOSLab/EdgeNode/internal/utils/agents" // 引入Agent管理器
 	_ "github.com/TeaOSLab/EdgeNode/internal/utils/clock"  // 触发时钟更新
-	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/jsonutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/andybalholm/brotli"
@@ -142,9 +140,6 @@ func (this *Node) Start() {
 
 	// 调整系统参数
 	this.checkSystem()
-
-	// 检查硬盘
-	this.checkDisk()
 
 	// 启动事件
 	events.Notify(events.EventStart)
@@ -1109,21 +1104,6 @@ func (this *Node) checkSystem() {
 				remotelogs.Println("NODE", "change kernel parameter '"+v.name+"' from '"+types.String(oldValue)+"' to '"+types.String(v.maxValue)+"'")
 			}
 		}
-	}
-}
-
-// 检查硬盘
-func (this *Node) checkDisk() {
-	speedMB, isFast, err := fsutils.CheckDiskIsFast()
-	if err != nil {
-		remotelogs.Error("NODE", "check disk speed failed: "+err.Error())
-		return
-	}
-	teaconst.DiskIsFast = isFast
-	if isFast {
-		remotelogs.Println("NODE", "disk is fast, writing test speed: "+fmt.Sprintf("%.2fMB/s", speedMB))
-	} else {
-		remotelogs.Println("NODE", "disk is slow, writing test speed: "+fmt.Sprintf("%.2fMB/s", speedMB))
 	}
 }
 

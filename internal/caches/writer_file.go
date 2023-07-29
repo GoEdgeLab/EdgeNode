@@ -3,6 +3,7 @@ package caches
 import (
 	"encoding/binary"
 	"errors"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"os"
@@ -42,7 +43,9 @@ func NewFileWriter(storage StorageInterface, rawWriter *os.File, key string, exp
 
 // WriteHeader 写入数据
 func (this *FileWriter) WriteHeader(data []byte) (n int, err error) {
+	fsutils.WriteBegin()
 	n, err = this.rawWriter.Write(data)
+	fsutils.WriteEnd()
 	this.headerSize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -72,7 +75,9 @@ func (this *FileWriter) WriteHeaderLength(headerLength int) error {
 
 // Write 写入数据
 func (this *FileWriter) Write(data []byte) (n int, err error) {
+	fsutils.WriteBegin()
 	n, err = this.rawWriter.Write(data)
+	fsutils.WriteEnd()
 	this.bodySize += int64(n)
 
 	if this.maxSize > 0 && this.bodySize > this.maxSize {

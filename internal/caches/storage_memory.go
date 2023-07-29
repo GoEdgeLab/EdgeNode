@@ -488,10 +488,8 @@ func (this *MemoryStorage) startFlush() {
 				if err == nil && loadStat != nil {
 					if loadStat.Load1 > 10 {
 						writeDelayMS = 100
-					} else if loadStat.Load1 > 3 {
+					} else if loadStat.Load1 > 5 {
 						writeDelayMS = 50
-					} else if loadStat.Load1 > 2 {
-						writeDelayMS = 10
 					} else {
 						writeDelayMS = 0
 					}

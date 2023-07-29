@@ -4,6 +4,7 @@ package caches
 
 import (
 	"encoding/binary"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"os"
@@ -53,7 +54,9 @@ func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
 	if !this.isNew {
 		return
 	}
+	fsutils.WriteBegin()
 	n, err = this.rawWriter.Write(data)
+	fsutils.WriteEnd()
 	this.headerSize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -62,7 +65,9 @@ func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
 }
 
 func (this *PartialFileWriter) AppendHeader(data []byte) error {
+	fsutils.WriteBegin()
 	_, err := this.rawWriter.Write(data)
+	fsutils.WriteEnd()
 	if err != nil {
 		_ = this.Discard()
 	} else {
@@ -99,7 +104,9 @@ func (this *PartialFileWriter) WriteHeaderLength(headerLength int) error {
 
 // Write 写入数据
 func (this *PartialFileWriter) Write(data []byte) (n int, err error) {
+	fsutils.WriteBegin()
 	n, err = this.rawWriter.Write(data)
+	fsutils.WriteEnd()
 	this.bodySize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -128,7 +135,9 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 		this.bodyOffset = SizeMeta + int64(keyLength) + this.headerSize
 	}
 
+	fsutils.WriteBegin()
 	_, err := this.rawWriter.WriteAt(data, this.bodyOffset+offset)
+	fsutils.WriteEnd()
 	if err != nil {
 		return err
 	}

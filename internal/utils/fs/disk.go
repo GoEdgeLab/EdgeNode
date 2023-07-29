@@ -65,5 +65,11 @@ func CheckDiskIsFast() (speedMB float64, isFast bool, err error) {
 		return
 	}
 	isFast = speedMB > 120
+
+	if speedMB > DiskSpeedMB {
+		DiskSpeedMB = speedMB
+		DiskIsFast = isFast
+	}
+
 	return
 }

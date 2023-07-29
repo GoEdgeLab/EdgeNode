@@ -12,7 +12,7 @@ var (
 	ErrEntityTooLarge     = errors.New("entity too large")
 	ErrWritingUnavailable = errors.New("writing unavailable")
 	ErrWritingQueueFull   = errors.New("writing queue full")
-	ErrTooManyOpenFiles   = errors.New("too many open files")
+	ErrServerIsBusy       = errors.New("server is busy")
 )
 
 // CapacityError 容量错误
@@ -38,7 +38,7 @@ func CanIgnoreErr(err error) bool {
 		err == ErrEntityTooLarge ||
 		err == ErrWritingUnavailable ||
 		err == ErrWritingQueueFull ||
-		err == ErrTooManyOpenFiles {
+		err == ErrServerIsBusy {
 		return true
 	}
 	_, ok := err.(*CapacityError)
