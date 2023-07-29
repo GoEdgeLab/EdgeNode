@@ -614,7 +614,9 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 			metaBodySize = bodySize
 		}
 
+		fsutils.WriteBegin()
 		_, err = writer.Write(metaBytes)
+		fsutils.WriteEnd()
 		if err != nil {
 			return nil, err
 		}
