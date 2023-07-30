@@ -75,23 +75,30 @@ func (this *FileWriter) WriteHeaderLength(headerLength int) error {
 
 // Write 写入数据
 func (this *FileWriter) Write(data []byte) (n int, err error) {
-	fsutils.WriteBegin()
-	n, err = this.rawWriter.Write(data)
-	fsutils.WriteEnd()
-	this.bodySize += int64(n)
-
-	if this.maxSize > 0 && this.bodySize > this.maxSize {
-		err = ErrEntityTooLarge
-
-		if this.storage != nil {
-			this.storage.IgnoreKey(this.key, this.maxSize)
+	// split LARGE data
+	var l = len(data)
+	if l > (2 << 20) {
+		var offset = 0
+		const bufferSize = 256 << 10
+		for {
+			var end = offset + bufferSize
+			if end > l {
+				end = l
+			}
+			n1, err1 := this.write(data[offset:end])
+			n += n1
+			if err1 != nil {
+				return n, err1
+			}
+			if end >= l {
+				return n, nil
+			}
+			offset = end
 		}
 	}
 
-	if err != nil {
-		_ = this.Discard()
-	}
-	return
+	// write NORMAL size data
+	return this.write(data)
 }
 
 // WriteAt 在指定位置写入数据
@@ -186,4 +193,24 @@ func (this *FileWriter) Key() string {
 // ItemType 获取内容类型
 func (this *FileWriter) ItemType() ItemType {
 	return ItemTypeFile
+}
+
+func (this *FileWriter) write(data []byte) (n int, err error) {
+	fsutils.WriteBegin()
+	n, err = this.rawWriter.Write(data)
+	fsutils.WriteEnd()
+	this.bodySize += int64(n)
+
+	if this.maxSize > 0 && this.bodySize > this.maxSize {
+		err = ErrEntityTooLarge
+
+		if this.storage != nil {
+			this.storage.IgnoreKey(this.key, this.maxSize)
+		}
+	}
+
+	if err != nil {
+		_ = this.Discard()
+	}
+	return
 }
