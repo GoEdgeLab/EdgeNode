@@ -362,10 +362,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 	// 写入Header
 	var headerBuf = utils.SharedBufferPool.Get()
 	for k, v := range this.Header() {
-		if k == "Set-Cookie" ||
-			k == "Strict-Transport-Security" ||
-			k == "Alt-Svc" ||
-			(this.isPartial && k == "Content-Range") {
+		if this.shouldIgnoreHeader(k) {
 			continue
 		}
 		for _, v1 := range v {
@@ -693,10 +690,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		// 写入Header
 		var headerBuffer = utils.SharedBufferPool.Get()
 		for k, v := range this.Header() {
-			if k == "Set-Cookie" ||
-				k == "Strict-Transport-Security" ||
-				k == "Alt-Svc" ||
-				(this.isPartial && k == "Content-Range") {
+			if this.shouldIgnoreHeader(k) {
 				continue
 			}
 			for _, v1 := range v {
@@ -1039,9 +1033,7 @@ func (this *HTTPWriter) finishWebP() {
 			if webpCacheWriter != nil {
 				// 写入Header
 				for k, v := range this.Header() {
-					if k == "Set-Cookie" ||
-						k == "Strict-Transport-Security" ||
-						k == "Alt-Svc" {
+					if this.shouldIgnoreHeader(k) {
 						continue
 					}
 
@@ -1260,10 +1252,7 @@ func (this *HTTPWriter) finishRequest() {
 // 计算Header长度
 func (this *HTTPWriter) calculateHeaderLength() (result int) {
 	for k, v := range this.Header() {
-		if k == "Set-Cookie" ||
-			k == "Strict-Transport-Security" ||
-			k == "Alt-Svc" ||
-			(this.isPartial && k == "Content-Range") {
+		if this.shouldIgnoreHeader(k) {
 			continue
 		}
 		for _, v1 := range v {
@@ -1271,4 +1260,13 @@ func (this *HTTPWriter) calculateHeaderLength() (result int) {
 		}
 	}
 	return
+}
+
+func (this *HTTPWriter) shouldIgnoreHeader(name string) bool {
+	switch name {
+	case "Set-Cookie", "Strict-Transport-Security", "Alt-Svc", "Upgrade":
+		return true
+	default:
+		return (this.isPartial && name == "Content-Range")
+	}
 }
