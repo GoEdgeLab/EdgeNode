@@ -82,3 +82,18 @@ func (this *ClientTLSConn) Fingerprint() []byte {
 	}
 	return nil
 }
+
+// LastRequestBytes 读取上一次请求发送的字节数
+func (this *ClientTLSConn) LastRequestBytes() int64 {
+	tlsConn, ok := this.rawConn.(*tls.Conn)
+	if ok {
+		var rawConn = tlsConn.NetConn()
+		if rawConn != nil {
+			clientConn, ok := rawConn.(*ClientConn)
+			if ok {
+				return clientConn.LastRequestBytes()
+			}
+		}
+	}
+	return 0
+}

@@ -188,6 +188,8 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 	var before = time.Now()
 	n, err = this.rawConn.Write(b)
 	if n > 0 {
+		atomic.AddInt64(&this.totalSentBytes, int64(n))
+
 		// 统计当前服务带宽
 		if this.serverId > 0 {
 			// TODO 需要加入在serverId绑定之前的带宽

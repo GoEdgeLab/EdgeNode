@@ -389,6 +389,21 @@ func (this *HTTPRequest) doEnd() {
 	// 流量统计
 	// TODO 增加是否开启开关
 	if this.ReqServer != nil && this.ReqServer.Id > 0 {
+		var totalBytes int64 = 0
+
+		var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+		if requestConn != nil {
+			requestClientConn, ok := requestConn.(ClientConnInterface)
+			if ok {
+				// 这里读取的其实是上一个请求消耗的流量，不是当前请求消耗的流量，只不过单个请求的流量统计不需要特别精确，整体趋于一致即可
+				totalBytes = requestClientConn.LastRequestBytes()
+			}
+		}
+
+		if totalBytes == 0 {
+			totalBytes = this.writer.SentBodyBytes() + this.writer.SentHeaderBytes()
+		}
+
 		var countCached int64 = 0
 		var cachedBytes int64 = 0
 
@@ -397,14 +412,17 @@ func (this *HTTPRequest) doEnd() {
 
 		if this.isCached {
 			countCached = 1
-			cachedBytes = this.writer.SentBodyBytes() + this.writer.SentHeaderBytes()
+			cachedBytes = totalBytes
 		}
 		if this.isAttack {
 			countAttacks = 1
 			attackBytes = this.CalculateSize()
+			if attackBytes < totalBytes {
+				attackBytes = totalBytes
+			}
 		}
 
-		stats.SharedTrafficStatManager.Add(this.ReqServer.UserId, this.ReqServer.Id, this.ReqHost, this.writer.SentBodyBytes()+this.writer.SentHeaderBytes(), cachedBytes, 1, countCached, countAttacks, attackBytes, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
+		stats.SharedTrafficStatManager.Add(this.ReqServer.UserId, this.ReqServer.Id, this.ReqHost, totalBytes, cachedBytes, 1, countCached, countAttacks, attackBytes, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
 
 		// 指标
 		if metrics.SharedManager.HasHTTPMetrics() {

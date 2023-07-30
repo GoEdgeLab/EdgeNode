@@ -38,7 +38,7 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 		GetConfigForClient: func(clientInfo *tls.ClientHelloInfo) (config *tls.Config, e error) {
 			// 指纹信息
 			var fingerprint = this.calculateFingerprint(clientInfo)
-			if len(fingerprint) > 0 {
+			if len(fingerprint) > 0 && clientInfo.Conn != nil {
 				clientConn, ok := clientInfo.Conn.(ClientConnInterface)
 				if ok {
 					clientConn.SetFingerprint(fingerprint)
@@ -61,7 +61,7 @@ func (this *BaseListener) buildTLSConfig() *tls.Config {
 		GetCertificate: func(clientInfo *tls.ClientHelloInfo) (certificate *tls.Certificate, e error) {
 			// 指纹信息
 			var fingerprint = this.calculateFingerprint(clientInfo)
-			if len(fingerprint) > 0 {
+			if len(fingerprint) > 0 && clientInfo.Conn != nil {
 				clientConn, ok := clientInfo.Conn.(ClientConnInterface)
 				if ok {
 					clientConn.SetFingerprint(fingerprint)
@@ -235,7 +235,7 @@ func (this *BaseListener) findNamedServerMatched(name string) (serverConfig *ser
 // 从Hello信息中获取服务名称
 func (this *BaseListener) helloServerName(clientInfo *tls.ClientHelloInfo) string {
 	var serverName = clientInfo.ServerName
-	if len(serverName) == 0 {
+	if len(serverName) == 0 && clientInfo.Conn != nil {
 		var localAddr = clientInfo.Conn.LocalAddr()
 		if localAddr != nil {
 			tcpAddr, ok := localAddr.(*net.TCPAddr)

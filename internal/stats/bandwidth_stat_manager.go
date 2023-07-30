@@ -132,9 +132,10 @@ func (this *BandwidthStatManager) Loop() error {
 	for key, stat := range this.m {
 		if stat.Day < day || stat.TimeAt < currentTime {
 			// 防止数据出现错误
-			if stat.CachedBytes > stat.TotalBytes {
+			if stat.CachedBytes > stat.TotalBytes || stat.CountCachedRequests == stat.CountRequests {
 				stat.CachedBytes = stat.TotalBytes
 			}
+
 			if stat.AttackBytes > stat.TotalBytes {
 				stat.AttackBytes = stat.TotalBytes
 			}

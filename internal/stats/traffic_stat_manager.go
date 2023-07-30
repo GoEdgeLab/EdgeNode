@@ -42,8 +42,6 @@ func (this *TrafficItem) Add(anotherItem *TrafficItem) {
 	this.AttackBytes += anotherItem.AttackBytes
 }
 
-const trafficStatsMaxLife = 1200 // 最大只保存20分钟内的数据
-
 // TrafficStatManager 区域流量统计
 type TrafficStatManager struct {
 	itemMap    map[string]*TrafficItem           // [timestamp serverId] => *TrafficItem
@@ -231,6 +229,12 @@ func (this *TrafficStatManager) Upload() error {
 			if len(pieces) != 2 {
 				continue
 			}
+
+			// 修正数据
+			if item.CachedBytes > item.Bytes || item.CountCachedRequests == item.CountRequests {
+				item.CachedBytes = item.Bytes
+			}
+
 			var pbItem = &pb.UploadServerDailyStatsRequest_DomainStat{
 				ServerId:            serverId,
 				Domain:              pieces[1],

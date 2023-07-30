@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,6 +26,8 @@ type BaseClientConn struct {
 	isClosed bool
 
 	rawIP string
+
+	totalSentBytes int64
 }
 
 func (this *BaseClientConn) IsClosed() bool {
@@ -159,4 +162,11 @@ func (this *BaseClientConn) SetFingerprint(fingerprint []byte) {
 // Fingerprint 读取指纹信息
 func (this *BaseClientConn) Fingerprint() []byte {
 	return this.fingerprint
+}
+
+// LastRequestBytes 读取上一次请求发送的字节数
+func (this *BaseClientConn) LastRequestBytes() int64 {
+	var result = atomic.LoadInt64(&this.totalSentBytes)
+	atomic.StoreInt64(&this.totalSentBytes, 0)
+	return result
 }

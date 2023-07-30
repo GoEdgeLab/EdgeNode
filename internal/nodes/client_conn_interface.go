@@ -32,4 +32,7 @@ type ClientConnInterface interface {
 
 	// Fingerprint 读取指纹信息
 	Fingerprint() []byte
+
+	// LastRequestBytes 读取上一次请求发送的字节数
+	LastRequestBytes() int64
 }
