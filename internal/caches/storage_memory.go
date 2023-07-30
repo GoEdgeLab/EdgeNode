@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
@@ -483,7 +484,8 @@ func (this *MemoryStorage) startFlush() {
 		if statCount == 100 {
 			statCount = 0
 
-			if protectingLoadWhenDump {
+			// delay some time to reduce load if needed
+			if !fsutils.DiskIsFast {
 				loadStat, err := load.Avg()
 				if err == nil && loadStat != nil {
 					if loadStat.Load1 > 10 {

@@ -61,8 +61,6 @@ const (
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
 var sharedWritingFileKeyLocker = sync.Mutex{}
 
-const protectingLoadWhenDump = false
-
 // FileStorage 文件缓存
 //
 //	文件结构：
