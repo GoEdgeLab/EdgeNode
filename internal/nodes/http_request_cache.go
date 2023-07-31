@@ -90,6 +90,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		return
 	}
 
+	// 是否强制Range回源
+	if this.cacheRef.AlwaysForwardRangeRequest && len(this.RawReq.Header.Get("Range")) > 0 {
+		this.cacheRef = nil
+		cacheBypassDescription = "BYPASS, forward range"
+		return
+	}
+
 	// 是否正在Purge
 	var isPurging = this.web.Cache.PurgeIsOn && strings.ToUpper(this.RawReq.Method) == "PURGE" && this.RawReq.Header.Get("X-Edge-Purge-Key") == this.web.Cache.PurgeKey
 	if isPurging {
