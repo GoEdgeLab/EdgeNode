@@ -146,7 +146,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 					return nil, err
 				}
 
-				return conn, nil
+				return NewOriginConn(conn), nil
 			},
 			MaxIdleConns:          0,
 			MaxIdleConnsPerHost:   idleConns,

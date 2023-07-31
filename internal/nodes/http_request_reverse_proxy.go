@@ -524,7 +524,28 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			}
 		}
 	} else {
-		_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+		if this.cacheRef != nil &&
+			this.cacheRef.EnableReadingOriginAsync &&
+			resp.ContentLength > 0 &&
+			resp.ContentLength < (128<<20) { // TODO configure max content-length in cache policy OR CacheRef
+			var requestIsCanceled = false
+			for {
+				n, readErr := resp.Body.Read(buf)
+
+				if n > 0 && !requestIsCanceled {
+					_, err = this.writer.Write(buf[:n])
+					if err != nil {
+						requestIsCanceled = true
+					}
+				}
+				if readErr != nil {
+					err = readErr
+					break
+				}
+			}
+		} else {
+			_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+		}
 	}
 	pool.Put(buf)
 
