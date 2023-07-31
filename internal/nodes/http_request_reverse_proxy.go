@@ -404,7 +404,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	}
 
 	// 特殊页面
-	if len(this.web.Pages) > 0 && this.doPage(resp.StatusCode) {
+	if this.doPage(resp.StatusCode) {
 		err := resp.Body.Close()
 		if err != nil {
 			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error (Page): "+err.Error())
