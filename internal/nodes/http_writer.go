@@ -1055,7 +1055,9 @@ func (this *HTTPWriter) finishWebP() {
 				if webpCacheWriter != nil {
 					var teeWriter = writers.NewTeeWriterCloser(this.writer, webpCacheWriter)
 					teeWriter.OnFail(func(err error) {
-						_ = webpCacheWriter.Discard()
+						if webpCacheWriter != nil {
+							_ = webpCacheWriter.Discard()
+						}
 						webpCacheWriter = nil
 					})
 					this.writer = teeWriter
