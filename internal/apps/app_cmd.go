@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"errors"
 	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
@@ -10,6 +11,7 @@ import (
 	"github.com/iwind/gosock/pkg/gosock"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -87,8 +89,8 @@ func (this *AppCmd) Print() {
 		fmt.Println("")
 		fmt.Println("Options:")
 
-		spaces := 20
-		max := 40
+		var spaces = 20
+		var max = 40
 		for _, option := range this.options {
 			l := len(option.Code)
 			if l < max && l > spaces {
@@ -126,7 +128,7 @@ func (this *AppCmd) On(arg string, callback func()) {
 // Run 运行
 func (this *AppCmd) Run(main func()) {
 	// 获取参数
-	args := os.Args[1:]
+	var args = os.Args[1:]
 	if len(args) > 0 {
 		switch args[0] {
 		case "-v", "version", "-version", "--version":
@@ -191,7 +193,7 @@ func (this *AppCmd) runStart() {
 
 	_ = os.Setenv("EdgeBackground", "on")
 
-	cmd := exec.Command(os.Args[0])
+	var cmd = exec.Command(this.exe())
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Foreground: false,
 		Setsid:     true,
@@ -202,6 +204,9 @@ func (this *AppCmd) runStart() {
 		fmt.Println(this.product+"  start failed:", err.Error())
 		return
 	}
+
+	// create symbolic links
+	_ = this.createSymLinks()
 
 	fmt.Println(this.product+" started ok, pid:", cmd.Process.Pid)
 }
@@ -276,4 +281,59 @@ func (this *AppCmd) ParseOptions(args []string) map[string][]string {
 		result[key] = append(result[key], value)
 	}
 	return result
+}
+
+func (this *AppCmd) exe() string {
+	var exe, _ = os.Executable()
+	if len(exe) == 0 {
+		exe = os.Args[0]
+	}
+	return exe
+}
+
+// 创建软链接
+func (this *AppCmd) createSymLinks() error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+
+	var exe, _ = os.Executable()
+	if len(exe) == 0 {
+		return nil
+	}
+
+	var errorList = []string{}
+
+	// bin
+	{
+		var target = "/usr/bin/" + teaconst.ProcessName
+		old, _ := filepath.EvalSymlinks(target)
+		if old != exe {
+			_ = os.Remove(target)
+			err := os.Symlink(exe, target)
+			if err != nil {
+				errorList = append(errorList, err.Error())
+			}
+		}
+	}
+
+	// log
+	{
+		var realPath = filepath.Dir(filepath.Dir(exe)) + "/logs/run.log"
+		var target = "/var/log/" + teaconst.ProcessName + ".log"
+		old, _ := filepath.EvalSymlinks(target)
+		if old != realPath {
+			_ = os.Remove(target)
+			err := os.Symlink(realPath, target)
+			if err != nil {
+				errorList = append(errorList, err.Error())
+			}
+		}
+	}
+
+	if len(errorList) > 0 {
+		return errors.New(strings.Join(errorList, "\n"))
+	}
+
+	return nil
 }
