@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+const defaultPageContentType = "text/html; charset=utf-8"
+
 // 请求特殊页面
 func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 	if len(this.web.Pages) == 0 {
@@ -58,6 +60,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 					var realpath = path.Clean(page.URL)
 					if !strings.HasPrefix(realpath, "/pages/") && !strings.HasPrefix(realpath, "pages/") { // only files under "/pages/" can be used
 						var msg = "404 page not found: '" + page.URL + "'"
+						this.writer.Header().Set("Content-Type", defaultPageContentType)
 						this.writer.WriteHeader(http.StatusNotFound)
 						_, _ = this.writer.Write([]byte(msg))
 						return true
@@ -66,6 +69,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 					fp, err := os.Open(file)
 					if err != nil {
 						var msg = "404 page not found: '" + page.URL + "'"
+						this.writer.Header().Set("Content-Type", defaultPageContentType)
 						this.writer.WriteHeader(http.StatusNotFound)
 						_, _ = this.writer.Write([]byte(msg))
 						return true
@@ -77,6 +81,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 					stat, err := fp.Stat()
 					if err != nil {
 						var msg = "404 could not read page content: '" + page.URL + "'"
+						this.writer.Header().Set("Content-Type", defaultPageContentType)
 						this.writer.WriteHeader(http.StatusNotFound)
 						_, _ = this.writer.Write([]byte(msg))
 						return true
@@ -85,10 +90,12 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 					// 修改状态码
 					if page.NewStatus > 0 {
 						// 自定义响应Headers
+						this.writer.Header().Set("Content-Type", defaultPageContentType)
 						this.ProcessResponseHeaders(this.writer.Header(), page.NewStatus)
 						this.writer.Prepare(nil, stat.Size(), page.NewStatus, true)
 						this.writer.WriteHeader(page.NewStatus)
 					} else {
+						this.writer.Header().Set("Content-Type", defaultPageContentType)
 						this.ProcessResponseHeaders(this.writer.Header(), status)
 						this.writer.Prepare(nil, stat.Size(), status, true)
 						this.writer.WriteHeader(status)
@@ -120,10 +127,12 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 				// 修改状态码
 				if page.NewStatus > 0 {
 					// 自定义响应Headers
+					this.writer.Header().Set("Content-Type", defaultPageContentType)
 					this.ProcessResponseHeaders(this.writer.Header(), page.NewStatus)
 					this.writer.Prepare(nil, int64(len(content)), page.NewStatus, true)
 					this.writer.WriteHeader(page.NewStatus)
 				} else {
+					this.writer.Header().Set("Content-Type", defaultPageContentType)
 					this.ProcessResponseHeaders(this.writer.Header(), status)
 					this.writer.Prepare(nil, int64(len(content)), status, true)
 					this.writer.WriteHeader(status)
