@@ -12,7 +12,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	_ "github.com/mattn/go-sqlite3"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -202,12 +201,12 @@ func (this *DB) Close() error {
 	}()
 
 	// print log
-	if len(this.dsn) > 0 {
+	/**if len(this.dsn) > 0 {
 		u, _ := url.Parse(this.dsn)
 		if u != nil && len(u.Path) > 0 {
 			remotelogs.Debug("DB", "close '"+u.Path)
 		}
-	}
+	}**/
 
 	return this.rawDB.Close()
 }

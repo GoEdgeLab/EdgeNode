@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/nodes"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
@@ -17,17 +18,77 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"sort"
+	"time"
 )
 
 func main() {
 	var app = apps.NewAppCmd().
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
-		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof|accesslog]").
-		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc]").
+		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof|accesslog|uninstall]").
+		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc|bandwidth|disk]").
 		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove|ip.close] IP")
 
+	app.On("uninstall", func() {
+		// service
+		fmt.Println("Uninstall service ...")
+		var manager = utils.NewServiceManager(teaconst.ProcessName, teaconst.ProductName)
+		go func() {
+			_ = manager.Uninstall()
+		}()
+
+		// stop
+		fmt.Println("Stopping ...")
+		_, _ = gosock.NewTmpSock(teaconst.ProcessName).SendTimeout(&gosock.Command{Code: "stop"}, 1*time.Second)
+
+		// delete files
+		var exe, _ = os.Executable()
+		if len(exe) == 0 {
+			return
+		}
+
+		var dir = filepath.Dir(filepath.Dir(exe)) // ROOT / bin / exe
+
+		// verify dir
+		{
+			fmt.Println("Checking '" + dir + "' ...")
+			for _, subDir := range []string{"bin", "configs/api.yaml", "logs"} {
+				_, err := os.Stat(dir + "/" + subDir)
+				if err != nil {
+					fmt.Println("[ERROR]program directory structure has been broken, please remove it manually.")
+					return
+				}
+			}
+
+			fmt.Println("Removing '" + dir + "' ...")
+			err := os.RemoveAll(dir)
+			if err != nil {
+				fmt.Println("[ERROR]remove failed: " + err.Error())
+			}
+		}
+
+		// delete symbolic links
+		fmt.Println("Removing symbolic links ...")
+		_ = os.Remove("/usr/bin/" + teaconst.ProcessName)
+		_ = os.Remove("/var/log/" + teaconst.ProcessName)
+
+		// delete configs
+		// nothing to delete for EdgeNode
+
+		// delete sock
+		fmt.Println("Removing temporary files ...")
+		var tempDir = os.TempDir()
+		_ = os.Remove(tempDir + "/" + teaconst.ProcessName + ".sock")
+		_ = os.Remove(tempDir + "/" + teaconst.AccessLogSockName)
+
+		// cache ...
+		fmt.Println("Please delete cache directories by yourself.")
+
+		// done
+		fmt.Println("[DONE]")
+	})
 	app.On("test", func() {
 		err := nodes.NewNode().Test()
 		if err != nil {
