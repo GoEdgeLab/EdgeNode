@@ -82,8 +82,7 @@ func (this *NodeStatusExecutor) update() {
 	status.BuildVersionCode = utils.VersionToLong(teaconst.Version)
 	status.OS = runtime.GOOS
 	status.Arch = runtime.GOARCH
-	exe, _ := os.Executable()
-	status.ExePath = exe
+	status.ExePath, _ = os.Executable()
 	status.ConfigVersion = sharedNodeConfig.Version
 	status.IsActive = true
 	status.ConnectionCount = sharedListenerManager.TotalActiveConnections()
@@ -208,6 +207,8 @@ func (this *NodeStatusExecutor) updateCPU(status *nodeconfigs.NodeStatus) {
 
 // 更新硬盘
 func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
+	status.DiskWritingSpeedMB = int(fsutils.DiskSpeedMB)
+
 	partitions, err := disk.Partitions(false)
 	if err != nil {
 		remotelogs.Error("NODE_STATUS", err.Error())
