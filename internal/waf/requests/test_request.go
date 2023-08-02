@@ -84,3 +84,7 @@ func (this *TestRequest) WAFFingerprint() []byte {
 func (this *TestRequest) DisableAccessLog() {
 
 }
+
+func (this *TestRequest) ProcessResponseHeaders(headers http.Header, status int) {
+
+}
