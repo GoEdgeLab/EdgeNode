@@ -11,7 +11,7 @@ import (
 func TestWrites(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	for i := 0; i < fsutils.MaxWrites+1; i++ {
+	for i := 0; i < int(fsutils.DiskMaxWrites); i++ {
 		fsutils.WriteBegin()
 	}
 	a.IsFalse(fsutils.WriteReady())

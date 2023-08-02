@@ -485,7 +485,7 @@ func (this *MemoryStorage) startFlush() {
 			statCount = 0
 
 			// delay some time to reduce load if needed
-			if !fsutils.DiskIsFast {
+			if !fsutils.DiskIsFast() {
 				loadStat, err := load.Avg()
 				if err == nil && loadStat != nil {
 					if loadStat.Load1 > 10 {

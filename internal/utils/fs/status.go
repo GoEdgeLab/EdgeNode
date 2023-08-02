@@ -8,9 +8,33 @@ import (
 	"time"
 )
 
+type Speed int
+
+func (this Speed) String() string {
+	switch this {
+	case SpeedExtremelyFast:
+		return "extremely fast"
+	case SpeedFast:
+		return "fast"
+	case SpeedLow:
+		return "low"
+	case SpeedExtremelySlow:
+		return "extremely slow"
+	}
+	return "unknown"
+}
+
+const (
+	SpeedExtremelyFast Speed = 1
+	SpeedFast          Speed = 2
+	SpeedLow           Speed = 3
+	SpeedExtremelySlow Speed = 4
+)
+
 var (
-	DiskIsFast  bool
-	DiskSpeedMB float64
+	DiskSpeed           = SpeedLow
+	DiskMaxWrites int32 = 32
+	DiskSpeedMB   float64
 )
 
 func init() {
@@ -38,17 +62,14 @@ func init() {
 	}()
 }
 
+func DiskIsFast() bool {
+	return DiskSpeed == SpeedExtremelyFast || DiskSpeed == SpeedFast
+}
+
 var countWrites int32 = 0
 
-const MaxWrites = 32
-const MaxFastWrites = 128
-
 func WriteReady() bool {
-	var count = atomic.LoadInt32(&countWrites)
-	if DiskIsFast {
-		return count < MaxFastWrites
-	}
-	return count <= MaxWrites
+	return atomic.LoadInt32(&countWrites) < DiskMaxWrites
 }
 
 func WriteBegin() {
@@ -57,4 +78,19 @@ func WriteBegin() {
 
 func WriteEnd() {
 	atomic.AddInt32(&countWrites, -1)
+}
+
+func calculateDiskMaxWrites() {
+	switch DiskSpeed {
+	case SpeedExtremelyFast:
+		DiskMaxWrites = 256
+	case SpeedFast:
+		DiskMaxWrites = 128
+	case SpeedLow:
+		DiskMaxWrites = 32
+	case SpeedExtremelySlow:
+		DiskMaxWrites = 16
+	default:
+		DiskMaxWrites = 16
+	}
 }
