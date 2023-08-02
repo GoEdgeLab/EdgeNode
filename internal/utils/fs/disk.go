@@ -4,6 +4,7 @@ package fsutils
 
 import (
 	"bytes"
+	"math"
 	"os"
 	"time"
 )
@@ -52,6 +53,7 @@ func CheckDiskWritingSpeed() (speedMB float64, err error) {
 
 	var costSeconds = time.Since(before).Seconds()
 	speedMB = float64(len(data)) / (1 << 20) / costSeconds
+	speedMB = math.Ceil(speedMB/10) * 10
 
 	isClosed = true
 

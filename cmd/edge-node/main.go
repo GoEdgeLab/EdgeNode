@@ -436,7 +436,7 @@ func main() {
 				if err != nil {
 					fmt.Println("[ERROR]" + err.Error())
 				} else {
-					fmt.Printf("Speed: %.2fMB/s\n", speedMB)
+					fmt.Printf("Speed: %.0fMB/s\n", speedMB)
 					if isFast {
 						fmt.Println("IsFast: true")
 					} else {
