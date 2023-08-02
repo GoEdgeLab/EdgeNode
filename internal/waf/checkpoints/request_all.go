@@ -2,7 +2,6 @@ package checkpoints
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 )
 
@@ -12,7 +11,7 @@ type RequestAllCheckpoint struct {
 }
 
 func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
-	valueBytes := []byte{}
+	var valueBytes = []byte{}
 	if len(req.WAFRaw().RequestURI) > 0 {
 		valueBytes = append(valueBytes, req.WAFRaw().RequestURI...)
 	} else if req.WAFRaw().URL != nil {
@@ -30,7 +29,7 @@ func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param strin
 		var bodyData = req.WAFGetCacheBody()
 		hasRequestBody = true
 		if len(bodyData) == 0 {
-			data, err := req.WAFReadBody(utils.MaxBodySize) // read body
+			data, err := req.WAFReadBody(req.WAFMaxRequestSize()) // read body
 			if err != nil {
 				return "", hasRequestBody, err, nil
 			}

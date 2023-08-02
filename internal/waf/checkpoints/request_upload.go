@@ -3,7 +3,6 @@ package checkpoints
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
 	"io"
@@ -40,7 +39,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param st
 	if req.WAFRaw().MultipartForm == nil {
 		var bodyData = req.WAFGetCacheBody()
 		if len(bodyData) == 0 {
-			data, err := req.WAFReadBody(utils.MaxBodySize)
+			data, err := req.WAFReadBody(req.WAFMaxRequestSize())
 			if err != nil {
 				sysErr = err
 				return
@@ -53,7 +52,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param st
 		oldBody := req.WAFRaw().Body
 		req.WAFRaw().Body = io.NopCloser(bytes.NewBuffer(bodyData))
 
-		err := req.WAFRaw().ParseMultipartForm(utils.MaxBodySize)
+		err := req.WAFRaw().ParseMultipartForm(req.WAFMaxRequestSize())
 
 		// 还原
 		req.WAFRaw().Body = oldBody

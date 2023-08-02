@@ -35,6 +35,9 @@ type Request interface {
 	// WAFFingerprint 读取连接指纹
 	WAFFingerprint() []byte
 
+	// WAFMaxRequestSize 可以检查的最大内容尺寸
+	WAFMaxRequestSize() int64
+
 	// Format 格式化变量
 	Format(string) string
 

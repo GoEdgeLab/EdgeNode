@@ -441,6 +441,14 @@ func (this *HTTPRequest) WAFFingerprint() []byte {
 	return nil
 }
 
+func (this *HTTPRequest) WAFMaxRequestSize() int64 {
+	var maxRequestSize = firewallconfigs.DefaultMaxRequestBodySize
+	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.MaxRequestBodySize > 0 {
+		maxRequestSize = this.ReqServer.HTTPFirewallPolicy.MaxRequestBodySize
+	}
+	return maxRequestSize
+}
+
 // DisableAccessLog 在当前请求中不使用访问日志
 func (this *HTTPRequest) DisableAccessLog() {
 	this.disableLog = true

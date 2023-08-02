@@ -2,7 +2,6 @@ package checkpoints
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"net/url"
 )
@@ -27,7 +26,7 @@ func (this *RequestFormArgCheckpoint) RequestValue(req requests.Request, param s
 
 	var bodyData = req.WAFGetCacheBody()
 	if len(bodyData) == 0 {
-		data, err := req.WAFReadBody(utils.MaxBodySize) // read body
+		data, err := req.WAFReadBody(req.WAFMaxRequestSize()) // read body
 		if err != nil {
 			return "", hasRequestBody, err, nil
 		}
