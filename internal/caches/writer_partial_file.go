@@ -181,7 +181,9 @@ func (this *PartialFileWriter) Close() error {
 	this.ranges.BodySize = this.bodySize
 	err := this.ranges.WriteToFile(this.rangePath)
 	if err != nil {
+		fsutils.WriteBegin()
 		_ = this.rawWriter.Close()
+		fsutils.WriteEnd()
 		this.remove()
 		return err
 	}
@@ -190,19 +192,25 @@ func (this *PartialFileWriter) Close() error {
 	if this.isNew {
 		err = this.WriteHeaderLength(types.Int(this.headerSize))
 		if err != nil {
+			fsutils.WriteBegin()
 			_ = this.rawWriter.Close()
+			fsutils.WriteEnd()
 			this.remove()
 			return err
 		}
 		err = this.WriteBodyLength(this.bodySize)
 		if err != nil {
+			fsutils.WriteBegin()
 			_ = this.rawWriter.Close()
+			fsutils.WriteEnd()
 			this.remove()
 			return err
 		}
 	}
 
+	fsutils.WriteBegin()
 	err = this.rawWriter.Close()
+	fsutils.WriteEnd()
 	if err != nil {
 		this.remove()
 	}
@@ -216,7 +224,9 @@ func (this *PartialFileWriter) Discard() error {
 		this.endFunc()
 	})
 
+	fsutils.WriteBegin()
 	_ = this.rawWriter.Close()
+	fsutils.WriteEnd()
 
 	_ = os.Remove(this.rangePath)
 

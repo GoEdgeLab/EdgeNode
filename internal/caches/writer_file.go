@@ -138,18 +138,24 @@ func (this *FileWriter) Close() error {
 
 	err := this.WriteHeaderLength(types.Int(this.headerSize))
 	if err != nil {
+		fsutils.WriteBegin()
 		_ = this.rawWriter.Close()
+		fsutils.WriteEnd()
 		_ = os.Remove(path)
 		return err
 	}
 	err = this.WriteBodyLength(this.bodySize)
 	if err != nil {
+		fsutils.WriteBegin()
 		_ = this.rawWriter.Close()
+		fsutils.WriteEnd()
 		_ = os.Remove(path)
 		return err
 	}
 
+	fsutils.WriteBegin()
 	err = this.rawWriter.Close()
+	fsutils.WriteEnd()
 	if err != nil {
 		_ = os.Remove(path)
 	} else if strings.HasSuffix(path, FileTmpSuffix) {
@@ -168,7 +174,9 @@ func (this *FileWriter) Discard() error {
 		this.endFunc()
 	})
 
+	fsutils.WriteBegin()
 	_ = this.rawWriter.Close()
+	fsutils.WriteEnd()
 
 	err := os.Remove(this.rawWriter.Name())
 	return err
