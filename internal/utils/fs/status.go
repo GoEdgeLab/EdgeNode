@@ -66,6 +66,10 @@ func DiskIsFast() bool {
 	return DiskSpeed == SpeedExtremelyFast || DiskSpeed == SpeedFast
 }
 
+func DiskIsExtremelyFast() bool {
+	return DiskSpeed == SpeedExtremelyFast
+}
+
 var countWrites int32 = 0
 
 func WriteReady() bool {

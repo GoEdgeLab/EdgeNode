@@ -419,7 +419,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 		maxMemorySize = maxSize
 	}
 	var memoryStorage = this.memoryStorage
-	if !isFlushing && !isPartial && memoryStorage != nil && ((bodySize > 0 && bodySize < maxMemorySize) || bodySize < 0) {
+	if !fsutils.DiskIsExtremelyFast() && !isFlushing && !isPartial && memoryStorage != nil && ((bodySize > 0 && bodySize < maxMemorySize) || bodySize < 0) {
 		writer, err := memoryStorage.OpenWriter(key, expiredAt, status, headerSize, bodySize, maxMemorySize, false)
 		if err == nil {
 			return writer, nil
