@@ -55,7 +55,7 @@ const (
 	HotItemLifeSeconds       int64  = 3600         // 热点数据生命周期
 	FileToMemoryMaxSize             = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
 	FileTmpSuffix                   = ".tmp"
-	MinDiskSpace             uint64 = 5 << 30 // 当前磁盘最小剩余空间
+	DefaultMinDiskFreeSpace  uint64 = 5 << 30 // 当前磁盘最小剩余空间
 )
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
@@ -1398,17 +1398,24 @@ func (this *FileStorage) runMemoryStorageSafety(f func(memoryStorage *MemoryStor
 
 // 检查磁盘剩余空间
 func (this *FileStorage) checkDiskSpace() {
-	if this.options != nil && len(this.options.Dir) > 0 {
-		stat, err := fsutils.Stat(this.options.Dir)
+	var minFreeSize = DefaultMinDiskFreeSpace
+
+	var options = this.options // copy
+	if options != nil && options.MinFreeSize != nil && options.MinFreeSize.Bytes() > 0 {
+		minFreeSize = uint64(options.MinFreeSize.Bytes())
+	}
+
+	if options != nil && len(options.Dir) > 0 {
+		stat, err := fsutils.Stat(options.Dir)
 		if err == nil {
-			this.mainDiskIsFull = stat.FreeSize() < MinDiskSpace
+			this.mainDiskIsFull = stat.FreeSize() < minFreeSize
 		}
 	}
 	var subDirs = this.subDirs // copy slice
 	for _, subDir := range subDirs {
 		stat, err := fsutils.Stat(subDir.Path)
 		if err == nil {
-			subDir.IsFull = stat.FreeSize() < MinDiskSpace
+			subDir.IsFull = stat.FreeSize() < minFreeSize
 		}
 	}
 }
