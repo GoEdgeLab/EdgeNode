@@ -4,7 +4,7 @@ package readers
 
 import "io"
 
-type FilterFunc = func(p []byte, err error) error
+type FilterFunc = func(p []byte, readErr error) error
 
 type FilterReaderCloser struct {
 	rawReader io.Reader

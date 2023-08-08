@@ -407,7 +407,9 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 			var filterReader = readers.NewFilterReaderCloser(resp.Body)
 			this.cacheIsFinished = true
 			var hasError = false
-			filterReader.Add(func(p []byte, err error) error {
+			filterReader.Add(func(p []byte, readErr error) error {
+				// 这里不用处理readErr，因为只要把成功读取的部分写入缓存即可
+
 				if hasError {
 					return nil
 				}
