@@ -3,6 +3,7 @@
 package nodes
 
 import (
+	"context"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/iwind/TeaGo/types"
@@ -23,7 +24,7 @@ func TestBaseListener_FindServer(t *testing.T) {
 				{Name: types.String(i) + ".hello.com"},
 			},
 		}
-		_ = server.Init(nil)
+		_ = server.Init(context.Background())
 		listener.Group.Add(server)
 	}
 

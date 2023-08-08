@@ -17,7 +17,7 @@ func TestHTTPClientPool_Client(t *testing.T) {
 			Version: 2,
 			Addr:    &serverconfigs.NetworkAddressConfig{Host: "127.0.0.1", PortRange: "1234"},
 		}
-		err := origin.Init(nil)
+		err := origin.Init(context.Background())
 		if err != nil {
 			t.Fatal(err)
 		}

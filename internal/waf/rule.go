@@ -553,11 +553,11 @@ func (this *Rule) Test(value interface{}) bool {
 			return stringutil.VersionCompare(types.String(value), this.Value) >= 0
 		}
 	case RuleOperatorEqIP:
-		ip := net.ParseIP(types.String(value))
+		var ip = net.ParseIP(types.String(value))
 		if ip == nil {
 			return false
 		}
-		return this.isIP && bytes.Equal(this.ipValue, ip)
+		return this.isIP && ip.Equal(this.ipValue)
 	case RuleOperatorGtIP:
 		ip := net.ParseIP(types.String(value))
 		if ip == nil {

@@ -61,6 +61,8 @@ func BenchmarkBytePool_Get_Sync(b *testing.B) {
 			return make([]byte, 1024)
 		},
 	}
+
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
