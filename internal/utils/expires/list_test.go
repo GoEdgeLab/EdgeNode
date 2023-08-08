@@ -122,7 +122,7 @@ func TestList_ManyItems(t *testing.T) {
 	})
 	list.GC(time.Now().Unix() + 1)
 	t.Log("gc", count, "items")
-	t.Log(time.Now().Sub(now))
+	t.Log(time.Since(now))
 }
 
 func TestList_Map_Performance(t *testing.T) {
@@ -140,7 +140,7 @@ func TestList_Map_Performance(t *testing.T) {
 		for i := 0; i < 100_000; i++ {
 			delete(m, int64(i))
 		}
-		t.Log(time.Now().Sub(now))
+		t.Log(time.Since(now))
 	}
 
 	{

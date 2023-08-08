@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
@@ -194,7 +195,7 @@ func (this *Node) Start() {
 	}
 	teaconst.NodeId = nodeConfig.Id
 	teaconst.NodeIdString = types.String(teaconst.NodeId)
-	err, serverErrors := nodeConfig.Init(nil)
+	err, serverErrors := nodeConfig.Init(context.Background())
 	if err != nil {
 		remotelogs.Error("NODE", "init node config failed: "+err.Error())
 		return
@@ -391,7 +392,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		return err
 	}
 
-	err, serverErrors := nodeConfig.Init(nil)
+	err, serverErrors := nodeConfig.Init(context.Background())
 	if err != nil {
 		return err
 	}
@@ -1034,7 +1035,7 @@ func (this *Node) reloadServer() {
 			remotelogs.Debug("NODE", "reload "+types.String(countUpdatingServers)+" servers")
 		}
 
-		err, serverErrors := newNodeConfig.Init(nil)
+		err, serverErrors := newNodeConfig.Init(context.Background())
 		if err != nil {
 			remotelogs.Error("NODE", "apply server config error: "+err.Error())
 			return

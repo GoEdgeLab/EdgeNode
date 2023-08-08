@@ -34,7 +34,7 @@ func (this *IPRange) Contains(netIP net.IP) bool {
 		}
 	case IPRangeTypeSingeIP:
 		if this.IPFrom != nil {
-			return bytes.Equal(this.IPFrom, netIP)
+			return this.IPFrom.Equal(netIP)
 		}
 	case IPRangeTypeRange:
 		return bytes.Compare(this.IPFrom, netIP) <= 0 && bytes.Compare(this.IPTo, netIP) >= 0

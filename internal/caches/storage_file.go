@@ -157,6 +157,7 @@ func (this *FileStorage) UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) 
 			IsFull:   false,
 		})
 	}
+	this.subDirs = subDirs
 	this.checkDiskSpace()
 
 	err = newOptions.Init()
@@ -482,7 +483,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	stat, err := os.Stat(cachePath)
 
 	// 检查两次写入缓存的时间是否过于相近，分片内容不受此限制
-	if err == nil && !isPartial && time.Now().Sub(stat.ModTime()) <= 1*time.Second {
+	if err == nil && !isPartial && time.Since(stat.ModTime()) <= 1*time.Second {
 		// 防止并发连续写入
 		return nil, ErrFileIsWriting
 	}

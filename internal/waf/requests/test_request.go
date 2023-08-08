@@ -88,3 +88,7 @@ func (this *TestRequest) DisableAccessLog() {
 func (this *TestRequest) ProcessResponseHeaders(headers http.Header, status int) {
 
 }
+
+func (this *TestRequest) WAFMaxRequestSize() int64 {
+	return 1 << 20
+}

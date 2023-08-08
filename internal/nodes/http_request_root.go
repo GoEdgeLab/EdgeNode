@@ -95,7 +95,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 	}
 
 	var filename = strings.Replace(requestPath, "/", Tea.DS, -1)
-	var filePath = ""
+	var filePath string
 	if len(filename) > 0 && filename[0:1] == Tea.DS {
 		filePath = rootDir + filename
 	} else {
