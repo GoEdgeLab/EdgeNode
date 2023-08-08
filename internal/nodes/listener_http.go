@@ -210,7 +210,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 // 检查host是否为IP
 func (this *HTTPListener) isIP(host string) bool {
 	// IPv6
-	if strings.Index(host, "[") > -1 {
+	if strings.Contains(host, "[") {
 		return true
 	}
 

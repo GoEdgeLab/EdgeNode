@@ -661,12 +661,11 @@ func (this *FileListDB) shouldRecover() bool {
 	}
 	var errString = ""
 	var shouldRecover = false
-	for result.Next() {
+	if result.Next() {
 		err = result.Scan(&errString)
 		if strings.TrimSpace(errString) != "ok" {
 			shouldRecover = true
 		}
-		break
 	}
 	_ = result.Close()
 	return shouldRecover

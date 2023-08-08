@@ -153,7 +153,7 @@ func TestList_Map_Performance(t *testing.T) {
 		for i := 0; i < 100_000; i++ {
 			delete(m, uint64(i))
 		}
-		t.Log(time.Now().Sub(now))
+		t.Log(time.Since(now))
 	}
 
 	{
@@ -166,7 +166,7 @@ func TestList_Map_Performance(t *testing.T) {
 		for i := 0; i < 100_000; i++ {
 			delete(m, uint32(i))
 		}
-		t.Log(time.Now().Sub(now))
+		t.Log(time.Since(now))
 	}
 }
 

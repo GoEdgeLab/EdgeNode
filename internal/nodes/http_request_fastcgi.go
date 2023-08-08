@@ -111,7 +111,7 @@ func (this *HTTPRequest) doFastcgi() (shouldStop bool) {
 
 	// 处理SCRIPT_FILENAME
 	scriptPath := env.GetString("SCRIPT_FILENAME")
-	if len(scriptPath) > 0 && (strings.Index(scriptPath, "/") < 0 && strings.Index(scriptPath, "\\") < 0) {
+	if len(scriptPath) > 0 && !strings.Contains(scriptPath, "/") && !strings.Contains(scriptPath, "\\") {
 		env["SCRIPT_FILENAME"] = env.GetString("DOCUMENT_ROOT") + Tea.DS + scriptPath
 	}
 	scriptFilename := filepath.Base(this.RawReq.URL.Path)

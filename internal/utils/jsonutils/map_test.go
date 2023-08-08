@@ -36,9 +36,6 @@ func TestMapToObject(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if obj == nil {
-			t.Fatal("obj should not be nil")
-		}
 		a.IsTrue(obj.B == 1024)
 		a.IsTrue(obj.C == true)
 		PrintT(obj, t)

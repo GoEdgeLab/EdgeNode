@@ -122,6 +122,7 @@ func TestHTTPAccessLogQueue_Memory(t *testing.T) {
 	}
 
 	runtime.GC()
+	_ = accessLogs
 
 	// will not release automatically
 	func() {
@@ -131,6 +132,7 @@ func TestHTTPAccessLogQueue_Memory(t *testing.T) {
 				RequestPath: "https://goedge.cn/hello/world",
 			})
 		}
+		_ = accessLogs1
 	}()
 
 	time.Sleep(5 * time.Second)

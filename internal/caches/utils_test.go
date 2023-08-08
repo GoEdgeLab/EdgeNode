@@ -29,7 +29,7 @@ func TestParseHost(t *testing.T) {
 func TestUintString(t *testing.T) {
 	t.Log(strconv.FormatUint(xxhash.Sum64String("https://goedge.cn/"), 10))
 	t.Log(strconv.FormatUint(123456789, 10))
-	t.Log(fmt.Sprintf("%d", 1234567890123))
+	t.Logf("%d", 1234567890123)
 }
 
 func BenchmarkUint_String(b *testing.B) {

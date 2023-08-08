@@ -133,7 +133,7 @@ func (this *CCCheckpoint) Options() []OptionInterface {
 		option.Size = 8
 		option.MaxLength = 8
 		option.Validate = func(value string) (ok bool, message string) {
-			if regexp.MustCompile("^\\d+$").MatchString(value) {
+			if regexp.MustCompile(`^\d+$`).MatchString(value) {
 				ok = true
 				return
 			}

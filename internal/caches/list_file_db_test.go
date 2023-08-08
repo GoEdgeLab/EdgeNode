@@ -47,6 +47,10 @@ func TestFileListDB_IncreaseHitAsync(t *testing.T) {
 	}
 
 	err = db.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = db.IncreaseHitAsync("4598e5231ba47d6ec7aa9ea640ff2eaf")
 	if err != nil {
 		t.Fatal(err)
@@ -69,6 +73,9 @@ func TestFileListDB_CleanMatchKey(t *testing.T) {
 	}
 
 	err = db.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = db.CleanMatchKey("https://*.goedge.cn/large-text")
 	if err != nil {

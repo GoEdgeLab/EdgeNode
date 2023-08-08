@@ -57,10 +57,10 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 		period = 7 * 86400
 	}
 
-	var threshold = options.GetInt64("threshold")
+	/**var threshold = options.GetInt64("threshold")
 	if threshold <= 0 {
 		threshold = 1000
-	}
+	}**/
 
 	var ignoreCommonFiles = options.GetBool("ignoreCommonFiles")
 	if ignoreCommonFiles {

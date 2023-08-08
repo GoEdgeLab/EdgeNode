@@ -68,6 +68,7 @@ func BenchmarkBandwidthStatManager_Slice(b *testing.B) {
 				NodeRegionId:        1,
 			})
 		}
+		_ = pbStats
 	}
 }
 
@@ -80,6 +81,7 @@ func BenchmarkBandwidthStatManager_Slice2(b *testing.B) {
 			var stat = &stats.BandwidthStat{}
 			statsSlice = append(statsSlice, stat)
 		}
+		_ = statsSlice
 	}
 }
 
