@@ -285,6 +285,9 @@ func (this *FileListDB) ListExpiredItems(count int) (hashList []string, err erro
 	if err != nil {
 		return nil, err
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	defer func() {
 		_ = rows.Close()
 	}()
