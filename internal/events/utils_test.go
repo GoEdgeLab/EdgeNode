@@ -9,8 +9,8 @@ func TestOn(t *testing.T) {
 	type User struct {
 		name string
 	}
-	var u = &User{}
-	var u2 = &User{}
+	var u = &User{name: "lily"}
+	var u2 = &User{name: "lucy"}
 
 	events.On("hello", func() {
 		t.Log("world")

@@ -79,7 +79,6 @@ func (this *RateLimitWriter) write(p []byte) (n int, err error) {
 			err = io.EOF
 			return
 		default:
-
 		}
 
 		this.written += n

@@ -19,7 +19,6 @@ func (this *ResponseGeneralHeaderLengthCheckpoint) IsComposed() bool {
 }
 
 func (this *ResponseGeneralHeaderLengthCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
-
 	return
 }
 

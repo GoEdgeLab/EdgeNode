@@ -159,7 +159,7 @@ func TestFileStorage_OpenWriter_HTTP(t *testing.T) {
 	t.Log(writer)
 
 	resp := &http.Response{
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 		Header: http.Header{
 			"Content-Type":  []string{"text/html; charset=utf-8"},
 			"Last-Modified": []string{"Wed, 06 Jan 2021 10:03:29 GMT"},

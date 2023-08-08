@@ -60,7 +60,6 @@ func Println(tag string, description string) {
 		CreatedAt:   time.Now().Unix(),
 	}:
 	default:
-
 	}
 }
 
@@ -78,7 +77,6 @@ func Warn(tag string, description string) {
 		CreatedAt:   time.Now().Unix(),
 	}:
 	default:
-
 	}
 }
 

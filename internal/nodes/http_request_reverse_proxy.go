@@ -258,6 +258,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	}
 
 	var resp *http.Response
+	var respBodyIsClosed bool
 	var requestErr error
 	var requestErrCode string
 	if isHTTPOrigin { // 普通HTTP(S)源站
@@ -296,6 +297,15 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		this.writeCode(http.StatusBadGateway, "The type of origin site has not been supported", "设置的源站类型尚未支持")
 		return
 	}
+
+	if resp != nil && resp.Body != nil {
+		defer func() {
+			if !respBodyIsClosed {
+				_ = resp.Body.Close()
+			}
+		}()
+	}
+
 	if requestErr != nil {
 		// 客户端取消请求，则不提示
 		httpErr, ok := requestErr.(*url.Error)
@@ -323,10 +333,6 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			if (originId > 0 || (lnNodeId > 0 && hasMultipleLnNodes)) && !isLastRetry {
 				shouldRetry = true
 				this.uri = oldURI // 恢复备份
-
-				if resp != nil && resp.Body != nil {
-					_ = resp.Body.Close()
-				}
 
 				if httpErr.Err != io.EOF {
 					remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+requestErr.Error())
@@ -366,9 +372,6 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 		}
-		if resp != nil && resp.Body != nil {
-			_ = resp.Body.Close()
-		}
 		return
 	}
 
@@ -376,9 +379,6 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	if isLowVersionHTTP && resp.ContentLength < 0 {
 		this.writer.WriteHeader(http.StatusBadRequest)
 		_, _ = this.writer.WriteString("The content does not support " + this.RawReq.Proto + " request.")
-		if resp.Body != nil {
-			_ = resp.Body.Close()
-		}
 		return
 	}
 
@@ -395,20 +395,12 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	// WAF对出站进行检查
 	if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 		if this.doWAFResponse(resp) {
-			err := resp.Body.Close()
-			if err != nil {
-				remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing Error (WAF): "+err.Error())
-			}
 			return
 		}
 	}
 
 	// 特殊页面
 	if this.doPage(resp.StatusCode) {
-		err := resp.Body.Close()
-		if err != nil {
-			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error (Page): "+err.Error())
-		}
 		return
 	}
 
@@ -499,6 +491,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		_, _ = io.CopyBuffer(this.writer, resp.Body, buf)
 		utils.BytePool4k.Put(buf)
 		_ = resp.Body.Close()
+		respBodyIsClosed = true
 
 		this.writer.SetOk()
 		return
@@ -550,6 +543,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	pool.Put(buf)
 
 	var closeErr = resp.Body.Close()
+	respBodyIsClosed = true
 	if closeErr != nil {
 		if !this.canIgnore(closeErr) {
 			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Closing error: "+closeErr.Error())

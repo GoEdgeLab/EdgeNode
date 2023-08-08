@@ -53,7 +53,6 @@ func TestAES128CFBMethod_Encrypt2(t *testing.T) {
 	}
 
 	{
-
 		a := []byte{1}
 		_, err = method.Decrypt(a)
 		if err != nil {

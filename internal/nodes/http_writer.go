@@ -24,7 +24,6 @@ import (
 	_ "golang.org/x/image/webp"
 	"image"
 	"image/gif"
-	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
