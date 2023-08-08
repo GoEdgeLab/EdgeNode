@@ -13,7 +13,6 @@ var SharedCache = NewBigCache()
 //
 //	    Piece1            |  Piece2 | Piece3 | ...
 //	[ Item1, Item2, ... ] |   ...
-//
 type Cache struct {
 	isDestroyed bool
 	pieces      []*Piece
@@ -123,17 +122,9 @@ func (this *Cache) Read(key string) (item *Item) {
 	return this.pieces[uint64Key%this.countPieces].Read(uint64Key)
 }
 
-func (this *Cache) readIntKey(key uint64) (value *Item) {
-	return this.pieces[key%this.countPieces].Read(key)
-}
-
 func (this *Cache) Delete(key string) {
 	var uint64Key = HashKey([]byte(key))
 	this.pieces[uint64Key%this.countPieces].Delete(uint64Key)
-}
-
-func (this *Cache) deleteIntKey(key uint64) {
-	this.pieces[key%this.countPieces].Delete(key)
 }
 
 func (this *Cache) Count() (count int) {

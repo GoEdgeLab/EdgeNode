@@ -283,7 +283,7 @@ func (this *IPSetAction) runActionSingleIP(action string, listType IPListType, i
 		return nil
 	}
 
-	var listName = ""
+	var listName string
 	var isIPv6 = strings.Contains(item.IpFrom, ":")
 
 	switch listType {

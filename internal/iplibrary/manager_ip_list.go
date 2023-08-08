@@ -214,7 +214,7 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 
 func (this *IPListManager) FindList(listId int64) *IPList {
 	this.locker.Lock()
-	list, _ := this.listMap[listId]
+	var list = this.listMap[listId]
 	this.locker.Unlock()
 	return list
 }

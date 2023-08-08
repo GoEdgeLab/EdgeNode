@@ -48,7 +48,7 @@ func (this *ClientListener) Accept() (net.Conn, error) {
 			firewalls.DropTemporaryTo(ip, expiresAt)
 		} else {
 			if !waf.SharedIPWhiteList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip) {
-				var ok = false
+				var ok bool
 				expiresAt, ok = waf.SharedIPBlackList.ContainsExpires(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, ip)
 				if ok {
 					canGoNext = false

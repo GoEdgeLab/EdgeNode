@@ -731,7 +731,6 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	}
 
 	// compression writer
-	var err error = nil
 	compressionWriter, err := compressions.NewWriter(this.writer, compressionType, int(this.compressionConfig.Level))
 	if err != nil {
 		remotelogs.Error("HTTP_WRITER", err.Error())

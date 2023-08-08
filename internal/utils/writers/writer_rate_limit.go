@@ -85,7 +85,7 @@ func (this *RateLimitWriter) write(p []byte) (n int, err error) {
 		this.written += n
 
 		if this.written >= this.rateBytes {
-			var duration = 1*time.Second - time.Now().Sub(this.before)
+			var duration = 1*time.Second - time.Since(this.before)
 			if duration > 0 {
 				time.Sleep(duration)
 			}

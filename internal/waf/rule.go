@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-var singleParamRegexp = regexp.MustCompile("^\\${[\\w.-]+}$")
+var singleParamRegexp = regexp.MustCompile(`^\${[\w.-]+}$`)
 
 // Rule
 type Rule struct {

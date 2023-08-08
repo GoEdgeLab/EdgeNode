@@ -1276,13 +1276,6 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 			this.hotMapLocker.Lock()
 			hotItem, ok := this.hotMap[key]
 
-			// 限制热点数据存活时间
-			var unixTime = time.Now().Unix()
-			var expiresAt = reader.ExpiresAt()
-			if expiresAt <= 0 || expiresAt > unixTime+HotItemLifeSeconds {
-				expiresAt = unixTime + HotItemLifeSeconds
-			}
-
 			if ok {
 				hotItem.Hits++
 			} else if len(this.hotMap) < HotItemSize { // 控制数量

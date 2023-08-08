@@ -40,14 +40,9 @@ func (this *CCCheckpoint) RequestValue(req requests.Request, param string, optio
 		period = 7 * 86400
 	}
 
-	v, _ := options["userType"]
-	userType := types.String(v)
-
-	v, _ = options["userField"]
-	userField := types.String(v)
-
-	v, _ = options["userIndex"]
-	userIndex := types.Int(v)
+	var userType = types.String(options["userType"])
+	var userField = types.String(options["userField"])
+	var userIndex = types.Int(options["userIndex"])
 
 	if param == "requests" { // requests
 		var key = ""

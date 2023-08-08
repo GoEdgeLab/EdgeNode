@@ -108,10 +108,10 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 		lang = "en-US"
 	}
 
-	var msgTitle = ""
-	var msgPrompt = ""
-	var msgButtonTitle = ""
-	var msgRequestId = ""
+	var msgTitle string
+	var msgPrompt string
+	var msgButtonTitle string
+	var msgRequestId string
 
 	switch lang {
 	case "en-US":

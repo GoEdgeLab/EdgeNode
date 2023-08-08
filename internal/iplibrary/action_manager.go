@@ -102,7 +102,7 @@ func (this *ActionManager) UpdateActions(actions []*firewallconfigs.FirewallActi
 			continue
 		}
 
-		instances, _ := this.eventMap[action.EventLevel]
+		var instances = this.eventMap[action.EventLevel]
 		instances = append(instances, instance)
 		this.eventMap[action.EventLevel] = instances
 	}

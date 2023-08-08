@@ -72,7 +72,7 @@ func (this *IntMap[K, V]) Has(k K) bool {
 func (this *IntMap[K, V]) Get(k K) (value V) {
 	var index = this.index(k)
 	this.lockers[index].RLock()
-	value, _ = this.m[index][k]
+	value = this.m[index][k]
 	this.lockers[index].RUnlock()
 	return
 }

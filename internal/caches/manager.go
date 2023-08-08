@@ -148,8 +148,7 @@ func (this *Manager) FindPolicy(policyId int64) *serverconfigs.HTTPCachePolicy {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
 
-	p, _ := this.policyMap[policyId]
-	return p
+	return this.policyMap[policyId]
 }
 
 // FindStorageWithPolicy 根据策略ID查找存储
@@ -157,8 +156,7 @@ func (this *Manager) FindStorageWithPolicy(policyId int64) StorageInterface {
 	this.locker.RLock()
 	defer this.locker.RUnlock()
 
-	storage, _ := this.storageMap[policyId]
-	return storage
+	return this.storageMap[policyId]
 }
 
 // NewStorageWithPolicy 根据策略获取存储对象

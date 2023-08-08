@@ -149,7 +149,7 @@ func BenchmarkRegexp_MatchString(b *testing.B) {
 }
 
 func BenchmarkRegexp_MatchString2(b *testing.B) {
-	var r = regexp.MustCompile("(?i)(onmouseover|onmousemove|onmousedown|onmouseup|onerror|onload|onclick|ondblclick|onkeydown|onkeyup|onkeypress)(\\s|%09|%0A|(\\+|%20))*(=|%3D)")
+	var r = regexp.MustCompile(`(?i)(onmouseover|onmousemove|onmousedown|onmouseup|onerror|onload|onclick|ondblclick|onkeydown|onkeyup|onkeypress)(\s|%09|%0A|(\+|%20))*(=|%3D)`)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {

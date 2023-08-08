@@ -34,10 +34,7 @@ func IsLocalIP(ipString string) bool {
 
 	// IPv6
 	if strings.Contains(ipString, ":") {
-		if ip.String() == "::1" {
-			return true
-		}
-		return false
+		return ip.String() == "::1"
 	}
 
 	// IPv4

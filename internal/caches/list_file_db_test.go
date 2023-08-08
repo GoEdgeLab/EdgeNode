@@ -101,6 +101,9 @@ func TestFileListDB_CleanMatchPrefix(t *testing.T) {
 	}
 
 	err = db.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = db.CleanMatchPrefix("https://*.goedge.cn/large-text")
 	if err != nil {

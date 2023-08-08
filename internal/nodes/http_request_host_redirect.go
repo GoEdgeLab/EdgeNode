@@ -34,7 +34,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 			}
 		}
 
-		var fullURL = ""
+		var fullURL string
 		if u.BeforeHasQuery() {
 			fullURL = this.URL()
 		} else {
@@ -194,7 +194,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				return false
 			}
 
-			var containsPort = false
+			var containsPort bool
 			if u.PortsAll {
 				containsPort = true
 			} else {

@@ -45,7 +45,7 @@ func (this *WAFManager) UpdatePolicies(policies []*firewallconfigs.HTTPFirewallP
 // FindWAF 查找WAF
 func (this *WAFManager) FindWAF(policyId int64) *WAF {
 	this.locker.RLock()
-	w, _ := this.mapping[policyId]
+	var w = this.mapping[policyId]
 	this.locker.RUnlock()
 	return w
 }
