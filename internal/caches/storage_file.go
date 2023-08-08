@@ -22,6 +22,7 @@ import (
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
+	"github.com/shirou/gopsutil/v3/load"
 	"math"
 	"os"
 	"path/filepath"
@@ -1025,8 +1026,15 @@ func (this *FileStorage) purgeLoop() {
 		var times = 1
 
 		// 空闲时间多清理
-		if utils.SharedFreeHoursManager.IsFreeHour() {
-			times = 5
+		systemLoad, _ := load.Avg()
+		if systemLoad != nil {
+			if systemLoad.Load5 < 2 {
+				times = 5
+			} else if systemLoad.Load5 < 3 {
+				times = 3
+			} else if systemLoad.Load5 < 5 {
+				times = 2
+			}
 		}
 
 		// 处于LFU阈值时，多清理
