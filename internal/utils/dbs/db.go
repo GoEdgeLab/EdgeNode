@@ -123,7 +123,7 @@ func (this *DB) Prepare(query string) (*Stmt, error) {
 	return s, nil
 }
 
-func (this *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+func (this *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	// check database status
 	if this.BeginUpdating() {
 		defer this.EndUpdating()
@@ -138,7 +138,7 @@ func (this *DB) ExecContext(ctx context.Context, query string, args ...interface
 	return this.rawDB.ExecContext(ctx, query, args...)
 }
 
-func (this *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (this *DB) Exec(query string, args ...any) (sql.Result, error) {
 	// check database status
 	if this.BeginUpdating() {
 		defer this.EndUpdating()
@@ -152,14 +152,14 @@ func (this *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return this.rawDB.Exec(query, args...)
 }
 
-func (this *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (this *DB) Query(query string, args ...any) (*sql.Rows, error) {
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(query).End()
 	}
 	return this.rawDB.Query(query, args...)
 }
 
-func (this *DB) QueryRow(query string, args ...interface{}) *sql.Row {
+func (this *DB) QueryRow(query string, args ...any) *sql.Row {
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(query).End()
 	}

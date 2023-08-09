@@ -71,3 +71,4 @@ linters:
     - forcetypeassert
     - whitespace
     - noctx
+    - rowserrcheck

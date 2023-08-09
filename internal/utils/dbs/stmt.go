@@ -27,7 +27,7 @@ func (this *Stmt) EnableStat() {
 	this.enableStat = true
 }
 
-func (this *Stmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Result, error) {
+func (this *Stmt) ExecContext(ctx context.Context, args ...any) (sql.Result, error) {
 	// check database status
 	if this.db.BeginUpdating() {
 		defer this.db.EndUpdating()
@@ -41,7 +41,7 @@ func (this *Stmt) ExecContext(ctx context.Context, args ...interface{}) (sql.Res
 	return this.rawStmt.ExecContext(ctx, args...)
 }
 
-func (this *Stmt) Exec(args ...interface{}) (sql.Result, error) {
+func (this *Stmt) Exec(args ...any) (sql.Result, error) {
 	// check database status
 	if this.db.BeginUpdating() {
 		defer this.db.EndUpdating()
@@ -55,28 +55,37 @@ func (this *Stmt) Exec(args ...interface{}) (sql.Result, error) {
 	return this.rawStmt.Exec(args...)
 }
 
-func (this *Stmt) QueryContext(ctx context.Context, args ...interface{}) (*sql.Rows, error) {
+func (this *Stmt) QueryContext(ctx context.Context, args ...any) (*sql.Rows, error) {
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}
 	return this.rawStmt.QueryContext(ctx, args...)
 }
 
-func (this *Stmt) Query(args ...interface{}) (*sql.Rows, error) {
+func (this *Stmt) Query(args ...any) (*sql.Rows, error) {
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}
-	return this.rawStmt.Query(args...)
+	rows, err := this.rawStmt.Query(args...)
+	if err != nil {
+		return nil, err
+	}
+	var rowsErr = rows.Err()
+	if rowsErr != nil {
+		_ = rows.Close()
+		return nil, rowsErr
+	}
+	return rows, nil
 }
 
-func (this *Stmt) QueryRowContext(ctx context.Context, args ...interface{}) *sql.Row {
+func (this *Stmt) QueryRowContext(ctx context.Context, args ...any) *sql.Row {
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}
 	return this.rawStmt.QueryRowContext(ctx, args...)
 }
 
-func (this *Stmt) QueryRow(args ...interface{}) *sql.Row {
+func (this *Stmt) QueryRow(args ...any) *sql.Row {
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}
