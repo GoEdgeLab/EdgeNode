@@ -66,6 +66,19 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		requestPath = this.uri[:questionMarkIndex]
 	}
 
+	// except hidden files
+	if this.web.Root.ExceptHiddenFiles &&
+		(strings.Contains(requestPath, "/.") || strings.Contains(requestPath, "\\.")) {
+		this.write404()
+		return true
+	}
+
+	// except and only files
+	if !this.web.Root.MatchURL(this.URL()) {
+		this.write404()
+		return true
+	}
+
 	// 去掉其中的奇怪的路径
 	requestPath = strings.Replace(requestPath, "..\\", "", -1)
 
