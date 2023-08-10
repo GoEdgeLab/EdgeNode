@@ -175,10 +175,11 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 								this.firewallPolicyId = firewallPolicy.Id
 
 								if len(regionConfig.CountryHTML) > 0 {
+									var formattedHTML = this.Format(regionConfig.CountryHTML)
 									this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-									this.writer.Header().Set("Content-Length", types.String(len(regionConfig.CountryHTML)))
+									this.writer.Header().Set("Content-Length", types.String(len(formattedHTML)))
 									this.writer.WriteHeader(http.StatusForbidden)
-									_, _ = this.writer.Write([]byte(regionConfig.CountryHTML))
+									_, _ = this.writer.Write([]byte(formattedHTML))
 								} else {
 									this.writeCode(http.StatusForbidden, "The region has been denied.", "当前区域禁止访问")
 								}
@@ -203,10 +204,11 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 								this.firewallPolicyId = firewallPolicy.Id
 
 								if len(regionConfig.ProvinceHTML) > 0 {
+									var formattedHTML = this.Format(regionConfig.ProvinceHTML)
 									this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-									this.writer.Header().Set("Content-Length", types.String(len(regionConfig.ProvinceHTML)))
+									this.writer.Header().Set("Content-Length", types.String(len(formattedHTML)))
 									this.writer.WriteHeader(http.StatusForbidden)
-									_, _ = this.writer.Write([]byte(regionConfig.ProvinceHTML))
+									_, _ = this.writer.Write([]byte(formattedHTML))
 								} else {
 									this.writeCode(http.StatusForbidden, "The region has been denied.", "当前区域禁止访问")
 								}
