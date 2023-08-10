@@ -21,15 +21,13 @@ func (this *HTTPRequest) doReverseProxy() {
 		return
 	}
 
-	var isLowVersionHTTP = this.RawReq.ProtoMajor < 1 /** 0.x **/ || (this.RawReq.ProtoMajor == 1 && this.RawReq.ProtoMinor == 0 /** 1.0 **/)
-
 	var retries = 3
 
 	var failedOriginIds []int64
 	var failedLnNodeIds []int64
 
 	for i := 0; i < retries; i++ {
-		originId, lnNodeId, shouldRetry := this.doOriginRequest(failedOriginIds, failedLnNodeIds, i == 0, i == retries-1, isLowVersionHTTP)
+		originId, lnNodeId, shouldRetry := this.doOriginRequest(failedOriginIds, failedLnNodeIds, i == 0, i == retries-1)
 		if !shouldRetry {
 			break
 		}
@@ -43,7 +41,7 @@ func (this *HTTPRequest) doReverseProxy() {
 }
 
 // 请求源站
-func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeIds []int64, isFirstTry bool, isLastRetry bool, isLowVersionHTTP bool) (originId int64, lnNodeId int64, shouldRetry bool) {
+func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeIds []int64, isFirstTry bool, isLastRetry bool) (originId int64, lnNodeId int64, shouldRetry bool) {
 	// 对URL的处理
 	var stripPrefix = this.reverseProxy.StripPrefix
 	var requestURI = this.reverseProxy.RequestURI
@@ -372,13 +370,6 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 		}
-		return
-	}
-
-	// 是否为1.1以下
-	if isLowVersionHTTP && resp.ContentLength < 0 {
-		this.writer.WriteHeader(http.StatusBadRequest)
-		_, _ = this.writer.WriteString("The content does not support " + this.RawReq.Proto + " request.")
 		return
 	}
 
