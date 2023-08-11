@@ -324,7 +324,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 				if os.IsNotExist(clusterErr) {
 					return errors.New("can not find config file 'configs/api.yaml'")
 				}
-				return errors.New("check cluster config failed: " + clusterErr.Error())
+				return fmt.Errorf("check cluster config failed: %w", clusterErr)
 			}
 		} else {
 			return err

@@ -2,13 +2,13 @@ package waf
 
 import (
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/files"
-	"github.com/iwind/TeaGo/types"
 	"gopkg.in/yaml.v3"
 	"net/http"
 	"os"
@@ -96,7 +96,7 @@ func (this *WAF) Init() (resultErrors []error) {
 			err := group.Init(this)
 			if err != nil {
 				// 这里我们不阻止其他规则正常加入
-				resultErrors = append(resultErrors, errors.New("init group '"+types.String(group.Id)+"' failed: "+err.Error()))
+				resultErrors = append(resultErrors, fmt.Errorf("init group '%d' failed: %w", group.Id, err))
 			}
 		}
 	}

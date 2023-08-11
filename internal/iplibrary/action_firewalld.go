@@ -147,7 +147,7 @@ func (this *FirewalldAction) runActionSingleIP(action string, listType IPListTyp
 	cmd.WithStderr()
 	err = cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ", output: " + cmd.Stderr())
+		return fmt.Errorf("%w, output: %s", err, cmd.Stderr())
 	}
 	return nil
 }

@@ -1,7 +1,7 @@
 package iplibrary
 
 import (
-	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -128,7 +128,7 @@ func (this *IPTablesAction) runActionSingleIP(action string, listType IPListType
 		if strings.Contains(output, "No chain/target/match") {
 			err = nil
 		} else {
-			return errors.New(err.Error() + ", output: " + output)
+			return fmt.Errorf("%w, output: %s", err, output)
 		}
 	}
 	return nil

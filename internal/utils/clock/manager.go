@@ -4,7 +4,6 @@ package clock
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -136,7 +135,7 @@ func (this *ClockManager) syncNtpdate(ntpdate string, server string) error {
 	cmd.WithStderr()
 	err := cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ": " + cmd.Stderr())
+		return fmt.Errorf("%w: %s", err, cmd.Stderr())
 	}
 
 	return nil

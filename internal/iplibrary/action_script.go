@@ -1,7 +1,6 @@
 package iplibrary
 
 import (
-	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
@@ -62,7 +61,7 @@ func (this *ScriptAction) runAction(action string, listType IPListType, item *pb
 	cmd.WithStderr()
 	err := cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ", output: " + cmd.Stderr())
+		return fmt.Errorf("%w, output: %s", err, cmd.Stderr())
 	}
 	return nil
 }

@@ -540,7 +540,7 @@ func (this *FileListDB) WrapError(err error) error {
 	if err == nil {
 		return nil
 	}
-	return errors.New(err.Error() + "(file: " + this.dbPath + ")")
+	return fmt.Errorf("%w (file: %s)", err, this.dbPath)
 }
 
 // 初始化

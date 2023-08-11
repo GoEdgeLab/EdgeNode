@@ -5,6 +5,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/Tea"
@@ -156,7 +157,7 @@ WantedBy=multi-user.target`
 	cmd.WithStderr()
 	err = cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ": " + cmd.Stderr())
+		return fmt.Errorf("%w: %s", err, cmd.Stderr())
 	}
 	return nil
 }

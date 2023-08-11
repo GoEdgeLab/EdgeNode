@@ -1,7 +1,7 @@
 package nodes
 
 import (
-	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -141,7 +141,7 @@ func (this *ListenerManager) Start(nodeConfig *nodeconfigs.NodeConfig) error {
 							var port = addr[portIndex+1:]
 							var processName = this.findProcessNameWithPort(group.IsUDP(), port)
 							if len(processName) > 0 {
-								err = errors.New(err.Error() + " (the process using port: '" + processName + "')")
+								err = fmt.Errorf("%w (the process using port: '%s')", err, processName)
 							}
 						}
 					}

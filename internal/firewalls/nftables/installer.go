@@ -4,7 +4,7 @@
 package nftables
 
 import (
-	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
@@ -85,7 +85,7 @@ func (this *Installer) Install() error {
 	}
 
 	// 检查是否已经存在
-	if len(NftExePath()) > 0  {
+	if len(NftExePath()) > 0 {
 		return nil
 	}
 
@@ -121,7 +121,7 @@ func (this *Installer) Install() error {
 	cmd.WithStderr()
 	err = cmd.Run()
 	if err != nil {
-		return errors.New(err.Error() + ": " + cmd.Stderr())
+		return fmt.Errorf("%w: %s", err, cmd.Stderr())
 	}
 
 	remotelogs.Println("NFTABLES", "installed nftables with command '"+cmd.String()+"' successfully")
