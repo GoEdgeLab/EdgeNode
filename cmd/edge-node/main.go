@@ -5,10 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/apps"
+	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/nodes"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
@@ -31,6 +33,14 @@ func main() {
 		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc|bandwidth|disk]").
 		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove|ip.close] IP")
 
+	app.On("start:before", func() {
+		// validate config
+		_, err := configs.LoadAPIConfig()
+		if err != nil {
+			fmt.Println("[ERROR]start failed: load api config from '" + Tea.ConfigFile("api.yaml") + "' failed: " + err.Error())
+			os.Exit(0)
+		}
+	})
 	app.On("uninstall", func() {
 		// service
 		fmt.Println("Uninstall service ...")

@@ -130,7 +130,10 @@ func (this *AppCmd) Run(main func()) {
 	// 获取参数
 	var args = os.Args[1:]
 	if len(args) > 0 {
-		switch args[0] {
+		var mainArg = args[0]
+		this.callDirective(mainArg + ":before")
+
+		switch mainArg {
 		case "-v", "version", "-version", "--version":
 			this.runVersion()
 			return
@@ -153,19 +156,19 @@ func (this *AppCmd) Run(main func()) {
 
 		// 查找指令
 		for _, directive := range this.directives {
-			if directive.Arg == args[0] {
+			if directive.Arg == mainArg {
 				directive.Callback()
 				return
 			}
 		}
 
-		fmt.Println("unknown command '" + args[0] + "'")
+		fmt.Println("unknown command '" + mainArg + "'")
 
 		return
 	}
 
 	// 日志
-	writer := new(LogWriter)
+	var writer = new(LogWriter)
 	writer.Init()
 	logs.SetWriter(writer)
 
@@ -336,4 +339,15 @@ func (this *AppCmd) createSymLinks() error {
 	}
 
 	return nil
+}
+
+func (this *AppCmd) callDirective(code string) {
+	for _, directive := range this.directives {
+		if directive.Arg == code {
+			if directive.Callback != nil {
+				directive.Callback()
+			}
+			return
+		}
+	}
 }

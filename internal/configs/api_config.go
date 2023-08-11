@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"errors"
 	"github.com/iwind/TeaGo/Tea"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -20,16 +21,34 @@ func NewAPIConfig() *APIConfig {
 	return &APIConfig{}
 }
 
+func (this *APIConfig) Init() error {
+	if len(this.RPC.Endpoints) == 0 {
+		return errors.New("no valid 'rpc.endpoints'")
+	}
+	if len(this.NodeId) == 0 {
+		return errors.New("'nodeId' required")
+	}
+	if len(this.Secret) == 0 {
+		return errors.New("'secret' required")
+	}
+	return nil
+}
+
 func LoadAPIConfig() (*APIConfig, error) {
 	data, err := os.ReadFile(Tea.ConfigFile("api.yaml"))
 	if err != nil {
 		return nil, err
 	}
 
-	config := &APIConfig{}
+	var config = &APIConfig{}
 	err = yaml.Unmarshal(data, config)
 	if err != nil {
 		return nil, err
+	}
+
+	err = config.Init()
+	if err != nil {
+		return nil, errors.New("init error: " + err.Error())
 	}
 
 	return config, nil
