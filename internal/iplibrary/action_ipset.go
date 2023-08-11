@@ -2,6 +2,7 @@ package iplibrary
 
 import (
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
@@ -70,7 +71,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if err != nil {
 				var output = cmd.Stderr()
 				if !strings.Contains(output, "already exists") {
-					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + output)
+					return fmt.Errorf("create ipset '%s': %w, output: %s", listName, err, output)
 				} else {
 					err = nil
 				}
@@ -88,7 +89,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			if err != nil {
 				var output = cmd.Stderr()
 				if !strings.Contains(output, "already exists") {
-					return errors.New("create ipset '" + listName + "': " + err.Error() + ", output: " + output)
+					return fmt.Errorf("create ipset '%s': %w, output: %s", listName, err, output)
 				} else {
 					err = nil
 				}
@@ -116,7 +117,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 				if strings.Contains(output, "NAME_CONFLICT") {
 					err = nil
 				} else {
-					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + output)
+					return fmt.Errorf("firewall-cmd add ipset '%s': %w, output: %s", listName, err, output)
 				}
 			}
 		}
@@ -134,7 +135,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 				if strings.Contains(output, "NAME_CONFLICT") {
 					err = nil
 				} else {
-					return errors.New("firewall-cmd add ipset '" + listName + "': " + err.Error() + ", output: " + output)
+					return fmt.Errorf("firewall-cmd add ipset '%s': %w, output: %s", listName, err, output)
 				}
 			}
 		}
@@ -148,7 +149,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + cmd.Stderr())
+				return fmt.Errorf("firewall-cmd add rich rule '%s': %w, output: %s", listName, err, cmd.Stderr())
 			}
 		}
 
@@ -161,7 +162,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				return errors.New("firewall-cmd add rich rule '" + listName + "': " + err.Error() + ", output: " + cmd.Stderr())
+				return fmt.Errorf("firewall-cmd add rich rule '%s': %w, output: %s", listName, err, cmd.Stderr())
 			}
 		}
 
@@ -171,7 +172,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 			cmd.WithStderr()
 			err := cmd.Run()
 			if err != nil {
-				return errors.New("firewall-cmd reload: " + err.Error() + ", output: " + cmd.Stderr())
+				return fmt.Errorf("firewall-cmd reload: %w, output: %s", err, cmd.Stderr())
 			}
 		}
 	}
@@ -200,7 +201,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 				cmd.WithStderr()
 				err := cmd.Run()
 				if err != nil {
-					return errors.New("iptables add rule: " + err.Error() + ", output: " + cmd.Stderr())
+					return fmt.Errorf("iptables add rule: %w, output: %s", err, cmd.Stderr())
 				}
 			}
 		}
@@ -221,7 +222,7 @@ func (this *IPSetAction) Init(config *firewallconfigs.FirewallActionConfig) erro
 				cmd.WithStderr()
 				err := cmd.Run()
 				if err != nil {
-					return errors.New("iptables add rule: " + err.Error() + ", output: " + cmd.Stderr())
+					return fmt.Errorf("iptables add rule: %w, output: %s", err, cmd.Stderr())
 				}
 			}
 		}

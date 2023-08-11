@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
@@ -863,7 +864,7 @@ func (this *HTTPWriter) SendFile(status int, path string) (int64, error) {
 
 	fp, err := os.OpenFile(path, os.O_RDONLY, 0444)
 	if err != nil {
-		return 0, errors.New("open file '" + path + "' failed: " + err.Error())
+		return 0, fmt.Errorf("open file '%s' failed: %w", path, err)
 	}
 	defer func() {
 		_ = fp.Close()

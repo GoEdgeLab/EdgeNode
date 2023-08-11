@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
@@ -221,7 +222,7 @@ func (this *HTTPCacheTaskManager) fetchKey(key *pb.HTTPCacheTaskKey) error {
 
 	req, err := http.NewRequest(http.MethodGet, fullKey, nil)
 	if err != nil {
-		return errors.New("invalid url: " + fullKey + ": " + err.Error())
+		return fmt.Errorf("invalid url: '%s': %w", fullKey, err)
 	}
 
 	// TODO 可以在管理界面自定义Header
@@ -231,7 +232,7 @@ func (this *HTTPCacheTaskManager) fetchKey(key *pb.HTTPCacheTaskKey) error {
 	resp, err := this.httpClient().Do(req)
 	if err != nil {
 		err = this.simplifyErr(err)
-		return errors.New("request failed: " + fullKey + ": " + err.Error())
+		return fmt.Errorf("request failed: '%s': %w", fullKey, err)
 	}
 
 	defer func() {
@@ -248,7 +249,7 @@ func (this *HTTPCacheTaskManager) fetchKey(key *pb.HTTPCacheTaskKey) error {
 	if err != nil {
 		if err != io.EOF {
 			err = this.simplifyErr(err)
-			return errors.New("request failed: " + fullKey + ": " + err.Error())
+			return fmt.Errorf("request failed: '%s': %w", fullKey, err)
 		} else {
 			err = nil
 		}

@@ -4,7 +4,7 @@ package nodes
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
@@ -35,7 +35,7 @@ func (this *Node) loopTasks() error {
 
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
-		return errors.New("create rpc client failed: " + err.Error())
+		return fmt.Errorf("create rpc client failed: %w", err)
 	}
 
 	tasksResp, err := rpcClient.NodeTaskRPC.FindNodeTasks(rpcClient.Context(), &pb.FindNodeTasksRequest{
@@ -45,7 +45,7 @@ func (this *Node) loopTasks() error {
 		if rpc.IsConnError(err) && !Tea.IsTesting() {
 			return nil
 		}
-		return errors.New("read node tasks failed: " + err.Error())
+		return fmt.Errorf("read node tasks failed: %w", err)
 	}
 	for _, task := range tasksResp.NodeTasks {
 		err := this.execTask(rpcClient, task)
@@ -147,7 +147,7 @@ func (this *Node) execNodeLevelChangedTask(rpcClient *rpc.RPCClient) error {
 	if len(levelInfoResp.ParentNodesMapJSON) > 0 {
 		err = json.Unmarshal(levelInfoResp.ParentNodesMapJSON, &parentNodes)
 		if err != nil {
-			return errors.New("decode level info failed: " + err.Error())
+			return fmt.Errorf("decode level info failed: %w", err)
 		}
 	}
 
@@ -174,7 +174,7 @@ func (this *Node) execDDoSProtectionChangedTask(rpcClient *rpc.RPCClient) error 
 	var ddosProtectionConfig = &ddosconfigs.ProtectionConfig{}
 	err = json.Unmarshal(resp.DdosProtectionJSON, ddosProtectionConfig)
 	if err != nil {
-		return errors.New("decode DDoS protection config failed: " + err.Error())
+		return fmt.Errorf("decode DDoS protection config failed: %w", err)
 	}
 
 	if ddosProtectionConfig != nil && sharedNodeConfig != nil {
@@ -202,13 +202,13 @@ func (this *Node) execGlobalServerConfigChangedTask(rpcClient *rpc.RPCClient) er
 		var globalServerConfig = serverconfigs.NewGlobalServerConfig()
 		err = json.Unmarshal(resp.GlobalServerConfigJSON, globalServerConfig)
 		if err != nil {
-			return errors.New("decode global server config failed: " + err.Error())
+			return fmt.Errorf("decode global server config failed: %w", err)
 		}
 
 		if globalServerConfig != nil {
 			err = globalServerConfig.Init()
 			if err != nil {
-				return errors.New("validate global server config failed: " + err.Error())
+				return fmt.Errorf("validate global server config failed: %w", err)
 			}
 			if sharedNodeConfig != nil {
 				sharedNodeConfig.GlobalServerConfig = globalServerConfig
@@ -256,7 +256,7 @@ func (this *Node) execUpdatingServersTask(rpcClient *rpc.RPCClient) error {
 	var serverConfigs = []*serverconfigs.ServerConfig{}
 	err = json.Unmarshal(resp.ServersJSON, &serverConfigs)
 	if err != nil {
-		return errors.New("decode server configs failed: " + err.Error())
+		return fmt.Errorf("decode server configs failed: %w", err)
 	}
 
 	if resp.MaxId > this.lastUpdatingServerListId {

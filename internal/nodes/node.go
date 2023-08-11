@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	iplib "github.com/TeaOSLab/EdgeCommon/pkg/iplibrary"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
@@ -96,11 +97,11 @@ func (this *Node) Test() error {
 	// 检查是否能连接API
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
-		return errors.New("test rpc failed: " + err.Error())
+		return fmt.Errorf("test rpc failed: %w", err)
 	}
 	_, err = rpcClient.APINodeRPC.FindCurrentAPINodeVersion(rpcClient.Context(), &pb.FindCurrentAPINodeVersionRequest{})
 	if err != nil {
-		return errors.New("test rpc failed: " + err.Error())
+		return fmt.Errorf("test rpc failed: %w", err)
 	}
 
 	return nil
@@ -332,7 +333,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
-		return errors.New("create rpc client failed: " + err.Error())
+		return fmt.Errorf("create rpc client failed: %w", err)
 	}
 
 	// 获取同步任务
@@ -344,7 +345,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 		UseDataMap:      true,
 	})
 	if err != nil {
-		return errors.New("read config from rpc failed: " + err.Error())
+		return fmt.Errorf("read config from rpc failed: %w", err)
 	}
 	if !configResp.IsChanged {
 		return nil
@@ -372,7 +373,7 @@ func (this *Node) syncConfig(taskVersion int64) error {
 	var nodeConfig = &nodeconfigs.NodeConfig{}
 	err = json.Unmarshal(configJSON, nodeConfig)
 	if err != nil {
-		return errors.New("decode config failed: " + err.Error())
+		return fmt.Errorf("decode config failed: %w", err)
 	}
 	teaconst.NodeId = nodeConfig.Id
 	teaconst.NodeIdString = types.String(teaconst.NodeId)

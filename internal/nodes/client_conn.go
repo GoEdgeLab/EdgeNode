@@ -3,7 +3,7 @@
 package nodes
 
 import (
-	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
@@ -98,7 +98,7 @@ func (this *ClientConn) Read(b []byte) (n int, err error) {
 
 		defer func() {
 			if err != nil {
-				this.lastErr = errors.New("read error: " + err.Error())
+				this.lastErr = fmt.Errorf("read error: %w", err)
 			} else {
 				this.lastErr = nil
 			}
@@ -163,7 +163,7 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 		defer func() {
 			if err != nil {
-				this.lastErr = errors.New("write error: " + err.Error())
+				this.lastErr = fmt.Errorf("write error: %w", err)
 			} else {
 				this.lastErr = nil
 			}

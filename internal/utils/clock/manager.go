@@ -5,6 +5,7 @@ package clock
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
@@ -108,7 +109,7 @@ func (this *ClockManager) Sync() error {
 		if err == nil {
 			currentTime, err := this.ReadServer(server)
 			if err != nil {
-				return errors.New("read server failed: " + err.Error())
+				return fmt.Errorf("read server failed: %w", err)
 			}
 
 			var delta = time.Now().Unix() - currentTime.Unix()
@@ -145,7 +146,7 @@ func (this *ClockManager) syncNtpdate(ntpdate string, server string) error {
 func (this *ClockManager) ReadServer(server string) (time.Time, error) {
 	conn, err := net.Dial("udp", server+":123")
 	if err != nil {
-		return time.Time{}, errors.New("connect to server failed: " + err.Error())
+		return time.Time{}, fmt.Errorf("connect to server failed: %w", err)
 	}
 	defer func() {
 		_ = conn.Close()
@@ -164,13 +165,13 @@ func (this *ClockManager) ReadServer(server string) (time.Time, error) {
 	var req = &NTPPacket{Settings: 0x1B}
 	err = binary.Write(conn, binary.BigEndian, req)
 	if err != nil {
-		return time.Time{}, errors.New("write request failed: " + err.Error())
+		return time.Time{}, fmt.Errorf("write request failed: %w", err)
 	}
 
 	var resp = &NTPPacket{}
 	err = binary.Read(conn, binary.BigEndian, resp)
 	if err != nil {
-		return time.Time{}, errors.New("write server response failed: " + err.Error())
+		return time.Time{}, fmt.Errorf("write server response failed: %w", err)
 	}
 
 	const ntpEpochOffset = 2208988800

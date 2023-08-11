@@ -4,6 +4,7 @@ package caches
 
 import (
 	"errors"
+	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -83,7 +84,7 @@ func (this *FileListDB) Open(dbPath string) error {
 	// 这里不能加 EXCLUSIVE 锁，不然异步事务可能会失败
 	writeDB, err := dbs.OpenWriter("file:" + dbPath + "?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=" + types.String(cacheSize) + "&_secure_delete=FAST")
 	if err != nil {
-		return errors.New("open write database failed: " + err.Error())
+		return fmt.Errorf("open write database failed: %w", err)
 	}
 
 	writeDB.SetMaxOpenConns(1)
@@ -125,7 +126,7 @@ func (this *FileListDB) Open(dbPath string) error {
 	// read db
 	readDB, err := dbs.OpenReader("file:" + dbPath + "?cache=private&mode=ro&_journal_mode=WAL&_sync=OFF&_cache_size=" + types.String(cacheSize))
 	if err != nil {
-		return errors.New("open read database failed: " + err.Error())
+		return fmt.Errorf("open read database failed: %w", err)
 	}
 
 	readDB.SetMaxOpenConns(runtime.NumCPU())
@@ -146,7 +147,7 @@ func (this *FileListDB) Init() error {
 	// 创建
 	var err = this.initTables(1)
 	if err != nil {
-		return errors.New("init tables failed: " + err.Error())
+		return fmt.Errorf("init tables failed: %w", err)
 	}
 
 	// 常用语句

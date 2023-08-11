@@ -259,7 +259,7 @@ func (this *FileStorage) Init() error {
 		} else {
 			err = os.MkdirAll(dir, 0777)
 			if err != nil {
-				return errors.New("[CACHE]can not create dir:" + err.Error())
+				return fmt.Errorf("[CACHE]can not create dir: %w", err)
 			}
 		}
 	}

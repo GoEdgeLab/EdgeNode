@@ -3,7 +3,7 @@
 package firewalls
 
 import (
-	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -194,7 +194,7 @@ func (this *Firewalld) DropSourceIP(ip string, timeoutSeconds int, async bool) e
 
 	err := cmd.Run()
 	if err != nil {
-		return errors.New("run command failed '" + cmd.String() + "': " + err.Error())
+		return fmt.Errorf("run command failed '%s': %w", cmd.String(), err)
 	}
 	return nil
 }

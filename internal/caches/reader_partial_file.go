@@ -3,6 +3,7 @@ package caches
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -46,7 +47,7 @@ func (this *PartialFileReader) InitAutoDiscard(autoDiscard bool) error {
 	// 读取Range
 	ranges, err := NewPartialRangesFromFile(this.rangePath)
 	if err != nil {
-		return errors.New("read ranges failed: " + err.Error())
+		return fmt.Errorf("read ranges failed: %w", err)
 	}
 	this.ranges = ranges
 

@@ -1,7 +1,7 @@
 package waf
 
 import (
-	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -49,7 +49,7 @@ func (this *RuleSet) Init(waf *WAF) error {
 		for _, rule := range this.Rules {
 			err := rule.Init()
 			if err != nil {
-				return errors.New("init rule '" + rule.Param + " " + rule.Operator + " " + types.String(rule.Value) + "' failed: " + err.Error())
+				return fmt.Errorf("init rule '%s %s %s' failed: %w", rule.Param, rule.Operator, types.String(rule.Value), err)
 			}
 		}
 

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/ddosconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -92,7 +93,7 @@ func (this *DDoSProtectionManager) Apply(config *ddosconfigs.ProtectionConfig) e
 	// 对比配置
 	configJSON, err := json.Marshal(config)
 	if err != nil {
-		return errors.New("encode config to json failed: " + err.Error())
+		return fmt.Errorf("encode config to json failed: %w", err)
 	}
 	if !allowIPListChanged && bytes.Equal(this.lastConfig, configJSON) {
 		return nil
@@ -188,7 +189,7 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 	for _, filter := range nftablesFilters {
 		chain, oldRules, err := this.getRules(filter)
 		if err != nil {
-			return errors.New("get old rules failed: " + err.Error())
+			return fmt.Errorf("get old rules failed: %w", err)
 		}
 
 		var protocol = filter.protocol()
@@ -273,7 +274,7 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 		// 先清空所有相关规则
 		err = this.removeOldTCPRules(chain, oldRules)
 		if err != nil {
-			return errors.New("delete old rules failed: " + err.Error())
+			return fmt.Errorf("delete old rules failed: %w", err)
 		}
 
 		// 添加新规则
@@ -281,9 +282,9 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 			if maxConnections > 0 {
 				var cmd = executils.NewTimeoutCmd(10*time.Second, nftExe, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "count", "over", types.String(maxConnections), "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "maxConnections", types.String(maxConnections)}))
 				cmd.WithStderr()
-				err := cmd.Run()
+				err = cmd.Run()
 				if err != nil {
-					return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + cmd.Stderr() + ")")
+					return fmt.Errorf("add nftables rule '%s' failed: %w (%s)", cmd.String(), err, cmd.Stderr())
 				}
 			}
 
@@ -293,7 +294,7 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 				cmd.WithStderr()
 				err := cmd.Run()
 				if err != nil {
-					return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + cmd.Stderr() + ")")
+					return fmt.Errorf("add nftables rule '%s' failed: %w (%s)", cmd.String(), err, cmd.Stderr())
 				}
 			}
 
@@ -305,14 +306,14 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 					cmd.WithStderr()
 					err := cmd.Run()
 					if err != nil {
-						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + cmd.Stderr() + ")")
+						return fmt.Errorf("add nftables rule '%s' failed: %w (%s)", cmd.String(), err, cmd.Stderr())
 					}
 				} else {
 					var cmd = executils.NewTimeoutCmd(10*time.Second, nftExe, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsMinutelyRate)+"/minute burst "+types.String(newConnectionsMinutelyRate+3)+" packets }" /**"add", "@deny_set", "{"+protocol+" saddr}",**/, "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsRate", "0"}))
 					cmd.WithStderr()
 					err := cmd.Run()
 					if err != nil {
-						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + cmd.Stderr() + ")")
+						return fmt.Errorf("add nftables rule '%s' failed: %w (%s)", cmd.String(), err, cmd.Stderr())
 					}
 				}
 			}
@@ -325,14 +326,14 @@ func (this *DDoSProtectionManager) addTCPRules(tcpConfig *ddosconfigs.TCPConfig)
 					cmd.WithStderr()
 					err := cmd.Run()
 					if err != nil {
-						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + cmd.Stderr() + ")")
+						return fmt.Errorf("add nftables rule '%s' failed: %w (%s)", cmd.String(), err, cmd.Stderr())
 					}
 				} else {
 					var cmd = executils.NewTimeoutCmd(10*time.Second, nftExe, "add", "rule", protocol, filter.Name, nftablesChainName, "tcp", "dport", types.String(port), "ct", "state", "new", "meter", "meter-"+protocol+"-"+types.String(port)+"-new-connections-secondly-rate", "{ "+protocol+" saddr limit rate over "+types.String(newConnectionsSecondlyRate)+"/second burst "+types.String(newConnectionsSecondlyRate+3)+" packets }" /**"add", "@deny_set", "{"+protocol+" saddr}",**/, "counter", "drop", "comment", this.encodeUserData([]string{"tcp", types.String(port), "newConnectionsSecondlyRate", "0"}))
 					cmd.WithStderr()
 					err := cmd.Run()
 					if err != nil {
-						return errors.New("add nftables rule '" + cmd.String() + "' failed: " + err.Error() + " (" + cmd.Stderr() + ")")
+						return fmt.Errorf("add nftables rule '%s' failed: %w (%s)", cmd.String(), err, cmd.Stderr())
 					}
 				}
 			}
@@ -498,11 +499,11 @@ func (this *DDoSProtectionManager) getTable(filter *nftablesTableDefinition) (*n
 func (this *DDoSProtectionManager) getRules(filter *nftablesTableDefinition) (*nftables.Chain, []*nftables.Rule, error) {
 	table, err := this.getTable(filter)
 	if err != nil {
-		return nil, nil, errors.New("get table failed: " + err.Error())
+		return nil, nil, fmt.Errorf("get table failed: %w", err)
 	}
 	chain, err := table.GetChain(nftablesChainName)
 	if err != nil {
-		return nil, nil, errors.New("get chain failed: " + err.Error())
+		return nil, nil, fmt.Errorf("get chain failed: %w", err)
 	}
 	rules, err := chain.GetRules()
 	return chain, rules, err
@@ -538,7 +539,7 @@ func (this *DDoSProtectionManager) updateAllowIPList(allIPList []string) error {
 					// 不存在则删除
 					err = set.DeleteIPElement(ip)
 					if err != nil {
-						return errors.New("delete ip element '" + ip + "' failed: " + err.Error())
+						return fmt.Errorf("delete ip element '%s' failed: %w", ip, err)
 					}
 				}
 			}
@@ -556,7 +557,7 @@ func (this *DDoSProtectionManager) updateAllowIPList(allIPList []string) error {
 					// 不存在则添加
 					err = set.AddIPElement(ip, nil, false)
 					if err != nil {
-						return errors.New("add ip '" + ip + "' failed: " + err.Error())
+						return fmt.Errorf("add ip '%s' failed: %w", ip, err)
 					}
 				}
 			}

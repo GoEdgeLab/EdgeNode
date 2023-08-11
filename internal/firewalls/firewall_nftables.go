@@ -5,6 +5,7 @@ package firewalls
 
 import (
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -149,10 +150,10 @@ func (this *NFTablesFirewall) init() error {
 					table, err = this.conn.AddIPv6Table(tableDef.Name)
 				}
 				if err != nil {
-					return errors.New("create table '" + tableDef.Name + "' failed: " + err.Error())
+					return fmt.Errorf("create table '%s' failed: %w", tableDef.Name, err)
 				}
 			} else {
-				return errors.New("get table '" + tableDef.Name + "' failed: " + err.Error())
+				return fmt.Errorf("get table '%s' failed: %w", tableDef.Name, err)
 			}
 		}
 		if table == nil {
@@ -166,10 +167,10 @@ func (this *NFTablesFirewall) init() error {
 			if nftables.IsNotFound(err) {
 				chain, err = table.AddAcceptChain(chainName)
 				if err != nil {
-					return errors.New("create chain '" + chainName + "' failed: " + err.Error())
+					return fmt.Errorf("create chain '%s' failed: %w", chainName, err)
 				}
 			} else {
-				return errors.New("get chain '" + chainName + "' failed: " + err.Error())
+				return fmt.Errorf("get chain '%s' failed: %w", chainName, err)
 			}
 		}
 		if chain == nil {
@@ -184,7 +185,7 @@ func (this *NFTablesFirewall) init() error {
 				_, err = chain.AddAcceptInterfaceRule("lo", loRuleName)
 			}
 			if err != nil {
-				return errors.New("add 'lo' rule failed: " + err.Error())
+				return fmt.Errorf("add 'lo' rule failed: %w", err)
 			}
 		}
 
@@ -207,10 +208,10 @@ func (this *NFTablesFirewall) init() error {
 						HasTimeout: true,
 					})
 					if err != nil {
-						return errors.New("create set '" + setName + "' failed: " + err.Error())
+						return fmt.Errorf("create set '%s' failed: %w", setName, err)
 					}
 				} else {
-					return errors.New("get set '" + setName + "' failed: " + err.Error())
+					return fmt.Errorf("get set '%s' failed: %w", setName, err)
 				}
 			}
 			if set == nil {
@@ -259,10 +260,10 @@ func (this *NFTablesFirewall) init() error {
 						}
 					}
 					if err != nil {
-						return errors.New("add rule failed: " + err.Error())
+						return fmt.Errorf("add rule failed: %w", err)
 					}
 				} else {
-					return errors.New("get rule failed: " + err.Error())
+					return fmt.Errorf("get rule failed: %w", err)
 				}
 			}
 			if rule == nil {
