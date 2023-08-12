@@ -314,15 +314,15 @@ func (this *Node) syncConfig(taskVersion int64) error {
 	this.locker.Lock()
 	defer this.locker.Unlock()
 
-	// 检查api.yaml是否存在
-	apiConfigFile := Tea.ConfigFile("api.yaml")
+	// 检查api_node.yaml是否存在
+	var apiConfigFile = Tea.ConfigFile(configs.ConfigFileName)
 	_, err := os.Stat(apiConfigFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			clusterErr := this.checkClusterConfig()
 			if clusterErr != nil {
 				if os.IsNotExist(clusterErr) {
-					return errors.New("can not find config file 'configs/api.yaml'")
+					return fmt.Errorf("can not find config file 'configs/%s'", configs.ConfigFileName)
 				}
 				return fmt.Errorf("check cluster config failed: %w", clusterErr)
 			}
@@ -524,7 +524,7 @@ func (this *Node) startSyncTimer() {
 
 // 检查集群设置
 func (this *Node) checkClusterConfig() error {
-	configFile := Tea.ConfigFile("cluster.yaml")
+	var configFile = Tea.ConfigFile("cluster.yaml")
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return err
@@ -536,9 +536,10 @@ func (this *Node) checkClusterConfig() error {
 	}
 
 	rpcClient, err := rpc.NewRPCClient(&configs.APIConfig{
-		RPC:    config.RPC,
-		NodeId: config.ClusterId,
-		Secret: config.Secret,
+		RPCEndpoints:     config.RPC.Endpoints,
+		RPCDisableUpdate: config.RPC.DisableUpdate,
+		NodeId:           config.ClusterId,
+		Secret:           config.Secret,
 	})
 	if err != nil {
 		return err
@@ -556,22 +557,17 @@ func (this *Node) checkClusterConfig() error {
 		resp.Endpoints = []string{}
 	}
 	var apiConfig = &configs.APIConfig{
-		RPC: struct {
-			Endpoints     []string `yaml:"endpoints" json:"endpoints"`
-			DisableUpdate bool     `yaml:"disableUpdate" json:"disableUpdate"`
-		}{
-			Endpoints:     resp.Endpoints,
-			DisableUpdate: false,
-		},
-		NodeId: resp.UniqueId,
-		Secret: resp.Secret,
+		RPCEndpoints:     resp.Endpoints,
+		RPCDisableUpdate: false,
+		NodeId:           resp.UniqueId,
+		Secret:           resp.Secret,
 	}
-	remotelogs.Debug("NODE", "writing 'configs/api.yaml' ...")
-	err = apiConfig.WriteFile(Tea.ConfigFile("api.yaml"))
+	remotelogs.Debug("NODE", "writing 'configs/"+configs.ConfigFileName+"' ...")
+	err = apiConfig.WriteFile(Tea.ConfigFile(configs.ConfigFileName))
 	if err != nil {
 		return err
 	}
-	remotelogs.Debug("NODE", "wrote 'configs/api.yaml' successfully")
+	remotelogs.Debug("NODE", "wrote 'configs/"+configs.ConfigFileName+"' successfully")
 
 	return nil
 }
@@ -1136,7 +1132,7 @@ func (this *Node) changeAPINodeAddrs(apiNodeAddrs []*serverconfigs.NetworkAddres
 	if config == nil {
 		return
 	}
-	var oldEndpoints = config.RPC.Endpoints
+	var oldEndpoints = config.RPCEndpoints
 
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
@@ -1150,9 +1146,9 @@ func (this *Node) changeAPINodeAddrs(apiNodeAddrs []*serverconfigs.NetworkAddres
 		go func(v int64) {
 			// 测试新的API节点地址
 			if rpcClient.TestEndpoints(addrs) {
-				config.RPC.Endpoints = addrs
+				config.RPCEndpoints = addrs
 			} else {
-				config.RPC.Endpoints = oldEndpoints
+				config.RPCEndpoints = oldEndpoints
 				this.lastAPINodeAddrs = nil // 恢复为空，以便于下次更新重试
 			}
 

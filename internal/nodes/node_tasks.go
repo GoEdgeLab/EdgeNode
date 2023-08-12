@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/ddosconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/configs"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
@@ -26,8 +27,8 @@ func (this *Node) loopTasks() error {
 	var tr = trackers.Begin("CHECK_NODE_CONFIG_CHANGES")
 	defer tr.End()
 
-	// 检查api.yaml是否存在
-	var apiConfigFile = Tea.ConfigFile("api.yaml")
+	// 检查api_node.yaml是否存在
+	var apiConfigFile = Tea.ConfigFile(configs.ConfigFileName)
 	_, err := os.Stat(apiConfigFile)
 	if err != nil {
 		return nil

@@ -438,10 +438,10 @@ func (this *APIStream) handleChangeAPINode(message *pb.NodeStreamMessage) error 
 		return nil
 	}
 
-	config.RPC.Endpoints = []string{messageData.Addr}
+	config.RPCEndpoints = []string{messageData.Addr}
 
 	// 保存到文件
-	err = config.WriteFile(Tea.ConfigFile("api.yaml"))
+	err = config.WriteFile(Tea.ConfigFile(configs.ConfigFileName))
 	if err != nil {
 		this.replyFail(message.RequestId, "save config file failed: "+err.Error())
 		return nil

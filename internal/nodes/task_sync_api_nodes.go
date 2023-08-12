@@ -70,7 +70,7 @@ func (this *SyncAPINodesTask) Loop() error {
 	}
 
 	// 是否禁止自动升级
-	if config.RPC.DisableUpdate {
+	if config.RPCDisableUpdate {
 		return nil
 	}
 
@@ -96,7 +96,7 @@ func (this *SyncAPINodesTask) Loop() error {
 	}
 
 	// 和现有的对比
-	if utils.EqualStrings(newEndpoints, config.RPC.Endpoints) {
+	if utils.EqualStrings(newEndpoints, config.RPCEndpoints) {
 		return nil
 	}
 
@@ -107,7 +107,7 @@ func (this *SyncAPINodesTask) Loop() error {
 	}
 
 	// 修改RPC对象配置
-	config.RPC.Endpoints = newEndpoints
+	config.RPCEndpoints = newEndpoints
 
 	// 更新当前RPC
 	if !hasCustomizedAPINodeAddrs {
@@ -118,7 +118,7 @@ func (this *SyncAPINodesTask) Loop() error {
 	}
 
 	// 保存到文件
-	err = config.WriteFile(Tea.ConfigFile("api.yaml"))
+	err = config.WriteFile(Tea.ConfigFile(configs.ConfigFileName))
 	if err != nil {
 		return err
 	}

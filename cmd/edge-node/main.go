@@ -37,7 +37,7 @@ func main() {
 		// validate config
 		_, err := configs.LoadAPIConfig()
 		if err != nil {
-			fmt.Println("[ERROR]start failed: load api config from '" + Tea.ConfigFile("api.yaml") + "' failed: " + err.Error())
+			fmt.Println("[ERROR]start failed: load api config from '" + Tea.ConfigFile(configs.ConfigFileName) + "' failed: " + err.Error())
 			os.Exit(0)
 		}
 	})
@@ -64,7 +64,7 @@ func main() {
 		// verify dir
 		{
 			fmt.Println("Checking '" + dir + "' ...")
-			for _, subDir := range []string{"bin", "configs/api.yaml", "logs"} {
+			for _, subDir := range []string{"bin/" + filepath.Base(exe), "configs", "logs"} {
 				_, err := os.Stat(dir + "/" + subDir)
 				if err != nil {
 					fmt.Println("[ERROR]program directory structure has been broken, please remove it manually.")

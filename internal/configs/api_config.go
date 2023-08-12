@@ -7,14 +7,19 @@ import (
 	"os"
 )
 
-// APIConfig 节点API配置
+const ConfigFileName = "api_node.yaml"
+const oldConfigFileName = "api.yaml"
+
 type APIConfig struct {
-	RPC struct {
+	OldRPC struct {
 		Endpoints     []string `yaml:"endpoints" json:"endpoints"`
 		DisableUpdate bool     `yaml:"disableUpdate" json:"disableUpdate"`
 	} `yaml:"rpc" json:"rpc"`
-	NodeId string `yaml:"nodeId" json:"nodeId"`
-	Secret string `yaml:"secret" json:"secret"`
+
+	RPCEndpoints     []string `yaml:"rpc.endpoints" json:"rpc.endpoints"`
+	RPCDisableUpdate bool     `yaml:"rpc.disableUpdate" json:"rpc.disableUpdate"`
+	NodeId           string   `yaml:"nodeId" json:"nodeId"`
+	Secret           string   `yaml:"secret" json:"secret"`
 }
 
 func NewAPIConfig() *APIConfig {
@@ -22,9 +27,16 @@ func NewAPIConfig() *APIConfig {
 }
 
 func (this *APIConfig) Init() error {
-	if len(this.RPC.Endpoints) == 0 {
+	// compatible with old
+	if len(this.RPCEndpoints) == 0 && len(this.OldRPC.Endpoints) > 0 {
+		this.RPCEndpoints = this.OldRPC.Endpoints
+		this.RPCDisableUpdate = this.OldRPC.DisableUpdate
+	}
+
+	if len(this.RPCEndpoints) == 0 {
 		return errors.New("no valid 'rpc.endpoints'")
 	}
+
 	if len(this.NodeId) == 0 {
 		return errors.New("'nodeId' required")
 	}
@@ -35,23 +47,29 @@ func (this *APIConfig) Init() error {
 }
 
 func LoadAPIConfig() (*APIConfig, error) {
-	data, err := os.ReadFile(Tea.ConfigFile("api.yaml"))
-	if err != nil {
-		return nil, err
-	}
+	for _, filename := range []string{ConfigFileName, oldConfigFileName} {
+		data, err := os.ReadFile(Tea.ConfigFile(filename))
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
 
-	var config = &APIConfig{}
-	err = yaml.Unmarshal(data, config)
-	if err != nil {
-		return nil, err
-	}
+		var config = &APIConfig{}
+		err = yaml.Unmarshal(data, config)
+		if err != nil {
+			return nil, err
+		}
 
-	err = config.Init()
-	if err != nil {
-		return nil, errors.New("init error: " + err.Error())
-	}
+		err = config.Init()
+		if err != nil {
+			return nil, errors.New("init error: " + err.Error())
+		}
 
-	return config, nil
+		return config, nil
+	}
+	return nil, errors.New("no config file '" + ConfigFileName + "' found")
 }
 
 // WriteFile 保存到文件

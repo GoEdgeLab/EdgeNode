@@ -49,7 +49,7 @@ function build() {
 		fi
 	fi
 
-	cp "$ROOT"/configs/api.template.yaml "$DIST"/configs
+	cp "$ROOT"/configs/api_node.template.yaml "$DIST"/configs
 	cp "$ROOT"/configs/cluster.template.yaml "$DIST"/configs
 	cp -R "$ROOT"/www "$DIST"/
 	cp -R "$ROOT"/pages "$DIST"/
