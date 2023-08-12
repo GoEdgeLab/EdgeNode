@@ -36,7 +36,6 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"github.com/iwind/gosock/pkg/gosock"
-	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"os/exec"
@@ -524,20 +523,13 @@ func (this *Node) startSyncTimer() {
 
 // 检查集群设置
 func (this *Node) checkClusterConfig() error {
-	var configFile = Tea.ConfigFile("cluster.yaml")
-	data, err := os.ReadFile(configFile)
+	config, err := configs.LoadClusterConfig()
 	if err != nil {
 		return err
 	}
-	config := &configs.ClusterConfig{}
-	err = yaml.Unmarshal(data, config)
-	if err != nil {
-		return err
-	}
-
 	rpcClient, err := rpc.NewRPCClient(&configs.APIConfig{
-		RPCEndpoints:     config.RPC.Endpoints,
-		RPCDisableUpdate: config.RPC.DisableUpdate,
+		RPCEndpoints:     config.RPCEndpoints,
+		RPCDisableUpdate: config.RPCDisableUpdate,
 		NodeId:           config.ClusterId,
 		Secret:           config.Secret,
 	})

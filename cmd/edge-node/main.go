@@ -37,8 +37,12 @@ func main() {
 		// validate config
 		_, err := configs.LoadAPIConfig()
 		if err != nil {
-			fmt.Println("[ERROR]start failed: load api config from '" + Tea.ConfigFile(configs.ConfigFileName) + "' failed: " + err.Error())
-			os.Exit(0)
+			// validate cluster config
+			_, clusterErr := configs.LoadClusterConfig()
+			if clusterErr != nil { // fail again
+				fmt.Println("[ERROR]start failed: load api config from '" + Tea.ConfigFile(configs.ConfigFileName) + "' failed: " + err.Error())
+				os.Exit(0)
+			}
 		}
 	})
 	app.On("uninstall", func() {
