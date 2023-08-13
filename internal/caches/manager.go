@@ -1,6 +1,7 @@
 package caches
 
 import (
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -8,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
+	"golang.org/x/sys/unix"
 	"strconv"
 	"sync"
 )
@@ -176,8 +178,30 @@ func (this *Manager) TotalDiskSize() int64 {
 	defer this.locker.RUnlock()
 
 	var total = int64(0)
+	var sidMap = map[string]bool{} // partition sid => bool
 	for _, storage := range this.storageMap {
-		total += storage.TotalDiskSize()
+		// 这里不能直接用 storage.TotalDiskSize() 相加，因为多个缓存策略缓存目录可能处在同一个分区目录下
+		fileStorage, ok := storage.(*FileStorage)
+		if ok {
+			var options = fileStorage.options // copy
+			if options != nil {
+				var dir = options.Dir // copy
+				if len(dir) == 0 {
+					continue
+				}
+				var stat = &unix.Statfs_t{}
+				err := unix.Statfs(dir, stat)
+				if err != nil {
+					continue
+				}
+				var sid = fmt.Sprintf("%d_%d", stat.Fsid.Val[0], stat.Fsid.Val[1])
+				if sidMap[sid] {
+					continue
+				}
+				sidMap[sid] = true
+				total += int64(stat.Blocks-stat.Bfree) * int64(stat.Bsize) // we add extra int64() for darwin
+			}
+		}
 	}
 
 	if total < 0 {
