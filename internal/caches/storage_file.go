@@ -22,6 +22,7 @@ import (
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
+	timeutil "github.com/iwind/TeaGo/utils/time"
 	"github.com/shirou/gopsutil/v3/load"
 	"math"
 	"os"
@@ -298,6 +299,9 @@ func (this *FileStorage) Init() error {
 
 	// 检查磁盘空间
 	this.checkDiskSpace()
+
+	// clean *.trash directories
+	this.cleanAllDeletedDirs()
 
 	return nil
 }
@@ -746,7 +750,7 @@ func (this *FileStorage) CleanAll() error {
 				return err
 			}
 			for _, info := range subDirs {
-				subDir := info.Name()
+				var subDir = info.Name()
 
 				// 检查目录名
 				if !dirNameReg.MatchString(subDir) {
@@ -754,7 +758,7 @@ func (this *FileStorage) CleanAll() error {
 				}
 
 				// 修改目录名
-				tmpDir := dir + "/" + subDir + "-deleted"
+				var tmpDir = dir + "/" + subDir + "." + timeutil.Format("YmdHis") + ".trash"
 				err = os.Rename(dir+"/"+subDir, tmpDir)
 				if err != nil {
 					return err
@@ -765,7 +769,11 @@ func (this *FileStorage) CleanAll() error {
 			goman.New(func() {
 				err = this.cleanDeletedDirs(dir)
 				if err != nil {
-					remotelogs.Warn("CACHE", "delete '*-deleted' dirs failed: "+err.Error())
+					remotelogs.Warn("CACHE", "delete '*.trash' dirs failed: "+err.Error())
+				} else {
+					// try to clean again, to delete writing files when deleting
+					time.Sleep(10 * time.Minute)
+					_ = this.cleanDeletedDirs(dir)
 				}
 			})
 
@@ -1228,7 +1236,25 @@ func (this *FileStorage) diskCapacityBytes() int64 {
 	return c1
 }
 
-// 清理 *-deleted 目录
+// remove all *.trash directories under policy directory
+func (this *FileStorage) cleanAllDeletedDirs() {
+	var rootDirs = []string{this.options.Dir}
+	var subDirs = this.subDirs // copy slice
+	if len(subDirs) > 0 {
+		for _, subDir := range subDirs {
+			rootDirs = append(rootDirs, subDir.Path)
+		}
+	}
+
+	for _, rootDir := range rootDirs {
+		var dir = rootDir + "/p" + types.String(this.policy.Id)
+		goman.New(func() {
+			_ = this.cleanDeletedDirs(dir)
+		})
+	}
+}
+
+// 清理 *.trash 目录
 // 由于在很多硬盘上耗时非常久，所以应该放在后台运行
 func (this *FileStorage) cleanDeletedDirs(dir string) error {
 	fp, err := os.Open(dir)
@@ -1243,8 +1269,8 @@ func (this *FileStorage) cleanDeletedDirs(dir string) error {
 		return err
 	}
 	for _, info := range subDirs {
-		subDir := info.Name()
-		if !strings.HasSuffix(subDir, "-deleted") {
+		var subDir = info.Name()
+		if !strings.HasSuffix(subDir, ".trash") {
 			continue
 		}
 
