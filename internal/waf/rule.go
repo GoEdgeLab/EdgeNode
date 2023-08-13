@@ -127,6 +127,21 @@ func (this *Rule) Init() error {
 		this.ipList = values.ParseStringList(this.Value, true)
 	case RuleOperatorIPRange, RuleOperatorNotIPRange:
 		this.ipRangeListValue = values.ParseIPRangeList(this.Value)
+	case RuleOperatorWildcardMatch, RuleOperatorWildcardNotMatch:
+		var pieces = strings.Split(this.Value, "*")
+		for index, piece := range pieces {
+			pieces[index] = regexp.QuoteMeta(piece)
+		}
+		var pattern = strings.Join(pieces, "(.*)")
+		var expr = "^" + pattern + "$"
+		if this.IsCaseInsensitive {
+			expr = "(?i)" + expr
+		}
+		reg, err := re.Compile(expr)
+		if err != nil {
+			return err
+		}
+		this.reg = reg
 	}
 
 	if singleParamRegexp.MatchString(this.Param) {
@@ -369,7 +384,7 @@ func (this *Rule) Test(value interface{}) bool {
 		} else {
 			return types.String(value) != this.Value
 		}
-	case RuleOperatorMatch:
+	case RuleOperatorMatch, RuleOperatorWildcardMatch:
 		if value == nil {
 			return false
 		}
@@ -393,7 +408,7 @@ func (this *Rule) Test(value interface{}) bool {
 
 		// string
 		return utils.MatchStringCache(this.reg, types.String(value))
-	case RuleOperatorNotMatch:
+	case RuleOperatorNotMatch, RuleOperatorWildcardNotMatch:
 		if value == nil {
 			return true
 		}
