@@ -53,7 +53,11 @@ func (this *OCSPUpdateTask) Start() {
 	for range this.ticker.C {
 		err := this.Loop()
 		if err != nil {
-			remotelogs.Warn("OCSPUpdateTask", "update ocsp failed: "+err.Error())
+			if rpc.IsConnError(err) {
+				remotelogs.Debug("OCSPUpdateTask", "update ocsp failed: "+err.Error())
+			} else {
+				remotelogs.Warn("OCSPUpdateTask", "update ocsp failed: "+err.Error())
+			}
 		}
 	}
 }

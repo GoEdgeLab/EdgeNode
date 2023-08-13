@@ -50,7 +50,11 @@ func (this *APIStream) Start() {
 		}
 		err := this.loop()
 		if err != nil {
-			remotelogs.Warn("API_STREAM", err.Error())
+			if rpc.IsConnError(err) {
+				remotelogs.Debug("API_STREAM", err.Error())
+			} else {
+				remotelogs.Warn("API_STREAM", err.Error())
+			}
 			time.Sleep(10 * time.Second)
 			continue
 		}
@@ -76,7 +80,7 @@ func (this *APIStream) loop() error {
 		if this.isQuiting {
 			return nil
 		}
-		return errors.Wrap(err)
+		return err
 	}
 	this.stream = nodeStream
 
@@ -92,7 +96,7 @@ func (this *APIStream) loop() error {
 				remotelogs.Println("API_STREAM", "quit")
 				return nil
 			}
-			return errors.Wrap(err)
+			return err
 		}
 
 		// 处理消息

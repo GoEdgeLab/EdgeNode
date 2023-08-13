@@ -187,7 +187,7 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 	})
 	if err != nil {
 		if rpc.IsConnError(err) {
-			remotelogs.Warn("IP_LIST_MANAGER", "rpc connection error: "+err.Error())
+			remotelogs.Debug("IP_LIST_MANAGER", "rpc connection error: "+err.Error())
 			return false, nil
 		}
 		return false, err
