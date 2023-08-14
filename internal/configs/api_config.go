@@ -67,6 +67,11 @@ func LoadAPIConfig() (*APIConfig, error) {
 			return nil, errors.New("init error: " + err.Error())
 		}
 
+		// 自动生成新的配置文件
+		if filename == oldConfigFileName {
+			_ = config.WriteFile(Tea.ConfigFile(ConfigFileName))
+		}
+
 		return config, nil
 	}
 	return nil, errors.New("no config file '" + ConfigFileName + "' found")
