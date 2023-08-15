@@ -280,7 +280,7 @@ func (this *NodeStatusExecutor) updateCacheSpace(status *nodeconfigs.NodeStatus)
 	var result = []maps.Map{}
 	var cachePaths = caches.SharedManager.FindAllCachePaths()
 	for _, path := range cachePaths {
-		stat, err := fsutils.Stat(path)
+		stat, err := fsutils.StatDevice(path)
 		if err != nil {
 			return
 		}

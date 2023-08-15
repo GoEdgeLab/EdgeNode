@@ -10,7 +10,7 @@ import (
 )
 
 func TestStat(t *testing.T) {
-	stat, err := fsutils.Stat("/usr/local")
+	stat, err := fsutils.StatDevice("/usr/local")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,7 +19,7 @@ func TestStat(t *testing.T) {
 
 func TestStatCache(t *testing.T) {
 	for i := 0; i < 10; i++ {
-		stat, err := fsutils.StatCache("/usr/local")
+		stat, err := fsutils.StatDeviceCache("/usr/local")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -40,16 +40,16 @@ func TestConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			_, _ = fsutils.Stat("/usr/local")
+			_, _ = fsutils.StatDevice("/usr/local")
 		}()
 	}
 	wg.Wait()
 }
 
-func BenchmarkStat(b *testing.B) {
+func BenchmarkStatDevice(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := fsutils.Stat("/usr/local")
+			_, err := fsutils.StatDevice("/usr/local")
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -57,10 +57,10 @@ func BenchmarkStat(b *testing.B) {
 	})
 }
 
-func BenchmarkStatCache(b *testing.B) {
+func BenchmarkStatCacheDevice(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := fsutils.StatCache("/usr/local")
+			_, err := fsutils.StatDeviceCache("/usr/local")
 			if err != nil {
 				b.Fatal(err)
 			}

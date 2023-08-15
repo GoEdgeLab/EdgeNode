@@ -8,8 +8,8 @@ import (
 	"sync"
 )
 
-// Stat device contains the path
-func Stat(path string) (*StatResult, error) {
+// StatDevice device contains the path
+func StatDevice(path string) (*StatResult, error) {
 	var stat = &unix.Statfs_t{}
 	err := unix.Statfs(path, stat)
 	if err != nil {
@@ -23,8 +23,8 @@ var cacheMap = map[string]*StatResult{} // path => StatResult
 
 const cacheLife = 3 // seconds
 
-// StatCache stat device with cache
-func StatCache(path string) (*StatResult, error) {
+// StatDeviceCache stat device with cache
+func StatDeviceCache(path string) (*StatResult, error) {
 	locker.RLock()
 	stat, ok := cacheMap[path]
 	if ok && stat.updatedAt >= fasttime.Now().Unix()-cacheLife {
@@ -36,7 +36,7 @@ func StatCache(path string) (*StatResult, error) {
 	locker.Lock()
 	defer locker.Unlock()
 
-	stat, err := Stat(path)
+	stat, err := StatDevice(path)
 	if err != nil {
 		return nil, err
 	}

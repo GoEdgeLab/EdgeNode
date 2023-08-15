@@ -890,7 +890,7 @@ func (this *FileStorage) Stop() {
 
 // TotalDiskSize 消耗的磁盘尺寸
 func (this *FileStorage) TotalDiskSize() int64 {
-	stat, err := fsutils.StatCache(this.options.Dir)
+	stat, err := fsutils.StatDeviceCache(this.options.Dir)
 	if err == nil {
 		return int64(stat.UsedSize())
 	}
@@ -1434,14 +1434,14 @@ func (this *FileStorage) checkDiskSpace() {
 	}
 
 	if options != nil && len(options.Dir) > 0 {
-		stat, err := fsutils.Stat(options.Dir)
+		stat, err := fsutils.StatDevice(options.Dir)
 		if err == nil {
 			this.mainDiskIsFull = stat.FreeSize() < minFreeSize
 		}
 	}
 	var subDirs = this.subDirs // copy slice
 	for _, subDir := range subDirs {
-		stat, err := fsutils.Stat(subDir.Path)
+		stat, err := fsutils.StatDevice(subDir.Path)
 		if err == nil {
 			subDir.IsFull = stat.FreeSize() < minFreeSize
 		}
