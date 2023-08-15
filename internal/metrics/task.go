@@ -19,6 +19,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -59,7 +60,7 @@ type Task struct {
 	serverIdMapLocker sync.Mutex
 
 	statsMap    map[string]*Stat // 待写入队列，hash => *Stat
-	statsLocker sync.Mutex
+	statsLocker sync.RWMutex
 	statsTicker *utils.Ticker
 }
 
@@ -237,7 +238,7 @@ func (this *Task) Add(obj MetricInterface) {
 
 	var keys = []string{}
 	for _, key := range this.item.Keys {
-		k := obj.MetricKey(key)
+		var k = obj.MetricKey(key)
 
 		// 忽略499状态
 		if key == "${status}" && k == "499" {
@@ -253,14 +254,19 @@ func (this *Task) Add(obj MetricInterface) {
 	}
 
 	var hash = SumStat(obj.MetricServerId(), keys, this.item.CurrentTime(), this.item.Version, this.item.Id)
-	this.statsLocker.Lock()
+	var countItems int
+	this.statsLocker.RLock()
 	oldStat, ok := this.statsMap[hash]
+	if !ok {
+		countItems = len(this.statsMap)
+	}
+	this.statsLocker.RUnlock()
 	if ok {
-		oldStat.Value += v
-		oldStat.Hash = hash
+		atomic.AddInt64(&oldStat.Value, 1)
 	} else {
 		// 防止过载
-		if len(this.statsMap) < MaxQueueSize {
+		if countItems < MaxQueueSize {
+			this.statsLocker.Lock()
 			this.statsMap[hash] = &Stat{
 				ServerId: obj.MetricServerId(),
 				Keys:     keys,
@@ -268,9 +274,9 @@ func (this *Task) Add(obj MetricInterface) {
 				Time:     this.item.CurrentTime(),
 				Hash:     hash,
 			}
+			this.statsLocker.Unlock()
 		}
 	}
-	this.statsLocker.Unlock()
 }
 
 // Stop 停止任务

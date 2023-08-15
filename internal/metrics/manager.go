@@ -26,9 +26,9 @@ func init() {
 type Manager struct {
 	isQuiting bool
 
-	tasks         map[int64]*Task    // itemId => *Task
-	categoryTasks map[string][]*Task // category => []*Task
-	locker        sync.RWMutex
+	taskMap         map[int64]*Task    // itemId => *Task
+	categoryTaskMap map[string][]*Task // category => []*Task
+	locker          sync.RWMutex
 
 	hasHTTPMetrics bool
 	hasTCPMetrics  bool
@@ -37,8 +37,8 @@ type Manager struct {
 
 func NewManager() *Manager {
 	return &Manager{
-		tasks:         map[int64]*Task{},
-		categoryTasks: map[string][]*Task{},
+		taskMap:         map[int64]*Task{},
+		categoryTaskMap: map[string][]*Task{},
 	}
 }
 
@@ -56,7 +56,7 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 	}
 
 	// 停用以前的 或 修改现在的
-	for itemId, task := range this.tasks {
+	for itemId, task := range this.taskMap {
 		newItem, ok := newMap[itemId]
 		if !ok || !newItem.IsOn { // 停用以前的
 			remotelogs.Println("METRIC_MANAGER", "stop task '"+strconv.FormatInt(itemId, 10)+"'")
@@ -64,7 +64,7 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 			if err != nil {
 				remotelogs.Error("METRIC_MANAGER", "stop task '"+strconv.FormatInt(itemId, 10)+"' failed: "+err.Error())
 			}
-			delete(this.tasks, itemId)
+			delete(this.taskMap, itemId)
 		} else { // 更新已存在的
 			if newItem.Version != task.item.Version {
 				remotelogs.Println("METRIC_MANAGER", "update task '"+strconv.FormatInt(itemId, 10)+"'")
@@ -78,7 +78,7 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 		if !newItem.IsOn {
 			continue
 		}
-		_, ok := this.tasks[newItem.Id]
+		_, ok := this.taskMap[newItem.Id]
 		if !ok {
 			remotelogs.Println("METRIC_MANAGER", "start task '"+strconv.FormatInt(newItem.Id, 10)+"'")
 			task := NewTask(newItem)
@@ -92,7 +92,7 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 				remotelogs.Error("METRIC_MANAGER", "start task failed: "+err.Error())
 				continue
 			}
-			this.tasks[newItem.Id] = task
+			this.taskMap[newItem.Id] = task
 		}
 	}
 
@@ -100,11 +100,11 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 	this.hasHTTPMetrics = false
 	this.hasTCPMetrics = false
 	this.hasUDPMetrics = false
-	this.categoryTasks = map[string][]*Task{}
-	for _, task := range this.tasks {
-		tasks := this.categoryTasks[task.item.Category]
+	this.categoryTaskMap = map[string][]*Task{}
+	for _, task := range this.taskMap {
+		var tasks = this.categoryTaskMap[task.item.Category]
 		tasks = append(tasks, task)
-		this.categoryTasks[task.item.Category] = tasks
+		this.categoryTaskMap[task.item.Category] = tasks
 
 		switch task.item.Category {
 		case serverconfigs.MetricItemCategoryHTTP:
@@ -124,10 +124,12 @@ func (this *Manager) Add(obj MetricInterface) {
 	}
 
 	this.locker.RLock()
-	for _, task := range this.categoryTasks[obj.MetricCategory()] {
+	var tasks = this.categoryTaskMap[obj.MetricCategory()]
+	this.locker.RUnlock()
+
+	for _, task := range tasks {
 		task.Add(obj)
 	}
-	this.locker.RUnlock()
 }
 
 func (this *Manager) HasHTTPMetrics() bool {
@@ -149,9 +151,9 @@ func (this *Manager) Quit() {
 	remotelogs.Println("METRIC_MANAGER", "quit")
 
 	this.locker.Lock()
-	for _, task := range this.tasks {
+	for _, task := range this.taskMap {
 		_ = task.Stop()
 	}
-	this.tasks = map[int64]*Task{}
+	this.taskMap = map[int64]*Task{}
 	this.locker.Unlock()
 }

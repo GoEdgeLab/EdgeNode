@@ -4,11 +4,15 @@ package metrics_test
 
 import (
 	"fmt"
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/rands"
+	"log"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -212,4 +216,66 @@ func TestTask_Upload(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("ok")
+}
+
+var testingTask *metrics.Task
+var testingTaskInitOnce = &sync.Once{}
+
+func initTestingTask() {
+	testingTask = metrics.NewTask(&serverconfigs.MetricItemConfig{
+		Id:         1,
+		IsOn:       false,
+		Category:   "tcp",
+		Period:     1,
+		PeriodUnit: serverconfigs.MetricItemPeriodUnitDay,
+		Keys:       []string{"${remoteAddr}"},
+		Value:      "${countRequest}",
+	})
+
+	err := testingTask.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = testingTask.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func BenchmarkTask_Add(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	testingTaskInitOnce.Do(func() {
+		initTestingTask()
+	})
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			testingTask.Add(&taskRequest{})
+		}
+	})
+}
+
+type taskRequest struct {
+}
+
+func (this *taskRequest) MetricKey(key string) string {
+	return configutils.ParseVariables(key, func(varName string) (value string) {
+		return "1.2.3.4"
+	})
+}
+
+func (this *taskRequest) MetricValue(value string) (result int64, ok bool) {
+	return 1, true
+}
+
+func (this *taskRequest) MetricServerId() int64 {
+	return 1
+}
+
+func (this *taskRequest) MetricCategory() string {
+	return "http"
 }

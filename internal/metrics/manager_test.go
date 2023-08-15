@@ -11,7 +11,7 @@ func TestNewManager(t *testing.T) {
 	var manager = NewManager()
 	{
 		manager.Update([]*serverconfigs.MetricItemConfig{})
-		for _, task := range manager.tasks {
+		for _, task := range manager.taskMap {
 			t.Log(task.item.Id)
 		}
 	}
@@ -28,7 +28,7 @@ func TestNewManager(t *testing.T) {
 				Id: 3,
 			},
 		})
-		for _, task := range manager.tasks {
+		for _, task := range manager.taskMap {
 			t.Log("task:", task.item.Id)
 		}
 	}
@@ -43,7 +43,7 @@ func TestNewManager(t *testing.T) {
 				Id: 2,
 			},
 		})
-		for _, task := range manager.tasks {
+		for _, task := range manager.taskMap {
 			t.Log("task:", task.item.Id)
 		}
 	}
@@ -56,7 +56,7 @@ func TestNewManager(t *testing.T) {
 				Version: 1,
 			},
 		})
-		for _, task := range manager.tasks {
+		for _, task := range manager.taskMap {
 			t.Log("task:", task.item.Id)
 		}
 	}

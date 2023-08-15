@@ -14,3 +14,11 @@ func TestHash(t *testing.T) {
 		t.Log(key + " => " + types.String(h))
 	}
 }
+
+func BenchmarkHashString(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			fnv.HashString("abcdefh")
+		}
+	})
+}
