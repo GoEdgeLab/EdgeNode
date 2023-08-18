@@ -264,7 +264,9 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 		}
 	}
 	status.DiskTotal = total
-	status.DiskUsage = float64(totalUsage) / float64(total)
+	if total > 0 {
+		status.DiskUsage = float64(totalUsage) / float64(total)
+	}
 	status.DiskMaxUsage = maxUsage / 100
 
 	// 记录监控数据
