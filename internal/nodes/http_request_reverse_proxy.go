@@ -374,6 +374,21 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		return
 	}
 
+	// 50x
+	if resp != nil &&
+		resp.StatusCode >= 500 &&
+		resp.StatusCode < 510 &&
+		this.reverseProxy.Retry50X &&
+		(originId > 0 || (lnNodeId > 0 && hasMultipleLnNodes)) &&
+		!isLastRetry {
+		if resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+
+		shouldRetry = true
+		return
+	}
+
 	// 记录相关数据
 	this.originStatus = int32(resp.StatusCode)
 
