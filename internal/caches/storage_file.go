@@ -1418,7 +1418,7 @@ func (this *FileStorage) initOpenFileCache() {
 }
 
 func (this *FileStorage) runMemoryStorageSafety(f func(memoryStorage *MemoryStorage)) {
-	var memoryStorage = this.memoryStorage
+	var memoryStorage = this.memoryStorage // copy
 	if memoryStorage != nil {
 		f(memoryStorage)
 	}
@@ -1437,6 +1437,15 @@ func (this *FileStorage) checkDiskSpace() {
 		stat, err := fsutils.StatDevice(options.Dir)
 		if err == nil {
 			this.mainDiskIsFull = stat.FreeSize() < minFreeSize
+
+			// check capacity (only on main directory)
+			var policy = this.policy // copy
+			if !this.mainDiskIsFull && policy != nil {
+				var capacityBytes = policy.CapacityBytes() // copy
+				if capacityBytes > 0 && stat.UsedSize() >= uint64(capacityBytes) {
+					this.mainDiskIsFull = true
+				}
+			}
 		}
 	}
 	var subDirs = this.subDirs // copy slice
