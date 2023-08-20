@@ -306,7 +306,8 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 
 	if requestErr != nil {
 		// 客户端取消请求，则不提示
-		httpErr, ok := requestErr.(*url.Error)
+		var httpErr *url.Error
+		ok := errors.As(requestErr, &httpErr)
 		if !ok {
 			if isHTTPOrigin {
 				SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
@@ -320,7 +321,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
 			remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.RawReq.URL.String()+": Request origin server failed: "+requestErr.Error())
-		} else if httpErr.Err != context.Canceled {
+		} else if !errors.Is(httpErr, context.Canceled) {
 			if isHTTPOrigin {
 				SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
 					this.reverseProxy.ResetScheduling()
@@ -353,7 +354,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			// 是否为客户端方面的错误
 			var isClientError = false
 			if ok {
-				if httpErr.Err == context.Canceled {
+				if errors.Is(httpErr, context.Canceled) {
 					// 如果是服务器端主动关闭，则无需提示
 					if this.isConnClosed() {
 						this.disableLog = true
