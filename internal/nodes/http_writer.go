@@ -908,7 +908,7 @@ func (this *HTTPWriter) SendResp(resp *http.Response) (int64, error) {
 
 // Redirect 跳转
 func (this *HTTPWriter) Redirect(status int, url string) {
-	http.Redirect(this.rawWriter, this.req.RawReq, url, status)
+	httpRedirect(this, this.req.RawReq, url, status)
 	this.isFinished = true
 }
 

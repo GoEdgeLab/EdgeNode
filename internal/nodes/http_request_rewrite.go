@@ -31,10 +31,10 @@ func (this *HTTPRequest) doRewrite() (shouldShop bool) {
 	if this.rewriteRule.Mode == serverconfigs.HTTPRewriteModeRedirect {
 		if this.rewriteRule.RedirectStatus > 0 {
 			this.ProcessResponseHeaders(this.writer.Header(), this.rewriteRule.RedirectStatus)
-			http.Redirect(this.writer, this.RawReq, this.rewriteReplace, this.rewriteRule.RedirectStatus)
+			httpRedirect(this.writer, this.RawReq, this.rewriteReplace, this.rewriteRule.RedirectStatus)
 		} else {
 			this.ProcessResponseHeaders(this.writer.Header(), http.StatusTemporaryRedirect)
-			http.Redirect(this.writer, this.RawReq, this.rewriteReplace, http.StatusTemporaryRedirect)
+			httpRedirect(this.writer, this.RawReq, this.rewriteReplace, http.StatusTemporaryRedirect)
 		}
 		return true
 	}

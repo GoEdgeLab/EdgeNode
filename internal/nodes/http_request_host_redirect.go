@@ -55,7 +55,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					}
 
 					this.ProcessResponseHeaders(this.writer.Header(), status)
-					http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
+					httpRedirect(this.writer, this.RawReq, afterURL, status)
 					return true
 				}
 			} else if u.MatchRegexp { // 正则匹配
@@ -97,7 +97,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				}
 
 				this.ProcessResponseHeaders(this.writer.Header(), status)
-				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
+				httpRedirect(this.writer, this.RawReq, afterURL, status)
 				return true
 			} else { // 精准匹配
 				if fullURL == u.RealBeforeURL() {
@@ -120,7 +120,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					}
 
 					this.ProcessResponseHeaders(this.writer.Header(), status)
-					http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
+					httpRedirect(this.writer, this.RawReq, afterURL, status)
 					return true
 				}
 			}
@@ -163,7 +163,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 					afterURL += this.uri[qIndex:]
 				}
 
-				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
+				httpRedirect(this.writer, this.RawReq, afterURL, status)
 				return true
 			}
 		} else if u.Type == serverconfigs.HTTPHostRedirectTypePort {
@@ -212,7 +212,7 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				}
 
 				this.ProcessResponseHeaders(this.writer.Header(), status)
-				http.Redirect(this.RawWriter, this.RawReq, afterURL, status)
+				httpRedirect(this.writer, this.RawReq, afterURL, status)
 				return true
 			}
 		}
