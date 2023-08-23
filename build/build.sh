@@ -6,8 +6,10 @@ function build() {
 	VERSION=$(lookup-version "$ROOT"/../internal/const/const.go)
 	DIST=$ROOT/"../dist/${NAME}"
 	MUSL_DIR="/usr/local/opt/musl-cross/bin"
-	GCC_X86_64_DIR="/usr/local/Cellar/x86_64-unknown-linux-gnu/10.3.0/bin"
-	GCC_ARM64_DIR="/usr/local/Cellar/aarch64-unknown-linux-gnu/10.3.0/bin"
+
+	# for macOS users: precompiled gcc can be downloaded from https://github.com/messense/homebrew-macos-cross-toolchains
+	GCC_X86_64_DIR="/usr/local/gcc/x86_64-unknown-linux-gnu/bin"
+	GCC_ARM64_DIR="//usr/local/gcc/aarch64-unknown-linux-gnu/bin"
 
 	OS=${1}
 	ARCH=${2}
@@ -57,7 +59,10 @@ function build() {
 	# we support TOA on linux only
 	if [ "$OS" == "linux" ] && [ -f "${ROOT}/edge-toa/edge-toa-${ARCH}" ]
 	then
-		mkdir "$DIST/edge-toa"
+		if [ ! -d  "$DIST/edge-toa" ]
+		then
+			mkdir "$DIST/edge-toa"
+		fi
 		cp "${ROOT}/edge-toa/edge-toa-${ARCH}" "$DIST/edge-toa/edge-toa"
 	fi
 
