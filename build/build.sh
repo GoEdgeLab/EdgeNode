@@ -121,6 +121,11 @@ function build() {
 		env GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags="-s -w" "$ROOT"/../cmd/edge-node/main.go
 	fi
 
+	if [ ! -f "${DIST}/bin/${NAME}" ]; then
+		echo "build failed!"
+		exit
+	fi
+
 	# delete hidden files
 	find "$DIST" -name ".DS_Store" -delete
 	find "$DIST" -name ".gitignore" -delete
