@@ -787,12 +787,10 @@ func (this *HTTPWriter) AddHeaders(header http.Header) {
 			continue
 		}
 		switch key {
-		case "ETag":
+		case "Accept-CH", "ETag", "Content-MD5", "IM", "P3P", "WWW-Authenticate", "X-Request-ID":
 			newHeaders[key] = value
 		default:
-			for _, v := range value {
-				newHeaders.Add(key, v)
-			}
+			newHeaders[http.CanonicalHeaderKey(key)] = value
 		}
 	}
 }
