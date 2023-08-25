@@ -854,6 +854,18 @@ func (this *HTTPRequest) Format(source string) string {
 			return this.requestHeadersString()
 		case "serverName":
 			return this.ServerName
+		case "serverAddr":
+			var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+			if requestConn != nil {
+				conn, ok := requestConn.(net.Conn)
+				if ok {
+					host, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+					if len(host) > 0 {
+						return host
+					}
+				}
+			}
+			return ""
 		case "serverPort":
 			return strconv.Itoa(this.requestServerPort())
 		case "hostname":
