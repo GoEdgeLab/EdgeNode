@@ -9,16 +9,20 @@ import (
 )
 
 const httpStatusPageTemplate = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 	<title>${status} ${statusMessage}</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<style>
+	address { line-height: 1.8; }
+	</style>
 </head>
 <body>
 
 <h1>${status} ${statusMessage}</h1>
 <p>${message}</p>
 
+<address>Connection: ${remoteAddr} (Client) -&gt; ${serverAddr} (Server)</address>
 <address>Request ID: ${requestId}.</address>
 
 </body>
@@ -39,8 +43,6 @@ func (this *HTTPRequest) writeCode(statusCode int, enMessage string, zhMessage s
 			return types.String(statusCode)
 		case "statusMessage":
 			return http.StatusText(statusCode)
-		case "requestId":
-			return this.requestId
 		case "message":
 			var acceptLanguages = this.RawReq.Header.Get("Accept-Language")
 			if len(acceptLanguages) > 0 {
@@ -54,7 +56,7 @@ func (this *HTTPRequest) writeCode(statusCode int, enMessage string, zhMessage s
 			}
 			return enMessage
 		}
-		return "${" + varName + "}"
+		return this.Format("${" + varName + "}")
 	})
 
 	this.ProcessResponseHeaders(this.writer.Header(), statusCode)
@@ -107,7 +109,7 @@ func (this *HTTPRequest) write50x(err error, statusCode int, enMessage string, z
 			}
 			return "The site is unavailable now, cause: " + enMessage + "."
 		}
-		return "${" + varName + "}"
+		return this.Format("${" + varName + "}")
 	})
 
 	this.ProcessResponseHeaders(this.writer.Header(), statusCode)
