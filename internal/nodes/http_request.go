@@ -855,13 +855,19 @@ func (this *HTTPRequest) Format(source string) string {
 		case "serverName":
 			return this.ServerName
 		case "serverAddr":
-			var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
-			if requestConn != nil {
-				conn, ok := requestConn.(net.Conn)
-				if ok {
-					host, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-					if len(host) > 0 {
-						return host
+			var nodeConfig = this.nodeConfig
+			if nodeConfig != nil && nodeConfig.GlobalServerConfig != nil && nodeConfig.GlobalServerConfig.HTTPAll.EnableServerAddrVariable {
+				if len(this.requestRemoteAddrs()) > 1 {
+					return "" // hidden for security
+				}
+				var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
+				if requestConn != nil {
+					conn, ok := requestConn.(net.Conn)
+					if ok {
+						host, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+						if len(host) > 0 {
+							return host
+						}
 					}
 				}
 			}
@@ -1234,7 +1240,7 @@ func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
 	var forwardedFor = this.RawReq.Header.Get("X-Forwarded-For")
 	if len(forwardedFor) > 0 {
 		commaIndex := strings.Index(forwardedFor, ",")
-		if commaIndex > 0 {
+		if commaIndex > 0 && !lists.ContainsString(result, forwardedFor[:commaIndex]) {
 			result = append(result, forwardedFor[:commaIndex])
 		}
 	}
@@ -1242,7 +1248,7 @@ func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
 	// Real-IP
 	{
 		realIP, ok := this.RawReq.Header["X-Real-IP"]
-		if ok && len(realIP) > 0 {
+		if ok && len(realIP) > 0 && !lists.ContainsString(result, realIP[0]) {
 			result = append(result, realIP[0])
 		}
 	}
@@ -1250,7 +1256,7 @@ func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
 	// Real-Ip
 	{
 		realIP, ok := this.RawReq.Header["X-Real-Ip"]
-		if ok && len(realIP) > 0 {
+		if ok && len(realIP) > 0 && !lists.ContainsString(result, realIP[0]) {
 			result = append(result, realIP[0])
 		}
 	}
@@ -1260,7 +1266,9 @@ func (this *HTTPRequest) requestRemoteAddrs() (result []string) {
 		var remoteAddr = this.RawReq.RemoteAddr
 		host, _, err := net.SplitHostPort(remoteAddr)
 		if err == nil {
-			result = append(result, host)
+			if !lists.ContainsString(result, host) {
+				result = append(result, host)
+			}
 		} else {
 			result = append(result, remoteAddr)
 		}
