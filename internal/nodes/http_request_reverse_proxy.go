@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
@@ -387,6 +388,20 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 
 		shouldRetry = true
 		return
+	}
+
+	// 尝试从缓存中恢复
+	if resp != nil &&
+		resp.StatusCode >= 500 && // support 50X only
+		resp.StatusCode < 510 &&
+		this.cacheCanTryStale &&
+		this.web.Cache.Stale != nil &&
+		this.web.Cache.Stale.IsOn &&
+		(len(this.web.Cache.Stale.Status) == 0 || lists.ContainsInt(this.web.Cache.Stale.Status, resp.StatusCode)) {
+		var ok = this.doCacheRead(true)
+		if ok {
+			return
+		}
 	}
 
 	// 记录相关数据
