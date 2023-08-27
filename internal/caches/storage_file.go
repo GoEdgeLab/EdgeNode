@@ -58,6 +58,7 @@ const (
 	FileToMemoryMaxSize             = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
 	FileTmpSuffix                   = ".tmp"
 	DefaultMinDiskFreeSpace  uint64 = 5 << 30 // 当前磁盘最小剩余空间
+	DefaultStaleCacheSeconds        = 1200    // 过时缓存留存时间
 )
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool

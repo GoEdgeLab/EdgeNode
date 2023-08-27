@@ -982,7 +982,7 @@ func (this *HTTPWriter) DelayRead() bool {
 
 // 计算stale时长
 func (this *HTTPWriter) calculateStaleLife() int {
-	var staleLife = 600 // TODO 可以在缓存策略里设置此时间
+	var staleLife = caches.DefaultStaleCacheSeconds
 	var staleConfig = this.req.web.Cache.Stale
 	if staleConfig != nil && staleConfig.IsOn {
 		// 从Header中读取stale-if-error

@@ -367,10 +367,9 @@ func (this *FileListDB) CleanPrefix(prefix string) error {
 		return nil
 	}
 	var count = int64(10000)
-	var staleLife = 600                  // TODO 需要可以设置
 	var unixTime = fasttime.Now().Unix() // 只删除当前的，不删除新的
 	for {
-		result, err := this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, unixTime+int64(staleLife), unixTime, prefix)
+		result, err := this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET expiredAt=0,staleAt=? WHERE id IN (SELECT id FROM "`+this.itemsTableName+`" WHERE expiredAt>0 AND createdAt<=? AND INSTR("key", ?)=1 LIMIT `+types.String(count)+`)`, unixTime+DefaultStaleCacheSeconds, unixTime, prefix)
 		if err != nil {
 			return this.WrapError(err)
 		}
@@ -414,15 +413,14 @@ func (this *FileListDB) CleanMatchKey(key string) error {
 	queryKey = strings.Replace(queryKey, "*", "%", 1)
 
 	// TODO 检查大批量数据下的操作性能
-	var staleLife = 600                  // TODO 需要可以设置
 	var unixTime = fasttime.Now().Unix() // 只删除当前的，不删除新的
 
-	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryKey)
+	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+DefaultStaleCacheSeconds, host, "*."+host, queryKey)
 	if err != nil {
 		return err
 	}
 
-	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryKey+SuffixAll+"%")
+	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+DefaultStaleCacheSeconds, host, "*."+host, queryKey+SuffixAll+"%")
 	if err != nil {
 		return err
 	}
@@ -456,10 +454,9 @@ func (this *FileListDB) CleanMatchPrefix(prefix string) error {
 	queryPrefix += "%"
 
 	// TODO 检查大批量数据下的操作性能
-	var staleLife = 600                  // TODO 需要可以设置
 	var unixTime = fasttime.Now().Unix() // 只删除当前的，不删除新的
 
-	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+int64(staleLife), host, "*."+host, queryPrefix)
+	_, err = this.writeDB.Exec(`UPDATE "`+this.itemsTableName+`" SET "expiredAt"=0, "staleAt"=? WHERE "host" GLOB ? AND "host" NOT GLOB ? AND "key" LIKE ? ESCAPE '\'`, unixTime+DefaultStaleCacheSeconds, host, "*."+host, queryPrefix)
 	return err
 }
 
