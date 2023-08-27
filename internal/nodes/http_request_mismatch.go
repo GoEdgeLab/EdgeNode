@@ -49,6 +49,7 @@ func (this *HTTPRequest) doMismatch() {
 
 		// 是否正在访问IP
 		if globalServerConfig.HTTPAll.NodeIPShowPage && net.ParseIP(this.ReqHost) != nil {
+			this.writer.statusCode = statusCode
 			var contentHTML = this.Format(globalServerConfig.HTTPAll.NodeIPPageHTML)
 			this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 			this.writer.Header().Set("Content-Length", types.String(len(contentHTML)))
@@ -73,6 +74,7 @@ func (this *HTTPRequest) doMismatch() {
 		// 处理当前连接
 		if mismatchAction != nil && mismatchAction.Code == "page" {
 			if mismatchAction.Options != nil {
+				this.writer.statusCode = statusCode
 				var contentHTML = this.Format(mismatchAction.Options.GetString("contentHTML"))
 				this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 				this.writer.Header().Set("Content-Length", types.String(len(contentHTML)))
