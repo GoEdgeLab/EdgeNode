@@ -18,8 +18,11 @@ type ClientConnInterface interface {
 	// SetServerId 设置服务ID
 	SetServerId(serverId int64) (goNext bool)
 
-	// SetUserId 设置所属服务的用户ID
+	// SetUserId 设置所属网站的用户ID
 	SetUserId(userId int64)
+
+	// SetUserPlanId 设置
+	SetUserPlanId(userPlanId int64)
 
 	// UserId 获取当前连接所属服务的用户ID
 	UserId() int64

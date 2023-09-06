@@ -198,7 +198,7 @@ func (this *HTTPRequest) Do() {
 		}
 
 		// 流量限制
-		if this.ReqServer.TrafficLimit != nil && this.ReqServer.TrafficLimit.IsOn && !this.ReqServer.TrafficLimit.IsEmpty() && this.ReqServer.TrafficLimitStatus != nil && this.ReqServer.TrafficLimitStatus.IsValid() {
+		if this.ReqServer.TrafficLimitStatus != nil && this.ReqServer.TrafficLimitStatus.IsValid() {
 			this.doTrafficLimit()
 			this.doEnd()
 			return

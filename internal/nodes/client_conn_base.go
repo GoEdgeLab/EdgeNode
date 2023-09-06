@@ -16,6 +16,7 @@ type BaseClientConn struct {
 
 	isBound    bool
 	userId     int64
+	userPlanId int64
 	serverId   int64
 	remoteAddr string
 	hasLimit   bool
@@ -106,9 +107,29 @@ func (this *BaseClientConn) SetUserId(userId int64) {
 	}
 }
 
+func (this *BaseClientConn) SetUserPlanId(userPlanId int64) {
+	this.userPlanId = userPlanId
+
+	// 设置包装前连接
+	switch conn := this.rawConn.(type) {
+	case *tls.Conn:
+		nativeConn, ok := conn.NetConn().(ClientConnInterface)
+		if ok {
+			nativeConn.SetUserPlanId(userPlanId)
+		}
+	case *ClientConn:
+		conn.SetUserPlanId(userPlanId)
+	}
+}
+
 // UserId 获取当前连接所属服务的用户ID
 func (this *BaseClientConn) UserId() int64 {
 	return this.userId
+}
+
+// UserPlanId 用户套餐ID
+func (this *BaseClientConn) UserPlanId() int64 {
+	return this.userPlanId
 }
 
 // RawIP 原本IP

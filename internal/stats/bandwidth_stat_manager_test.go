@@ -12,22 +12,22 @@ import (
 
 func TestBandwidthStatManager_Add(t *testing.T) {
 	var manager = stats.NewBandwidthStatManager()
-	manager.AddBandwidth(1, 1, 10, 10)
-	manager.AddBandwidth(1, 1, 10, 10)
-	manager.AddBandwidth(1, 1, 10, 10)
+	manager.AddBandwidth(1, 0, 1, 10, 10)
+	manager.AddBandwidth(1, 0, 1, 10, 10)
+	manager.AddBandwidth(1, 0, 1, 10, 10)
 	time.Sleep(1 * time.Second)
-	manager.AddBandwidth(1, 1, 85, 85)
+	manager.AddBandwidth(1, 0, 1, 85, 85)
 	time.Sleep(1 * time.Second)
-	manager.AddBandwidth(1, 1, 25, 25)
-	manager.AddBandwidth(1, 1, 75, 75)
+	manager.AddBandwidth(1, 0, 1, 25, 25)
+	manager.AddBandwidth(1, 0, 1, 75, 75)
 	manager.Inspect()
 }
 
 func TestBandwidthStatManager_Loop(t *testing.T) {
 	var manager = stats.NewBandwidthStatManager()
-	manager.AddBandwidth(1, 1, 10, 10)
-	manager.AddBandwidth(1, 1, 10, 10)
-	manager.AddBandwidth(1, 1, 10, 10)
+	manager.AddBandwidth(1, 0, 1, 10, 10)
+	manager.AddBandwidth(1, 0, 1, 10, 10)
+	manager.AddBandwidth(1, 0, 1, 10, 10)
 	err := manager.Loop()
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +40,7 @@ func BenchmarkBandwidthStatManager_Add(b *testing.B) {
 		var i int
 		for pb.Next() {
 			i++
-			manager.AddBandwidth(1, int64(i%100), 10, 10)
+			manager.AddBandwidth(1, 0, int64(i%100), 10, 10)
 		}
 	})
 }

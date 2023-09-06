@@ -198,9 +198,9 @@ func (this *ClientConn) Write(b []byte) (n int, err error) {
 
 				var cost = time.Since(before).Seconds()
 				if cost > 1 {
-					stats.SharedBandwidthStatManager.AddBandwidth(this.userId, this.serverId, int64(float64(n)/cost), int64(n))
+					stats.SharedBandwidthStatManager.AddBandwidth(this.userId, this.userPlanId, this.serverId, int64(float64(n)/cost), int64(n))
 				} else {
-					stats.SharedBandwidthStatManager.AddBandwidth(this.userId, this.serverId, int64(n), int64(n))
+					stats.SharedBandwidthStatManager.AddBandwidth(this.userId, this.userPlanId, this.serverId, int64(n), int64(n))
 				}
 			}
 		}

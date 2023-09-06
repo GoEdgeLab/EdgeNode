@@ -62,6 +62,7 @@ type BandwidthStat struct {
 	CountRequests       int64 `json:"countRequests"`
 	CountCachedRequests int64 `json:"countCachedRequests"`
 	CountAttackRequests int64 `json:"countAttackRequests"`
+	UserPlanId          int64 `json:"userPlanId"`
 }
 
 // BandwidthStatManager 服务带宽统计
@@ -153,6 +154,7 @@ func (this *BandwidthStatManager) Loop() error {
 				CountRequests:       stat.CountRequests,
 				CountCachedRequests: stat.CountCachedRequests,
 				CountAttackRequests: stat.CountAttackRequests,
+				UserPlanId:          stat.UserPlanId,
 				NodeRegionId:        regionId,
 			})
 			delete(this.m, key)
@@ -178,7 +180,7 @@ func (this *BandwidthStatManager) Loop() error {
 }
 
 // AddBandwidth 添加带宽数据
-func (this *BandwidthStatManager) AddBandwidth(userId int64, serverId int64, peekBytes int64, totalBytes int64) {
+func (this *BandwidthStatManager) AddBandwidth(userId int64, userPlanId int64, serverId int64, peekBytes int64, totalBytes int64) {
 	if serverId <= 0 || (peekBytes == 0 && totalBytes == 0) {
 		return
 	}
@@ -217,6 +219,7 @@ func (this *BandwidthStatManager) AddBandwidth(userId int64, serverId int64, pee
 			Day:              day,
 			TimeAt:           timeAt,
 			UserId:           userId,
+			UserPlanId:       userPlanId,
 			ServerId:         serverId,
 			CurrentBytes:     peekBytes,
 			MaxBytes:         peekBytes,

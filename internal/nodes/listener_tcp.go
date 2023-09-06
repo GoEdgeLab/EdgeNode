@@ -80,6 +80,12 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 			return nil
 		}
 		clientConn.SetUserId(server.UserId)
+
+		var userPlanId int64
+		if server.UserPlan != nil && server.UserPlan.Id > 0 {
+			userPlanId = server.UserPlan.Id
+		}
+		clientConn.SetUserPlanId(userPlanId)
 	} else {
 		tlsConn, ok := conn.(*tls.Conn)
 		if ok {
@@ -92,6 +98,12 @@ func (this *TCPListener) handleConn(conn net.Conn) error {
 						return nil
 					}
 					clientConn.SetUserId(server.UserId)
+
+					var userPlanId int64
+					if server.UserPlan != nil && server.UserPlan.Id > 0 {
+						userPlanId = server.UserPlan.Id
+					}
+					clientConn.SetUserPlanId(userPlanId)
 				}
 			}
 		}

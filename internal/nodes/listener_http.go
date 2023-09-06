@@ -177,6 +177,12 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 					return
 				}
 				clientConn.SetUserId(server.UserId)
+
+				var userPlanId int64
+				if server.UserPlan != nil && server.UserPlan.Id > 0 {
+					userPlanId = server.UserPlan.Id
+				}
+				clientConn.SetUserPlanId(userPlanId)
 			}
 		}
 	}
