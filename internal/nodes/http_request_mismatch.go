@@ -72,7 +72,7 @@ func (this *HTTPRequest) doMismatch() {
 		}
 
 		// 处理当前连接
-		if mismatchAction != nil && mismatchAction.Code == "page" {
+		if mismatchAction != nil && mismatchAction.Code == serverconfigs.DomainMismatchActionPage {
 			if mismatchAction.Options != nil {
 				this.writer.statusCode = statusCode
 				var contentHTML = this.Format(mismatchAction.Options.GetString("contentHTML"))
