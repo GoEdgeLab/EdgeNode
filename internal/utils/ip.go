@@ -72,3 +72,18 @@ func IsIPv6(ip string) bool {
 	}
 	return !IsIPv4(ip)
 }
+
+// IsWildIP 宽泛地判断一个数据是否为IP
+func IsWildIP(v string) bool {
+	var l = len(v)
+	if l == 0 {
+		return false
+	}
+
+	// for [IPv6]
+	if v[0] == '[' && v[l-1] == ']' {
+		return IsWildIP(v[1 : l-1])
+	}
+
+	return net.ParseIP(v) != nil
+}

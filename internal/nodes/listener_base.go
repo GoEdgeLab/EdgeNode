@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/sslconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/types"
 	"net"
 )
@@ -179,10 +180,10 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 
 	if globalServerConfig != nil &&
 		len(globalServerConfig.HTTPAll.DefaultDomain) > 0 &&
-		(!matchDomainStrictly || configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) || (globalServerConfig.HTTPAll.AllowNodeIP && net.ParseIP(name) != nil)) {
+		(!matchDomainStrictly || configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) || (globalServerConfig.HTTPAll.AllowNodeIP && utils.IsWildIP(name))) {
 		if globalServerConfig.HTTPAll.AllowNodeIP &&
 			globalServerConfig.HTTPAll.NodeIPShowPage &&
-			net.ParseIP(name) != nil {
+			utils.IsWildIP(name) {
 			return
 		} else {
 			var defaultDomain = globalServerConfig.HTTPAll.DefaultDomain
@@ -193,7 +194,7 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 		}
 	}
 
-	if matchDomainStrictly && !configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) && (!globalServerConfig.HTTPAll.AllowNodeIP || net.ParseIP(name) == nil) {
+	if matchDomainStrictly && !configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) && (!globalServerConfig.HTTPAll.AllowNodeIP || !utils.IsWildIP(name)) {
 		return
 	}
 

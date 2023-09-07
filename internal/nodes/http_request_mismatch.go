@@ -7,9 +7,9 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/types"
-	"net"
 	"net/http"
 	"time"
 )
@@ -48,7 +48,7 @@ func (this *HTTPRequest) doMismatch() {
 		}
 
 		// 是否正在访问IP
-		if globalServerConfig.HTTPAll.NodeIPShowPage && net.ParseIP(this.ReqHost) != nil {
+		if globalServerConfig.HTTPAll.NodeIPShowPage && utils.IsWildIP(this.ReqHost) {
 			this.writer.statusCode = statusCode
 			var contentHTML = this.Format(globalServerConfig.HTTPAll.NodeIPPageHTML)
 			this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
