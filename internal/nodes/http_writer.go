@@ -16,6 +16,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/readers"
+	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/writers"
 	_ "github.com/biessek/golang-ico"
 	"github.com/iwind/TeaGo/lists"
@@ -39,6 +40,7 @@ import (
 
 var webpMaxBufferSize int64 = 1_000_000_000
 var webpTotalBufferSize int64 = 0
+var webpIgnoreURLSet = setutils.NewFixedSet(131072)
 
 func init() {
 	if !teaconst.IsMain {
@@ -47,7 +49,7 @@ func init() {
 
 	var systemMemory = utils.SystemMemoryGB() / 8
 	if systemMemory > 0 {
-		webpMaxBufferSize = int64(systemMemory) * 1024 * 1024 * 1024
+		webpMaxBufferSize = int64(systemMemory) << 30
 	}
 }
 
@@ -547,6 +549,11 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 		this.req.web.WebP.IsOn &&
 		this.req.web.WebP.MatchResponse(contentType, size, filepath.Ext(this.req.Path()), this.req.Format) &&
 		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) {
+		// 检查是否已经因为尺寸过大而忽略
+		if webpIgnoreURLSet.Has(this.req.URL()) {
+			return
+		}
+
 		// 如果已经是WebP不再重复处理
 		// TODO 考虑是否需要很严格的匹配
 		if strings.Contains(contentType, "image/webp") {
@@ -1072,12 +1079,24 @@ func (this *HTTPWriter) finishWebP() {
 		var err error
 		if isGif {
 			gifImage, err = gif.DecodeAll(reader)
+			if gifImage != nil && (gifImage.Config.Width > gowebp.WebPMaxDimension || gifImage.Config.Height > gowebp.WebPMaxDimension) {
+				webpIgnoreURLSet.Push(this.req.URL())
+				return
+			}
 		} else {
 			imageData, _, err = image.Decode(reader)
+			if imageData != nil {
+				var bound = imageData.Bounds()
+				if bound.Max.X > gowebp.WebPMaxDimension || bound.Max.Y > gowebp.WebPMaxDimension {
+					webpIgnoreURLSet.Push(this.req.URL())
+					return
+				}
+			}
 		}
 
 		if err != nil {
 			// 发生了错误终止处理
+			webpIgnoreURLSet.Push(this.req.URL())
 			return
 		}
 
