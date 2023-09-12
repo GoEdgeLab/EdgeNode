@@ -12,6 +12,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -47,15 +48,17 @@ func open(dsn string, lock bool) (*DB, error) {
 		return nil, errors.New("can not open database when process is quiting")
 	}
 
+	// decode path
+	var path = dsn
+	var queryIndex = strings.Index(dsn, "?")
+	if queryIndex >= 0 {
+		path = path[:queryIndex]
+	}
+	path = strings.TrimSpace(strings.TrimPrefix(path, "file:"))
+
 	// locker
 	var locker *fsutils.Locker
 	if lock {
-		var path = dsn
-		var queryIndex = strings.Index(dsn, "?")
-		if queryIndex >= 0 {
-			path = path[:queryIndex]
-		}
-		path = strings.TrimSpace(strings.TrimPrefix(path, "file:"))
 		locker = fsutils.NewLocker(path)
 		err := locker.Lock()
 		if err != nil {
@@ -64,10 +67,28 @@ func open(dsn string, lock bool) (*DB, error) {
 		}
 	}
 
+	// check if closed successfully last time, if not we recover it
+	var walPath = path + "-wal"
+	_, statWalErr := os.Stat(walPath)
+	var shouldRecover = statWalErr == nil
+
 	// open
 	rawDB, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
+	}
+
+	if shouldRecover {
+		err = rawDB.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		// open again
+		rawDB, err = sql.Open("sqlite3", dsn)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var db = NewDB(rawDB, dsn)
