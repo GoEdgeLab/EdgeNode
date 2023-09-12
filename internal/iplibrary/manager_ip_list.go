@@ -229,6 +229,11 @@ func (this *IPListManager) DeleteExpiredItems() {
 func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 	var changedLists = map[*IPList]zero.Zero{}
 	for _, item := range items {
+		// 调试
+		if Tea.IsTesting() {
+			this.debugItem(item)
+		}
+
 		var list *IPList
 		// TODO 实现节点专有List
 		if item.ServerId > 0 { // 服务专有List
@@ -298,5 +303,14 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 		if latestVersion > this.lastVersion {
 			this.lastVersion = latestVersion
 		}
+	}
+}
+
+// 调试IP信息
+func (this *IPListManager) debugItem(item *pb.IPItem) {
+	if item.IsDeleted {
+		remotelogs.Debug("IP_ITEM_DEBUG", "delete '"+item.IpFrom+"'")
+	} else {
+		remotelogs.Debug("IP_ITEM_DEBUG", "add '"+item.IpFrom+"'")
 	}
 }
