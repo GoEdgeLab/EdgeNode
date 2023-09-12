@@ -38,15 +38,16 @@ type HTTPRequest struct {
 	requestId string
 
 	// 外部参数
-	RawReq     *http.Request
-	RawWriter  http.ResponseWriter
-	ReqServer  *serverconfigs.ServerConfig
-	ReqHost    string // 请求的Host
-	ServerName string // 实际匹配到的Host
-	ServerAddr string // 实际启动的服务器监听地址
-	IsHTTP     bool
-	IsHTTPS    bool
-	IsHTTP3    bool
+	RawReq        *http.Request
+	RawWriter     http.ResponseWriter
+	ReqServer     *serverconfigs.ServerConfig
+	ReqHost       string // 请求的Host
+	ServerName    string // 实际匹配到的Host
+	ServerAddr    string // 实际启动的服务器监听地址
+	IsHTTP        bool
+	IsHTTPS       bool
+	IsHTTP3       bool
+	isHealthCheck bool
 
 	// 共享参数
 	nodeConfig *nodeconfigs.NodeConfig
@@ -168,10 +169,9 @@ func (this *HTTPRequest) Do() {
 	}
 
 	// 处理健康检查
-	var isHealthCheck = false
 	var healthCheckKey = this.RawReq.Header.Get(serverconfigs.HealthCheckHeaderName)
 	if len(healthCheckKey) > 0 {
-		if this.doHealthCheck(healthCheckKey, &isHealthCheck) {
+		if this.doHealthCheck(healthCheckKey, &this.isHealthCheck) {
 			this.doEnd()
 			return
 		}
@@ -205,7 +205,7 @@ func (this *HTTPRequest) Do() {
 		}
 
 		// UAM
-		if !isHealthCheck {
+		if !this.isHealthCheck {
 			if this.web.UAM != nil {
 				if this.web.UAM.IsOn {
 					if this.doUAM() {
@@ -223,7 +223,7 @@ func (this *HTTPRequest) Do() {
 		}
 
 		// CC
-		if !isHealthCheck {
+		if !this.isHealthCheck {
 			if this.web.CC != nil {
 				if this.web.CC.IsOn {
 					if this.doCC() {
@@ -388,7 +388,7 @@ func (this *HTTPRequest) doEnd() {
 
 	// 流量统计
 	// TODO 增加是否开启开关
-	if this.ReqServer != nil && this.ReqServer.Id > 0 {
+	if this.ReqServer != nil && this.ReqServer.Id > 0 && !this.isHealthCheck /** 健康检查时不统计 **/ {
 		var totalBytes int64 = 0
 
 		var requestConn = this.RawReq.Context().Value(HTTPConnContextKey)
