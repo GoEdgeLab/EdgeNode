@@ -108,11 +108,12 @@ func init() {
 type RecordIPAction struct {
 	BaseAction
 
-	Type     string `yaml:"type" json:"type"`
-	IPListId int64  `yaml:"ipListId" json:"ipListId"`
-	Level    string `yaml:"level" json:"level"`
-	Timeout  int32  `yaml:"timeout" json:"timeout"`
-	Scope    string `yaml:"scope" json:"scope"`
+	Type            string `yaml:"type" json:"type"`
+	IPListId        int64  `yaml:"ipListId" json:"ipListId"`
+	IPListIsDeleted bool   `yaml:"ipListIsDeleted" json:"ipListIsDeleted"`
+	Level           string `yaml:"level" json:"level"`
+	Timeout         int32  `yaml:"timeout" json:"timeout"`
+	Scope           string `yaml:"scope" json:"scope"`
 }
 
 func (this *RecordIPAction) Init(waf *WAF) error {
@@ -132,6 +133,9 @@ func (this *RecordIPAction) WillChange() bool {
 }
 
 func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+	// 是否已删除
+	var ipListIsAvailable = this.IPListId > 0 && !this.IPListIsDeleted && !ExistDeletedIPList(this.IPListId)
+
 	// 是否在本地白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
 		return true, false
@@ -152,14 +156,18 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		request.WAFClose()
 
 		// 先加入本地的黑名单
-		SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
+		if ipListIsAvailable {
+			SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
+		}
 	} else {
 		// 加入本地白名单
-		SharedIPWhiteList.Add("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
+		if ipListIsAvailable {
+			SharedIPWhiteList.Add("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
+		}
 	}
 
 	// 上报
-	if this.IPListId > 0 {
+	if this.IPListId > 0 && ipListIsAvailable {
 		var serverId int64
 		if this.Scope == firewallconfigs.FirewallScopeService {
 			serverId = request.WAFServerId()

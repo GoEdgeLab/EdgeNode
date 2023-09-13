@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/iwind/TeaGo/logs"
 	"sort"
 	"sync"
 )
@@ -14,6 +15,8 @@ var GlobalWhiteIPList = NewIPList()
 // IPList IP名单
 // TODO IP名单可以分片关闭，这样让每一片的数据量减少，查询更快
 type IPList struct {
+	isDeleted bool
+
 	itemsMap    map[uint64]*IPItem // id => item
 	sortedItems []*IPItem
 	allItemsMap map[uint64]*IPItem // id => item
@@ -38,11 +41,19 @@ func NewIPList() *IPList {
 }
 
 func (this *IPList) Add(item *IPItem) {
+	if this.isDeleted {
+		return
+	}
+
 	this.addItem(item, true)
 }
 
 // AddDelay 延迟添加，需要手工调用Sort()函数
 func (this *IPList) AddDelay(item *IPItem) {
+	if this.isDeleted {
+		return
+	}
+
 	this.addItem(item, false)
 }
 
@@ -60,6 +71,10 @@ func (this *IPList) Delete(itemId uint64) {
 
 // Contains 判断是否包含某个IP
 func (this *IPList) Contains(ip uint64) bool {
+	if this.isDeleted {
+		return false
+	}
+
 	this.locker.RLock()
 	if len(this.allItemsMap) > 0 {
 		this.locker.RUnlock()
@@ -75,6 +90,10 @@ func (this *IPList) Contains(ip uint64) bool {
 
 // ContainsExpires 判断是否包含某个IP
 func (this *IPList) ContainsExpires(ip uint64) (expiresAt int64, ok bool) {
+	if this.isDeleted {
+		return
+	}
+
 	this.locker.RLock()
 	if len(this.allItemsMap) > 0 {
 		this.locker.RUnlock()
@@ -94,6 +113,10 @@ func (this *IPList) ContainsExpires(ip uint64) (expiresAt int64, ok bool) {
 
 // ContainsIPStrings 是否包含一组IP中的任意一个，并返回匹配的第一个Item
 func (this *IPList) ContainsIPStrings(ipStrings []string) (item *IPItem, found bool) {
+	if this.isDeleted {
+		return
+	}
+
 	if len(ipStrings) == 0 {
 		return
 	}
@@ -123,6 +146,11 @@ func (this *IPList) ContainsIPStrings(ipStrings []string) (item *IPItem, found b
 	}
 	this.locker.RUnlock()
 	return
+}
+
+func (this *IPList) SetDeleted() {
+	this.isDeleted = true
+	logs.Println("set deleted:", this.isDeleted) // TODO
 }
 
 func (this *IPList) addItem(item *IPItem, sortable bool) {

@@ -4,6 +4,7 @@ package nodes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
@@ -16,9 +17,12 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -94,7 +98,12 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 	case "toaChanged":
 		err = this.execTOAChangedTask()
 	default:
-		remotelogs.Error("NODE", "task '"+types.String(task.Id)+"', type '"+task.Type+"' has not been handled")
+		// 特殊任务
+		if strings.HasPrefix(task.Type, "ipListDeleted") { // 删除IP名单
+			err = this.execDeleteIPList(task.Type)
+		} else { // 未处理的任务
+			remotelogs.Error("NODE", "task '"+types.String(task.Id)+"', type '"+task.Type+"' has not been handled")
+		}
 	}
 
 	return err
@@ -280,6 +289,34 @@ func (this *Node) execUpdatingServersTask(rpcClient *rpc.RPCClient) error {
 		} else {
 			this.updatingServerMap[serverConfig.Id] = nil
 		}
+	}
+
+	return nil
+}
+
+// 删除IP名单
+func (this *Node) execDeleteIPList(taskType string) error {
+	optionsString, ok := strings.CutPrefix(taskType, "ipListDeleted@")
+	if !ok {
+		return errors.New("invalid task type '" + taskType + "'")
+	}
+	var optionMap = maps.Map{}
+	err := json.Unmarshal([]byte(optionsString), &optionMap)
+	if err != nil {
+		return fmt.Errorf("decode options failed: %w, options: %s", err, optionsString)
+	}
+	var listId = optionMap.GetInt64("listId")
+	if listId <= 0 {
+		return nil
+	}
+
+	// 标记已被删除
+	waf.AddDeletedIPList(listId)
+
+	var list = iplibrary.SharedIPListManager.FindList(listId)
+
+	if list != nil {
+		list.SetDeleted()
 	}
 
 	return nil
