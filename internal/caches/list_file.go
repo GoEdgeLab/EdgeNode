@@ -256,15 +256,9 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 
 		// 不在 rows.Next() 循环中操作是为了避免死锁
 		for _, hash := range hashStrings {
-			notFound, err := this.remove(hash)
+			_, err = this.remove(hash)
 			if err != nil {
 				return err
-			}
-			if notFound {
-				err = db.DeleteHitAsync(hash)
-				if err != nil {
-					return db.WrapError(err)
-				}
 			}
 
 			err = callback(hash)
@@ -393,11 +387,6 @@ func (this *FileList) remove(hash string) (notFound bool, err error) {
 		return false, db.WrapError(err)
 	}
 
-	err = db.DeleteHitAsync(hash)
-	if err != nil {
-		return false, db.WrapError(err)
-	}
-
 	if this.onRemove != nil {
 		// when remove file item, no any extra information needed
 		this.onRemove(nil)
@@ -493,9 +482,6 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 					MetaSize:   metaSize,
 					Host:       host,
 					ServerId:   serverId,
-					Week1Hits:  0,
-					Week2Hits:  0,
-					Week:       0,
 				})
 				if err != nil {
 					if brokenOnError {

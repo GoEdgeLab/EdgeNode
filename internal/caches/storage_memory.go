@@ -12,7 +12,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
-	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	"github.com/shirou/gopsutil/v3/load"
 	"math"
@@ -136,17 +135,6 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 			return nil, err
 		}
 		this.locker.RUnlock()
-
-		// 增加点击量
-		// 1/1000采样
-		// TODO 考虑是否在缓存策略里设置
-		if rands.Int(0, 1000) == 0 {
-			var hitErr = this.list.IncreaseHit(types.String(hash))
-			if hitErr != nil {
-				// 此错误可以忽略
-				remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
-			}
-		}
 
 		return reader, nil
 	}

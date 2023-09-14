@@ -6,7 +6,9 @@ import (
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
+	"github.com/iwind/TeaGo/types"
 	"math/rand"
+	"sort"
 	"strconv"
 	"testing"
 	"time"
@@ -32,7 +34,6 @@ func TestMemoryList_Add(t *testing.T) {
 	})
 	t.Log(list.prefixes)
 	logs.PrintAsJSON(list.itemMaps, t)
-	logs.PrintAsJSON(list.weekItemMaps, t)
 	t.Log(list.Count())
 }
 
@@ -51,7 +52,6 @@ func TestMemoryList_Remove(t *testing.T) {
 	})
 	_ = list.Remove("b")
 	list.print(t)
-	logs.PrintAsJSON(list.weekItemMaps, t)
 	t.Log(list.Count())
 }
 
@@ -83,7 +83,6 @@ func TestMemoryList_Purge(t *testing.T) {
 		return nil
 	})
 	list.print(t)
-	logs.PrintAsJSON(list.weekItemMaps, t)
 
 	for i := 0; i < 1000; i++ {
 		_, _ = list.Purge(100, func(hash string) error {
@@ -172,27 +171,64 @@ func TestMemoryList_CleanPrefix(t *testing.T) {
 	t.Log(time.Since(before).Seconds()*1000, "ms")
 }
 
+func TestMapRandomDelete(t *testing.T) {
+	var countMap = map[int]int{} // k => count
+
+	for j := 0; j < 1_000_000; j++ {
+		var m = map[int]bool{}
+		for i := 0; i < 100; i++ {
+			m[i] = true
+		}
+
+		var count = 0
+		for k := range m {
+			delete(m, k)
+			count++
+			if count >= 10 {
+				break
+			}
+		}
+
+		for k := range m {
+			countMap[k]++
+		}
+	}
+
+	var counts = []int{}
+	for _, count := range countMap {
+		counts = append(counts, count)
+	}
+	sort.Ints(counts)
+	t.Log("["+types.String(len(counts))+"]", counts)
+}
+
 func TestMemoryList_PurgeLFU(t *testing.T) {
 	var list = NewMemoryList().(*MemoryList)
-	list.minWeek = 2704
 
 	var before = time.Now()
 	defer func() {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
 	}()
 
-	t.Log("current week:", currentWeek())
-
 	_ = list.Add("1", &Item{})
 	_ = list.Add("2", &Item{})
 	_ = list.Add("3", &Item{})
 	_ = list.Add("4", &Item{})
 	_ = list.Add("5", &Item{})
-	_ = list.Add("6", &Item{Week: 2704})
-	_ = list.Add("7", &Item{Week: 2704})
-	_ = list.Add("8", &Item{Week: 2705})
 
-	err := list.PurgeLFU(2, func(hash string) error {
+	//_ = list.IncreaseHit("1")
+	//_ = list.IncreaseHit("2")
+	//_ = list.IncreaseHit("3")
+	//_ = list.IncreaseHit("4")
+	//_ = list.IncreaseHit("5")
+
+	count, err := list.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("count items before purge:", count)
+
+	err = list.PurgeLFU(5, func(hash string) error {
 		t.Log("purge lfu:", hash)
 		return nil
 	})
@@ -201,40 +237,18 @@ func TestMemoryList_PurgeLFU(t *testing.T) {
 	}
 	t.Log("ok")
 
-	logs.PrintAsJSON(list.weekItemMaps, t)
-	t.Log(list.Count())
-}
-
-func TestMemoryList_IncreaseHit(t *testing.T) {
-	var list = NewMemoryList().(*MemoryList)
-	var item = &Item{}
-	item.Week = 2705
-	item.Week2Hits = 100
-
-	_ = list.Add("a", &Item{})
-	_ = list.Add("a", item)
-	t.Log("hits1:", item.Week1Hits, "hits2:", item.Week2Hits, "week:", item.Week)
-	logs.PrintAsJSON(list.weekItemMaps, t)
-
-	_ = list.IncreaseHit("a")
-	t.Log("hits1:", item.Week1Hits, "hits2:", item.Week2Hits, "week:", item.Week)
-	logs.PrintAsJSON(list.weekItemMaps, t)
-
-	_ = list.IncreaseHit("a")
-	t.Log("hits1:", item.Week1Hits, "hits2:", item.Week2Hits, "week:", item.Week)
-	logs.PrintAsJSON(list.weekItemMaps, t)
+	count, err = list.Count()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("count items left:", count)
 }
 
 func TestMemoryList_CleanAll(t *testing.T) {
 	var list = NewMemoryList().(*MemoryList)
-	var item = &Item{}
-	item.Week = 2705
-	item.Week2Hits = 100
-
 	_ = list.Add("a", &Item{})
 	_ = list.CleanAll()
 	logs.PrintAsJSON(list.itemMaps, t)
-	logs.PrintAsJSON(list.weekItemMaps, t)
 	t.Log(list.Count())
 }
 

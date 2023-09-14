@@ -7,7 +7,6 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"testing"
-	"time"
 )
 
 func TestFileListDB_ListLFUItems(t *testing.T) {
@@ -32,32 +31,6 @@ func TestFileListDB_ListLFUItems(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("[", len(hashList), "]", hashList)
-}
-
-func TestFileListDB_IncreaseHitAsync(t *testing.T) {
-	var db = caches.NewFileListDB()
-
-	defer func() {
-		_ = db.Close()
-	}()
-
-	err := db.Open(Tea.Root + "/data/cache-db-large.db")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = db.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = db.IncreaseHitAsync("4598e5231ba47d6ec7aa9ea640ff2eaf")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// wait transaction
-	time.Sleep(1 * time.Second)
 }
 
 func TestFileListDB_CleanMatchKey(t *testing.T) {

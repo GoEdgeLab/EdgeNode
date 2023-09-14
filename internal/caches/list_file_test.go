@@ -281,11 +281,6 @@ func TestFileList_PurgeLFU(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = list.IncreaseHit(stringutil.Md5("123456"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	var count = 0
 	err = list.PurgeLFU(caches.CountFileDB*2, func(hash string) error {
 		t.Log(hash)
@@ -354,41 +349,6 @@ func TestFileList_CleanAll(t *testing.T) {
 	}
 	t.Log("ok")
 	t.Log(list.Count())
-}
-
-func TestFileList_IncreaseHit(t *testing.T) {
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
-
-	defer func() {
-		_ = list.Close()
-	}()
-
-	err := list.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		_ = list.Close()
-	}()
-
-	var before = time.Now()
-	defer func() {
-		t.Log(time.Since(before).Seconds()*1000, "ms")
-	}()
-
-	var count = 1_000_000
-
-	if !testutils.IsSingleTesting() {
-		count = 10
-	}
-	for i := 0; i < count; i++ {
-		err = list.IncreaseHit(stringutil.Md5("abc" + types.String(i)))
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log("ok")
 }
 
 func TestFileList_UpgradeV3(t *testing.T) {

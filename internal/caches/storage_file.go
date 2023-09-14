@@ -1004,6 +1004,11 @@ func (this *FileStorage) purgeLoop() {
 	var lfuFreePercent = this.policy.PersistenceLFUFreePercent
 	if lfuFreePercent <= 0 {
 		lfuFreePercent = 5
+
+		// TB级别
+		if capacityBytes>>30 > 1000 {
+			lfuFreePercent = 3
+		}
 	}
 
 	var hasFullDisk = this.mainDiskIsFull
@@ -1298,12 +1303,6 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 	}
 	if rands.Int(0, rate) == 0 {
 		var memoryStorage = this.memoryStorage
-
-		var hitErr = this.list.IncreaseHit(hash)
-		if hitErr != nil {
-			// 此错误可以忽略
-			remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
-		}
 
 		// 增加到热点
 		// 这里不收录缓存尺寸过大的文件

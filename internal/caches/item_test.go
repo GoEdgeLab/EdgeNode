@@ -1,8 +1,9 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package caches
+package caches_test
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
@@ -11,27 +12,14 @@ import (
 	"time"
 )
 
-func TestItem_IncreaseHit(t *testing.T) {
-	var week = currentWeek()
-
-	var item = &Item{}
-	//item.Week = 2704
-	item.Week2Hits = 100
-	item.IncreaseHit(week)
-	t.Log("week:", item.Week, "week1:", item.Week1Hits, "week2:", item.Week2Hits)
-
-	item.IncreaseHit(week)
-	t.Log("week:", item.Week, "week1:", item.Week1Hits, "week2:", item.Week2Hits)
-}
-
 func TestItems_Memory(t *testing.T) {
 	var stat = &runtime.MemStats{}
 	runtime.ReadMemStats(stat)
 	var memory1 = stat.HeapInuse
 
-	var items = []*Item{}
+	var items = []*caches.Item{}
 	for i := 0; i < 10_000_000; i++ {
-		items = append(items, &Item{
+		items = append(items, &caches.Item{
 			Key: types.String(i),
 		})
 	}
@@ -41,18 +29,11 @@ func TestItems_Memory(t *testing.T) {
 
 	t.Log(memory1, memory2, (memory2-memory1)/1024/1024, "M")
 
-	var weekItems = make(map[string]*Item, 10_000_000)
-
-	for _, item := range items {
-		weekItems[item.Key] = item
-	}
-
 	runtime.ReadMemStats(stat)
 	var memory3 = stat.HeapInuse
 	t.Log(memory2, memory3, (memory3-memory2)/1024/1024, "M")
 
 	time.Sleep(1 * time.Second)
-	t.Log(len(items), len(weekItems))
 }
 
 func TestItems_Memory2(t *testing.T) {
@@ -88,7 +69,7 @@ func TestItem_RequestURI(t *testing.T) {
 		"https://goedge.cn:8080/hello/world",
 		"https://goedge.cn/hello/world?v=1&t=123",
 	} {
-		var item = &Item{Key: u}
+		var item = &caches.Item{Key: u}
 		t.Log(u, "=>", item.RequestURI())
 	}
 }

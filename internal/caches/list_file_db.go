@@ -34,7 +34,6 @@ type FileListDB struct {
 	hashMap *FileListHashMap
 
 	itemsTableName string
-	hitsTableName  string
 
 	isClosed bool
 	isReady  bool
@@ -57,11 +56,6 @@ type FileListDB struct {
 	deleteAllStmt       *dbs.Stmt // 删除所有数据
 	listOlderItemsStmt  *dbs.Stmt // 读取较早存储的缓存
 	updateAccessWeekSQL string    // 修改访问日期
-
-	// hits
-	insertHitSQL       string // 写入数据
-	increaseHitSQL     string // 增加点击量
-	deleteHitByHashSQL string // 根据hash删除数据
 }
 
 func NewFileListDB() *FileListDB {
@@ -142,7 +136,6 @@ func (this *FileListDB) Open(dbPath string) error {
 
 func (this *FileListDB) Init() error {
 	this.itemsTableName = "cacheItems"
-	this.hitsTableName = "hits"
 
 	// 创建
 	var err = this.initTables(1)
@@ -199,12 +192,6 @@ func (this *FileListDB) Init() error {
 	}
 
 	this.updateAccessWeekSQL = `UPDATE "` + this.itemsTableName + `" SET "accessWeek"=? WHERE "hash"=?`
-
-	this.insertHitSQL = `INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?)`
-
-	this.increaseHitSQL = `INSERT INTO "` + this.hitsTableName + `" ("hash", "week2Hits", "week") VALUES (?, 1, ?) ON CONFLICT("hash") DO UPDATE SET "week1Hits"=IIF("week"=?, "week1Hits", "week2Hits"), "week2Hits"=IIF("week"=?, "week2Hits"+1, 1), "week"=?`
-
-	this.deleteHitByHashSQL = `DELETE FROM "` + this.hitsTableName + `" WHERE "hash"=?`
 
 	this.isReady = true
 
@@ -352,13 +339,7 @@ func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64
 
 func (this *FileListDB) IncreaseHitAsync(hash string) error {
 	var week = timeutil.Format("YW")
-	this.writeBatch.Add(this.increaseHitSQL, hash, week, week, week, week)
 	this.writeBatch.Add(this.updateAccessWeekSQL, week, hash)
-	return nil
-}
-
-func (this *FileListDB) DeleteHitAsync(hash string) error {
-	this.writeBatch.Add(this.deleteHitByHashSQL, hash)
 	return nil
 }
 
@@ -600,32 +581,9 @@ ALTER TABLE "cacheItems" ADD "accessWeek" varchar(6);
 		}
 	}
 
+	// 删除hits表
 	{
-		_, err := this.writeDB.Exec(`CREATE TABLE IF NOT EXISTS "` + this.hitsTableName + `" (
-  "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
-  "hash" varchar(32),
-  "week1Hits" integer DEFAULT 0,
-  "week2Hits" integer DEFAULT 0,
-  "week" varchar(6)
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS "hits_hash"
-ON "` + this.hitsTableName + `" (
-  "hash" ASC
-);
-`)
-		if err != nil {
-			// 尝试删除重建
-			if times < 3 {
-				_, dropErr := this.writeDB.Exec(`DROP TABLE "` + this.hitsTableName + `"`)
-				if dropErr == nil {
-					return this.initTables(times + 1)
-				}
-				return this.WrapError(err)
-			}
-
-			return this.WrapError(err)
-		}
+		_, _ = this.writeDB.Exec(`DROP TABLE "hits"`)
 	}
 
 	return nil
