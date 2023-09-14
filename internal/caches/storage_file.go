@@ -995,9 +995,6 @@ func (this *FileStorage) initList() error {
 // 清理任务
 // TODO purge每个分区
 func (this *FileStorage) purgeLoop() {
-	// 检查磁盘剩余空间
-	this.checkDiskSpace()
-
 	// 计算是否应该开启LFU清理
 	var capacityBytes = this.diskCapacityBytes()
 	var startLFU = false
@@ -1011,17 +1008,7 @@ func (this *FileStorage) purgeLoop() {
 		}
 	}
 
-	var hasFullDisk = this.mainDiskIsFull
-	if !hasFullDisk {
-		var subDirs = this.subDirs // copy slice
-		for _, subDir := range subDirs {
-			if subDir.IsFull {
-				hasFullDisk = true
-				break
-			}
-		}
-	}
-
+	var hasFullDisk = this.hasFullDisk()
 	if hasFullDisk {
 		startLFU = true
 	} else {
@@ -1085,28 +1072,46 @@ func (this *FileStorage) purgeLoop() {
 
 	// 磁盘空间不足时，清除老旧的缓存
 	if startLFU {
-		var total, _ = this.list.Count()
-		if total > 0 {
+		var maxLoops = 5
+		for {
+			maxLoops--
+			if maxLoops <= 0 {
+				break
+			}
+
+			var total, _ = this.list.Count()
+			if total <= 0 {
+				break
+			}
+
+			// 开始清理
 			var count = types.Int(math.Ceil(float64(total) * float64(lfuFreePercent*2) / 100))
-			if count > 0 {
-				// 限制单次清理的条数，防止占用太多系统资源
-				if count > 2000 {
-					count = 2000
+			if count <= 0 {
+				break
+			}
+
+			// 限制单次清理的条数，防止占用太多系统资源
+			if count > 2000 {
+				count = 2000
+			}
+
+			remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
+			err := this.list.PurgeLFU(count, func(hash string) error {
+				path, _ := this.hashPath(hash)
+				err := this.removeCacheFile(path)
+				if err != nil && !os.IsNotExist(err) {
+					remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
 				}
 
-				remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
-				err := this.list.PurgeLFU(count, func(hash string) error {
-					path, _ := this.hashPath(hash)
-					err := this.removeCacheFile(path)
-					if err != nil && !os.IsNotExist(err) {
-						remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
-					}
+				return nil
+			})
+			if err != nil {
+				remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
+			}
 
-					return nil
-				})
-				if err != nil {
-					remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
-				}
+			// 检查硬盘空间状态
+			if !this.hasFullDisk() {
+				break
 			}
 		}
 	}
@@ -1304,6 +1309,12 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 	if rands.Int(0, rate) == 0 {
 		var memoryStorage = this.memoryStorage
 
+		var hitErr = this.list.IncreaseHit(hash)
+		if hitErr != nil {
+			// 此错误可以忽略
+			remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
+		}
+
 		// 增加到热点
 		// 这里不收录缓存尺寸过大的文件
 		if memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*sizes.M {
@@ -1455,6 +1466,22 @@ func (this *FileStorage) checkDiskSpace() {
 			subDir.IsFull = stat.FreeSize() < minFreeSize
 		}
 	}
+}
+
+func (this *FileStorage) hasFullDisk() bool {
+	this.checkDiskSpace()
+
+	var hasFullDisk = this.mainDiskIsFull
+	if !hasFullDisk {
+		var subDirs = this.subDirs // copy slice
+		for _, subDir := range subDirs {
+			if subDir.IsFull {
+				hasFullDisk = true
+				break
+			}
+		}
+	}
+	return hasFullDisk
 }
 
 // 获取目录
