@@ -1072,7 +1072,15 @@ func (this *FileStorage) purgeLoop() {
 
 	// 磁盘空间不足时，清除老旧的缓存
 	if startLFU {
+		var maxCount = 2000
 		var maxLoops = 5
+
+		if fsutils.DiskIsFast() {
+			maxCount = 5000
+		} else if fsutils.DiskIsExtremelyFast() {
+			maxCount = 10000
+		}
+
 		for {
 			maxLoops--
 			if maxLoops <= 0 {
@@ -1091,8 +1099,8 @@ func (this *FileStorage) purgeLoop() {
 			}
 
 			// 限制单次清理的条数，防止占用太多系统资源
-			if count > 2000 {
-				count = 2000
+			if count > maxCount {
+				count = maxCount
 			}
 
 			remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
