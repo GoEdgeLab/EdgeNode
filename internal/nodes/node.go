@@ -808,6 +808,36 @@ func (this *Node) listenSock() error {
 				_ = cmd.Reply(&gosock.Command{Params: maps.Map{
 					"stats": m,
 				}})
+			case "cache.garbage":
+				var shouldDelete = maps.NewMap(cmd.Params).GetBool("delete")
+
+				var count = 0
+				var sampleFiles = []string{}
+				err := caches.SharedManager.ScanGarbageCaches(func(path string) error {
+					count++
+					if len(sampleFiles) < 10 {
+						sampleFiles = append(sampleFiles, path)
+					}
+
+					if shouldDelete {
+						_ = os.Remove(path)                               // .cache
+						_ = os.Remove(caches.PartialRangesFilePath(path)) // @range.cache
+					}
+
+					return nil
+				})
+				if err != nil {
+					_ = cmd.Reply(&gosock.Command{Params: maps.Map{
+						"isOk":  false,
+						"error": err.Error(),
+					}})
+				} else {
+					_ = cmd.Reply(&gosock.Command{Params: maps.Map{
+						"isOk":        true,
+						"count":       count,
+						"sampleFiles": sampleFiles,
+					}})
+				}
 			}
 		})
 

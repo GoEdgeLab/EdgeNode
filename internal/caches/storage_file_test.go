@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
@@ -575,6 +576,31 @@ func TestFileStorage_RemoveCacheFile(t *testing.T) {
 	defer storage.Stop()
 
 	t.Log(storage.removeCacheFile("/Users/WorkSpace/EdgeProject/EdgeCache/p43/15/7e/157eba0dfc6dfb6fbbf20b1f9e584674.cache"))
+}
+
+func TestFileStorage_ScanGarbageCaches(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
+		Id:      43,
+		Options: map[string]any{"dir": "/Users/WorkSpace/EdgeProject/EdgeCache"},
+	})
+	err := storage.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = storage.ScanGarbageCaches(func(path string) {
+		t.Log(path)
+	}, func(path string) error {
+		t.Log(path, PartialRangesFilePath(path))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func BenchmarkFileStorage_Read(b *testing.B) {

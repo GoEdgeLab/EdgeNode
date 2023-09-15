@@ -35,8 +35,9 @@ type FileListDB struct {
 
 	itemsTableName string
 
-	isClosed bool
-	isReady  bool
+	isClosed        bool // 是否已关闭
+	isReady         bool // 是否已完成初始化
+	hashMapIsLoaded bool // Hash是否已加载
 
 	// cacheItems
 	existsByHashStmt *dbs.Stmt // 根据hash检查是否存在
@@ -196,26 +197,7 @@ func (this *FileListDB) Init() error {
 	this.isReady = true
 
 	// 加载HashMap
-	go func() {
-		err := this.hashMap.Load(this)
-		if err != nil {
-			remotelogs.Error("LIST_FILE_DB", "load hash map failed: "+err.Error()+"(file: "+this.dbPath+")")
-
-			// 自动修复错误
-			// TODO 将来希望能尽可能恢复以往数据库中的内容
-			if strings.Contains(err.Error(), "database is closed") || strings.Contains(err.Error(), "database disk image is malformed") {
-				_ = this.Close()
-				this.deleteDB()
-				remotelogs.Println("LIST_FILE_DB", "recreating the database (file:"+this.dbPath+") ...")
-				err = this.Open(this.dbPath)
-				if err != nil {
-					remotelogs.Error("LIST_FILE_DB", "recreate the database failed: "+err.Error()+" (file:"+this.dbPath+")")
-				} else {
-					_ = this.Init()
-				}
-			}
-		}
-	}()
+	go this.loadHashMap()
 
 	return nil
 }
@@ -521,6 +503,10 @@ func (this *FileListDB) WrapError(err error) error {
 	return fmt.Errorf("%w (file: %s)", err, this.dbPath)
 }
 
+func (this *FileListDB) HashMapIsLoaded() bool {
+	return this.hashMapIsLoaded
+}
+
 // 初始化
 func (this *FileListDB) initTables(times int) error {
 	{
@@ -632,4 +618,31 @@ func (this *FileListDB) deleteDB() {
 	_ = os.Remove(this.dbPath)
 	_ = os.Remove(this.dbPath + "-shm")
 	_ = os.Remove(this.dbPath + "-wal")
+}
+
+// 加载Hash列表
+func (this *FileListDB) loadHashMap() {
+	this.hashMapIsLoaded = false
+
+	err := this.hashMap.Load(this)
+	if err != nil {
+		remotelogs.Error("LIST_FILE_DB", "load hash map failed: "+err.Error()+"(file: "+this.dbPath+")")
+
+		// 自动修复错误
+		// TODO 将来希望能尽可能恢复以往数据库中的内容
+		if strings.Contains(err.Error(), "database is closed") || strings.Contains(err.Error(), "database disk image is malformed") {
+			_ = this.Close()
+			this.deleteDB()
+			remotelogs.Println("LIST_FILE_DB", "recreating the database (file:"+this.dbPath+") ...")
+			err = this.Open(this.dbPath)
+			if err != nil {
+				remotelogs.Error("LIST_FILE_DB", "recreate the database failed: "+err.Error()+" (file:"+this.dbPath+")")
+			} else {
+				_ = this.Init()
+			}
+		}
+		return
+	}
+
+	this.hashMapIsLoaded = true
 }

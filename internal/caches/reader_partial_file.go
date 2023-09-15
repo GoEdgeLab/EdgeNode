@@ -20,7 +20,7 @@ type PartialFileReader struct {
 func NewPartialFileReader(fp *os.File) *PartialFileReader {
 	return &PartialFileReader{
 		FileReader: NewFileReader(fp),
-		rangePath:  partialRangesFilePath(fp.Name()),
+		rangePath:  PartialRangesFilePath(fp.Name()),
 	}
 }
 

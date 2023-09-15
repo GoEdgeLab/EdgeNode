@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func main() {
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
 		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof|accesslog|uninstall]").
-		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc|bandwidth|disk]").
+		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc|bandwidth|disk|cache.garbage]").
 		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove|ip.close] IP")
 
 	app.On("start:before", func() {
@@ -462,6 +463,45 @@ func main() {
 			}
 		} else {
 			fmt.Println("Usage: edge-node disk [speed]")
+		}
+	})
+	app.On("cache.garbage", func() {
+		fmt.Println("scanning ...")
+
+		var shouldDelete bool
+		for _, arg := range os.Args {
+			if strings.TrimLeft(arg, "-") == "delete" {
+				shouldDelete = true
+			}
+		}
+
+		var sock = gosock.NewTmpSock(teaconst.ProcessName)
+		reply, err := sock.Send(&gosock.Command{
+			Code:   "cache.garbage",
+			Params: map[string]any{"delete": shouldDelete},
+		})
+		if err != nil {
+			fmt.Println("[ERROR]" + err.Error())
+			return
+		}
+
+		var params = maps.NewMap(reply.Params)
+		if params.GetBool("isOk") {
+			var count = params.GetInt("count")
+			fmt.Println("found", count, "bad caches")
+
+			if count > 0 {
+				fmt.Println("======")
+				var sampleFiles = params.GetSlice("sampleFiles")
+				for _, file := range sampleFiles {
+					fmt.Println(types.String(file))
+				}
+				if count > len(sampleFiles) {
+					fmt.Println("... more files")
+				}
+			}
+		} else {
+			fmt.Println("[ERROR]" + params.GetString("error"))
 		}
 	})
 	app.Run(func() {

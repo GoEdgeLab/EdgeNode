@@ -4,8 +4,8 @@ package caches
 
 import "strings"
 
-// 获取 ranges 文件路径
-func partialRangesFilePath(path string) string {
+// PartialRangesFilePath 获取 ranges 文件路径
+func PartialRangesFilePath(path string) string {
 	// ranges路径
 	var dotIndex = strings.LastIndex(path, ".")
 	var rangePath string

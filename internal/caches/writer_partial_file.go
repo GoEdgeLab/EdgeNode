@@ -43,7 +43,7 @@ func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, metaH
 		isPartial:      isPartial,
 		bodyOffset:     bodyOffset,
 		ranges:         ranges,
-		rangePath:      partialRangesFilePath(rawWriter.Name()),
+		rangePath:      PartialRangesFilePath(rawWriter.Name()),
 		metaHeaderSize: metaHeaderSize,
 		metaBodySize:   metaBodySize,
 	}

@@ -256,3 +256,19 @@ func (this *Manager) FindAllStorages() []StorageInterface {
 	}
 	return storages
 }
+
+// ScanGarbageCaches 清理目录中“失联”的缓存文件
+func (this *Manager) ScanGarbageCaches(callback func(path string) error) error {
+	var storages = this.FindAllStorages()
+	for _, storage := range storages {
+		fileStorage, ok := storage.(*FileStorage)
+		if !ok {
+			continue
+		}
+		err := fileStorage.ScanGarbageCaches(callback)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

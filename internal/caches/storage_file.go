@@ -14,6 +14,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
@@ -59,6 +60,7 @@ const (
 	FileTmpSuffix                   = ".tmp"
 	DefaultMinDiskFreeSpace  uint64 = 5 << 30 // 当前磁盘最小剩余空间
 	DefaultStaleCacheSeconds        = 1200    // 过时缓存留存时间
+	HashKeyLength                   = 32
 )
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
@@ -931,7 +933,7 @@ func (this *FileStorage) keyPath(key string) (hash string, path string, diskIsFu
 
 // 获取Hash对应的文件路径
 func (this *FileStorage) hashPath(hash string) (path string, diskIsFull bool) {
-	if len(hash) != 32 {
+	if len(hash) != HashKeyLength {
 		return "", false
 	}
 	var dir string
@@ -1081,45 +1083,43 @@ func (this *FileStorage) purgeLoop() {
 			maxCount = 10000
 		}
 
-		for {
-			maxLoops--
-			if maxLoops <= 0 {
-				break
-			}
-
-			var total, _ = this.list.Count()
-			if total <= 0 {
-				break
-			}
-
-			// 开始清理
-			var count = types.Int(math.Ceil(float64(total) * float64(lfuFreePercent*2) / 100))
-			if count <= 0 {
-				break
-			}
-
-			// 限制单次清理的条数，防止占用太多系统资源
-			if count > maxCount {
-				count = maxCount
-			}
-
-			remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
-			err := this.list.PurgeLFU(count, func(hash string) error {
-				path, _ := this.hashPath(hash)
-				err := this.removeCacheFile(path)
-				if err != nil && !os.IsNotExist(err) {
-					remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
+		var total, _ = this.list.Count()
+		if total > 0 {
+			for {
+				maxLoops--
+				if maxLoops <= 0 {
+					break
 				}
 
-				return nil
-			})
-			if err != nil {
-				remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
-			}
+				// 开始清理
+				var count = types.Int(math.Ceil(float64(total) * float64(lfuFreePercent*2) / 100))
+				if count <= 0 {
+					break
+				}
 
-			// 检查硬盘空间状态
-			if !this.hasFullDisk() {
-				break
+				// 限制单次清理的条数，防止占用太多系统资源
+				if count > maxCount {
+					count = maxCount
+				}
+
+				remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
+				err := this.list.PurgeLFU(count, func(hash string) error {
+					path, _ := this.hashPath(hash)
+					err := this.removeCacheFile(path)
+					if err != nil && !os.IsNotExist(err) {
+						remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
+					}
+
+					return nil
+				})
+				if err != nil {
+					remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
+				}
+
+				// 检查硬盘空间状态
+				if !this.hasFullDisk() {
+					break
+				}
 			}
 		}
 	}
@@ -1354,7 +1354,7 @@ func (this *FileStorage) removeCacheFile(path string) error {
 		err = nil
 
 		// 删除Partial相关
-		var partialPath = partialRangesFilePath(path)
+		var partialPath = PartialRangesFilePath(path)
 		if openFileCache != nil {
 			openFileCache.Close(partialPath)
 		}
@@ -1476,6 +1476,7 @@ func (this *FileStorage) checkDiskSpace() {
 	}
 }
 
+// 检查是否有已满的磁盘分区
 func (this *FileStorage) hasFullDisk() bool {
 	this.checkDiskSpace()
 
@@ -1521,6 +1522,85 @@ func (this *FileStorage) subDir(hash string) (dirPath string, dirIsFull bool) {
 	return subDir.Path + suffix, subDir.IsFull
 }
 
+// ScanGarbageCaches 清理目录中“失联”的缓存文件
+// “失联”为不在HashMap中的文件
+func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error) error {
+	var mainDir = this.options.Dir
+	var allDirs = []string{mainDir}
+	var subDirs = this.subDirs // copy
+	for _, subDir := range subDirs {
+		allDirs = append(allDirs, subDir.Path)
+	}
+
+	for _, subDir := range allDirs {
+		var dir0 = subDir + "/p" + types.String(this.policy.Id)
+		dir1Matches, err := filepath.Glob(dir0 + "/*")
+		if err != nil {
+			// ignore error
+			continue
+		}
+
+		for _, dir1 := range dir1Matches {
+			if len(filepath.Base(dir1)) != 2 {
+				continue
+			}
+
+			dir2Matches, err := filepath.Glob(dir1 + "/*")
+			if err != nil {
+				// ignore error
+				continue
+			}
+			for _, dir2 := range dir2Matches {
+				if len(filepath.Base(dir2)) != 2 {
+					continue
+				}
+
+				fileMatches, err := filepath.Glob(dir2 + "/*.cache")
+				if err != nil {
+					// ignore error
+					continue
+				}
+
+				for _, file := range fileMatches {
+					var filename = filepath.Base(file)
+					var hash = strings.TrimSuffix(filename, ".cache")
+					if len(hash) != HashKeyLength {
+						continue
+					}
+
+					isReady, found := this.list.(*FileList).ExistQuick(hash)
+					if !isReady {
+						continue
+					}
+
+					if found {
+						continue
+					}
+
+					// 检查文件正在被写入
+					stat, err := os.Stat(file)
+					if err != nil {
+						continue
+					}
+					if fasttime.Now().Unix()-stat.ModTime().Unix() < 300 /** 5 minutes **/ {
+						continue
+					}
+
+					if fileCallback != nil {
+						err = fileCallback(file)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// 计算字节数字代号
 func (this *FileStorage) charCode(r byte) uint8 {
 	if r >= '0' && r <= '9' {
 		return r - '0'

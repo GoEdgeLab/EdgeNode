@@ -4,6 +4,7 @@ package caches
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
@@ -134,13 +135,25 @@ func (this *FileList) Exist(hash string) (bool, error) {
 	var expiredAt int64
 	err := row.Scan(&expiredAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			err = nil
 		}
 		return false, err
 	}
 	this.memoryCache.Write(hash, 1, expiredAt)
 	return true, nil
+}
+
+func (this *FileList) ExistQuick(hash string) (isReady bool, found bool) {
+	var db = this.GetDB(hash)
+
+	if !db.IsReady() || !db.HashMapIsLoaded() {
+		return
+	}
+
+	isReady = true
+	found = db.hashMap.Exist(hash)
+	return
 }
 
 // CleanPrefix 清理某个前缀的缓存数据
