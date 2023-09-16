@@ -1457,10 +1457,19 @@ func (this *FileStorage) checkDiskSpace() {
 		if err == nil {
 			this.mainDiskIsFull = stat.FreeSize() < minFreeSize
 
-			// check capacity (only on main directory)
-			var policy = this.policy // copy
-			if !this.mainDiskIsFull && policy != nil {
-				var capacityBytes = policy.CapacityBytes() // copy
+			// check capacity (only on main directory) when node capacity had not been set
+			if !this.mainDiskIsFull {
+				var capacityBytes int64
+				var maxDiskCapacity = SharedManager.MaxDiskCapacity // copy
+				if maxDiskCapacity != nil && maxDiskCapacity.Bytes() > 0 {
+					capacityBytes = SharedManager.MaxDiskCapacity.Bytes()
+				} else {
+					var policy = this.policy // copy
+					if policy != nil {
+						capacityBytes = policy.CapacityBytes() // copy
+					}
+				}
+
 				if capacityBytes > 0 && stat.UsedSize() >= uint64(capacityBytes) {
 					this.mainDiskIsFull = true
 				}
