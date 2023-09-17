@@ -1284,7 +1284,7 @@ func (this *HTTPWriter) calculateHeaderLength() (result int) {
 
 func (this *HTTPWriter) shouldIgnoreHeader(name string) bool {
 	switch name {
-	case "Set-Cookie", "Strict-Transport-Security", "Alt-Svc", "Upgrade":
+	case "Set-Cookie", "Strict-Transport-Security", "Alt-Svc", "Upgrade", "X-Cache":
 		return true
 	default:
 		return (this.isPartial && name == "Content-Range")
