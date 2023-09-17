@@ -1534,6 +1534,10 @@ func (this *FileStorage) subDir(hash string) (dirPath string, dirIsFull bool) {
 // ScanGarbageCaches 清理目录中“失联”的缓存文件
 // “失联”为不在HashMap中的文件
 func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error) error {
+	if !this.list.(*FileList).HashMapIsLoaded() {
+		return errors.New("cache list is loading")
+	}
+
 	var mainDir = this.options.Dir
 	var allDirs = []string{mainDir}
 	var subDirs = this.subDirs // copy

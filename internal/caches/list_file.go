@@ -379,6 +379,15 @@ func (this *FileList) GetDB(hash string) *FileListDB {
 	return this.dbList[fnv.HashString(hash)%CountFileDB]
 }
 
+func (this *FileList) HashMapIsLoaded() bool {
+	for _, db := range this.dbList {
+		if !db.HashMapIsLoaded() {
+			return false
+		}
+	}
+	return true
+}
+
 func (this *FileList) remove(hash string) (notFound bool, err error) {
 	var db = this.GetDB(hash)
 
