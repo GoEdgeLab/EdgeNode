@@ -1004,9 +1004,12 @@ func (this *FileStorage) purgeLoop() {
 	if lfuFreePercent <= 0 {
 		lfuFreePercent = 5
 
-		// TB级别
-		if capacityBytes>>30 > 1000 {
-			lfuFreePercent = 3
+		// 2TB级别以上
+		if capacityBytes>>30 > 2000 {
+			lfuFreePercent = 100 /** GB **/ / float32(capacityBytes>>30) * 100 /** % **/
+			if lfuFreePercent > 3 {
+				lfuFreePercent = 3
+			}
 		}
 	}
 
@@ -1246,8 +1249,9 @@ func (this *FileStorage) hotLoop() {
 
 func (this *FileStorage) diskCapacityBytes() int64 {
 	var c1 = this.policy.CapacityBytes()
-	if SharedManager.MaxDiskCapacity != nil {
-		var c2 = SharedManager.MaxDiskCapacity.Bytes()
+	var nodeCapacity = SharedManager.MaxDiskCapacity // copy
+	if nodeCapacity != nil {
+		var c2 = nodeCapacity.Bytes()
 		if c2 > 0 {
 			return c2
 		}
