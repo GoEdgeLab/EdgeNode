@@ -1171,10 +1171,32 @@ func (this *HTTPRequest) requestRemoteAddr(supportVar bool) string {
 		this.web.RemoteAddr != nil &&
 		this.web.RemoteAddr.IsOn &&
 		!this.web.RemoteAddr.IsEmpty() {
-		var remoteAddr = this.Format(this.web.RemoteAddr.Value)
-		if net.ParseIP(remoteAddr) != nil {
-			this.remoteAddr = remoteAddr
-			return remoteAddr
+		if this.web.RemoteAddr.HasValues() { // multiple values
+			for _, value := range this.web.RemoteAddr.Values() {
+				var remoteAddr = this.Format(value)
+				if len(remoteAddr) > 0 && net.ParseIP(remoteAddr) != nil {
+					this.remoteAddr = remoteAddr
+					return remoteAddr
+				}
+			}
+		} else { // single value
+			var remoteAddr = this.Format(this.web.RemoteAddr.Value)
+			if len(remoteAddr) > 0 && net.ParseIP(remoteAddr) != nil {
+				this.remoteAddr = remoteAddr
+				return remoteAddr
+			}
+		}
+
+		// 如果是从Header中读取，则直接返回原始IP
+		if this.web.RemoteAddr.Type == serverconfigs.HTTPRemoteAddrTypeRequestHeader {
+			var remoteAddr = this.RawReq.RemoteAddr
+			host, _, err := net.SplitHostPort(remoteAddr)
+			if err == nil {
+				this.remoteAddr = host
+				return host
+			} else {
+				return remoteAddr
+			}
 		}
 	}
 
@@ -1585,10 +1607,10 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 		this.RawReq.Header.Set("Connection", "keep-alive")
 	}
 
-	remoteAddr := this.RawReq.RemoteAddr
-	host, _, err := net.SplitHostPort(remoteAddr)
+	var rawRemoteAddr = this.RawReq.RemoteAddr
+	host, _, err := net.SplitHostPort(rawRemoteAddr)
 	if err == nil {
-		remoteAddr = host
+		rawRemoteAddr = host
 	}
 
 	// x-real-ip
@@ -1596,24 +1618,24 @@ func (this *HTTPRequest) setForwardHeaders(header http.Header) {
 		_, ok1 := header["X-Real-IP"]
 		_, ok2 := header["X-Real-Ip"]
 		if !ok1 && !ok2 {
-			header["X-Real-IP"] = []string{remoteAddr}
+			header["X-Real-IP"] = []string{this.requestRemoteAddr(true)}
 		}
 	}
 
 	// X-Forwarded-For
 	if this.reverseProxy != nil && this.reverseProxy.ShouldAddXForwardedForHeader() {
 		forwardedFor, ok := header["X-Forwarded-For"]
-		if ok {
+		if ok && len(forwardedFor) > 0 { // already exists
 			_, hasForwardHeader := this.RawReq.Header["X-Forwarded-For"]
 			if hasForwardHeader {
-				header["X-Forwarded-For"] = []string{strings.Join(forwardedFor, ", ") + ", " + remoteAddr}
+				header["X-Forwarded-For"] = []string{strings.Join(forwardedFor, ", ") + ", " + rawRemoteAddr}
 			}
 		} else {
 			var clientRemoteAddr = this.requestRemoteAddr(true)
-			if len(clientRemoteAddr) > 0 && clientRemoteAddr != remoteAddr {
-				header["X-Forwarded-For"] = []string{clientRemoteAddr + ", " + remoteAddr}
+			if len(clientRemoteAddr) > 0 && clientRemoteAddr != rawRemoteAddr {
+				header["X-Forwarded-For"] = []string{clientRemoteAddr + ", " + rawRemoteAddr}
 			} else {
-				header["X-Forwarded-For"] = []string{remoteAddr}
+				header["X-Forwarded-For"] = []string{rawRemoteAddr}
 			}
 		}
 	}
