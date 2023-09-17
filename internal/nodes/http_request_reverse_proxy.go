@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -66,7 +67,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	// 二级节点
 	var hasMultipleLnNodes = false
 	if this.cacheRef != nil || (this.nodeConfig != nil && this.nodeConfig.GlobalServerConfig != nil && this.nodeConfig.GlobalServerConfig.HTTPAll.ForceLnRequest) {
-		origin, lnNodeId, hasMultipleLnNodes = this.getLnOrigin(failedLnNodeIds)
+		origin, lnNodeId, hasMultipleLnNodes = this.getLnOrigin(failedLnNodeIds, fnv.HashString(this.URL()))
 		if origin != nil {
 			// 强制变更原来访问的域名
 			requestHost = this.ReqHost
