@@ -139,11 +139,6 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				}
 			}
 
-			// 如果跳转前后域名一致，则终止
-			if u.DomainAfter == reqHost {
-				return false
-			}
-
 			var scheme = u.DomainAfterScheme
 			if len(scheme) == 0 {
 				scheme = this.requestScheme()
@@ -152,6 +147,11 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 				var afterURL = scheme + "://" + u.DomainAfter + urlPath
 				if fullURL == afterURL {
 					// 终止匹配
+					return false
+				}
+
+				// 如果跳转前后域名一致，则终止
+				if u.DomainAfter == reqHost {
 					return false
 				}
 
