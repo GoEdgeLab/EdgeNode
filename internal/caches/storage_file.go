@@ -24,6 +24,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	timeutil "github.com/iwind/TeaGo/utils/time"
+	"github.com/iwind/gosock/pkg/gosock"
 	"github.com/shirou/gopsutil/v3/load"
 	"math"
 	"os"
@@ -1562,6 +1563,15 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 		allDirs = append(allDirs, subDir.Path)
 	}
 
+	var countDirs = 0
+
+	// process progress
+	var progressSock = gosock.NewTmpSock(teaconst.CacheGarbageSockName)
+	_, sockErr := progressSock.SendTimeout(&gosock.Command{Code: "progress", Params: map[string]any{"progress": 0}}, 1*time.Second)
+	var canReportProgress = sockErr == nil
+	var lastProgress float64
+	var countFound = 0
+
 	for _, subDir := range allDirs {
 		var dir0 = subDir + "/p" + types.String(this.policy.Id)
 		dir1Matches, err := filepath.Glob(dir0 + "/*")
@@ -1583,6 +1593,20 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 			for _, dir2 := range dir2Matches {
 				if len(filepath.Base(dir2)) != 2 {
 					continue
+				}
+
+				countDirs++
+
+				// report progress
+				if canReportProgress {
+					var progress = float64(countDirs) / 65536
+					if fmt.Sprintf("%.2f", lastProgress) != fmt.Sprintf("%.2f", progress) {
+						lastProgress = progress
+						_, _ = progressSock.SendTimeout(&gosock.Command{Code: "progress", Params: map[string]any{
+							"progress": progress,
+							"count":    countFound,
+						}}, 100*time.Millisecond)
+					}
 				}
 
 				fileMatches, err := filepath.Glob(dir2 + "/*.cache")
@@ -1617,6 +1641,7 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 					}
 
 					if fileCallback != nil {
+						countFound++
 						err = fileCallback(file)
 						if err != nil {
 							return err
@@ -1625,6 +1650,14 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 				}
 			}
 		}
+	}
+
+	// 100% progress
+	if canReportProgress && lastProgress != 1 {
+		_, _ = progressSock.SendTimeout(&gosock.Command{Code: "progress", Params: map[string]any{
+			"progress": 1,
+			"count":    countFound,
+		}}, 100*time.Millisecond)
 	}
 
 	return nil

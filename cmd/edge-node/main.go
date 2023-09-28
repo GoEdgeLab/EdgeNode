@@ -475,6 +475,19 @@ func main() {
 			}
 		}
 
+		var progressSock = gosock.NewTmpSock(teaconst.CacheGarbageSockName)
+		progressSock.OnCommand(func(cmd *gosock.Command) {
+			var params = maps.NewMap(cmd.Params)
+			if cmd.Code == "progress" {
+				fmt.Printf("%.2f%% %d\n", params.GetFloat64("progress")*100, params.GetInt("count"))
+				_ = cmd.ReplyOk()
+			}
+		})
+		go func() {
+			_ = progressSock.Listen()
+		}()
+		time.Sleep(1 * time.Second)
+
 		var sock = gosock.NewTmpSock(teaconst.ProcessName)
 		reply, err := sock.Send(&gosock.Command{
 			Code:   "cache.garbage",
