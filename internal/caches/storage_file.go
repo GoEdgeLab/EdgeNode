@@ -1034,23 +1034,36 @@ func (this *FileStorage) purgeLoop() {
 		// 空闲时间多清理
 		systemLoad, _ := load.Avg()
 		if systemLoad != nil {
-			if systemLoad.Load5 < 2 {
+			if systemLoad.Load5 < 3 {
 				times = 5
-			} else if systemLoad.Load5 < 3 {
-				times = 3
 			} else if systemLoad.Load5 < 5 {
+				times = 3
+			} else if systemLoad.Load5 < 10 {
 				times = 2
 			}
 		}
 
+		// 高速硬盘多清理
+		if fsutils.DiskIsExtremelyFast() {
+			times *= 8
+		} else if fsutils.DiskIsFast() {
+			times *= 4
+		}
+
 		// 处于LFU阈值时，多清理
 		if startLFU {
-			times = 5
+			times *= 5
 		}
 
 		var purgeCount = this.policy.PersistenceAutoPurgeCount
 		if purgeCount <= 0 {
 			purgeCount = 1000
+
+			if fsutils.DiskIsExtremelyFast() {
+				purgeCount = 4000
+			} else if fsutils.DiskIsFast() {
+				purgeCount = 2000
+			}
 		}
 		for i := 0; i < times; i++ {
 			countFound, err := this.list.Purge(purgeCount, func(hash string) error {
@@ -1080,10 +1093,10 @@ func (this *FileStorage) purgeLoop() {
 		var maxCount = 2000
 		var maxLoops = 5
 
-		if fsutils.DiskIsFast() {
-			maxCount = 5000
-		} else if fsutils.DiskIsExtremelyFast() {
+		if fsutils.DiskIsExtremelyFast() {
 			maxCount = 10000
+		} else if fsutils.DiskIsFast() {
+			maxCount = 5000
 		}
 
 		var total, _ = this.list.Count()
