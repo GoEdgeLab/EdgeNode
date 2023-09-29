@@ -1001,6 +1001,7 @@ func (this *FileStorage) purgeLoop() {
 	// 计算是否应该开启LFU清理
 	var capacityBytes = this.diskCapacityBytes()
 	var startLFU = false
+	var requireFullLFU = false // 是否需要完整执行LFU
 	var lfuFreePercent = this.policy.PersistenceLFUFreePercent
 	if lfuFreePercent <= 0 {
 		lfuFreePercent = 5
@@ -1066,6 +1067,7 @@ func (this *FileStorage) purgeLoop() {
 				purgeCount = 2000
 			}
 		}
+
 		for i := 0; i < times; i++ {
 			countFound, err := this.list.Purge(purgeCount, func(hash string) error {
 				path, _ := this.hashPath(hash)
@@ -1082,6 +1084,10 @@ func (this *FileStorage) purgeLoop() {
 			}
 
 			if countFound < purgeCount {
+				if i == 0 && startLFU {
+					requireFullLFU = true
+				}
+
 				break
 			}
 
@@ -1119,7 +1125,11 @@ func (this *FileStorage) purgeLoop() {
 					count = maxCount
 				}
 
-				remotelogs.Println("CACHE", "LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
+				var prefix = ""
+				if requireFullLFU {
+					prefix = "fully "
+				}
+				remotelogs.Println("CACHE", prefix+"LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
 				err := this.list.PurgeLFU(count, func(hash string) error {
 					path, _ := this.hashPath(hash)
 					err := this.removeCacheFile(path)
@@ -1134,7 +1144,7 @@ func (this *FileStorage) purgeLoop() {
 				}
 
 				// 检查硬盘空间状态
-				if !this.hasFullDisk() {
+				if !requireFullLFU && !this.hasFullDisk() {
 					break
 				}
 			}
