@@ -592,9 +592,7 @@ func TestFileStorage_ScanGarbageCaches(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = storage.ScanGarbageCaches(func(path string) {
-		t.Log(path)
-	}, func(path string) error {
+	err = storage.ScanGarbageCaches(func(path string) error {
 		t.Log(path, PartialRangesFilePath(path))
 		return nil
 	})
