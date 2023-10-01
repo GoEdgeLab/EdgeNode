@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/iwind/TeaGo/types"
 	"os"
@@ -102,7 +103,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 
 	// 这里不增加点击量，以减少对数据库的操作次数
 
-	this.memoryCache.Write(hash, 1, item.ExpiredAt)
+	this.memoryCache.Write(hash, 1, this.maxExpiresAtForMemoryCache(item.ExpiredAt))
 
 	if this.onAdd != nil {
 		this.onAdd(item)
@@ -140,7 +141,7 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		}
 		return false, err
 	}
-	this.memoryCache.Write(hash, 1, expiredAt)
+	this.memoryCache.Write(hash, 1, this.maxExpiresAtForMemoryCache(expiredAt))
 	return true, nil
 }
 
@@ -522,4 +523,12 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 	}
 
 	return nil
+}
+
+func (this *FileList) maxExpiresAtForMemoryCache(expiresAt int64) int64 {
+	var maxTimestamp = fasttime.Now().Unix() + 86400*7
+	if expiresAt > maxTimestamp {
+		return maxTimestamp
+	}
+	return expiresAt
 }
