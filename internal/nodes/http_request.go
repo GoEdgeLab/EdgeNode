@@ -204,6 +204,14 @@ func (this *HTTPRequest) Do() {
 			return
 		}
 
+		// WAF
+		if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
+			if this.doWAFRequest() {
+				this.doEnd()
+				return
+			}
+		}
+
 		// UAM
 		if !this.isHealthCheck {
 			if this.web.UAM != nil {
@@ -231,14 +239,6 @@ func (this *HTTPRequest) Do() {
 						return
 					}
 				}
-			}
-		}
-
-		// WAF
-		if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
-			if this.doWAFRequest() {
-				this.doEnd()
-				return
 			}
 		}
 
