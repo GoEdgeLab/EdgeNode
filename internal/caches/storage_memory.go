@@ -32,6 +32,9 @@ type MemoryItem struct {
 	ModifiedAt  int64
 
 	TotalSize int64
+
+	IsPrepared  bool
+	WriteOffset int64
 }
 
 func (this *MemoryItem) IsExpired() bool {
@@ -215,7 +218,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	}
 
 	isWriting = true
-	return NewMemoryWriter(this, key, expiresAt, status, isDirty, maxSize, func(valueItem *MemoryItem) {
+	return NewMemoryWriter(this, key, expiresAt, status, isDirty, bodySize, maxSize, func(valueItem *MemoryItem) {
 		this.locker.Lock()
 		delete(this.writingKeyMap, key)
 		this.locker.Unlock()

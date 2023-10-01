@@ -16,7 +16,9 @@ type MemoryWriter struct {
 	bodySize   int64
 	status     int
 	isDirty    bool
-	maxSize    int64
+
+	expectedBodySize int64
+	maxSize          int64
 
 	hash    uint64
 	item    *MemoryItem
@@ -24,20 +26,26 @@ type MemoryWriter struct {
 	once    sync.Once
 }
 
-func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, maxSize int64, endFunc func(valueItem *MemoryItem)) *MemoryWriter {
+func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, expectedBodySize int64, maxSize int64, endFunc func(valueItem *MemoryItem)) *MemoryWriter {
+	var valueItem = &MemoryItem{
+		ExpiresAt:  expiredAt,
+		ModifiedAt: time.Now().Unix(),
+		Status:     status,
+	}
+	if expectedBodySize > 0 {
+		valueItem.BodyValue = make([]byte, expectedBodySize)
+		valueItem.IsPrepared = true
+	}
 	var w = &MemoryWriter{
-		storage:   memoryStorage,
-		key:       key,
-		expiredAt: expiredAt,
-		item: &MemoryItem{
-			ExpiresAt:  expiredAt,
-			ModifiedAt: time.Now().Unix(),
-			Status:     status,
-		},
-		status:  status,
-		isDirty: isDirty,
-		maxSize: maxSize,
-		endFunc: endFunc,
+		storage:          memoryStorage,
+		key:              key,
+		expiredAt:        expiredAt,
+		item:             valueItem,
+		status:           status,
+		isDirty:          isDirty,
+		expectedBodySize: expectedBodySize,
+		maxSize:          maxSize,
+		endFunc:          endFunc,
 	}
 
 	w.hash = w.calculateHash(key)
@@ -54,17 +62,32 @@ func (this *MemoryWriter) WriteHeader(data []byte) (n int, err error) {
 
 // Write 写入数据
 func (this *MemoryWriter) Write(data []byte) (n int, err error) {
-	this.bodySize += int64(len(data))
-	this.item.BodyValue = append(this.item.BodyValue, data...)
+	var l = len(data)
+	if l == 0 {
+		return
+	}
+
+	if this.item.IsPrepared {
+		if this.item.WriteOffset+int64(l) > this.expectedBodySize {
+			err = ErrWritingUnavailable
+			return
+		}
+		copy(this.item.BodyValue[this.item.WriteOffset:], data)
+		this.item.WriteOffset += int64(l)
+	} else {
+		this.item.BodyValue = append(this.item.BodyValue, data...)
+	}
+
+	this.bodySize += int64(l)
 
 	// 检查尺寸
 	if this.maxSize > 0 && this.bodySize > this.maxSize {
 		err = ErrEntityTooLarge
 		this.storage.IgnoreKey(this.key, this.maxSize)
-		return len(data), err
+		return l, err
 	}
 
-	return len(data), nil
+	return l, nil
 }
 
 // WriteAt 在指定位置写入数据
