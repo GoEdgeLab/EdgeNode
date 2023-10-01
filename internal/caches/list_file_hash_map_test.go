@@ -20,15 +20,19 @@ func TestFileListHashMap_Memory(t *testing.T) {
 	runtime.ReadMemStats(stat1)
 
 	var m = caches.NewFileListHashMap()
+	m.SetIsAvailable(true)
 
 	for i := 0; i < 1_000_000; i++ {
 		m.Add(stringutil.Md5(types.String(i)))
 	}
 
+	t.Log("added:", m.Len(), "hashes")
+
 	var stat2 = &runtime.MemStats{}
 	runtime.ReadMemStats(stat2)
 
 	t.Log("ready", (stat2.Alloc-stat1.Alloc)/1024/1024, "M")
+	t.Log("remains:", m.Len(), "hashes")
 }
 
 func TestFileListHashMap_Memory2(t *testing.T) {
