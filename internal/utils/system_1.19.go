@@ -12,12 +12,6 @@ func setMaxMemory(memoryGB int) {
 	if memoryGB <= 0 {
 		memoryGB = 1
 	}
-	var maxMemoryBytes int64
-	if memoryGB > 10 {
-		maxMemoryBytes = int64(memoryGB-2) << 30 // 超过10G内存的允许剩余2G内存
-	} else {
-		maxMemoryBytes = (int64(memoryGB) << 30) * 80 / 100 // 默认 80%
-	}
-
+	var maxMemoryBytes = (int64(memoryGB) << 30) * 80 / 100 // 默认 80%
 	debug.SetMemoryLimit(maxMemoryBytes)
 }
