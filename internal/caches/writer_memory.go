@@ -20,12 +20,12 @@ type MemoryWriter struct {
 
 	hash    uint64
 	item    *MemoryItem
-	endFunc func()
+	endFunc func(valueItem *MemoryItem)
 	once    sync.Once
 }
 
-func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, maxSize int64, endFunc func()) *MemoryWriter {
-	w := &MemoryWriter{
+func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, maxSize int64, endFunc func(valueItem *MemoryItem)) *MemoryWriter {
+	var w = &MemoryWriter{
 		storage:   memoryStorage,
 		key:       key,
 		expiredAt: expiredAt,
@@ -39,6 +39,7 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 		maxSize: maxSize,
 		endFunc: endFunc,
 	}
+
 	w.hash = w.calculateHash(key)
 
 	return w
@@ -87,7 +88,7 @@ func (this *MemoryWriter) BodySize() int64 {
 func (this *MemoryWriter) Close() error {
 	// 需要在Locker之外
 	defer this.once.Do(func() {
-		this.endFunc()
+		this.endFunc(this.item)
 	})
 
 	if this.item == nil {
@@ -102,7 +103,6 @@ func (this *MemoryWriter) Close() error {
 			select {
 			case this.storage.dirtyChan <- this.key:
 			default:
-
 			}
 		}
 	}
@@ -115,7 +115,7 @@ func (this *MemoryWriter) Close() error {
 func (this *MemoryWriter) Discard() error {
 	// 需要在Locker之外
 	defer this.once.Do(func() {
-		this.endFunc()
+		this.endFunc(nil)
 	})
 
 	this.storage.locker.Lock()

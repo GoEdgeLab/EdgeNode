@@ -4,6 +4,7 @@ package fsutils
 
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/iwind/TeaGo/Tea"
 	"sync/atomic"
 	"time"
 )
@@ -67,6 +68,10 @@ func DiskIsFast() bool {
 }
 
 func DiskIsExtremelyFast() bool {
+	// 在开发环境下返回false，以便于测试
+	if Tea.IsTesting() {
+		return false
+	}
 	return DiskSpeed == SpeedExtremelyFast
 }
 
