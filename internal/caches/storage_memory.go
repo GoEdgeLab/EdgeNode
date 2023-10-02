@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
-	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/types"
@@ -67,7 +66,7 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage Stora
 
 	if parentStorage != nil {
 		if queueSize <= 0 {
-			queueSize = 2048 + int(policy.CapacityBytes()/sizes.G)*2048
+			queueSize = utils.SystemMemoryGB() * 100_000
 		}
 
 		dirtyChan = make(chan string, queueSize)
@@ -166,7 +165,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	if isDirty &&
 		this.parentStorage != nil &&
 		this.dirtyQueueSize > 0 &&
-		len(this.dirtyChan) == this.dirtyQueueSize { // 缓存时间过长
+		len(this.dirtyChan) >= this.dirtyQueueSize-int(fsutils.DiskMaxWrites) /** delta **/ { // 缓存时间过长
 		return nil, ErrWritingQueueFull
 	}
 
@@ -202,7 +201,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 		}
 	}
 
-	// 检查是否超出最大值
+	// 检查是否超出容量最大值
 	var capacityBytes = this.memoryCapacityBytes()
 	if bodySize < 0 {
 		bodySize = 0
@@ -226,8 +225,8 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 		if valueItem != nil {
 			valueItem.TotalSize = int64(len(valueItem.HeaderValue) + len(valueItem.BodyValue) + len(key) + 256 /** meta size **/)
 
-			atomic.AddInt64(&this.usedSize, valueItem.TotalSize)
 			runtime.SetFinalizer(valueItem, this.valueItemFinalizer)
+			atomic.AddInt64(&this.usedSize, valueItem.TotalSize)
 		}
 	}), nil
 }
@@ -516,6 +515,11 @@ func (this *MemoryStorage) flushItem(key string) {
 	item, ok := this.valuesMap[hash]
 	this.locker.RUnlock()
 
+	// 从内存中移除，并确保无论如何都会执行
+	defer func() {
+		_ = this.Delete(key)
+	}()
+
 	if !ok {
 		return
 	}
@@ -564,9 +568,6 @@ func (this *MemoryStorage) flushItem(key string) {
 		HeaderSize: writer.HeaderSize(),
 		BodySize:   writer.BodySize(),
 	})
-
-	// 从内存中移除
-	_ = this.Delete(key)
 }
 
 func (this *MemoryStorage) memoryCapacityBytes() int64 {

@@ -436,7 +436,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 		}
 
 		// 如果队列满了，则等待
-		if err == ErrWritingQueueFull {
+		if errors.Is(err, ErrWritingQueueFull) {
 			return nil, err
 		}
 	}

@@ -2,9 +2,9 @@ package caches
 
 import (
 	"errors"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/cespare/xxhash"
 	"sync"
-	"time"
 )
 
 type MemoryWriter struct {
@@ -29,7 +29,7 @@ type MemoryWriter struct {
 func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, status int, isDirty bool, expectedBodySize int64, maxSize int64, endFunc func(valueItem *MemoryItem)) *MemoryWriter {
 	var valueItem = &MemoryItem{
 		ExpiresAt:  expiredAt,
-		ModifiedAt: time.Now().Unix(),
+		ModifiedAt: fasttime.Now().Unix(),
 		Status:     status,
 	}
 	if expectedBodySize > 0 {
@@ -120,18 +120,26 @@ func (this *MemoryWriter) Close() error {
 
 	this.storage.locker.Lock()
 	this.item.IsDone = true
-	this.storage.valuesMap[this.hash] = this.item
+	var err error
 	if this.isDirty {
 		if this.storage.parentStorage != nil {
 			select {
 			case this.storage.dirtyChan <- this.key:
+				this.storage.valuesMap[this.hash] = this.item
 			default:
+				// do not add value map
+				err = ErrWritingQueueFull
 			}
+		} else {
+			err = ErrWritingQueueFull
 		}
+	} else {
+		this.storage.valuesMap[this.hash] = this.item
 	}
+
 	this.storage.locker.Unlock()
 
-	return nil
+	return err
 }
 
 // Discard 丢弃
