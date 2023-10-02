@@ -12,6 +12,7 @@ func setMaxMemory(memoryGB int) {
 	if memoryGB <= 0 {
 		memoryGB = 1
 	}
-	var maxMemoryBytes = (int64(memoryGB) << 30) * 80 / 100 // 默认 80%
+
+	var maxMemoryBytes = (int64(memoryGB) << 30) * 75 / 100 // 默认 75%
 	debug.SetMemoryLimit(maxMemoryBytes)
 }

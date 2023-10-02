@@ -138,7 +138,7 @@ func (this *MemoryWriter) Close() error {
 func (this *MemoryWriter) Discard() error {
 	// 需要在Locker之外
 	defer this.once.Do(func() {
-		this.endFunc(nil)
+		this.endFunc(this.item)
 	})
 
 	this.storage.locker.Lock()

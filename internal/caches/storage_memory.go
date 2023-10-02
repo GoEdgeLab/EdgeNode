@@ -223,7 +223,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 		delete(this.writingKeyMap, key)
 		this.locker.Unlock()
 
-		if valueItem != nil && valueItem.IsDone {
+		if valueItem != nil {
 			valueItem.TotalSize = int64(len(valueItem.HeaderValue) + len(valueItem.BodyValue) + len(key) + 256 /** meta size **/)
 
 			atomic.AddInt64(&this.usedSize, valueItem.TotalSize)

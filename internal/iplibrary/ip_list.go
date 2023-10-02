@@ -4,7 +4,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
-	"github.com/iwind/TeaGo/logs"
 	"sort"
 	"sync"
 )
@@ -150,7 +149,6 @@ func (this *IPList) ContainsIPStrings(ipStrings []string) (item *IPItem, found b
 
 func (this *IPList) SetDeleted() {
 	this.isDeleted = true
-	logs.Println("set deleted:", this.isDeleted) // TODO
 }
 
 func (this *IPList) addItem(item *IPItem, sortable bool) {
