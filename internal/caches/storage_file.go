@@ -560,7 +560,9 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	if isNewCreated && existsFile {
 		flags |= os.O_TRUNC
 	}
+	fsutils.WriteBegin()
 	writer, err := os.OpenFile(tmpPath, flags, 0666)
+	fsutils.WriteEnd()
 	if err != nil {
 		// TODO 检查在各个系统中的稳定性
 		if os.IsNotExist(err) {

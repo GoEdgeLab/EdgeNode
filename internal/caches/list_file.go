@@ -72,15 +72,15 @@ func (this *FileList) Init() error {
 			defer wg.Done()
 
 			var db = NewFileListDB()
-			err = db.Open(dir + "/db-" + types.String(i) + ".db")
-			if err != nil {
-				lastErr = err
+			dbErr := db.Open(dir + "/db-" + types.String(i) + ".db")
+			if dbErr != nil {
+				lastErr = dbErr
 				return
 			}
 
-			err = db.Init()
-			if err != nil {
-				lastErr = err
+			dbErr = db.Init()
+			if dbErr != nil {
+				lastErr = dbErr
 				return
 			}
 
@@ -119,8 +119,6 @@ func (this *FileList) Add(hash string, item *Item) error {
 	if err != nil {
 		return err
 	}
-
-	// 这里不增加点击量，以减少对数据库的操作次数
 
 	this.memoryCache.Write(hash, 1, this.maxExpiresAtForMemoryCache(item.ExpiredAt))
 

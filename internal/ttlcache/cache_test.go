@@ -40,10 +40,14 @@ func TestNewCache(t *testing.T) {
 }
 
 func TestCache_Memory(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	testutils.StartMemoryStats(t)
 
 	var cache = NewCache()
-	var count = 2_000_000
+	var count = 20_000_000
 	for i := 0; i < count; i++ {
 		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+3600)
 	}
