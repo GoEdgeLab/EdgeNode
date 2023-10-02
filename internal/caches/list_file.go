@@ -13,6 +13,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/iwind/TeaGo/types"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -61,19 +62,37 @@ func (this *FileList) Init() error {
 	}
 
 	remotelogs.Println("CACHE", "loading database from '"+dir+"' ...")
+	var wg = &sync.WaitGroup{}
+	var locker = sync.Mutex{}
+	var lastErr error
+
 	for i := 0; i < CountFileDB; i++ {
-		var db = NewFileListDB()
-		err = db.Open(dir + "/db-" + types.String(i) + ".db")
-		if err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 
-		err = db.Init()
-		if err != nil {
-			return err
-		}
+			var db = NewFileListDB()
+			err = db.Open(dir + "/db-" + types.String(i) + ".db")
+			if err != nil {
+				lastErr = err
+				return
+			}
 
-		this.dbList[i] = db
+			err = db.Init()
+			if err != nil {
+				lastErr = err
+				return
+			}
+
+			locker.Lock()
+			this.dbList[i] = db
+			locker.Unlock()
+		}(i)
+	}
+	wg.Wait()
+
+	if lastErr != nil {
+		return lastErr
 	}
 
 	// 升级老版本数据库
