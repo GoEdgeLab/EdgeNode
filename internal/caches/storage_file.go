@@ -1170,6 +1170,9 @@ func (this *FileStorage) hotLoop() {
 
 	var result = []*HotItem{} // [ {key: ..., hits: ...}, ... ]
 	for _, v := range this.hotMap {
+		if v.Hits <= 1 {
+			continue
+		}
 		result = append(result, v)
 	}
 
