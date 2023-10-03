@@ -543,7 +543,7 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 }
 
 func (this *FileList) maxExpiresAtForMemoryCache(expiresAt int64) int64 {
-	var maxTimestamp = fasttime.Now().Unix() + 86400*7
+	var maxTimestamp = fasttime.Now().Unix() + 86400*3
 	if expiresAt > maxTimestamp {
 		return maxTimestamp
 	}
