@@ -112,6 +112,7 @@ func (this *MemoryWriter) Close() error {
 	// 需要在Locker之外
 	defer this.once.Do(func() {
 		this.endFunc(this.item)
+		this.item = nil // free memory
 	})
 
 	if this.item == nil {
@@ -123,11 +124,14 @@ func (this *MemoryWriter) Close() error {
 	var err error
 	if this.isDirty {
 		if this.storage.parentStorage != nil {
+			this.storage.valuesMap[this.hash] = this.item
+
 			select {
 			case this.storage.dirtyChan <- this.key:
-				this.storage.valuesMap[this.hash] = this.item
 			default:
-				// do not add value map
+				// remove from values map
+				delete(this.storage.valuesMap, this.hash)
+
 				err = ErrWritingQueueFull
 			}
 		} else {
@@ -147,6 +151,7 @@ func (this *MemoryWriter) Discard() error {
 	// 需要在Locker之外
 	defer this.once.Do(func() {
 		this.endFunc(this.item)
+		this.item = nil // free memory
 	})
 
 	this.storage.locker.Lock()

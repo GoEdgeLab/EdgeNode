@@ -30,8 +30,6 @@ type MemoryItem struct {
 	IsDone      bool
 	ModifiedAt  int64
 
-	TotalSize int64
-
 	IsPrepared  bool
 	WriteOffset int64
 }
@@ -87,6 +85,13 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage Stora
 // Init 初始化
 func (this *MemoryStorage) Init() error {
 	_ = this.list.Init()
+
+	this.list.OnAdd(func(item *Item) {
+		atomic.AddInt64(&this.usedSize, item.TotalSize())
+	})
+	this.list.OnRemove(func(item *Item) {
+		atomic.AddInt64(&this.usedSize, -item.TotalSize())
+	})
 
 	this.initPurgeTicker()
 
@@ -221,13 +226,6 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 		this.locker.Lock()
 		delete(this.writingKeyMap, key)
 		this.locker.Unlock()
-
-		if valueItem != nil {
-			valueItem.TotalSize = int64(len(valueItem.HeaderValue) + len(valueItem.BodyValue) + len(key) + 256 /** meta size **/)
-
-			runtime.SetFinalizer(valueItem, this.valueItemFinalizer)
-			atomic.AddInt64(&this.usedSize, valueItem.TotalSize)
-		}
 	}), nil
 }
 
@@ -409,22 +407,6 @@ func (this *MemoryStorage) hash(key string) uint64 {
 
 // 清理任务
 func (this *MemoryStorage) purgeLoop() {
-	// 计算是否应该开启LFU清理
-	var capacityBytes = this.policy.CapacityBytes()
-	var startLFU = false
-	var usedPercent = float32(this.TotalMemorySize()*100) / float32(capacityBytes)
-	var lfuFreePercent = this.policy.MemoryLFUFreePercent
-	if lfuFreePercent <= 0 {
-		lfuFreePercent = 5
-	}
-	if capacityBytes > 0 {
-		if lfuFreePercent < 100 {
-			if usedPercent >= 100-lfuFreePercent {
-				startLFU = true
-			}
-		}
-	}
-
 	// 清理过期
 	var purgeCount = this.policy.MemoryAutoPurgeCount
 	if purgeCount <= 0 {
@@ -441,6 +423,23 @@ func (this *MemoryStorage) purgeLoop() {
 	})
 
 	// LFU
+	// 计算是否应该开启LFU清理
+	var capacityBytes = this.policy.CapacityBytes()
+	var startLFU = false
+
+	var usedPercent = float32(this.TotalMemorySize()*100) / float32(capacityBytes)
+	var lfuFreePercent = this.policy.MemoryLFUFreePercent
+	if lfuFreePercent <= 0 {
+		lfuFreePercent = 5
+	}
+	if capacityBytes > 0 {
+		if lfuFreePercent < 100 {
+			if usedPercent >= 100-lfuFreePercent {
+				startLFU = true
+			}
+		}
+	}
+
 	if startLFU {
 		var total, _ = this.list.Count()
 		if total > 0 {
@@ -523,12 +522,23 @@ func (this *MemoryStorage) flushItem(key string) {
 	if !ok {
 		return
 	}
+
 	if !item.IsDone {
 		remotelogs.Error("CACHE", "flush items failed: open writer failed: item has not been done")
 		return
 	}
 	if item.IsExpired() {
 		return
+	}
+
+	// 检查是否在列表中，防止未加入列表时就开始flush
+	isInList, err := this.list.Exist(types.String(hash))
+	if err != nil {
+		remotelogs.Error("CACHE", "flush items failed: "+err.Error())
+		return
+	}
+	if !isInList {
+		time.Sleep(1 * time.Second)
 	}
 
 	writer, err := this.parentStorage.OpenFlushWriter(key, item.ExpiresAt, item.Status, len(item.HeaderValue), int64(len(item.BodyValue)))
@@ -626,8 +636,4 @@ func (this *MemoryStorage) initPurgeTicker() {
 			tr.End()
 		}
 	})
-}
-
-func (this *MemoryStorage) valueItemFinalizer(valueItem *MemoryItem) {
-	atomic.AddInt64(&this.usedSize, -valueItem.TotalSize)
 }
