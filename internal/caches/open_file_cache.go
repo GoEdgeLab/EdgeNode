@@ -16,7 +16,7 @@ import (
 
 type OpenFileCache struct {
 	poolMap  map[string]*OpenFilePool // file path => Pool
-	poolList *linkedlist.List
+	poolList *linkedlist.List[*OpenFilePool]
 	watcher  *fsnotify.Watcher
 
 	locker sync.RWMutex
@@ -33,7 +33,7 @@ func NewOpenFileCache(maxSize int) (*OpenFileCache, error) {
 	var cache = &OpenFileCache{
 		maxSize:  maxSize,
 		poolMap:  map[string]*OpenFilePool{},
-		poolList: linkedlist.NewList(),
+		poolList: linkedlist.NewList[*OpenFilePool](),
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -105,7 +105,7 @@ func (this *OpenFileCache) Put(filename string, file *OpenFile) {
 					break
 				}
 
-				var headPool = head.Value.(*OpenFilePool)
+				var headPool = head.Value
 				headFile, consumed := headPool.Get()
 				if consumed {
 					this.count--
@@ -163,8 +163,8 @@ func (this *OpenFileCache) Debug() {
 	goman.New(func() {
 		for range ticker.C {
 			logs.Println("==== " + types.String(this.count) + " ====")
-			this.poolList.Range(func(item *linkedlist.Item) (goNext bool) {
-				logs.Println(filepath.Base(item.Value.(*OpenFilePool).Filename()), item.Value.(*OpenFilePool).Len())
+			this.poolList.Range(func(item *linkedlist.Item[*OpenFilePool]) (goNext bool) {
+				logs.Println(filepath.Base(item.Value.Filename()), item.Value.Len())
 				return true
 			})
 		}

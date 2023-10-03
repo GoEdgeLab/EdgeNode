@@ -2,13 +2,13 @@
 
 package linkedlist
 
-type Item struct {
-	prev *Item
-	next *Item
+type Item[T any] struct {
+	prev *Item[T]
+	next *Item[T]
 
-	Value interface{}
+	Value T
 }
 
-func NewItem(value interface{}) *Item {
-	return &Item{Value: value}
+func NewItem[T any](value T) *Item[T] {
+	return &Item[T]{Value: value}
 }

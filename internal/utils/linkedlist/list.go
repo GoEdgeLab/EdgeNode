@@ -2,25 +2,25 @@
 
 package linkedlist
 
-type List struct {
-	head  *Item
-	end   *Item
+type List[T any]  struct {
+	head  *Item[T]
+	end   *Item[T]
 	count int
 }
 
-func NewList() *List {
-	return &List{}
+func NewList[T any]() *List[T] {
+	return &List[T]{}
 }
 
-func (this *List) Head() *Item {
+func (this *List[T]) Head() *Item[T] {
 	return this.head
 }
 
-func (this *List) End() *Item {
+func (this *List[T]) End() *Item[T] {
 	return this.end
 }
 
-func (this *List) Push(item *Item) {
+func (this *List[T]) Push(item *Item[T]) {
 	if item == nil {
 		return
 	}
@@ -36,7 +36,7 @@ func (this *List) Push(item *Item) {
 	this.add(item)
 }
 
-func (this *List) Remove(item *Item) {
+func (this *List[T]) Remove(item *Item[T]) {
 	if item == nil {
 		return
 	}
@@ -58,11 +58,11 @@ func (this *List) Remove(item *Item) {
 	this.count--
 }
 
-func (this *List) Len() int {
+func (this *List[T]) Len() int {
 	return this.count
 }
 
-func (this *List) Range(f func(item *Item) (goNext bool)) {
+func (this *List[T]) Range(f func(item *Item[T]) (goNext bool)) {
 	for e := this.head; e != nil; e = e.next {
 		goNext := f(e)
 		if !goNext {
@@ -71,12 +71,12 @@ func (this *List) Range(f func(item *Item) (goNext bool)) {
 	}
 }
 
-func (this *List) Reset() {
+func (this *List[T]) Reset() {
 	this.head = nil
 	this.end = nil
 }
 
-func (this *List) add(item *Item) {
+func (this *List[T]) add(item *Item[T]) {
 	if item == nil {
 		return
 	}

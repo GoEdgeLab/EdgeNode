@@ -9,7 +9,7 @@ import (
 
 type OpenFilePool struct {
 	c        chan *OpenFile
-	linkItem *linkedlist.Item
+	linkItem *linkedlist.Item[*OpenFilePool]
 	filename string
 	version  int64
 	isClosed bool
@@ -21,7 +21,7 @@ func NewOpenFilePool(filename string) *OpenFilePool {
 		c:        make(chan *OpenFile, 1024),
 		version:  fasttime.Now().UnixMilli(),
 	}
-	pool.linkItem = linkedlist.NewItem(pool)
+	pool.linkItem = linkedlist.NewItem[*OpenFilePool](pool)
 	return pool
 }
 

@@ -42,5 +42,7 @@ func TestNewOpenFileCache_CloseAll(t *testing.T) {
 	cache.Get("d.txt")
 	cache.CloseAll()
 
-	time.Sleep(6 * time.Second)
+	if testutils.IsSingleTesting() {
+		time.Sleep(6 * time.Second)
+	}
 }
