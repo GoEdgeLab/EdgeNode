@@ -5,6 +5,7 @@ package linkedlist_test
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/linkedlist"
 	"runtime"
+	"strconv"
 	"testing"
 )
 
@@ -31,6 +32,25 @@ func TestNewList_Memory(t *testing.T) {
 		return true
 	})
 	t.Log(count)
+}
+
+func TestNewList_Memory_String(t *testing.T) {
+	var stat1 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat1)
+
+	var list = linkedlist.NewList[string]()
+	for i := 0; i < 1_000_000; i++ {
+		var item = &linkedlist.Item[string]{}
+		item.Value = strconv.Itoa(i)
+		list.Push(item)
+	}
+
+	runtime.GC()
+
+	var stat2 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat2)
+	t.Log((stat2.HeapInuse-stat1.HeapInuse)>>20, "MB")
+	t.Log(list.Len())
 }
 
 func TestList_Push(t *testing.T) {
@@ -82,4 +102,3 @@ func BenchmarkList_Add(b *testing.B) {
 		list.Push(item)
 	}
 }
-
