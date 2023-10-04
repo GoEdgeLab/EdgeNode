@@ -1156,8 +1156,13 @@ func (this *FileStorage) purgeLoop() {
 
 // 热点数据任务
 func (this *FileStorage) hotLoop() {
-	var memoryStorage = this.memoryStorage
+	var memoryStorage = this.memoryStorage // copy
 	if memoryStorage == nil {
+		return
+	}
+
+	// check memory space size
+	if !memoryStorage.HasFreeSpaceForHotItems() {
 		return
 	}
 

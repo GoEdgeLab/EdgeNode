@@ -400,6 +400,11 @@ func (this *MemoryStorage) CanSendfile() bool {
 	return false
 }
 
+// HasFreeSpaceForHotItems 是否有足够的空间提供给热门内容
+func (this *MemoryStorage) HasFreeSpaceForHotItems() bool {
+	return atomic.LoadInt64(&this.usedSize) < this.memoryCapacityBytes()*3/4
+}
+
 // 计算Key Hash
 func (this *MemoryStorage) hash(key string) uint64 {
 	return xxhash.Sum64String(key)
