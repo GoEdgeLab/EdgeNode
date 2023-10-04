@@ -24,9 +24,9 @@ func NewItem(lifeSeconds int) *Item {
 		spanSeconds = 1
 	}
 	var countSpans = lifeSeconds/spanSeconds + 1 /** prevent index out of bounds **/
-	var spans = []*Span{}
+	var spans = make([]*Span, countSpans)
 	for i := 0; i < countSpans; i++ {
-		spans = append(spans, NewSpan())
+		spans[i] = NewSpan()
 	}
 
 	return &Item{

@@ -10,6 +10,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"runtime"
+	"runtime/debug"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -78,14 +79,20 @@ func TestCounterMemory(t *testing.T) {
 	var stat = &runtime.MemStats{}
 	runtime.ReadMemStats(stat)
 
-	var counter = counters.NewCounter()
-	for i := 0; i < 1e5; i++ {
+	var counter = counters.NewCounter().WithGC()
+	for i := 0; i < 1_000_000; i++ {
 		counter.Increase(uint64(i), rands.Int(10, 300))
 	}
+
+	runtime.GC()
+	runtime.GC()
+	debug.FreeOSMemory()
 
 	var stat1 = &runtime.MemStats{}
 	runtime.ReadMemStats(stat1)
 	t.Log((stat1.TotalAlloc-stat.TotalAlloc)/(1<<20), "MB")
+
+	t.Log(counter.TotalItems())
 }
 
 func BenchmarkCounter_Increase(b *testing.B) {

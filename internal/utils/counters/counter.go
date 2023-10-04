@@ -3,13 +3,15 @@
 package counters
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	syncutils "github.com/TeaOSLab/EdgeNode/internal/utils/sync"
 	"github.com/cespare/xxhash"
-	"runtime"
 	"sync"
 	"time"
 )
+
+const maxItemsPerGroup = 100_000
 
 type Counter struct {
 	countMaps uint64
@@ -23,7 +25,7 @@ type Counter struct {
 
 // NewCounter create new counter
 func NewCounter() *Counter {
-	var count = runtime.NumCPU() * 4
+	var count = utils.SystemMemoryGB() * 2
 	if count < 8 {
 		count = 8
 	} else if count > 128 {
@@ -162,15 +164,36 @@ func (this *Counter) GC() {
 			expiredKeys = append(expiredKeys, key)
 		}
 	}
+	var tooManyItems = len(itemMap) > maxItemsPerGroup // prevent too many items
 	this.locker.RUnlock(gcIndex)
 
 	if len(expiredKeys) > 0 {
+		this.locker.Lock(gcIndex)
 		for _, key := range expiredKeys {
-			this.locker.Lock(gcIndex)
 			delete(itemMap, key)
-			this.locker.Unlock(gcIndex)
 		}
+		this.locker.Unlock(gcIndex)
 	}
+
+	if tooManyItems {
+		this.locker.Lock(gcIndex)
+		var count = len(itemMap) - maxItemsPerGroup
+		if count > 0 {
+			itemMap = this.itemMaps[gcIndex]
+			for key := range itemMap {
+				delete(itemMap, key)
+				count--
+				if count < 0 {
+					break
+				}
+			}
+		}
+		this.locker.Unlock(gcIndex)
+	}
+}
+
+func (this *Counter) CountMaps() int {
+	return int(this.countMaps)
 }
 
 // calculate hash of the key

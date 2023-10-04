@@ -3,8 +3,8 @@
 package counters
 
 type Span struct {
-	Timestamp int64
 	Count     uint64
+	Timestamp int64
 }
 
 func NewSpan() *Span {
