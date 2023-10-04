@@ -28,7 +28,9 @@ func TestNewCache(t *testing.T) {
 		}
 	}
 	t.Log("a:", cache.Read("a"))
-	time.Sleep(5 * time.Second)
+	if testutils.IsSingleTesting() {
+		time.Sleep(5 * time.Second)
+	}
 
 	for i := 0; i < len(cache.pieces); i++ {
 		cache.GC()
