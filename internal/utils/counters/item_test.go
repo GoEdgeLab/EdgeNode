@@ -13,6 +13,27 @@ import (
 )
 
 func TestItem_Increase(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var item = counters.NewItem(10)
+	t.Log(item.Increase())
+	time.Sleep(1 * time.Second)
+	t.Log(item.Increase())
+	time.Sleep(2 * time.Second)
+	t.Log(item.Increase())
+	time.Sleep(5 * time.Second)
+	t.Log(item.Increase())
+	time.Sleep(6 * time.Second)
+	t.Log(item.Increase())
+	time.Sleep(5 * time.Second)
+	t.Log(item.Increase())
+	time.Sleep(11 * time.Second)
+	t.Log(item.Increase())
+}
+
+func TestItem_Increase2(t *testing.T) {
 	// run only under single testing
 	if !testutils.IsSingleTesting() {
 		return
@@ -22,7 +43,7 @@ func TestItem_Increase(t *testing.T) {
 
 	var item = counters.NewItem(20)
 	for i := 0; i < 100; i++ {
-		t.Log(item.Increase(), timeutil.Format("i:s"))
+		t.Log(item.Increase(), timeutil.Format("H:i:s"))
 		time.Sleep(2 * time.Second)
 	}
 
@@ -50,7 +71,10 @@ func BenchmarkItem_Increase(b *testing.B) {
 
 	var item = counters.NewItem(60)
 
-	for i := 0; i < b.N; i++ {
-		item.Increase()
-	}
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			item.Increase()
+			item.Sum()
+		}
+	})
 }

@@ -10,7 +10,7 @@ type Item struct {
 	lifeSeconds int64
 
 	spanSeconds int64
-	spans       []*Span
+	spans       []uint64
 
 	lastUpdateTime int64
 }
@@ -24,54 +24,87 @@ func NewItem(lifeSeconds int) *Item {
 		spanSeconds = 1
 	}
 	var countSpans = lifeSeconds/spanSeconds + 1 /** prevent index out of bounds **/
-	var spans = make([]*Span, countSpans)
-	for i := 0; i < countSpans; i++ {
-		spans[i] = NewSpan()
-	}
 
 	return &Item{
 		lifeSeconds:    int64(lifeSeconds),
 		spanSeconds:    int64(spanSeconds),
-		spans:          spans,
+		spans:          make([]uint64, countSpans),
 		lastUpdateTime: fasttime.Now().Unix(),
 	}
 }
 
 func (this *Item) Increase() uint64 {
 	var currentTime = fasttime.Now().Unix()
-	var spanIndex = int(currentTime % this.lifeSeconds / this.spanSeconds)
-	var span = this.spans[spanIndex]
-	var roundTime = currentTime / this.spanSeconds * this.spanSeconds
+	var currentSpanIndex = this.calculateSpanIndex(currentTime)
 
-	this.lastUpdateTime = currentTime
-
-	if span.Timestamp < roundTime {
-		span.Timestamp = roundTime // update time
-		span.Count = 0             // reset count
+	// return quickly
+	if this.lastUpdateTime == currentTime {
+		this.spans[currentSpanIndex]++
+		return this.Sum()
 	}
-	span.Count++
+
+	if this.lastUpdateTime > 0 {
+		if currentTime-this.lastUpdateTime > this.lifeSeconds {
+			for index := range this.spans {
+				this.spans[index] = 0
+			}
+		} else {
+			var lastSpanIndex = this.calculateSpanIndex(this.lastUpdateTime)
+			var countSpans = len(this.spans)
+
+			// reset values between LAST and CURRENT
+			for index := lastSpanIndex + 1; ; index++ {
+				var realIndex = index % countSpans
+				if realIndex <= currentSpanIndex {
+					this.spans[realIndex] = 0
+				}
+				if realIndex == currentSpanIndex {
+					break
+				}
+			}
+		}
+	}
+
+	this.spans[currentSpanIndex]++
+	this.lastUpdateTime = currentTime
 
 	return this.Sum()
 }
 
-func (this *Item) Sum() uint64 {
-	var result uint64 = 0
-	var currentTimestamp = fasttime.Now().Unix()
-	for _, span := range this.spans {
-		if span.Timestamp >= currentTimestamp-this.lifeSeconds {
-			result += span.Count
+func (this *Item) Sum() (result uint64) {
+	if this.lastUpdateTime == 0 {
+		return 0
+	}
+
+	var currentTime = fasttime.Now().Unix()
+	var currentSpanIndex = this.calculateSpanIndex(currentTime)
+
+	if currentTime-this.lastUpdateTime > this.lifeSeconds {
+		return 0
+	} else {
+		var lastSpanIndex = this.calculateSpanIndex(this.lastUpdateTime)
+		var countSpans = len(this.spans)
+		for index := 0; index < countSpans; index++ {
+			if (currentSpanIndex >= lastSpanIndex && (index <= lastSpanIndex || index >= currentSpanIndex /** a >=b **/)) ||
+				(currentSpanIndex < lastSpanIndex && index >= currentSpanIndex && index <= lastSpanIndex /** a < b **/) {
+				result += this.spans[index]
+			}
 		}
 	}
+
 	return result
 }
 
 func (this *Item) Reset() {
-	for _, span := range this.spans {
-		span.Count = 0
-		span.Timestamp = 0
+	for index := range this.spans {
+		this.spans[index] = 0
 	}
 }
 
 func (this *Item) IsExpired(currentTime int64) bool {
 	return this.lastUpdateTime < currentTime-this.lifeSeconds-this.spanSeconds
+}
+
+func (this *Item) calculateSpanIndex(timestamp int64) int {
+	return int(timestamp % this.lifeSeconds / this.spanSeconds)
 }
