@@ -32,7 +32,7 @@ func StartMemoryStatsGC(t *testing.T) {
 	}()
 }
 
-func StartMemoryStats(t *testing.T) {
+func StartMemoryStats(t *testing.T, callbacks ...func()) {
 	var ticker = time.NewTicker(1 * time.Second)
 	go func() {
 		var stat = &runtime.MemStats{}
@@ -46,6 +46,12 @@ func StartMemoryStats(t *testing.T) {
 			lastHeapInUse = stat.HeapInuse
 
 			t.Log(timeutil.Format("H:i:s"), "HeapInuse:", fmt.Sprintf("%.2fM", float64(stat.HeapInuse)/1024/1024), "NumGC:", stat.NumGC)
+
+			if len(callbacks) > 0 {
+				for _, callback := range callbacks {
+					callback()
+				}
+			}
 		}
 	}()
 }
