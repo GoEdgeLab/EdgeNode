@@ -41,7 +41,7 @@ func StartMemoryStats(t *testing.T) {
 		for range ticker.C {
 			runtime.ReadMemStats(stat)
 			if stat.HeapInuse == lastHeapInUse {
-				return
+				continue
 			}
 			lastHeapInUse = stat.HeapInuse
 

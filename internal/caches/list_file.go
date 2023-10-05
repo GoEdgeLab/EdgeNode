@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/types"
 	"os"
 	"sync"
@@ -27,7 +28,7 @@ type FileList struct {
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
 
-	memoryCache *ttlcache.Cache[bool]
+	memoryCache *ttlcache.Cache[zero.Zero]
 
 	// 老数据库地址
 	oldDir string
@@ -36,7 +37,7 @@ type FileList struct {
 func NewFileList(dir string) ListInterface {
 	return &FileList{
 		dir:         dir,
-		memoryCache: ttlcache.NewCache[bool](),
+		memoryCache: ttlcache.NewCache[zero.Zero](),
 	}
 }
 
@@ -120,7 +121,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 		return err
 	}
 
-	this.memoryCache.Write(hash, true, this.maxExpiresAtForMemoryCache(item.ExpiredAt))
+	this.memoryCache.Write(hash, zero.Zero{}, this.maxExpiresAtForMemoryCache(item.ExpiredAt))
 
 	if this.onAdd != nil {
 		this.onAdd(item)
@@ -158,7 +159,7 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		}
 		return false, err
 	}
-	this.memoryCache.Write(hash, false, this.maxExpiresAtForMemoryCache(expiredAt))
+	this.memoryCache.Write(hash, zero.Zero{}, this.maxExpiresAtForMemoryCache(expiredAt))
 	return true, nil
 }
 
