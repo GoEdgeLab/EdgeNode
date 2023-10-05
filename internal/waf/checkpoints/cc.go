@@ -8,7 +8,6 @@ import (
 	"regexp"
 )
 
-var ccCounter = counters.NewCounter().WithGC()
 
 // CCCheckpoint ${cc.arg}
 // TODO implement more traffic rules
@@ -98,7 +97,7 @@ func (this *CCCheckpoint) RequestValue(req requests.Request, param string, optio
 		if len(key) == 0 {
 			key = req.WAFRemoteIP()
 		}
-		value = ccCounter.IncreaseKey(types.String(ruleId)+"@"+key, types.Int(period))
+		value = counters.SharedCounter.IncreaseKey(types.String(ruleId)+"@WAF_CC@"+key, types.Int(period))
 	}
 
 	return

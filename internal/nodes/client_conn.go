@@ -24,8 +24,6 @@ import (
 	"time"
 )
 
-var synFloodCounter = counters.NewCounter().WithGC()
-
 // ClientConn 客户端连接
 type ClientConn struct {
 	BaseClientConn
@@ -292,13 +290,13 @@ func (this *ClientConn) LastErr() error {
 }
 
 func (this *ClientConn) resetSYNFlood() {
-	synFloodCounter.ResetKey("SYN_FLOOD:" + this.RawIP())
+	counters.SharedCounter.ResetKey("SYN_FLOOD:" + this.RawIP())
 }
 
 func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloodConfig) {
 	var ip = this.RawIP()
 	if len(ip) > 0 && !iplibrary.IsInWhiteList(ip) && (!synFloodConfig.IgnoreLocal || !utils.IsLocalIP(ip)) {
-		var result = synFloodCounter.IncreaseKey("SYN_FLOOD:"+ip, 60)
+		var result = counters.SharedCounter.IncreaseKey("SYN_FLOOD:"+ip, 60)
 		var minAttempts = synFloodConfig.MinAttempts
 		if minAttempts < 5 {
 			minAttempts = 5

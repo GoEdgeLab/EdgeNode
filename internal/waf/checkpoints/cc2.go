@@ -13,8 +13,6 @@ import (
 	"strings"
 )
 
-var cc2Counter = counters.NewCounter().WithGC()
-
 var commonFileExtensionsMap = map[string]zero.Zero{
 	".ico":   zero.New(),
 	".jpg":   zero.New(),
@@ -77,7 +75,7 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 	}
 
 	var ccKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(keyValues, "@")
-	value = cc2Counter.IncreaseKey(ccKey, period)
+	value = counters.SharedCounter.IncreaseKey(ccKey, period)
 
 	// 基于指纹统计
 	var enableFingerprint = true
@@ -96,7 +94,7 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 				fpKeyValues = append(fpKeyValues, req.Format(types.String(key)))
 			}
 			var fpCCKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(fpKeyValues, "@")
-			var fpValue = cc2Counter.IncreaseKey(fpCCKey, period)
+			var fpValue = counters.SharedCounter.IncreaseKey(fpCCKey, period)
 			if fpValue > value.(uint64) {
 				value = fpValue
 			}
