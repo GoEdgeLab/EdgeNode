@@ -33,14 +33,17 @@ func NewItem(lifeSeconds int) *Item {
 	}
 }
 
-func (this *Item) Increase() uint64 {
+func (this *Item) Increase() (result uint64) {
 	var currentTime = fasttime.Now().Unix()
 	var currentSpanIndex = this.calculateSpanIndex(currentTime)
 
 	// return quickly
 	if this.lastUpdateTime == currentTime {
 		this.spans[currentSpanIndex]++
-		return this.Sum()
+		for _, count := range this.spans {
+			result += count
+		}
+		return
 	}
 
 	if this.lastUpdateTime > 0 {
@@ -50,16 +53,17 @@ func (this *Item) Increase() uint64 {
 			}
 		} else {
 			var lastSpanIndex = this.calculateSpanIndex(this.lastUpdateTime)
-			var countSpans = len(this.spans)
 
-			// reset values between LAST and CURRENT
-			for index := lastSpanIndex + 1; ; index++ {
-				var realIndex = index % countSpans
-				if realIndex <= currentSpanIndex {
+			if lastSpanIndex != currentSpanIndex {
+				var countSpans = len(this.spans)
+
+				// reset values between LAST and CURRENT
+				for index := lastSpanIndex + 1; ; index++ {
+					var realIndex = index % countSpans
 					this.spans[realIndex] = 0
-				}
-				if realIndex == currentSpanIndex {
-					break
+					if realIndex == currentSpanIndex {
+						break
+					}
 				}
 			}
 		}
@@ -68,7 +72,11 @@ func (this *Item) Increase() uint64 {
 	this.spans[currentSpanIndex]++
 	this.lastUpdateTime = currentTime
 
-	return this.Sum()
+	for _, count := range this.spans {
+		result += count
+	}
+
+	return
 }
 
 func (this *Item) Sum() (result uint64) {
@@ -84,10 +92,11 @@ func (this *Item) Sum() (result uint64) {
 	} else {
 		var lastSpanIndex = this.calculateSpanIndex(this.lastUpdateTime)
 		var countSpans = len(this.spans)
-		for index := 0; index < countSpans; index++ {
-			if (currentSpanIndex >= lastSpanIndex && (index <= lastSpanIndex || index >= currentSpanIndex /** a >=b **/)) ||
-				(currentSpanIndex < lastSpanIndex && index >= currentSpanIndex && index <= lastSpanIndex /** a < b **/) {
-				result += this.spans[index]
+		for index := currentSpanIndex + 1; ; index++ {
+			var realIndex = index % countSpans
+			result += this.spans[realIndex]
+			if realIndex == lastSpanIndex {
+				break
 			}
 		}
 	}

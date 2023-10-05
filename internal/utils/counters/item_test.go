@@ -18,19 +18,19 @@ func TestItem_Increase(t *testing.T) {
 	}
 
 	var item = counters.NewItem(10)
-	t.Log(item.Increase())
+	t.Log(item.Increase(), item.Sum())
 	time.Sleep(1 * time.Second)
-	t.Log(item.Increase())
+	t.Log(item.Increase(), item.Sum())
 	time.Sleep(2 * time.Second)
-	t.Log(item.Increase())
+	t.Log(item.Increase(), item.Sum())
 	time.Sleep(5 * time.Second)
-	t.Log(item.Increase())
+	t.Log(item.Increase(), item.Sum())
 	time.Sleep(6 * time.Second)
-	t.Log(item.Increase())
+	t.Log(item.Increase(), item.Sum())
 	time.Sleep(5 * time.Second)
-	t.Log(item.Increase())
+	t.Log(item.Increase(), item.Sum())
 	time.Sleep(11 * time.Second)
-	t.Log(item.Increase())
+	t.Log(item.Increase(), item.Sum())
 }
 
 func TestItem_Increase2(t *testing.T) {
@@ -43,7 +43,7 @@ func TestItem_Increase2(t *testing.T) {
 
 	var item = counters.NewItem(20)
 	for i := 0; i < 100; i++ {
-		t.Log(item.Increase(), timeutil.Format("H:i:s"))
+		t.Log(item.Increase(), item.Sum(), timeutil.Format("H:i:s"))
 		time.Sleep(2 * time.Second)
 	}
 
@@ -69,10 +69,11 @@ func TestItem_IsExpired(t *testing.T) {
 func BenchmarkItem_Increase(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var item = counters.NewItem(60)
+	b.ReportAllocs()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
+			var item = counters.NewItem(60)
 			item.Increase()
 			item.Sum()
 		}
