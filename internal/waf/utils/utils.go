@@ -4,12 +4,11 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/re"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/cespare/xxhash"
-	"github.com/iwind/TeaGo/types"
 	"strconv"
 	"time"
 )
 
-var cache = ttlcache.NewCache()
+var cache = ttlcache.NewCache[int8]()
 
 // MatchStringCache 正则表达式匹配字符串，并缓存结果
 func MatchStringCache(regex *re.Regexp, s string) bool {
@@ -26,7 +25,7 @@ func MatchStringCache(regex *re.Regexp, s string) bool {
 	var key = regex.IdString() + "@" + strconv.FormatUint(hash, 10)
 	var item = cache.Read(key)
 	if item != nil {
-		return types.Int8(item.Value) == 1
+		return item.Value == 1
 	}
 	var b = regex.MatchString(s)
 	if b {
@@ -52,10 +51,10 @@ func MatchBytesCache(regex *re.Regexp, byteSlice []byte) bool {
 	var key = regex.IdString() + "@" + strconv.FormatUint(hash, 10)
 	var item = cache.Read(key)
 	if item != nil {
-		return types.Int8(item.Value) == 1
+		return item.Value == 1
 	}
 	if item != nil {
-		return types.Int8(item.Value) == 1
+		return item.Value == 1
 	}
 	var b = regex.Match(byteSlice)
 	if b {

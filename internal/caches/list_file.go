@@ -27,7 +27,7 @@ type FileList struct {
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
 
-	memoryCache *ttlcache.Cache
+	memoryCache *ttlcache.Cache[bool]
 
 	// 老数据库地址
 	oldDir string
@@ -36,7 +36,7 @@ type FileList struct {
 func NewFileList(dir string) ListInterface {
 	return &FileList{
 		dir:         dir,
-		memoryCache: ttlcache.NewCache(),
+		memoryCache: ttlcache.NewCache[bool](),
 	}
 }
 
@@ -120,7 +120,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 		return err
 	}
 
-	this.memoryCache.Write(hash, 1, this.maxExpiresAtForMemoryCache(item.ExpiredAt))
+	this.memoryCache.Write(hash, true, this.maxExpiresAtForMemoryCache(item.ExpiredAt))
 
 	if this.onAdd != nil {
 		this.onAdd(item)
@@ -158,7 +158,7 @@ func (this *FileList) Exist(hash string) (bool, error) {
 		}
 		return false, err
 	}
-	this.memoryCache.Write(hash, 1, this.maxExpiresAtForMemoryCache(expiredAt))
+	this.memoryCache.Write(hash, false, this.maxExpiresAtForMemoryCache(expiredAt))
 	return true, nil
 }
 

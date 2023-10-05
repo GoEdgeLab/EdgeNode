@@ -14,7 +14,7 @@ import (
 )
 
 func TestNewCache(t *testing.T) {
-	var cache = NewCache()
+	var cache = NewCache[int]()
 	cache.Write("a", 1, time.Now().Unix()+3600)
 	cache.Write("b", 2, time.Now().Unix()+1)
 	cache.Write("c", 1, time.Now().Unix()+3602)
@@ -48,7 +48,7 @@ func TestCache_Memory(t *testing.T) {
 
 	testutils.StartMemoryStats(t)
 
-	var cache = NewCache()
+	var cache = NewCache[int]()
 	var count = 20_000_000
 	for i := 0; i < count; i++ {
 		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+3600)
@@ -73,21 +73,21 @@ func TestCache_Memory(t *testing.T) {
 func TestCache_IncreaseInt64(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	var cache = NewCache()
+	var cache = NewCache[int64]()
 	var unixTime = time.Now().Unix()
 
 	{
 		cache.IncreaseInt64("a", 1, unixTime+3600, false)
 		var item = cache.Read("a")
 		t.Log(item)
-		a.IsTrue(item.Value == int64(1))
+		a.IsTrue(item.Value == 1)
 		a.IsTrue(item.expiredAt == unixTime+3600)
 	}
 	{
 		cache.IncreaseInt64("a", 1, unixTime+3600+1, true)
 		var item = cache.Read("a")
 		t.Log(item)
-		a.IsTrue(item.Value == int64(2))
+		a.IsTrue(item.Value == 2)
 		a.IsTrue(item.expiredAt == unixTime+3600+1)
 	}
 	{
@@ -103,7 +103,7 @@ func TestCache_IncreaseInt64(t *testing.T) {
 func TestCache_Read(t *testing.T) {
 	runtime.GOMAXPROCS(1)
 
-	var cache = NewCache(PiecesOption{Count: 32})
+	var cache = NewCache[int](PiecesOption{Count: 32})
 
 	for i := 0; i < 10_000_000; i++ {
 		cache.Write("HELLO_WORLD_"+strconv.Itoa(i), i, time.Now().Unix()+int64(i%10240)+1)
@@ -125,7 +125,7 @@ func TestCache_Read(t *testing.T) {
 }
 
 func TestCache_GC(t *testing.T) {
-	var cache = NewCache(&PiecesOption{Count: 5})
+	var cache = NewCache[int](&PiecesOption{Count: 5})
 	cache.Write("a", 1, time.Now().Unix()+1)
 	cache.Write("b", 2, time.Now().Unix()+2)
 	cache.Write("c", 3, time.Now().Unix()+3)
@@ -161,12 +161,12 @@ func TestCache_GC(t *testing.T) {
 func TestCache_GC2(t *testing.T) {
 	runtime.GOMAXPROCS(1)
 
-	var cache1 = NewCache(NewPiecesOption(32))
+	var cache1 = NewCache[int](NewPiecesOption(32))
 	for i := 0; i < 1_000_000; i++ {
 		cache1.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 10)))
 	}
 
-	var cache2 = NewCache(NewPiecesOption(5))
+	var cache2 = NewCache[int](NewPiecesOption(5))
 	for i := 0; i < 1_000_000; i++ {
 		cache2.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 10)))
 	}
@@ -178,7 +178,7 @@ func TestCache_GC2(t *testing.T) {
 }
 
 func TestCacheDestroy(t *testing.T) {
-	var cache = NewCache()
+	var cache = NewCache[int]()
 	t.Log("count:", SharedManager.Count())
 	cache.Destroy()
 	t.Log("count:", SharedManager.Count())
@@ -187,7 +187,7 @@ func TestCacheDestroy(t *testing.T) {
 func BenchmarkNewCache(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var cache = NewCache(NewPiecesOption(128))
+	var cache = NewCache[int](NewPiecesOption(128))
 	for i := 0; i < 2_000_000; i++ {
 		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(10, 100)))
 	}
@@ -205,7 +205,7 @@ func BenchmarkNewCache(b *testing.B) {
 func BenchmarkCache_Add(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var cache = NewCache()
+	var cache = NewCache[int]()
 	for i := 0; i < b.N; i++ {
 		cache.Write(strconv.Itoa(i), i, fasttime.Now().Unix()+int64(i%1024))
 	}
@@ -214,7 +214,7 @@ func BenchmarkCache_Add(b *testing.B) {
 func BenchmarkCache_Add_Parallel(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var cache = NewCache()
+	var cache = NewCache[int64]()
 	var i int64
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -227,7 +227,7 @@ func BenchmarkCache_Add_Parallel(b *testing.B) {
 func BenchmarkNewCacheGC(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var cache = NewCache(NewPiecesOption(1024))
+	var cache = NewCache[int](NewPiecesOption(1024))
 	for i := 0; i < 3_000_000; i++ {
 		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 100)))
 	}
@@ -244,7 +244,7 @@ func BenchmarkNewCacheGC(b *testing.B) {
 func BenchmarkNewCacheClean(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var cache = NewCache(NewPiecesOption(128))
+	var cache = NewCache[int](NewPiecesOption(128))
 	for i := 0; i < 3_000_000; i++ {
 		cache.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(10, 100)))
 	}

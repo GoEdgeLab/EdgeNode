@@ -63,7 +63,7 @@ func (this *HTTPRequest) doMismatch() {
 		// 要考虑到服务在切换集群时，域名未生效状态时，用户访问的仍然是老集群中的节点，就会产生找不到域名的情况
 		if len(remoteIP) > 0 {
 			const maxAttempts = 100
-			if ttlcache.SharedCache.IncreaseInt64("MISMATCH_DOMAIN:"+remoteIP, int64(1), time.Now().Unix()+60, false) > maxAttempts {
+			if ttlcache.SharedInt64Cache.IncreaseInt64("MISMATCH_DOMAIN:"+remoteIP, int64(1), time.Now().Unix()+60, false) > maxAttempts {
 				// 在加入之前再次检查黑名单
 				if !waf.SharedIPBlackList.Contains(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteIP) {
 					waf.SharedIPBlackList.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 0, remoteIP, time.Now().Unix()+3600)

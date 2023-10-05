@@ -5,7 +5,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 )
 
-var SharedCache = NewBigCache()
+var SharedInt64Cache = NewBigCache[int64]()
 
 // Cache TTL缓存
 // 最大的缓存时间为30 * 86400
@@ -13,24 +13,24 @@ var SharedCache = NewBigCache()
 //
 //	    Piece1            |  Piece2 | Piece3 | ...
 //	[ Item1, Item2, ... ] |   ...
-type Cache struct {
+type Cache[T any] struct {
 	isDestroyed bool
-	pieces      []*Piece
+	pieces      []*Piece[T]
 	countPieces uint64
 	maxItems    int
 
 	gcPieceIndex int
 }
 
-func NewBigCache() *Cache {
+func NewBigCache[T any]() *Cache[T] {
 	var delta = utils.SystemMemoryGB() / 2
 	if delta <= 0 {
 		delta = 1
 	}
-	return NewCache(NewMaxItemsOption(delta * 1_000_000))
+	return NewCache[T](NewMaxItemsOption(delta * 1_000_000))
 }
 
-func NewCache(opt ...OptionInterface) *Cache {
+func NewCache[T any](opt ...OptionInterface) *Cache[T] {
 	var countPieces = 256
 	var maxItems = 1_000_000
 
@@ -61,13 +61,13 @@ func NewCache(opt ...OptionInterface) *Cache {
 		}
 	}
 
-	var cache = &Cache{
+	var cache = &Cache[T]{
 		countPieces: uint64(countPieces),
 		maxItems:    maxItems,
 	}
 
 	for i := 0; i < countPieces; i++ {
-		cache.pieces = append(cache.pieces, NewPiece(maxItems/countPieces))
+		cache.pieces = append(cache.pieces, NewPiece[T](maxItems/countPieces))
 	}
 
 	// Add to manager
@@ -76,7 +76,7 @@ func NewCache(opt ...OptionInterface) *Cache {
 	return cache
 }
 
-func (this *Cache) Write(key string, value any, expiredAt int64) (ok bool) {
+func (this *Cache[T]) Write(key string, value T, expiredAt int64) (ok bool) {
 	if this.isDestroyed {
 		return
 	}
@@ -92,20 +92,20 @@ func (this *Cache) Write(key string, value any, expiredAt int64) (ok bool) {
 	}
 	var uint64Key = HashKey([]byte(key))
 	var pieceIndex = uint64Key % this.countPieces
-	return this.pieces[pieceIndex].Add(uint64Key, &Item{
+	return this.pieces[pieceIndex].Add(uint64Key, &Item[T]{
 		Value:     value,
 		expiredAt: expiredAt,
 	})
 }
 
-func (this *Cache) IncreaseInt64(key string, delta int64, expiredAt int64, extend bool) int64 {
+func (this *Cache[T]) IncreaseInt64(key string, delta T, expiredAt int64, extend bool) T {
 	if this.isDestroyed {
-		return 0
+		return any(0).(T)
 	}
 
 	var currentTimestamp = fasttime.Now().Unix()
 	if expiredAt <= currentTimestamp {
-		return 0
+		return any(0).(T)
 	}
 
 	var maxExpiredAt = currentTimestamp + 30*86400
@@ -117,24 +117,24 @@ func (this *Cache) IncreaseInt64(key string, delta int64, expiredAt int64, exten
 	return this.pieces[pieceIndex].IncreaseInt64(uint64Key, delta, expiredAt, extend)
 }
 
-func (this *Cache) Read(key string) (item *Item) {
+func (this *Cache[T]) Read(key string) (item *Item[T]) {
 	var uint64Key = HashKey([]byte(key))
 	return this.pieces[uint64Key%this.countPieces].Read(uint64Key)
 }
 
-func (this *Cache) Delete(key string) {
+func (this *Cache[T]) Delete(key string) {
 	var uint64Key = HashKey([]byte(key))
 	this.pieces[uint64Key%this.countPieces].Delete(uint64Key)
 }
 
-func (this *Cache) Count() (count int) {
+func (this *Cache[T]) Count() (count int) {
 	for _, piece := range this.pieces {
 		count += piece.Count()
 	}
 	return
 }
 
-func (this *Cache) GC() {
+func (this *Cache[T]) GC() {
 	var index = this.gcPieceIndex
 	const maxPiecesPerGC = 4
 	for i := index; i < index+maxPiecesPerGC; i++ {
@@ -151,13 +151,13 @@ func (this *Cache) GC() {
 	this.gcPieceIndex = index
 }
 
-func (this *Cache) Clean() {
+func (this *Cache[T]) Clean() {
 	for _, piece := range this.pieces {
 		piece.Clean()
 	}
 }
 
-func (this *Cache) Destroy() {
+func (this *Cache[T]) Destroy() {
 	SharedManager.Remove(this)
 
 	this.isDestroyed = true

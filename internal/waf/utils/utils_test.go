@@ -1,7 +1,8 @@
-package utils
+package utils_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/re"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -13,16 +14,16 @@ import (
 
 func TestMatchStringCache(t *testing.T) {
 	regex := re.MustCompile(`\d+`)
-	t.Log(MatchStringCache(regex, "123"))
-	t.Log(MatchStringCache(regex, "123"))
-	t.Log(MatchStringCache(regex, "123"))
+	t.Log(utils.MatchStringCache(regex, "123"))
+	t.Log(utils.MatchStringCache(regex, "123"))
+	t.Log(utils.MatchStringCache(regex, "123"))
 }
 
 func TestMatchBytesCache(t *testing.T) {
 	regex := re.MustCompile(`\d+`)
-	t.Log(MatchBytesCache(regex, []byte("123")))
-	t.Log(MatchBytesCache(regex, []byte("123")))
-	t.Log(MatchBytesCache(regex, []byte("123")))
+	t.Log(utils.MatchBytesCache(regex, []byte("123")))
+	t.Log(utils.MatchBytesCache(regex, []byte("123")))
+	t.Log(utils.MatchBytesCache(regex, []byte("123")))
 }
 
 func TestMatchRemoteCache(t *testing.T) {
@@ -55,10 +56,10 @@ func BenchmarkMatchStringCache(b *testing.B) {
 	var data = strings.Repeat("HELLO", 512)
 	var regex = re.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
 	//b.Log(regex.Keywords())
-	_ = MatchStringCache(regex, data)
+	_ = utils.MatchStringCache(regex, data)
 
 	for i := 0; i < b.N; i++ {
-		_ = MatchStringCache(regex, data)
+		_ = utils.MatchStringCache(regex, data)
 	}
 }
 

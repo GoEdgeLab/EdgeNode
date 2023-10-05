@@ -3,12 +3,11 @@ package ttlcache
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
-	"github.com/iwind/TeaGo/types"
 	"sync"
 )
 
-type Piece struct {
-	m           map[uint64]*Item
+type Piece[T any] struct {
+	m           map[uint64]*Item[T]
 	expiresList *expires.List
 	maxItems    int
 	lastGCTime  int64
@@ -16,15 +15,15 @@ type Piece struct {
 	locker sync.RWMutex
 }
 
-func NewPiece(maxItems int) *Piece {
-	return &Piece{
-		m:           map[uint64]*Item{},
+func NewPiece[T any](maxItems int) *Piece[T] {
+	return &Piece[T]{
+		m:           map[uint64]*Item[T]{},
 		expiresList: expires.NewSingletonList(),
 		maxItems:    maxItems,
 	}
 }
 
-func (this *Piece) Add(key uint64, item *Item) (ok bool) {
+func (this *Piece[T]) Add(key uint64, item *Item[T]) (ok bool) {
 	this.locker.Lock()
 	if this.maxItems > 0 && len(this.m) >= this.maxItems {
 		this.locker.Unlock()
@@ -38,11 +37,14 @@ func (this *Piece) Add(key uint64, item *Item) (ok bool) {
 	return true
 }
 
-func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64, extend bool) (result int64) {
+func (this *Piece[T]) IncreaseInt64(key uint64, delta T, expiredAt int64, extend bool) (result T) {
 	this.locker.Lock()
 	item, ok := this.m[key]
 	if ok && item.expiredAt > fasttime.Now().Unix() {
-		result = types.Int64(item.Value) + delta
+		int64Value, isInt64 := any(item.Value).(int64)
+		if isInt64 {
+			result = any(int64Value + any(delta).(int64)).(T)
+		}
 		item.Value = result
 		if extend {
 			item.expiredAt = expiredAt
@@ -51,7 +53,7 @@ func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64, exten
 	} else {
 		if len(this.m) < this.maxItems {
 			result = delta
-			this.m[key] = &Item{
+			this.m[key] = &Item[T]{
 				Value:     delta,
 				expiredAt: expiredAt,
 			}
@@ -63,7 +65,7 @@ func (this *Piece) IncreaseInt64(key uint64, delta int64, expiredAt int64, exten
 	return
 }
 
-func (this *Piece) Delete(key uint64) {
+func (this *Piece[T]) Delete(key uint64) {
 	this.expiresList.Remove(key)
 
 	this.locker.Lock()
@@ -71,7 +73,7 @@ func (this *Piece) Delete(key uint64) {
 	this.locker.Unlock()
 }
 
-func (this *Piece) Read(key uint64) (item *Item) {
+func (this *Piece[T]) Read(key uint64) (item *Item[T]) {
 	this.locker.RLock()
 	item = this.m[key]
 	if item != nil && item.expiredAt < fasttime.Now().Unix() {
@@ -82,14 +84,14 @@ func (this *Piece) Read(key uint64) (item *Item) {
 	return
 }
 
-func (this *Piece) Count() (count int) {
+func (this *Piece[T]) Count() (count int) {
 	this.locker.RLock()
 	count = len(this.m)
 	this.locker.RUnlock()
 	return
 }
 
-func (this *Piece) GC() {
+func (this *Piece[T]) GC() {
 	var currentTime = fasttime.Now().Unix()
 	if this.lastGCTime == 0 {
 		this.lastGCTime = currentTime - 3600
@@ -112,15 +114,15 @@ func (this *Piece) GC() {
 	this.lastGCTime = currentTime
 }
 
-func (this *Piece) Clean() {
+func (this *Piece[T]) Clean() {
 	this.locker.Lock()
-	this.m = map[uint64]*Item{}
+	this.m = map[uint64]*Item[T]{}
 	this.locker.Unlock()
 
 	this.expiresList.Clean()
 }
 
-func (this *Piece) Destroy() {
+func (this *Piece[T]) Destroy() {
 	this.locker.Lock()
 	this.m = nil
 	this.locker.Unlock()
@@ -128,7 +130,7 @@ func (this *Piece) Destroy() {
 	this.expiresList.Clean()
 }
 
-func (this *Piece) gcItemMap(itemMap expires.ItemMap) {
+func (this *Piece[T]) gcItemMap(itemMap expires.ItemMap) {
 	this.locker.Lock()
 	for key := range itemMap {
 		delete(this.m, key)

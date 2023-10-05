@@ -11,17 +11,21 @@ import (
 
 var SharedManager = NewManager()
 
+type GCAble interface {
+	GC()
+}
+
 type Manager struct {
 	ticker *time.Ticker
 	locker sync.Mutex
 
-	cacheMap map[*Cache]zero.Zero
+	cacheMap map[GCAble]zero.Zero
 }
 
 func NewManager() *Manager {
 	var manager = &Manager{
 		ticker:   time.NewTicker(2 * time.Second),
-		cacheMap: map[*Cache]zero.Zero{},
+		cacheMap: map[GCAble]zero.Zero{},
 	}
 
 	goman.New(func() {
@@ -41,13 +45,13 @@ func (this *Manager) init() {
 	}
 }
 
-func (this *Manager) Add(cache *Cache) {
+func (this *Manager) Add(cache GCAble) {
 	this.locker.Lock()
 	this.cacheMap[cache] = zero.New()
 	this.locker.Unlock()
 }
 
-func (this *Manager) Remove(cache *Cache) {
+func (this *Manager) Remove(cache GCAble) {
 	this.locker.Lock()
 	delete(this.cacheMap, cache)
 	this.locker.Unlock()

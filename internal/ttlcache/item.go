@@ -1,6 +1,6 @@
 package ttlcache
 
-type Item struct {
-	Value     any
+type Item[T any] struct {
+	Value     T
 	expiredAt int64
 }
