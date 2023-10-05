@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
@@ -17,7 +16,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -28,8 +26,6 @@ type FileListDB struct {
 
 	readDB  *dbs.DB
 	writeDB *dbs.DB
-
-	writeBatch *dbs.Batch
 
 	hashMap *FileListHashMap
 
@@ -52,11 +48,11 @@ type FileListDB struct {
 	deleteByHashStmt *dbs.Stmt // 根据hash删除数据
 	deleteByHashSQL  string
 
-	statStmt            *dbs.Stmt // 统计
-	purgeStmt           *dbs.Stmt // 清理
-	deleteAllStmt       *dbs.Stmt // 删除所有数据
-	listOlderItemsStmt  *dbs.Stmt // 读取较早存储的缓存
-	updateAccessWeekSQL string    // 修改访问日期
+	statStmt             *dbs.Stmt // 统计
+	purgeStmt            *dbs.Stmt // 清理
+	deleteAllStmt        *dbs.Stmt // 删除所有数据
+	listOlderItemsStmt   *dbs.Stmt // 读取较早存储的缓存
+	updateAccessWeekStmt *dbs.Stmt // 修改访问日期
 }
 
 func NewFileListDB() *FileListDB {
@@ -77,7 +73,7 @@ func (this *FileListDB) Open(dbPath string) error {
 
 	// write db
 	// 这里不能加 EXCLUSIVE 锁，不然异步事务可能会失败
-	writeDB, err := dbs.OpenWriter("file:" + dbPath + "?cache=private&mode=rwc&_journal_mode=WAL&_sync=OFF&_cache_size=" + types.String(cacheSize) + "&_secure_delete=FAST")
+	writeDB, err := dbs.OpenWriter("file:" + dbPath + "?cache=private&mode=rwc&_journal_mode=WAL&_sync=NORMAL&_cache_size=" + types.String(cacheSize) + "&_secure_delete=FAST")
 	if err != nil {
 		return fmt.Errorf("open write database failed: %w", err)
 	}
@@ -104,17 +100,7 @@ func (this *FileListDB) Open(dbPath string) error {
 		}
 	}
 
-	this.writeBatch = dbs.NewBatch(writeDB, 4)
-	this.writeBatch.OnFail(func(err error) {
-		remotelogs.Warn("LIST_FILE_DB", "run batch failed: "+err.Error()+" ("+filepath.Base(this.dbPath)+")")
-	})
-
-	goman.New(func() {
-		this.writeBatch.Exec()
-	})
-
 	if teaconst.EnableDBStat {
-		this.writeBatch.EnableStat(true)
 		this.writeDB.EnableStat(true)
 	}
 
@@ -187,12 +173,15 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "accessWeek" ASC, "id" ASC LIMIT ?`)
+	this.updateAccessWeekStmt, err = this.writeDB.Prepare(`UPDATE "` + this.itemsTableName + `" SET "accessWeek"=? WHERE "hash"=?`)
 	if err != nil {
 		return err
 	}
 
-	this.updateAccessWeekSQL = `UPDATE "` + this.itemsTableName + `" SET "accessWeek"=? WHERE "hash"=?`
+	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "accessWeek" ASC, "id" ASC LIMIT ?`)
+	if err != nil {
+		return err
+	}
 
 	this.isReady = true
 
@@ -320,9 +309,8 @@ func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64
 }
 
 func (this *FileListDB) IncreaseHitAsync(hash string) error {
-	var week = timeutil.Format("YW")
-	this.writeBatch.Add(this.updateAccessWeekSQL, week, hash)
-	return nil
+	_, err := this.updateAccessWeekStmt.Exec(timeutil.Format("YW"), hash)
+	return err
 }
 
 func (this *FileListDB) CleanPrefix(prefix string) error {
@@ -469,6 +457,9 @@ func (this *FileListDB) Close() error {
 	}
 	if this.deleteAllStmt != nil {
 		_ = this.deleteAllStmt.Close()
+	}
+	if this.updateAccessWeekStmt != nil {
+		_ = this.updateAccessWeekStmt.Close()
 	}
 	if this.listOlderItemsStmt != nil {
 		_ = this.listOlderItemsStmt.Close()

@@ -458,7 +458,7 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 		remotelogs.Println("CACHE", "upgrading local database finished")
 	}()
 
-	db, err := dbs.OpenWriter("file:" + indexDBPath + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF&_locking_mode=EXCLUSIVE")
+	db, err := dbs.OpenWriter("file:" + indexDBPath + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=NORMAL&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return err
 	}

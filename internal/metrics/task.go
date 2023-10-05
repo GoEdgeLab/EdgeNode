@@ -91,7 +91,7 @@ func (this *Task) Init() error {
 
 	var path = dir + "/metric." + types.String(this.item.Id) + ".db"
 
-	db, err := dbs.OpenWriter("file:" + path + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=OFF&_locking_mode=EXCLUSIVE")
+	db, err := dbs.OpenWriter("file:" + path + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=NORMAL&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return err
 	}
