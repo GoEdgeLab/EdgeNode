@@ -161,7 +161,7 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.selectHashListStmt, err = this.readDB.Prepare(`SELECT "id", "hash" FROM "` + this.itemsTableName + `" WHERE id>:id ORDER BY id ASC LIMIT 2000`)
+	this.selectHashListStmt, err = this.readDB.Prepare(`SELECT "id", "hash" FROM "` + this.itemsTableName + `" WHERE id>? ORDER BY id ASC LIMIT 2000`)
 	if err != nil {
 		return err
 	}
