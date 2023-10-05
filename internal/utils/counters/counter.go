@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const maxItemsPerGroup = 60_000
+const maxItemsPerGroup = 50_000
 
 var SharedCounter = NewCounter().WithGC()
 
@@ -27,7 +27,7 @@ type Counter struct {
 
 // NewCounter create new counter
 func NewCounter() *Counter {
-	var count = utils.SystemMemoryGB() * 4
+	var count = utils.SystemMemoryGB() * 8
 	if count < 8 {
 		count = 8
 	}
