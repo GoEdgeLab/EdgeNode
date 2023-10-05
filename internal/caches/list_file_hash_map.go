@@ -51,6 +51,7 @@ func (this *FileListHashMap) Load(db *FileListDB) error {
 	this.isAvailable = true
 
 	var lastId int64
+	var maxLoops = 50_000
 	for {
 		hashList, maxId, err := db.ListHashes(lastId)
 		if err != nil {
@@ -61,6 +62,11 @@ func (this *FileListHashMap) Load(db *FileListDB) error {
 		}
 		this.AddHashes(hashList)
 		lastId = maxId
+
+		maxLoops --
+		if maxLoops <= 0 {
+			break
+		}
 	}
 
 	this.isReady = true
