@@ -9,18 +9,34 @@ import (
 	"sync"
 )
 
+const HashMapSharding = 11
+
+var bigIntPool = sync.Pool{New: func() any {
+	return big.NewInt(0)
+}}
+
 // FileListHashMap 文件Hash列表
 type FileListHashMap struct {
-	m map[uint64]zero.Zero
+	m []map[uint64]zero.Zero
 
-	locker      sync.RWMutex
+	lockers []*sync.RWMutex
+
 	isAvailable bool
 	isReady     bool
 }
 
 func NewFileListHashMap() *FileListHashMap {
+	var m = make([]map[uint64]zero.Zero, HashMapSharding)
+	var lockers = make([]*sync.RWMutex, HashMapSharding)
+
+	for i := 0; i < HashMapSharding; i++ {
+		m[i] = map[uint64]zero.Zero{}
+		lockers[i] = &sync.RWMutex{}
+	}
+
 	return &FileListHashMap{
-		m:           map[uint64]zero.Zero{},
+		m:           m,
+		lockers:     lockers,
 		isAvailable: false,
 		isReady:     false,
 	}
@@ -56,9 +72,11 @@ func (this *FileListHashMap) Add(hash string) {
 		return
 	}
 
-	this.locker.Lock()
-	this.m[this.bigInt(hash)] = zero.New()
-	this.locker.Unlock()
+	hashInt, index := this.bigInt(hash)
+
+	this.lockers[index].Lock()
+	this.m[index][hashInt] = zero.New()
+	this.lockers[index].Unlock()
 }
 
 func (this *FileListHashMap) AddHashes(hashes []string) {
@@ -66,11 +84,12 @@ func (this *FileListHashMap) AddHashes(hashes []string) {
 		return
 	}
 
-	this.locker.Lock()
 	for _, hash := range hashes {
-		this.m[this.bigInt(hash)] = zero.New()
+		hashInt, index := this.bigInt(hash)
+		this.lockers[index].Lock()
+		this.m[index][hashInt] = zero.New()
+		this.lockers[index].Unlock()
 	}
-	this.locker.Unlock()
 }
 
 func (this *FileListHashMap) Delete(hash string) {
@@ -78,9 +97,10 @@ func (this *FileListHashMap) Delete(hash string) {
 		return
 	}
 
-	this.locker.Lock()
-	delete(this.m, this.bigInt(hash))
-	this.locker.Unlock()
+	hashInt, index := this.bigInt(hash)
+	this.lockers[index].Lock()
+	delete(this.m[index], hashInt)
+	this.lockers[index].Unlock()
 }
 
 func (this *FileListHashMap) Exist(hash string) bool {
@@ -91,16 +111,25 @@ func (this *FileListHashMap) Exist(hash string) bool {
 		// 只有完全Ready时才能判断是否为false
 		return true
 	}
-	this.locker.RLock()
-	_, ok := this.m[this.bigInt(hash)]
-	this.locker.RUnlock()
+
+	hashInt, index := this.bigInt(hash)
+
+	this.lockers[index].RLock()
+	_, ok := this.m[index][hashInt]
+	this.lockers[index].RUnlock()
 	return ok
 }
 
 func (this *FileListHashMap) Clean() {
-	this.locker.Lock()
-	this.m = map[uint64]zero.Zero{}
-	this.locker.Unlock()
+	for i := 0; i < HashMapSharding; i++ {
+		this.lockers[i].Lock()
+	}
+
+	this.m = make([]map[uint64]zero.Zero, HashMapSharding)
+
+	for i := HashMapSharding - 1; i >= 0; i-- {
+		this.lockers[i].Unlock()
+	}
 }
 
 func (this *FileListHashMap) IsReady() bool {
@@ -108,17 +137,36 @@ func (this *FileListHashMap) IsReady() bool {
 }
 
 func (this *FileListHashMap) Len() int {
-	this.locker.Lock()
-	defer this.locker.Unlock()
-	return len(this.m)
+	for i := 0; i < HashMapSharding; i++ {
+		this.lockers[i].Lock()
+	}
+
+	var count = 0
+	for _, shard := range this.m {
+		count += len(shard)
+	}
+
+	for i := HashMapSharding - 1; i >= 0; i-- {
+		this.lockers[i].Unlock()
+	}
+
+	return count
 }
 
 func (this *FileListHashMap) SetIsAvailable(isAvailable bool) {
 	this.isAvailable = isAvailable
 }
 
-func (this *FileListHashMap) bigInt(hash string) uint64 {
-	var bigInt = big.NewInt(0)
+func (this *FileListHashMap) SetIsReady(isReady bool) {
+	this.isReady = isReady
+}
+
+func (this *FileListHashMap) bigInt(hash string) (hashInt uint64, index int) {
+	var bigInt = bigIntPool.Get().(*big.Int)
 	bigInt.SetString(hash, 16)
-	return bigInt.Uint64()
+	hashInt = bigInt.Uint64()
+	bigIntPool.Put(bigInt)
+
+	index = int(hashInt % HashMapSharding)
+	return
 }
