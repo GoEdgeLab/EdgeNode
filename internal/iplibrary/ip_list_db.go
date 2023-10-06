@@ -60,7 +60,7 @@ func (this *IPListDB) init() error {
 
 	var path = this.dir + "/ip_list.db"
 
-	db, err := dbs.OpenWriter("file:" + path + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=NORMAL&_locking_mode=EXCLUSIVE")
+	db, err := dbs.OpenWriter("file:" + path + "?cache=shared&mode=rwc&_journal_mode=WAL&_sync=" + dbs.SyncMode + "&_locking_mode=EXCLUSIVE")
 	if err != nil {
 		return err
 	}

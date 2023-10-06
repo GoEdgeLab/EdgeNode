@@ -18,6 +18,10 @@ import (
 	"time"
 )
 
+const (
+	SyncMode = "NORMAL"
+)
+
 var errDBIsClosed = errors.New("the database is closed")
 
 type DB struct {
@@ -199,6 +203,7 @@ func (this *DB) Close() error {
 	this.statusLocker.Unlock()
 
 	// waiting for updating operations to finish
+	var maxLoops = 5_000
 	for {
 		this.statusLocker.Lock()
 		var countUpdating = this.countUpdating
@@ -207,6 +212,11 @@ func (this *DB) Close() error {
 			break
 		}
 		time.Sleep(1 * time.Millisecond)
+
+		maxLoops--
+		if maxLoops <= 0 {
+			break
+		}
 	}
 
 	for _, batch := range this.batches {

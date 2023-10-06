@@ -5,6 +5,7 @@ package dbs
 import (
 	"context"
 	"database/sql"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 )
 
 type Stmt struct {
@@ -27,7 +28,7 @@ func (this *Stmt) EnableStat() {
 	this.enableStat = true
 }
 
-func (this *Stmt) ExecContext(ctx context.Context, args ...any) (sql.Result, error) {
+func (this *Stmt) ExecContext(ctx context.Context, args ...any) (result sql.Result, err error) {
 	// check database status
 	if this.db.BeginUpdating() {
 		defer this.db.EndUpdating()
@@ -38,10 +39,13 @@ func (this *Stmt) ExecContext(ctx context.Context, args ...any) (sql.Result, err
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}
-	return this.rawStmt.ExecContext(ctx, args...)
+	fsutils.WriteBegin()
+	result, err = this.rawStmt.ExecContext(ctx, args...)
+	fsutils.WriteEnd()
+	return
 }
 
-func (this *Stmt) Exec(args ...any) (sql.Result, error) {
+func (this *Stmt) Exec(args ...any) (result sql.Result, err error) {
 	// check database status
 	if this.db.BeginUpdating() {
 		defer this.db.EndUpdating()
@@ -52,7 +56,11 @@ func (this *Stmt) Exec(args ...any) (sql.Result, error) {
 	if this.enableStat {
 		defer SharedQueryStatManager.AddQuery(this.query).End()
 	}
-	return this.rawStmt.Exec(args...)
+
+	fsutils.WriteBegin()
+	result, err = this.rawStmt.Exec(args...)
+	fsutils.WriteEnd()
+	return
 }
 
 func (this *Stmt) QueryContext(ctx context.Context, args ...any) (*sql.Rows, error) {
