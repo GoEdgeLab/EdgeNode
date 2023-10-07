@@ -1073,7 +1073,9 @@ func (this *FileStorage) purgeLoop() {
 		for i := 0; i < times; i++ {
 			countFound, err := this.list.Purge(purgeCount, func(hash string) error {
 				path, _ := this.hashPath(hash)
+				fsutils.WriteBegin()
 				err := this.removeCacheFile(path)
+				fsutils.WriteEnd()
 				if err != nil && !os.IsNotExist(err) {
 					remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
 				}
@@ -1134,7 +1136,9 @@ func (this *FileStorage) purgeLoop() {
 				remotelogs.Println("CACHE", prefix+"LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
 				err := this.list.PurgeLFU(count, func(hash string) error {
 					path, _ := this.hashPath(hash)
+					fsutils.WriteBegin()
 					err := this.removeCacheFile(path)
+					fsutils.WriteEnd()
 					if err != nil && !os.IsNotExist(err) {
 						remotelogs.Error("CACHE", "purge '"+path+"' error: "+err.Error())
 					}
