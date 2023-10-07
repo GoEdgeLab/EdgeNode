@@ -37,10 +37,15 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 		if ok {
 			valueItem.BodyValue = bodyBytes
 		} else {
-			if expectedBodySize >= minMemoryFragmentPoolItemSize {
-				SharedFragmentMemoryPool.IncreaseNew()
+			if isDirty {
+				if expectedBodySize >= minMemoryFragmentPoolItemSize {
+					SharedFragmentMemoryPool.IncreaseNew()
+				}
+				var allocSize = (expectedBodySize/16384 + 1) * 16384
+				valueItem.BodyValue = make([]byte, allocSize)[:expectedBodySize]
+			} else {
+				valueItem.BodyValue = make([]byte, expectedBodySize)
 			}
-			valueItem.BodyValue = make([]byte, expectedBodySize)
 		}
 
 		valueItem.IsPrepared = true
