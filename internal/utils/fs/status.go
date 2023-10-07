@@ -3,8 +3,11 @@
 package fsutils
 
 import (
+	"encoding/json"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/shirou/gopsutil/v3/load"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -38,6 +41,14 @@ var (
 	DiskSpeedMB   float64
 )
 
+var IsInHighLoad = false
+var IsInExtremelyHighLoad = false
+
+const (
+	highLoad1Threshold          = 20
+	extremelyHighLoad1Threshold = 40
+)
+
 func init() {
 	if !teaconst.IsMain {
 		return
@@ -45,6 +56,18 @@ func init() {
 
 	// test disk
 	go func() {
+		// load last result from local disk
+		cacheData, cacheErr := os.ReadFile(Tea.Root + "/data/" + diskSpeedDataFile)
+		if cacheErr == nil {
+			var cache = &DiskSpeedCache{}
+			err := json.Unmarshal(cacheData, cache)
+			if err == nil && cache.SpeedMB > 0 {
+				DiskSpeedMB = cache.SpeedMB
+				DiskSpeed = cache.Speed
+				calculateDiskMaxWrites()
+			}
+		}
+
 		// initial check
 		_, _, _ = CheckDiskIsFast()
 
@@ -59,6 +82,16 @@ func init() {
 					return
 				}
 			}
+		}
+	}()
+
+	// check high load
+	go func() {
+		var ticker = time.NewTicker(5 * time.Second)
+		for range ticker.C {
+			stat, _ := load.Avg()
+			IsInExtremelyHighLoad = stat != nil && stat.Load1 > extremelyHighLoad1Threshold
+			IsInHighLoad = stat != nil && stat.Load1 > highLoad1Threshold && !DiskIsFast()
 		}
 	}()
 }
@@ -78,6 +111,10 @@ func DiskIsExtremelyFast() bool {
 var countWrites int32 = 0
 
 func WriteReady() bool {
+	if IsInExtremelyHighLoad {
+		return false
+	}
+
 	return atomic.LoadInt32(&countWrites) < DiskMaxWrites
 }
 

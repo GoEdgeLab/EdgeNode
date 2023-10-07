@@ -4,10 +4,19 @@ package fsutils
 
 import (
 	"bytes"
+	"encoding/json"
+	"github.com/iwind/TeaGo/Tea"
 	"math"
 	"os"
 	"time"
 )
+
+const diskSpeedDataFile = "disk.speed.json"
+
+type DiskSpeedCache struct {
+	Speed   Speed   `json:"speed"`
+	SpeedMB float64 `json:"speedMB"`
+}
 
 // CheckDiskWritingSpeed test disk writing speed
 func CheckDiskWritingSpeed() (speedMB float64, err error) {
@@ -66,7 +75,12 @@ func CheckDiskIsFast() (speedMB float64, isFast bool, err error) {
 	if err != nil {
 		return
 	}
+
 	isFast = speedMB > 150
+
+	if speedMB <= DiskSpeedMB {
+		return
+	}
 
 	if speedMB > 1000 {
 		DiskSpeed = SpeedExtremelyFast
@@ -79,8 +93,15 @@ func CheckDiskIsFast() (speedMB float64, isFast bool, err error) {
 	}
 	calculateDiskMaxWrites()
 
-	if speedMB > DiskSpeedMB {
-		DiskSpeedMB = speedMB
+	DiskSpeedMB = speedMB
+
+	// write to local file
+	cacheData, jsonErr := json.Marshal(&DiskSpeedCache{
+		Speed:   DiskSpeed,
+		SpeedMB: DiskSpeedMB,
+	})
+	if jsonErr == nil {
+		_ = os.WriteFile(Tea.Root+"/data/"+diskSpeedDataFile, cacheData, 0666)
 	}
 
 	return
