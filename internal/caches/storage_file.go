@@ -1348,18 +1348,8 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 	if rate <= 0 {
 		rate = 1000
 	}
-	if this.lastHotSize == 0 {
-		// 自动降低采样率来增加热点数据的缓存几率
-		rate = rate / 10
-	}
 	if rands.Int(0, rate) == 0 {
 		var memoryStorage = this.memoryStorage
-
-		var hitErr = this.list.IncreaseHit(hash)
-		if hitErr != nil {
-			// 此错误可以忽略
-			remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
-		}
 
 		// 增加到热点
 		// 这里不收录缓存尺寸过大的文件
@@ -1376,6 +1366,15 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 				}
 			}
 			this.hotMapLocker.Unlock()
+
+			// 只有重复点击的才增加点击量
+			if ok {
+				var hitErr = this.list.IncreaseHit(hash)
+				if hitErr != nil {
+					// 此错误可以忽略
+					remotelogs.Error("CACHE", "increase hit failed: "+hitErr.Error())
+				}
+			}
 		}
 	}
 }

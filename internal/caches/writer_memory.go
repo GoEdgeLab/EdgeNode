@@ -33,7 +33,16 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 		Status:     status,
 	}
 	if expectedBodySize > 0 {
-		valueItem.BodyValue = make([]byte, expectedBodySize)
+		bodyBytes, ok := SharedFragmentMemoryPool.Get(expectedBodySize) // try to reuse memory
+		if ok {
+			valueItem.BodyValue = bodyBytes
+		} else {
+			if expectedBodySize >= minMemoryFragmentPoolItemSize {
+				SharedFragmentMemoryPool.IncreaseNew()
+			}
+			valueItem.BodyValue = make([]byte, expectedBodySize)
+		}
+
 		valueItem.IsPrepared = true
 	}
 	var w = &MemoryWriter{

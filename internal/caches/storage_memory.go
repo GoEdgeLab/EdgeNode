@@ -12,7 +12,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/types"
-	"github.com/shirou/gopsutil/v3/load"
 	"math"
 	"runtime"
 	"strconv"
@@ -32,6 +31,8 @@ type MemoryItem struct {
 
 	IsPrepared  bool
 	WriteOffset int64
+
+	isReferring bool // if it is referring by other objects
 }
 
 func (this *MemoryItem) IsExpired() bool {
@@ -123,7 +124,12 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 
 	// read from valuesMap
 	this.locker.RLock()
-	item := this.valuesMap[hash]
+	var item = this.valuesMap[hash]
+
+	if item != nil {
+		item.isReferring = true
+	}
+
 	if item == nil || !item.IsDone {
 		this.locker.RUnlock()
 		return nil, ErrNotFound
@@ -477,33 +483,20 @@ func (this *MemoryStorage) purgeLoop() {
 // 开始Flush任务
 func (this *MemoryStorage) startFlush() {
 	var statCount = 0
-	var writeDelayMS float64 = 0
 
 	for key := range this.dirtyChan {
 		statCount++
 
 		if statCount == 100 {
 			statCount = 0
-
-			// delay some time to reduce load if needed
-			if !fsutils.DiskIsFast() {
-				loadStat, err := load.Avg()
-				if err == nil && loadStat != nil {
-					if loadStat.Load1 > 10 {
-						writeDelayMS = 100
-					} else if loadStat.Load1 > 5 {
-						writeDelayMS = 50
-					} else {
-						writeDelayMS = 0
-					}
-				}
-			}
 		}
 
 		this.flushItem(key)
 
-		if writeDelayMS > 0 {
-			time.Sleep(time.Duration(writeDelayMS) * time.Millisecond)
+		if fsutils.IsInExtremelyHighLoad {
+			time.Sleep(1 * time.Second)
+		} else if fsutils.IsInHighLoad {
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
@@ -522,6 +515,11 @@ func (this *MemoryStorage) flushItem(key string) {
 	// 从内存中移除，并确保无论如何都会执行
 	defer func() {
 		_ = this.Delete(key)
+
+		// 重用内存，前提是确保内存不再被引用
+		if ok && item.IsDone && !item.isReferring && len(item.BodyValue) > 0 {
+			SharedFragmentMemoryPool.Put(item.BodyValue)
+		}
 	}()
 
 	if !ok {
