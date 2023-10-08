@@ -139,9 +139,6 @@ func (this *Node) Start() {
 		remotelogs.Error("NODE", "initialize ip library failed: "+err.Error())
 	}
 
-	// 调整系统参数
-	this.checkSystem()
-
 	// 启动事件
 	events.Notify(events.EventStart)
 
@@ -207,6 +204,9 @@ func (this *Node) Start() {
 	}
 	sharedNodeConfig = nodeConfig
 	this.onReload(nodeConfig, true)
+
+	// 调整系统参数
+	go this.tuneSystemParameters()
 
 	// 发送事件
 	events.Notify(events.EventLoaded)
@@ -1078,8 +1078,12 @@ func (this *Node) reloadServer() {
 }
 
 // 检查系统
-func (this *Node) checkSystem() {
+func (this *Node) tuneSystemParameters() {
 	if runtime.GOOS != "linux" || os.Getgid() != 0 {
+		return
+	}
+
+	if sharedNodeConfig == nil || !sharedNodeConfig.AutoSystemTuning {
 		return
 	}
 
@@ -1091,7 +1095,8 @@ func (this *Node) checkSystem() {
 
 	const dir = "/proc/sys"
 
-	for _, v := range []variable{
+	// net
+	var systemParameters = []variable{
 		{name: "net.core.somaxconn", minValue: 2048},
 		{name: "net.ipv4.tcp_max_syn_backlog", minValue: 2048},
 		{name: "net.core.netdev_max_backlog", minValue: 4096},
@@ -1101,7 +1106,28 @@ func (this *Node) checkSystem() {
 		{name: "net.core.wmem_default", minValue: 4 << 20},
 		{name: "net.core.rmem_max", minValue: 32 << 20},
 		{name: "net.core.wmem_max", minValue: 32 << 20},
-	} {
+	}
+
+	// vm
+	var systemMemory = utils.SystemMemoryGB()
+	if systemMemory >= 128 {
+		systemParameters = append(systemParameters, []variable{
+			{name: "vm.dirty_background_ratio", minValue: 30},
+			{name: "vm.dirty_ratio", minValue: 50},
+		}...)
+	} else if systemMemory >= 64 {
+		systemParameters = append(systemParameters, []variable{
+			{name: "vm.dirty_background_ratio", minValue: 20},
+			{name: "vm.dirty_ratio", minValue: 40},
+		}...)
+	} else if systemMemory >= 16 {
+		systemParameters = append(systemParameters, []variable{
+			{name: "vm.dirty_background_ratio", minValue: 15},
+			{name: "vm.dirty_ratio", minValue: 30},
+		}...)
+	}
+
+	for _, v := range systemParameters {
 		var path = dir + "/" + strings.Replace(v.name, ".", "/", -1)
 		data, err := os.ReadFile(path)
 		if err != nil {
