@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	SyncMode = "NORMAL"
+	SyncMode = "OFF"
 )
 
 var errDBIsClosed = errors.New("the database is closed")
