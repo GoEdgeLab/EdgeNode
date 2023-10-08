@@ -335,7 +335,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				shouldRetry = true
 				this.uri = oldURI // 恢复备份
 
-				if httpErr.Err != io.EOF {
+				if httpErr.Err != io.EOF && !errors.Is(httpErr.Err, http.ErrBodyReadAfterClose) {
 					remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+requestErr.Error())
 				}
 
@@ -349,7 +349,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			} else {
 				this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
 			}
-			if httpErr.Err != io.EOF {
+			if httpErr.Err != io.EOF && !errors.Is(httpErr.Err, http.ErrBodyReadAfterClose) {
 				remotelogs.WarnServer("HTTP_REQUEST_REVERSE_PROXY", this.URL()+": Request origin server failed: "+requestErr.Error())
 			}
 		} else {
