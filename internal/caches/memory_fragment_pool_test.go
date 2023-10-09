@@ -178,14 +178,25 @@ func TestMemoryFragmentPool_GCNextBucket(t *testing.T) {
 	}
 
 	var pool = caches.NewMemoryFragmentPool()
-	for i := 0; i < 100; i++ {
-		pool.Put(make([]byte, 2<<20))
+	for i := 0; i < 1000; i++ {
+		pool.Put(make([]byte, rands.Int(0, 100)<<20))
 	}
 
-	for i := 0; i < 100; i++ {
+	var lastLen int
+	for {
 		pool.GCNextBucket()
-		t.Log(pool.Len(), timeutil.Format("H:i:s"))
-		time.Sleep(10 * time.Second)
+		var currentLen = pool.Len()
+		if lastLen == currentLen {
+			continue
+		}
+		lastLen = currentLen
+
+		t.Log(currentLen, "items", pool.TotalSize(), "bytes", timeutil.Format("H:i:s"))
+		time.Sleep(100 * time.Millisecond)
+
+		if currentLen == 0 {
+			break
+		}
 	}
 }
 
