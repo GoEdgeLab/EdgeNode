@@ -126,9 +126,7 @@ func (this *MemoryFragmentPool) Get(expectSize int64) (resultBytes []byte, ok bo
 		return
 	}
 
-	if expectSize < minMemoryFragmentPoolItemSize {
-		return
-	}
+	// DO NOT check min segment size
 
 	this.mu.RLock()
 
