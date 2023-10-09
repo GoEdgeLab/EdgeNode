@@ -30,9 +30,14 @@ func init() {
 	}
 
 	goman.New(func() {
-		var ticker = time.NewTicker(100 * time.Millisecond)
+		var ticker = time.NewTicker(200 * time.Millisecond)
 		for range ticker.C {
-			SharedFragmentMemoryPool.GCNextBucket()
+			for i := 0; i < 10; i++ { // skip N empty buckets
+				var isEmpty = SharedFragmentMemoryPool.GCNextBucket()
+				if !isEmpty {
+					break
+				}
+			}
 		}
 	})
 }
@@ -238,7 +243,7 @@ func (this *MemoryFragmentPool) GC() {
 }
 
 // GCNextBucket gc one bucket
-func (this *MemoryFragmentPool) GCNextBucket() {
+func (this *MemoryFragmentPool) GCNextBucket() (isEmpty bool) {
 	if !this.isOk {
 		return
 	}
@@ -250,6 +255,20 @@ func (this *MemoryFragmentPool) GCNextBucket() {
 
 	var bucketIndex = this.gcBucketIndex
 	var bucketMap = this.bucketMaps[bucketIndex]
+	isEmpty = len(bucketMap) == 0
+	if isEmpty {
+		this.mu.RUnlock()
+
+		// move to next bucket index
+		bucketIndex++
+		if bucketIndex >= this.countBuckets {
+			bucketIndex = 0
+		}
+		this.gcBucketIndex = bucketIndex
+
+		return
+	}
+
 	for itemId, item := range bucketMap {
 		if item.IsExpired() {
 			itemIds = append(itemIds, itemId)
@@ -278,10 +297,12 @@ func (this *MemoryFragmentPool) GCNextBucket() {
 
 	// move to next bucket index
 	bucketIndex++
-	if bucketIndex >= len(this.bucketMaps) {
+	if bucketIndex >= this.countBuckets {
 		bucketIndex = 0
 	}
 	this.gcBucketIndex = bucketIndex
+
+	return
 }
 
 func (this *MemoryFragmentPool) SetCapacity(capacity int64) {
