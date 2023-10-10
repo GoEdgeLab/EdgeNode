@@ -1112,13 +1112,13 @@ func (this *Node) tuneSystemParameters() {
 	var systemMemory = utils.SystemMemoryGB()
 	if systemMemory >= 128 {
 		systemParameters = append(systemParameters, []variable{
-			{name: "vm.dirty_background_ratio", minValue: 30},
-			{name: "vm.dirty_ratio", minValue: 50},
+			{name: "vm.dirty_background_ratio", minValue: 40},
+			{name: "vm.dirty_ratio", minValue: 60},
 		}...)
 	} else if systemMemory >= 64 {
 		systemParameters = append(systemParameters, []variable{
-			{name: "vm.dirty_background_ratio", minValue: 20},
-			{name: "vm.dirty_ratio", minValue: 40},
+			{name: "vm.dirty_background_ratio", minValue: 30},
+			{name: "vm.dirty_ratio", minValue: 50},
 		}...)
 	} else if systemMemory >= 16 {
 		systemParameters = append(systemParameters, []variable{
