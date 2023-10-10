@@ -261,11 +261,6 @@ func (this *FileList) Purge(count int, callback func(hash string) error) (int, e
 			continue
 		}
 
-		_, err = db.writeDB.Exec(`DELETE FROM "cacheItems" WHERE "hash" IN ('` + strings.Join(hashStrings, "', '") + `')`)
-		if err != nil {
-			return 0, err
-		}
-
 		countFound += len(hashStrings)
 
 		// 不在 rows.Next() 循环中操作是为了避免死锁
@@ -279,6 +274,11 @@ func (this *FileList) Purge(count int, callback func(hash string) error) (int, e
 			if err != nil {
 				return 0, err
 			}
+		}
+
+		_, err = db.writeDB.Exec(`DELETE FROM "cacheItems" WHERE "hash" IN ('` + strings.Join(hashStrings, "', '") + `')`)
+		if err != nil {
+			return 0, err
 		}
 	}
 
@@ -301,11 +301,6 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 			continue
 		}
 
-		_, err = db.writeDB.Exec(`DELETE FROM "cacheItems" WHERE "hash" IN ('` + strings.Join(hashStrings, "', '") + `')`)
-		if err != nil {
-			return err
-		}
-
 		// 不在 rows.Next() 循环中操作是为了避免死锁
 		for _, hash := range hashStrings {
 			_, err = this.remove(hash, true)
@@ -317,6 +312,11 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 			if err != nil {
 				return err
 			}
+		}
+
+		_, err = db.writeDB.Exec(`DELETE FROM "cacheItems" WHERE "hash" IN ('` + strings.Join(hashStrings, "', '") + `')`)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
