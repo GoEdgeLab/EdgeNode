@@ -14,6 +14,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/types"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -236,7 +237,7 @@ func (this *FileList) CleanMatchPrefix(prefix string) error {
 }
 
 func (this *FileList) Remove(hash string) error {
-	_, err := this.remove(hash)
+	_, err := this.remove(hash, false)
 	return err
 }
 
@@ -255,11 +256,21 @@ func (this *FileList) Purge(count int, callback func(hash string) error) (int, e
 		if err != nil {
 			return 0, nil
 		}
+
+		if len(hashStrings) == 0 {
+			continue
+		}
+
+		_, err = db.writeDB.Exec(`DELETE FROM "cacheItems" WHERE "hash" IN ('` + strings.Join(hashStrings, "', '") + `')`)
+		if err != nil {
+			return 0, err
+		}
+
 		countFound += len(hashStrings)
 
 		// 不在 rows.Next() 循环中操作是为了避免死锁
 		for _, hash := range hashStrings {
-			err = this.Remove(hash)
+			_, err = this.remove(hash, true)
 			if err != nil {
 				return 0, err
 			}
@@ -286,9 +297,18 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 			return err
 		}
 
+		if len(hashStrings) == 0 {
+			continue
+		}
+
+		_, err = db.writeDB.Exec(`DELETE FROM "cacheItems" WHERE "hash" IN ('` + strings.Join(hashStrings, "', '") + `')`)
+		if err != nil {
+			return err
+		}
+
 		// 不在 rows.Next() 循环中操作是为了避免死锁
 		for _, hash := range hashStrings {
-			_, err = this.remove(hash)
+			_, err = this.remove(hash, true)
 			if err != nil {
 				return err
 			}
@@ -407,7 +427,7 @@ func (this *FileList) HashMapIsLoaded() bool {
 	return true
 }
 
-func (this *FileList) remove(hash string) (notFound bool, err error) {
+func (this *FileList) remove(hash string, isDeleted bool) (notFound bool, err error) {
 	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
@@ -423,9 +443,11 @@ func (this *FileList) remove(hash string) (notFound bool, err error) {
 	// 从缓存中删除
 	this.memoryCache.Delete(hash)
 
-	err = db.DeleteSync(hash)
-	if err != nil {
-		return false, db.WrapError(err)
+	if !isDeleted {
+		err = db.DeleteSync(hash)
+		if err != nil {
+			return false, db.WrapError(err)
+		}
 	}
 
 	if this.onRemove != nil {
