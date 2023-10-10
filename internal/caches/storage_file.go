@@ -1129,11 +1129,7 @@ func (this *FileStorage) purgeLoop() {
 					count = maxCount
 				}
 
-				var prefix = ""
-				if requireFullLFU {
-					prefix = "fully "
-				}
-				remotelogs.Println("CACHE", prefix+"LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count))
+				var before = time.Now()
 				err := this.list.PurgeLFU(count, func(hash string) error {
 					path, _ := this.hashPath(hash)
 					fsutils.WriteBegin()
@@ -1145,6 +1141,13 @@ func (this *FileStorage) purgeLoop() {
 
 					return nil
 				})
+
+				var prefix = ""
+				if requireFullLFU {
+					prefix = "fully "
+				}
+				remotelogs.Println("CACHE", prefix+"LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count)+", cost:"+fmt.Sprintf("%.2fms", time.Since(before).Seconds()*1000))
+
 				if err != nil {
 					remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
 				}
@@ -1399,7 +1402,11 @@ func (this *FileStorage) removeCacheFile(path string) error {
 		if openFileCache != nil {
 			openFileCache.Close(partialPath)
 		}
-		_ = os.Remove(partialPath)
+
+		_, statErr := os.Stat(partialPath)
+		if statErr == nil {
+			_ = os.Remove(partialPath)
+		}
 	}
 	return err
 }
