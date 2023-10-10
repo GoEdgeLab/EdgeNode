@@ -22,12 +22,14 @@ const (
 	maxMemoryFragmentPoolItemAgeSeconds = 60
 )
 
-var SharedFragmentMemoryPool = NewMemoryFragmentPool()
+var SharedFragmentMemoryPool *MemoryFragmentPool
 
 func init() {
 	if !teaconst.IsMain {
 		return
 	}
+
+	SharedFragmentMemoryPool = NewMemoryFragmentPool()
 
 	goman.New(func() {
 		var ticker = time.NewTicker(200 * time.Millisecond)
