@@ -422,6 +422,13 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 		return nil, ErrEntityTooLarge
 	}
 
+	// 检查磁盘是否超出容量
+	// 需要在内存缓存之前执行，避免成功写进到了内存缓存，但无法刷到磁盘
+	var capacityBytes = this.diskCapacityBytes()
+	if capacityBytes > 0 && capacityBytes <= this.TotalDiskSize()+(32<<20 /** 余量 **/) {
+		return nil, NewCapacityError("write file cache failed: over disk size, current: " + types.String(this.TotalDiskSize()) + ", capacity: " + types.String(capacityBytes))
+	}
+
 	// 先尝试内存缓存
 	// 我们限定仅小文件优先存在内存中
 	var maxMemorySize = FileToMemoryMaxSize
@@ -464,12 +471,6 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 			sharedWritingFileKeyLocker.Unlock()
 		}
 	}()
-
-	// 检查是否超出容量
-	var capacityBytes = this.diskCapacityBytes()
-	if capacityBytes > 0 && capacityBytes <= this.TotalDiskSize() {
-		return nil, NewCapacityError("write file cache failed: over disk size, current total size: " + types.String(this.TotalDiskSize()) + " bytes, capacity: " + types.String(capacityBytes))
-	}
 
 	var hash = stringutil.Md5(key)
 
@@ -1146,7 +1147,7 @@ func (this *FileStorage) purgeLoop() {
 				if requireFullLFU {
 					prefix = "fully "
 				}
-				remotelogs.Println("CACHE", prefix+"LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count)+", cost:"+fmt.Sprintf("%.2fms", time.Since(before).Seconds()*1000))
+				remotelogs.Println("CACHE", prefix+"LFU purge policy '"+this.policy.Name+"' id: "+types.String(this.policy.Id)+", count: "+types.String(count)+", cost: "+fmt.Sprintf("%.2fms", time.Since(before).Seconds()*1000))
 
 				if err != nil {
 					remotelogs.Warn("CACHE", "purge file storage in LFU failed: "+err.Error())
