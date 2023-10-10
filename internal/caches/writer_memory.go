@@ -146,7 +146,7 @@ func (this *MemoryWriter) Close() error {
 				err = ErrWritingQueueFull
 			}
 		} else {
-			err = ErrWritingQueueFull
+			this.storage.valuesMap[this.hash] = this.item
 		}
 	} else {
 		this.storage.valuesMap[this.hash] = this.item
