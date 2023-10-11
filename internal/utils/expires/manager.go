@@ -33,7 +33,7 @@ func (this *Manager) init() {
 	for range this.ticker.C {
 		var currentTime = time.Now().Unix()
 		if lastTimestamp == 0 {
-			lastTimestamp = currentTime - 3600
+			lastTimestamp = currentTime - 86400 // prevent timezone changes
 		}
 
 		if currentTime >= lastTimestamp {

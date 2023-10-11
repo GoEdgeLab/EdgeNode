@@ -24,10 +24,18 @@ func NewPiece[T any](maxItems int) *Piece[T] {
 }
 
 func (this *Piece[T]) Add(key uint64, item *Item[T]) (ok bool) {
-	this.locker.Lock()
+	this.locker.RLock()
 	if this.maxItems > 0 && len(this.m) >= this.maxItems {
-		this.locker.Unlock()
+		this.locker.RUnlock()
 		return
+	}
+	this.locker.RUnlock()
+
+	this.locker.Lock()
+	oldItem, exists := this.m[key]
+	if exists && oldItem.expiredAt == item.expiredAt {
+		this.locker.Unlock()
+		return true
 	}
 	this.m[key] = item
 	this.locker.Unlock()

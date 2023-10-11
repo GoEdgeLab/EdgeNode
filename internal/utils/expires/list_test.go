@@ -2,6 +2,7 @@ package expires
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/logs"
 	timeutil "github.com/iwind/TeaGo/utils/time"
@@ -84,6 +85,10 @@ func TestList_GC_Batch(t *testing.T) {
 }
 
 func TestList_Start_GC(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	list := NewList()
 	list.Add(1, time.Now().Unix()+1)
 	list.Add(2, time.Now().Unix()+1)
@@ -123,6 +128,25 @@ func TestList_ManyItems(t *testing.T) {
 	list.GC(time.Now().Unix() + 1)
 	t.Log("gc", count, "items")
 	t.Log(time.Since(now))
+}
+
+func TestList_Memory(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var list = NewList()
+
+	testutils.StartMemoryStats(t, func() {
+		t.Log(list.Count(), "items")
+	})
+
+
+	for i := 0; i < 10_000_000; i++ {
+		list.Add(uint64(i), time.Now().Unix()+1800)
+	}
+
+	time.Sleep(1 * time.Hour)
 }
 
 func TestList_Map_Performance(t *testing.T) {

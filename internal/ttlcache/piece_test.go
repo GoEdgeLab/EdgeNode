@@ -18,6 +18,16 @@ func TestPiece_Add(t *testing.T) {
 	t.Log(piece.Read(1))
 }
 
+func TestPiece_Add_Same(t *testing.T) {
+	piece := NewPiece[int](10)
+	piece.Add(1, &Item[int]{expiredAt: time.Now().Unix() + 3600})
+	piece.Add(1, &Item[int]{expiredAt: time.Now().Unix() + 3600})
+	for key, item := range piece.m {
+		t.Log(key, item.Value)
+	}
+	t.Log(piece.Read(1))
+}
+
 func TestPiece_MaxItems(t *testing.T) {
 	piece := NewPiece[int](10)
 	for i := 0; i < 1000; i++ {
