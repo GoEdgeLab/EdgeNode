@@ -13,15 +13,15 @@ func TestOpenFilePool_Get(t *testing.T) {
 	var pool = caches.NewOpenFilePool("a")
 	t.Log(pool.Filename())
 	t.Log(pool.Get())
-	t.Log(pool.Put(caches.NewOpenFile(nil, nil, nil, 0)))
+	t.Log(pool.Put(caches.NewOpenFile(nil, nil, nil, 0, 1)))
 	t.Log(pool.Get())
 	t.Log(pool.Get())
 }
 
 func TestOpenFilePool_Close(t *testing.T) {
 	var pool = caches.NewOpenFilePool("a")
-	pool.Put(caches.NewOpenFile(nil, nil, nil, 0))
-	pool.Put(caches.NewOpenFile(nil, nil, nil, 0))
+	pool.Put(caches.NewOpenFile(nil, nil, nil, 0, 1))
+	pool.Put(caches.NewOpenFile(nil, nil, nil, 0, 1))
 	pool.Close()
 }
 
@@ -35,7 +35,7 @@ func TestOpenFilePool_Concurrent(t *testing.T) {
 			defer wg.Done()
 
 			if rands.Int(0, 1) == 1 {
-				pool.Put(caches.NewOpenFile(nil, nil, nil, 0))
+				pool.Put(caches.NewOpenFile(nil, nil, nil, 0, 1))
 			}
 			if rands.Int(0, 1) == 0 {
 				pool.Get()

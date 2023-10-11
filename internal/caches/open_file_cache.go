@@ -3,7 +3,9 @@
 package caches
 
 import (
+	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/linkedlist"
 	"github.com/fsnotify/fsnotify"
 	"github.com/iwind/TeaGo/logs"
@@ -14,6 +16,10 @@ import (
 	"time"
 )
 
+const (
+	maxOpenFileSize = 256 << 20
+)
+
 type OpenFileCache struct {
 	poolMap  map[string]*OpenFilePool // file path => Pool
 	poolList *linkedlist.List[*OpenFilePool]
@@ -21,19 +27,23 @@ type OpenFileCache struct {
 
 	locker sync.RWMutex
 
-	maxSize int
-	count   int
+	maxCount     int
+	capacitySize int64
+
+	count    int
+	usedSize int64
 }
 
-func NewOpenFileCache(maxSize int) (*OpenFileCache, error) {
-	if maxSize <= 0 {
-		maxSize = 16384
+func NewOpenFileCache(maxCount int) (*OpenFileCache, error) {
+	if maxCount <= 0 {
+		maxCount = 16384
 	}
 
 	var cache = &OpenFileCache{
-		maxSize:  maxSize,
-		poolMap:  map[string]*OpenFilePool{},
-		poolList: linkedlist.NewList[*OpenFilePool](),
+		maxCount:     maxCount,
+		poolMap:      map[string]*OpenFilePool{},
+		poolList:     linkedlist.NewList[*OpenFilePool](),
+		capacitySize: (int64(utils.SystemMemoryGB()) << 30) / 16,
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -58,23 +68,35 @@ func (this *OpenFileCache) Get(filename string) *OpenFile {
 	pool, ok := this.poolMap[filename]
 	this.locker.RUnlock()
 	if ok {
-		file, consumed := pool.Get()
+		file, consumed, consumedSize := pool.Get()
 		if consumed {
 			this.locker.Lock()
 			this.count--
+			this.usedSize -= consumedSize
 
 			// pool如果为空，也不需要从列表中删除，避免put时需要重新创建
 
 			this.locker.Unlock()
 		}
+
 		return file
 	}
 	return nil
 }
 
 func (this *OpenFileCache) Put(filename string, file *OpenFile) {
+	if file.size > maxOpenFileSize {
+		return
+	}
+
 	this.locker.Lock()
 	defer this.locker.Unlock()
+
+	// 如果超过当前容量，则关闭最早的
+	if this.count >= this.maxCount || this.usedSize >= this.capacitySize {
+		this.consumeHead()
+		return
+	}
 
 	pool, ok := this.poolMap[filename]
 	var success bool
@@ -92,35 +114,7 @@ func (this *OpenFileCache) Put(filename string, file *OpenFile) {
 	// 检查长度
 	if success {
 		this.count++
-
-		// 如果超过当前容量，则关闭最早的
-		if this.count > this.maxSize {
-			var delta = this.maxSize / 100 // 清理1%
-			if delta == 0 {
-				delta = 1
-			}
-			for i := 0; i < delta; i++ {
-				var head = this.poolList.Head()
-				if head == nil {
-					break
-				}
-
-				var headPool = head.Value
-				headFile, consumed := headPool.Get()
-				if consumed {
-					this.count--
-					if headFile != nil {
-						_ = headFile.Close()
-					}
-				}
-
-				if headPool.Len() == 0 {
-					delete(this.poolMap, headPool.filename)
-					this.poolList.Remove(head)
-					_ = this.watcher.Remove(headPool.filename)
-				}
-			}
-		}
+		this.usedSize += file.size
 	}
 }
 
@@ -136,6 +130,7 @@ func (this *OpenFileCache) Close(filename string) {
 		this.poolList.Remove(pool.linkItem)
 		_ = this.watcher.Remove(filename)
 		this.count -= pool.Len()
+		this.usedSize -= pool.usedSize
 	}
 
 	this.locker.Unlock()
@@ -155,18 +150,55 @@ func (this *OpenFileCache) CloseAll() {
 	this.poolList.Reset()
 	_ = this.watcher.Close()
 	this.count = 0
+	this.usedSize = 0
 	this.locker.Unlock()
+}
+
+func (this *OpenFileCache) SetCapacity(capacityBytes int64) {
+	this.capacitySize = capacityBytes
 }
 
 func (this *OpenFileCache) Debug() {
 	var ticker = time.NewTicker(5 * time.Second)
 	goman.New(func() {
 		for range ticker.C {
-			logs.Println("==== " + types.String(this.count) + " ====")
+			logs.Println("==== " + types.String(this.count) + ", " + fmt.Sprintf("%.4fMB", float64(this.usedSize)/(1<<20)) + " ====")
 			this.poolList.Range(func(item *linkedlist.Item[*OpenFilePool]) (goNext bool) {
 				logs.Println(filepath.Base(item.Value.Filename()), item.Value.Len())
 				return true
 			})
 		}
 	})
+}
+
+func (this *OpenFileCache) consumeHead() {
+	var delta = 1
+
+	if this.count > 100 {
+		delta = 2
+	}
+
+	for i := 0; i < delta; i++ {
+		var head = this.poolList.Head()
+		if head == nil {
+			break
+		}
+
+		var headPool = head.Value
+		headFile, consumed, consumedSize := headPool.Get()
+		if consumed {
+			this.count--
+			this.usedSize -= consumedSize
+
+			if headFile != nil {
+				_ = headFile.Close()
+			}
+		}
+
+		if headPool.Len() == 0 {
+			delete(this.poolMap, headPool.filename)
+			this.poolList.Remove(head)
+			_ = this.watcher.Remove(headPool.filename)
+		}
+	}
 }

@@ -366,7 +366,7 @@ func (this *FileReader) Close() error {
 		} else {
 			var cacheMeta = make([]byte, len(this.meta))
 			copy(cacheMeta, this.meta)
-			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, cacheMeta, this.header, this.LastModified()))
+			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, cacheMeta, this.header, this.LastModified(), this.bodySize))
 		}
 		return nil
 	}

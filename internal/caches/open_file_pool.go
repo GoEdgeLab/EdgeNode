@@ -13,6 +13,7 @@ type OpenFilePool struct {
 	filename string
 	version  int64
 	isClosed bool
+	usedSize int64
 }
 
 func NewOpenFilePool(filename string) *OpenFilePool {
@@ -29,27 +30,29 @@ func (this *OpenFilePool) Filename() string {
 	return this.filename
 }
 
-func (this *OpenFilePool) Get() (*OpenFile, bool) {
+func (this *OpenFilePool) Get() (resultFile *OpenFile, consumed bool, consumedSize int64) {
 	// 如果已经关闭，直接返回
 	if this.isClosed {
-		return nil, false
+		return nil, false, 0
 	}
 
 	select {
 	case file := <-this.c:
 		if file != nil {
+			this.usedSize -= file.size
+
 			err := file.SeekStart()
 			if err != nil {
 				_ = file.Close()
-				return nil, true
+				return nil, true, file.size
 			}
 			file.version = this.version
 
-			return file, true
+			return file, true, file.size
 		}
-		return nil, false
+		return nil, false, 0
 	default:
-		return nil, false
+		return nil, false, 0
 	}
 }
 
@@ -69,6 +72,7 @@ func (this *OpenFilePool) Put(file *OpenFile) bool {
 	// 加入Pool
 	select {
 	case this.c <- file:
+		this.usedSize += file.size
 		return true
 	default:
 		// 多余的直接关闭
@@ -79,6 +83,10 @@ func (this *OpenFilePool) Put(file *OpenFile) bool {
 
 func (this *OpenFilePool) Len() int {
 	return len(this.c)
+}
+
+func (this *OpenFilePool) TotalSize() int64 {
+	return this.usedSize
 }
 
 func (this *OpenFilePool) SetClosing() {

@@ -12,14 +12,16 @@ type OpenFile struct {
 	meta    []byte
 	header  []byte
 	version int64
+	size    int64
 }
 
-func NewOpenFile(fp *os.File, meta []byte, header []byte, version int64) *OpenFile {
+func NewOpenFile(fp *os.File, meta []byte, header []byte, version int64, size int64) *OpenFile {
 	return &OpenFile{
 		fp:      fp,
 		meta:    meta,
 		header:  header,
 		version: version,
+		size:    size,
 	}
 }
 
