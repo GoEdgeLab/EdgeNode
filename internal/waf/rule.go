@@ -25,7 +25,7 @@ import (
 
 var singleParamRegexp = regexp.MustCompile(`^\${[\w.-]+}$`)
 
-// Rule
+// Rule waf rule under rule set
 type Rule struct {
 	Id int64
 
@@ -53,7 +53,9 @@ type Rule struct {
 	ipList           *values.StringList
 
 	floatValue float64
-	reg        *re.Regexp
+
+	reg          *re.Regexp
+	regCacheLife utils.CacheLife
 }
 
 func NewRule() *Rule {
@@ -161,6 +163,8 @@ func (this *Rule) Init() error {
 			}
 			this.singleCheckpoint = checkpoint
 			this.Priority = checkpoint.Priority()
+
+			this.regCacheLife = checkpoint.CacheLife()
 		} else {
 			var checkpoint = checkpoints.FindCheckpoint(prefix)
 			if checkpoint == nil {
@@ -169,6 +173,8 @@ func (this *Rule) Init() error {
 			checkpoint.Init()
 			this.singleCheckpoint = checkpoint
 			this.Priority = checkpoint.Priority()
+
+			this.regCacheLife = checkpoint.CacheLife()
 		}
 
 		return nil
@@ -186,6 +192,10 @@ func (this *Rule) Init() error {
 			} else {
 				this.multipleCheckpoints[prefix] = checkpoint
 				this.Priority = checkpoint.Priority()
+
+				if this.regCacheLife <= 0 || checkpoint.CacheLife() < this.regCacheLife {
+					this.regCacheLife = checkpoint.CacheLife()
+				}
 			}
 		} else {
 			var checkpoint = checkpoints.FindCheckpoint(prefix)
@@ -195,8 +205,11 @@ func (this *Rule) Init() error {
 				checkpoint.Init()
 				this.multipleCheckpoints[prefix] = checkpoint
 				this.Priority = checkpoint.Priority()
+
+				this.regCacheLife = checkpoint.CacheLife()
 			}
 		}
+
 		return ""
 	})
 
@@ -357,7 +370,7 @@ func (this *Rule) MatchResponse(req requests.Request, resp *requests.Response) (
 	return this.Test(value), hasRequestBody, nil
 }
 
-func (this *Rule) Test(value interface{}) bool {
+func (this *Rule) Test(value any) bool {
 	// operator
 	switch this.Operator {
 	case RuleOperatorGt:
@@ -393,7 +406,7 @@ func (this *Rule) Test(value interface{}) bool {
 		stringList, ok := value.([]string)
 		if ok {
 			for _, s := range stringList {
-				if utils.MatchStringCache(this.reg, s) {
+				if utils.MatchStringCache(this.reg, s, this.regCacheLife) {
 					return true
 				}
 			}
@@ -403,11 +416,11 @@ func (this *Rule) Test(value interface{}) bool {
 		// bytes
 		byteSlice, ok := value.([]byte)
 		if ok {
-			return utils.MatchBytesCache(this.reg, byteSlice)
+			return utils.MatchBytesCache(this.reg, byteSlice, this.regCacheLife)
 		}
 
 		// string
-		return utils.MatchStringCache(this.reg, types.String(value))
+		return utils.MatchStringCache(this.reg, types.String(value), this.regCacheLife)
 	case RuleOperatorNotMatch, RuleOperatorWildcardNotMatch:
 		if value == nil {
 			return true
@@ -415,7 +428,7 @@ func (this *Rule) Test(value interface{}) bool {
 		stringList, ok := value.([]string)
 		if ok {
 			for _, s := range stringList {
-				if utils.MatchStringCache(this.reg, s) {
+				if utils.MatchStringCache(this.reg, s, this.regCacheLife) {
 					return false
 				}
 			}
@@ -425,16 +438,16 @@ func (this *Rule) Test(value interface{}) bool {
 		// bytes
 		byteSlice, ok := value.([]byte)
 		if ok {
-			return !utils.MatchBytesCache(this.reg, byteSlice)
+			return !utils.MatchBytesCache(this.reg, byteSlice, this.regCacheLife)
 		}
 
-		return !utils.MatchStringCache(this.reg, types.String(value))
+		return !utils.MatchStringCache(this.reg, types.String(value), this.regCacheLife)
 	case RuleOperatorContains:
 		if types.IsSlice(value) {
 			_, isBytes := value.([]byte)
 			if !isBytes {
 				ok := false
-				lists.Each(value, func(k int, v interface{}) {
+				lists.Each(value, func(k int, v any) {
 					if types.String(v) == this.Value {
 						ok = true
 					}
@@ -704,7 +717,7 @@ func (this *Rule) ipToInt64(ip net.IP) int64 {
 	return int64(binary.BigEndian.Uint32(ip))
 }
 
-func (this *Rule) execFilter(value interface{}) interface{} {
+func (this *Rule) execFilter(value any) any {
 	var goNext bool
 	var err error
 

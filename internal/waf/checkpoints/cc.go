@@ -3,11 +3,11 @@ package checkpoints
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"regexp"
 )
-
 
 // CCCheckpoint ${cc.arg}
 // TODO implement more traffic rules
@@ -23,7 +23,7 @@ func (this *CCCheckpoint) Start() {
 
 }
 
-func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CCCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	value = 0
 
 	periodString, ok := options["period"]
@@ -103,7 +103,7 @@ func (this *CCCheckpoint) RequestValue(req requests.Request, param string, optio
 	return
 }
 
-func (this *CCCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CCCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options, ruleId)
 	}
@@ -187,4 +187,8 @@ func (this *CCCheckpoint) Options() []OptionInterface {
 
 func (this *CCCheckpoint) Stop() {
 
+}
+
+func (this *CCCheckpoint) CacheLife() utils.CacheLife {
+	return utils.CacheDisabled
 }

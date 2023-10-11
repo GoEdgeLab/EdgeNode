@@ -3,6 +3,7 @@ package checkpoints
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"io"
 )
@@ -16,12 +17,12 @@ func (this *ResponseBodyCheckpoint) IsRequest() bool {
 	return false
 }
 
-func (this *ResponseBodyCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *ResponseBodyCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	value = ""
 	return
 }
 
-func (this *ResponseBodyCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *ResponseBodyCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	if resp.ContentLength == 0 {
 		value = ""
 		return
@@ -44,4 +45,8 @@ func (this *ResponseBodyCheckpoint) ResponseValue(req requests.Request, resp *re
 		resp.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 	return
+}
+
+func (this *ResponseBodyCheckpoint) CacheLife() utils.CacheLife {
+	return utils.CacheMiddleLife
 }

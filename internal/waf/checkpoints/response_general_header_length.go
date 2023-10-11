@@ -2,6 +2,7 @@ package checkpoints
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 )
@@ -18,11 +19,11 @@ func (this *ResponseGeneralHeaderLengthCheckpoint) IsComposed() bool {
 	return true
 }
 
-func (this *ResponseGeneralHeaderLengthCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *ResponseGeneralHeaderLengthCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	return
 }
 
-func (this *ResponseGeneralHeaderLengthCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *ResponseGeneralHeaderLengthCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	value = false
 
 	headers := options.GetSlice("headers")
@@ -41,4 +42,8 @@ func (this *ResponseGeneralHeaderLengthCheckpoint) ResponseValue(req requests.Re
 	}
 
 	return
+}
+
+func (this *ResponseGeneralHeaderLengthCheckpoint) CacheLife() utils.CacheLife {
+	return utils.CacheMiddleLife
 }

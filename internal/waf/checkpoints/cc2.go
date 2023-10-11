@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -34,7 +35,7 @@ type CC2Checkpoint struct {
 	Checkpoint
 }
 
-func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	var keys = options.GetSlice("keys")
 	var keyValues = []string{}
 	var hasRemoteAddr = false
@@ -104,10 +105,14 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 	return
 }
 
-func (this *CC2Checkpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *CC2Checkpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options, ruleId)
 	}
 
 	return
+}
+
+func (this *CC2Checkpoint) CacheLife() utils.CacheLife {
+	return utils.CacheDisabled
 }

@@ -2,6 +2,7 @@ package checkpoints
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 )
 
@@ -17,10 +18,10 @@ type CheckpointInterface interface {
 	IsComposed() bool
 
 	// RequestValue get request value
-	RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error)
+	RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error)
 
 	// ResponseValue get response value
-	ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error)
+	ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error)
 
 	// ParamOptions param option list
 	ParamOptions() *ParamOptions
@@ -37,6 +38,9 @@ type CheckpointInterface interface {
 	// SetPriority set priority
 	SetPriority(priority int)
 
-	// get priority
+	// Priority get priority
 	Priority() int
+
+	// CacheLife regexp cache life
+	CacheLife() utils.CacheLife
 }

@@ -73,7 +73,7 @@ func (this *TestRequest) Format(s string) string {
 	return s
 }
 
-func (this *TestRequest) WAFOnAction(action interface{}) bool {
+func (this *TestRequest) WAFOnAction(action any) bool {
 	return true
 }
 

@@ -5,6 +5,7 @@ package checkpoints
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"net/url"
@@ -17,7 +18,7 @@ type RequestRefererBlockCheckpoint struct {
 
 // RequestValue 计算checkpoint值
 // 选项：allowEmpty, allowSameDomain, allowDomains
-func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	var checkOrigin = options.GetBool("checkOrigin")
 	var referer = req.WAFRaw().Referer()
 	if len(referer) == 0 && checkOrigin {
@@ -94,6 +95,10 @@ func (this *RequestRefererBlockCheckpoint) RequestValue(req requests.Request, pa
 	return
 }
 
-func (this *RequestRefererBlockCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestRefererBlockCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	return
+}
+
+func (this *RequestRefererBlockCheckpoint) CacheLife() utils.CacheLife {
+	return utils.CacheLongLife
 }

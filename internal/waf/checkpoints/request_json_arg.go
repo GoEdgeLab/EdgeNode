@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"strings"
 )
@@ -13,7 +14,7 @@ type RequestJSONArgCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	var bodyData = req.WAFGetCacheBody()
 	hasRequestBody = true
 	if len(bodyData) == 0 {
@@ -28,7 +29,7 @@ func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param s
 	}
 
 	// TODO improve performance
-	var m interface{} = nil
+	var m any = nil
 	err := json.Unmarshal(bodyData, &m)
 	if err != nil || m == nil {
 		return "", hasRequestBody, nil, err
@@ -41,9 +42,13 @@ func (this *RequestJSONArgCheckpoint) RequestValue(req requests.Request, param s
 	return "", hasRequestBody, nil, nil
 }
 
-func (this *RequestJSONArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestJSONArgCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options, ruleId)
 	}
 	return
+}
+
+func (this *RequestJSONArgCheckpoint) CacheLife() wafutils.CacheLife {
+	return wafutils.CacheMiddleLife
 }

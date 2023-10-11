@@ -14,16 +14,16 @@ import (
 
 func TestMatchStringCache(t *testing.T) {
 	regex := re.MustCompile(`\d+`)
-	t.Log(utils.MatchStringCache(regex, "123"))
-	t.Log(utils.MatchStringCache(regex, "123"))
-	t.Log(utils.MatchStringCache(regex, "123"))
+	t.Log(utils.MatchStringCache(regex, "123", utils.CacheShortLife))
+	t.Log(utils.MatchStringCache(regex, "123", utils.CacheShortLife))
+	t.Log(utils.MatchStringCache(regex, "123", utils.CacheShortLife))
 }
 
 func TestMatchBytesCache(t *testing.T) {
 	regex := re.MustCompile(`\d+`)
-	t.Log(utils.MatchBytesCache(regex, []byte("123")))
-	t.Log(utils.MatchBytesCache(regex, []byte("123")))
-	t.Log(utils.MatchBytesCache(regex, []byte("123")))
+	t.Log(utils.MatchBytesCache(regex, []byte("123"), utils.CacheShortLife))
+	t.Log(utils.MatchBytesCache(regex, []byte("123"), utils.CacheShortLife))
+	t.Log(utils.MatchBytesCache(regex, []byte("123"), utils.CacheShortLife))
 }
 
 func TestMatchRemoteCache(t *testing.T) {
@@ -53,13 +53,13 @@ func TestMatchBytesCache_WithoutCache(t *testing.T) {
 func BenchmarkMatchStringCache(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var data = strings.Repeat("HELLO", 512)
+	var data = strings.Repeat("HELLO", 128)
 	var regex = re.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
 	//b.Log(regex.Keywords())
-	_ = utils.MatchStringCache(regex, data)
+	_ = utils.MatchStringCache(regex, data, utils.CacheShortLife)
 
 	for i := 0; i < b.N; i++ {
-		_ = utils.MatchStringCache(regex, data)
+		_ = utils.MatchStringCache(regex, data, utils.CacheShortLife)
 	}
 }
 

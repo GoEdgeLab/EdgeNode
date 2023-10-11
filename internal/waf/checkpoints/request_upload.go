@@ -3,6 +3,7 @@ package checkpoints
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -22,7 +23,7 @@ type RequestUploadCheckpoint struct {
 	Checkpoint
 }
 
-func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	if this.RequestBodyIsEmpty(req) {
 		value = ""
 		return
@@ -213,7 +214,7 @@ func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param st
 	return
 }
 
-func (this *RequestUploadCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value interface{}, hasRequestBody bool, sysErr error, userErr error) {
+func (this *RequestUploadCheckpoint) ResponseValue(req requests.Request, resp *requests.Response, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
 	if this.IsRequest() {
 		return this.RequestValue(req, param, options, ruleId)
 	}
@@ -228,4 +229,8 @@ func (this *RequestUploadCheckpoint) ParamOptions() *ParamOptions {
 	option.AddParam("原始文件名", "name")
 	option.AddParam("表单字段名", "field")
 	return option
+}
+
+func (this *RequestUploadCheckpoint) CacheLife() utils.CacheLife {
+	return utils.CacheMiddleLife
 }

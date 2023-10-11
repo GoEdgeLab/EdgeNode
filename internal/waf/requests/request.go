@@ -30,7 +30,7 @@ type Request interface {
 	WAFClose()
 
 	// WAFOnAction 动作回调
-	WAFOnAction(action interface{}) (goNext bool)
+	WAFOnAction(action any) (goNext bool)
 
 	// WAFFingerprint 读取连接指纹
 	WAFFingerprint() []byte
