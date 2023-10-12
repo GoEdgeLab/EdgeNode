@@ -105,14 +105,14 @@ func (this *Piece[T]) GC() {
 		this.lastGCTime = currentTime - 3600
 	}
 
-	var min = this.lastGCTime
-	var max = currentTime
-	if min > max {
+	var minTime = this.lastGCTime
+	var maxTime = currentTime
+	if minTime > maxTime {
 		// 过去的时间比现在大，则从这一秒重新开始
-		min = max
+		minTime = maxTime
 	}
 
-	for i := min; i <= max; i++ {
+	for i := minTime; i <= maxTime; i++ {
 		var itemMap = this.expiresList.GC(i)
 		if len(itemMap) > 0 {
 			this.gcItemMap(itemMap)

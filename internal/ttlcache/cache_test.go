@@ -6,6 +6,7 @@ import (
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
+	timeutil "github.com/iwind/TeaGo/utils/time"
 	"runtime"
 	"strconv"
 	"sync/atomic"
@@ -46,12 +47,15 @@ func TestCache_Memory(t *testing.T) {
 		return
 	}
 
-	testutils.StartMemoryStats(t)
-
 	var cache = NewCache[int]()
+
+	testutils.StartMemoryStats(t, func() {
+		t.Log(cache.Count(), "items")
+	})
+
 	var count = 20_000_000
 	for i := 0; i < count; i++ {
-		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+3600)
+		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+int64(rands.Int(0, 300)))
 	}
 
 	t.Log(cache.Count())
@@ -67,7 +71,7 @@ func TestCache_Memory(t *testing.T) {
 
 	cache.Count()
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(3600 * time.Second)
 }
 
 func TestCache_IncreaseInt64(t *testing.T) {
@@ -125,6 +129,10 @@ func TestCache_Read(t *testing.T) {
 }
 
 func TestCache_GC(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var cache = NewCache[int](&PiecesOption{Count: 5})
 	cache.Write("a", 1, time.Now().Unix()+1)
 	cache.Write("b", 2, time.Now().Unix()+2)
@@ -159,11 +167,15 @@ func TestCache_GC(t *testing.T) {
 }
 
 func TestCache_GC2(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	runtime.GOMAXPROCS(1)
 
-	var cache1 = NewCache[int](NewPiecesOption(32))
-	for i := 0; i < 1_000_000; i++ {
-		cache1.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 10)))
+	var cache1 = NewCache[int](NewPiecesOption(256))
+	for i := 0; i < 10_000_000; i++ {
+		cache1.Write(strconv.Itoa(i), i, time.Now().Unix()+10)
 	}
 
 	var cache2 = NewCache[int](NewPiecesOption(5))
@@ -171,8 +183,8 @@ func TestCache_GC2(t *testing.T) {
 		cache2.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 10)))
 	}
 
-	for i := 0; i < 100; i++ {
-		t.Log(cache1.Count(), "items", cache2.Count(), "items")
+	for i := 0; i < 3600; i++ {
+		t.Log(timeutil.Format("H:i:s"), cache1.Count(), "items", cache2.Count(), "items")
 		time.Sleep(1 * time.Second)
 	}
 }

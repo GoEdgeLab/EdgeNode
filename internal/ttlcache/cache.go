@@ -3,6 +3,7 @@ package ttlcache
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"runtime"
 )
 
 var SharedInt64Cache = NewBigCache[int64]()
@@ -19,7 +20,8 @@ type Cache[T any] struct {
 	countPieces uint64
 	maxItems    int
 
-	gcPieceIndex int
+	maxPiecesPerGC int
+	gcPieceIndex   int
 }
 
 func NewBigCache[T any]() *Cache[T] {
@@ -61,9 +63,16 @@ func NewCache[T any](opt ...OptionInterface) *Cache[T] {
 		}
 	}
 
+	var maxPiecesPerGC = 4
+	var numCPU = runtime.NumCPU() / 2
+	if numCPU > maxPiecesPerGC {
+		maxPiecesPerGC = numCPU
+	}
+
 	var cache = &Cache[T]{
-		countPieces: uint64(countPieces),
-		maxItems:    maxItems,
+		countPieces:    uint64(countPieces),
+		maxItems:       maxItems,
+		maxPiecesPerGC: maxPiecesPerGC,
 	}
 
 	for i := 0; i < countPieces; i++ {
@@ -136,15 +145,15 @@ func (this *Cache[T]) Count() (count int) {
 
 func (this *Cache[T]) GC() {
 	var index = this.gcPieceIndex
-	const maxPiecesPerGC = 4
-	for i := index; i < index+maxPiecesPerGC; i++ {
+
+	for i := index; i < index+this.maxPiecesPerGC; i++ {
 		if i >= int(this.countPieces) {
 			break
 		}
 		this.pieces[i].GC()
 	}
 
-	index += maxPiecesPerGC
+	index += this.maxPiecesPerGC
 	if index >= int(this.countPieces) {
 		index = 0
 	}
