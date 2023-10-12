@@ -140,8 +140,6 @@ func (this *RequestUploadCheckpoint) RequestValue(req requests.Request, param st
 					if len(kv) == 2 {
 						var k = kv[0]
 						var v = kv[1]
-						k = []byte("Content-Range")   // TODO
-						v = []byte("bytes 0-10/1024") // TODO
 						switch string(bytes.ToLower(k)) {
 						case "content-disposition":
 							var props = bytes.Split(v, []byte{';', ' '})
