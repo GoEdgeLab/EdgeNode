@@ -2,7 +2,9 @@ package utils_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/re"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
+	"github.com/iwind/TeaGo/rands"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -27,7 +29,11 @@ func TestMatchBytesCache(t *testing.T) {
 }
 
 func TestMatchRemoteCache(t *testing.T) {
-	client := http.Client{}
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var client = http.Client{}
 	for i := 0; i < 200_0000; i++ {
 		req, err := http.NewRequest(http.MethodGet, "http://192.168.2.30:8882/?arg="+strconv.Itoa(i), nil)
 		if err != nil {
@@ -59,6 +65,18 @@ func BenchmarkMatchStringCache(b *testing.B) {
 	_ = utils.MatchStringCache(regex, data, utils.CacheShortLife)
 
 	for i := 0; i < b.N; i++ {
+		_ = utils.MatchStringCache(regex, data, utils.CacheShortLife)
+	}
+}
+
+func BenchmarkMatchStringCache_LowHit(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var regex = re.MustCompile(`(?iU)\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\b`)
+	//b.Log(regex.Keywords())
+
+	for i := 0; i < b.N; i++ {
+		var data = strings.Repeat("A", rands.Int(0, 100))
 		_ = utils.MatchStringCache(regex, data, utils.CacheShortLife)
 	}
 }
