@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const countSamples = 10_000
+const countSamples = 100_000
 
 type Item struct {
 	countHits   uint64
@@ -138,7 +138,7 @@ func (this *Stat) IsGood(category string) bool {
 			return true
 		}
 
-		if item.countCached > countSamples {
+		if item.countCached > countSamples && item.timestamp < fasttime.Now().Unix()-600 /** 10 minutes ago **/ {
 			var isGood = item.countHits*100/item.countCached >= this.goodRatio
 			if isGood {
 				item.isGood = true
