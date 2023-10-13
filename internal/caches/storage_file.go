@@ -1001,6 +1001,11 @@ func (this *FileStorage) initList() error {
 // 清理任务
 // TODO purge每个分区
 func (this *FileStorage) purgeLoop() {
+	// load
+	systemLoad, _ := load.Avg()
+
+	// TODO 计算平均最近每日新增用量
+
 	// 计算是否应该开启LFU清理
 	var capacityBytes = this.diskCapacityBytes()
 	var startLFU = false
@@ -1009,11 +1014,13 @@ func (this *FileStorage) purgeLoop() {
 	if lfuFreePercent <= 0 {
 		lfuFreePercent = 5
 
-		// 2TB级别以上
-		if capacityBytes>>30 > 2000 {
-			lfuFreePercent = 100 /** GB **/ / float32(capacityBytes>>30) * 100 /** % **/
-			if lfuFreePercent > 3 {
-				lfuFreePercent = 3
+		if systemLoad == nil || systemLoad.Load5 > 10 {
+			// 2TB级别以上
+			if capacityBytes>>30 > 2000 {
+				lfuFreePercent = 100 /** GB **/ / float32(capacityBytes>>30) * 100 /** % **/
+				if lfuFreePercent > 3 {
+					lfuFreePercent = 3
+				}
 			}
 		}
 	}
@@ -1037,7 +1044,6 @@ func (this *FileStorage) purgeLoop() {
 		var times = 1
 
 		// 空闲时间多清理
-		systemLoad, _ := load.Avg()
 		if systemLoad != nil {
 			if systemLoad.Load5 < 3 {
 				times = 5
@@ -1102,13 +1108,13 @@ func (this *FileStorage) purgeLoop() {
 
 	// 磁盘空间不足时，清除老旧的缓存
 	if startLFU {
-		var maxCount = 2000
+		var maxCount = 1000
 		var maxLoops = 5
 
 		if fsutils.DiskIsExtremelyFast() {
-			maxCount = 10000
+			maxCount = 4000
 		} else if fsutils.DiskIsFast() {
-			maxCount = 5000
+			maxCount = 2000
 		}
 
 		var total, _ = this.list.Count()
