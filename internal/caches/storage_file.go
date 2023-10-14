@@ -89,7 +89,8 @@ type FileStorage struct {
 
 	openFileCache *OpenFileCache
 
-	mainDiskIsFull bool
+	mainDiskIsFull    bool
+	mainDiskTotalSize uint64
 
 	subDirs []*FileDir
 }
@@ -1301,9 +1302,17 @@ func (this *FileStorage) diskCapacityBytes() int64 {
 	if nodeCapacity != nil {
 		var c2 = nodeCapacity.Bytes()
 		if c2 > 0 {
+			if this.mainDiskTotalSize > 0 && c2 >= int64(this.mainDiskTotalSize) {
+				c2 = int64(this.mainDiskTotalSize) * 95 / 100 // keep 5% free
+			}
 			return c2
 		}
 	}
+
+	if c1 <= 0 || (this.mainDiskTotalSize > 0 && c1 >= int64(this.mainDiskTotalSize)) {
+		c1 = int64(this.mainDiskTotalSize) * 95 / 100 // keep 5% free
+	}
+
 	return c1
 }
 
@@ -1511,6 +1520,7 @@ func (this *FileStorage) checkDiskSpace() {
 		stat, err := fsutils.StatDevice(options.Dir)
 		if err == nil {
 			this.mainDiskIsFull = stat.FreeSize() < minFreeSize
+			this.mainDiskTotalSize = stat.TotalSize()
 
 			// check capacity (only on main directory) when node capacity had not been set
 			if !this.mainDiskIsFull {
