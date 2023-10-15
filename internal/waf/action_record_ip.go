@@ -133,8 +133,13 @@ func (this *RecordIPAction) WillChange() bool {
 }
 
 func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+	var ipListId = this.IPListId
+	if ipListId <= 0 {
+		ipListId = firewallconfigs.GlobalListId
+	}
+
 	// 是否已删除
-	var ipListIsAvailable = this.IPListId > 0 && !this.IPListIsDeleted && !ExistDeletedIPList(this.IPListId)
+	var ipListIsAvailable = (ipListId == firewallconfigs.GlobalListId) || (ipListId > 0 && !this.IPListIsDeleted && !ExistDeletedIPList(ipListId))
 
 	// 是否在本地白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
@@ -167,7 +172,7 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 	}
 
 	// 上报
-	if this.IPListId > 0 && ipListIsAvailable {
+	if ipListId > 0 && ipListIsAvailable {
 		var serverId int64
 		if this.Scope == firewallconfigs.FirewallScopeService {
 			serverId = request.WAFServerId()
@@ -181,7 +186,7 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		select {
 		case recordIPTaskChan <- &recordIPTask{
 			ip:                            request.WAFRemoteIP(),
-			listId:                        this.IPListId,
+			listId:                        ipListId,
 			expiresAt:                     realExpiresAt,
 			level:                         this.Level,
 			serverId:                      serverId,
