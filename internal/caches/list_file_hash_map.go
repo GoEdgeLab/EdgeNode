@@ -9,11 +9,13 @@ import (
 	"sync"
 )
 
-const HashMapSharding = 11
+const HashMapSharding = 31
 
-var bigIntPool = sync.Pool{New: func() any {
-	return big.NewInt(0)
-}}
+var bigIntPool = sync.Pool{
+	New: func() any {
+		return big.NewInt(0)
+	},
+}
 
 // FileListHashMap 文件Hash列表
 type FileListHashMap struct {
@@ -63,7 +65,7 @@ func (this *FileListHashMap) Load(db *FileListDB) error {
 		this.AddHashes(hashList)
 		lastId = maxId
 
-		maxLoops --
+		maxLoops--
 		if maxLoops <= 0 {
 			break
 		}
