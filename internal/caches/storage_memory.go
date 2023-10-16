@@ -584,13 +584,19 @@ func (this *MemoryStorage) flushItem(key string) {
 }
 
 func (this *MemoryStorage) memoryCapacityBytes() int64 {
+	var maxSystemBytes = int64(utils.SystemMemoryBytes()) / 3 // 1/3 of the system memory
+
 	if this.policy == nil {
-		return 0
+		return maxSystemBytes
 	}
 
 	if SharedManager.MaxMemoryCapacity != nil {
 		var capacityBytes = SharedManager.MaxMemoryCapacity.Bytes()
 		if capacityBytes > 0 {
+			if capacityBytes > maxSystemBytes {
+				return maxSystemBytes
+			}
+
 			return capacityBytes
 		}
 	}
@@ -599,17 +605,15 @@ func (this *MemoryStorage) memoryCapacityBytes() int64 {
 	if capacity != nil {
 		var capacityBytes = capacity.Bytes()
 		if capacityBytes > 0 {
+			if capacityBytes > maxSystemBytes {
+				return maxSystemBytes
+			}
 			return capacityBytes
 		}
 	}
 
-	// half of the system memory
-	var memoryGB = utils.SystemMemoryGB()
-	if memoryGB < 1 {
-		memoryGB = 1
-	}
-
-	return int64(memoryGB) << 30 / 2
+	// 1/4 of the system memory
+	return maxSystemBytes
 }
 
 func (this *MemoryStorage) deleteWithoutLocker(key string) error {

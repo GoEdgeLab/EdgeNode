@@ -8,6 +8,7 @@ import (
 )
 
 var systemTotalMemory = -1
+var systemMemoryBytes uint64
 
 func init() {
 	if !teaconst.IsMain {
@@ -29,7 +30,9 @@ func SystemMemoryGB() int {
 		return 1
 	}
 
-	systemTotalMemory = int(stat.Total / (1<<30))
+	systemMemoryBytes = stat.Total
+
+	systemTotalMemory = int(stat.Total / (1 << 30))
 	if systemTotalMemory <= 0 {
 		systemTotalMemory = 1
 	}
@@ -37,4 +40,9 @@ func SystemMemoryGB() int {
 	setMaxMemory(systemTotalMemory)
 
 	return systemTotalMemory
+}
+
+// SystemMemoryBytes 系统内存总字节数
+func SystemMemoryBytes() uint64 {
+	return systemMemoryBytes
 }
