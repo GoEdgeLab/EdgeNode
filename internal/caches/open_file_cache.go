@@ -93,7 +93,7 @@ func (this *OpenFileCache) Put(filename string, file *OpenFile) {
 	defer this.locker.Unlock()
 
 	// 如果超过当前容量，则关闭最早的
-	if this.count >= this.maxCount || this.usedSize >= this.capacitySize {
+	if this.count >= this.maxCount || this.usedSize+file.size >= this.capacitySize {
 		this.consumeHead()
 		return
 	}
