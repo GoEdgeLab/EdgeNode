@@ -29,3 +29,8 @@ func (this *Node) execHTTPPagesPolicyChangedTask(rpcClient *rpc.RPCClient) error
 	// stub
 	return nil
 }
+
+func (this *Node) execNetworkSecurityPolicyChangedTask(rpcClient *rpc.RPCClient) error {
+	// stub
+	return nil
+}

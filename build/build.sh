@@ -6,6 +6,7 @@ function build() {
 	VERSION=$(lookup-version "$ROOT"/../internal/const/const.go)
 	DIST=$ROOT/"../dist/${NAME}"
 	MUSL_DIR="/usr/local/opt/musl-cross/bin"
+	SRCDIR=$(realpath "$ROOT/..")
 
 	# for macOS users: precompiled gcc can be downloaded from https://github.com/messense/homebrew-macos-cross-toolchains
 	GCC_X86_64_DIR="/usr/local/gcc/x86_64-unknown-linux-gnu/bin"
@@ -70,6 +71,8 @@ function build() {
 
 	CC_PATH=""
 	CXX_PATH=""
+	CGO_LDFLAGS=""
+	CGO_CFLAGS=""
 	BUILD_TAG=$TAG
 	if [[ `uname -a` == *"Darwin"* && "${OS}" == "linux" ]]; then
 		if [ "${ARCH}" == "amd64" ]; then
@@ -79,7 +82,7 @@ function build() {
 				CC_PATH="x86_64-unknown-linux-gnu-gcc"
 				CXX_PATH="x86_64-unknown-linux-gnu-g++"
 				if [ "$TAG" = "plus" ]; then
-					BUILD_TAG="plus,script"
+					BUILD_TAG="plus,script,packet"
 				fi
 			else
 				CC_PATH="x86_64-linux-musl-gcc"
@@ -97,7 +100,7 @@ function build() {
 				CC_PATH="aarch64-unknown-linux-gnu-gcc"
 				CXX_PATH="aarch64-unknown-linux-gnu-g++"
 				if [ "$TAG" = "plus" ]; then
-					BUILD_TAG="plus,script"
+					BUILD_TAG="plus,script,packet"
 				fi
 			else
 				CC_PATH="aarch64-linux-musl-gcc"
@@ -117,13 +120,26 @@ function build() {
 			CXX_PATH="mips64el-linux-musl-g++"
 		fi
 	fi
+
+	# libpcap
+	if [ "$OS" == "linux" ] && [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ]] &&  [ "$TAG" == "plus" ]; then
+		CGO_LDFLAGS="-L${SRCDIR}/libs/libpcap/${ARCH} -lpcap"
+		CGO_CFLAGS="-I${SRCDIR}/libs/libpcap/src/libpcap -I${SRCDIR}/libs/libpcap/src/libpcap/pcap"
+	fi
+
 	if [ ! -z $CC_PATH ]; then
-		env CC=$MUSL_DIR/$CC_PATH CXX=$MUSL_DIR/$CXX_PATH GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" "$ROOT"/../cmd/edge-node/main.go
+		env CC=$MUSL_DIR/$CC_PATH \
+		 CXX=$MUSL_DIR/$CXX_PATH GOOS="${OS}" \
+		 GOARCH="${ARCH}" CGO_ENABLED=1 \
+		 CGO_LDFLAGS="${CGO_LDFLAGS}" \
+		 CGO_CFLAGS="${CGO_CFLAGS}" \
+		 go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags "-linkmode external -extldflags -static -s -w" "$ROOT"/../cmd/edge-node/main.go
 	else
 		if [[ `uname` == *"Linux"* ]] && [ "$OS" == "linux" ] && [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ]] &&  [ "$TAG" == "plus" ]; then
-			BUILD_TAG="plus,script"
+			BUILD_TAG="plus,script,packet"
 		fi
-		env GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1 go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags="-s -w" "$ROOT"/../cmd/edge-node/main.go
+
+		env GOOS="${OS}" GOARCH="${ARCH}" CGO_ENABLED=1  CGO_LDFLAGS="${CGO_LDFLAGS}" CGO_CFLAGS="${CGO_CFLAGS}" go build -trimpath -tags $BUILD_TAG -o "$DIST"/bin/${NAME} -ldflags="-s -w" "$ROOT"/../cmd/edge-node/main.go
 	fi
 
 	if [ ! -f "${DIST}/bin/${NAME}" ]; then

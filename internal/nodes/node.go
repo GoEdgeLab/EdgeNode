@@ -146,12 +146,12 @@ func (this *Node) Start() {
 	remotelogs.Println("NODE", "init config ...")
 	err = this.syncConfig(0)
 	if err != nil {
-		_, err := nodeconfigs.SharedNodeConfig()
+		_, err = nodeconfigs.SharedNodeConfig()
 		if err != nil {
 			// 无本地数据时，会尝试多次读取
 			tryTimes := 0
 			for {
-				err := this.syncConfig(0)
+				err = this.syncConfig(0)
 				if err != nil {
 					tryTimes++
 

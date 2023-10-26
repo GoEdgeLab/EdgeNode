@@ -97,6 +97,8 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 		err = this.notifyPlusChange()
 	case "toaChanged":
 		err = this.execTOAChangedTask()
+	case "networkSecurityPolicyChanged":
+		err = this.execNetworkSecurityPolicyChangedTask(rpcClient)
 	default:
 		// 特殊任务
 		if strings.HasPrefix(task.Type, "ipListDeleted") { // 删除IP名单
