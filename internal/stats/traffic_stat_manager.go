@@ -142,24 +142,26 @@ func (this *TrafficStatManager) Add(userId int64, serverId int64, domain string,
 	item.PlanId = planId
 
 	// 单个域名流量
-	var domainKey = types.String(timestamp) + "@" + domain
-	serverDomainMap, ok := this.domainsMap[serverId]
-	if !ok {
-		serverDomainMap = map[string]*TrafficItem{}
-		this.domainsMap[serverId] = serverDomainMap
-	}
+	if len(domain) <= 64 {
+		var domainKey = types.String(timestamp) + "@" + domain
+		serverDomainMap, ok := this.domainsMap[serverId]
+		if !ok {
+			serverDomainMap = map[string]*TrafficItem{}
+			this.domainsMap[serverId] = serverDomainMap
+		}
 
-	domainItem, ok := serverDomainMap[domainKey]
-	if !ok {
-		domainItem = &TrafficItem{}
-		serverDomainMap[domainKey] = domainItem
+		domainItem, ok := serverDomainMap[domainKey]
+		if !ok {
+			domainItem = &TrafficItem{}
+			serverDomainMap[domainKey] = domainItem
+		}
+		domainItem.Bytes += bytes
+		domainItem.CachedBytes += cachedBytes
+		domainItem.CountRequests += countRequests
+		domainItem.CountCachedRequests += countCachedRequests
+		domainItem.CountAttackRequests += countAttacks
+		domainItem.AttackBytes += attackBytes
 	}
-	domainItem.Bytes += bytes
-	domainItem.CachedBytes += cachedBytes
-	domainItem.CountRequests += countRequests
-	domainItem.CountCachedRequests += countCachedRequests
-	domainItem.CountAttackRequests += countAttacks
-	domainItem.AttackBytes += attackBytes
 
 	this.locker.Unlock()
 }
