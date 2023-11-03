@@ -223,6 +223,7 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 	// 当前TeaWeb所在的fs
 	var rootFS = ""
 	var rootTotal = uint64(0)
+	var totalUsed = uint64(0)
 	if lists.ContainsString([]string{"darwin", "linux", "freebsd"}, runtime.GOOS) {
 		for _, p := range partitions {
 			if p.Mountpoint == "/" {
@@ -230,6 +231,7 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 				usage, _ := disk.Usage(p.Mountpoint)
 				if usage != nil {
 					rootTotal = usage.Total
+					totalUsed = usage.Used
 				}
 				break
 			}
@@ -237,7 +239,6 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 	}
 
 	var total = rootTotal
-	var totalUsage = uint64(0)
 	var maxUsage = float64(0)
 	for _, partition := range partitions {
 		if runtime.GOOS != "windows" && !strings.Contains(partition.Device, "/") && !strings.Contains(partition.Device, "\\") {
@@ -256,16 +257,16 @@ func (this *NodeStatusExecutor) updateDisk(status *nodeconfigs.NodeStatus) {
 
 		if partition.Mountpoint != "/" && (usage.Total != rootTotal || total == 0) {
 			total += usage.Total
-		}
-		totalUsage += usage.Used
-		if usage.UsedPercent >= maxUsage {
-			maxUsage = usage.UsedPercent
-			status.DiskMaxUsagePartition = partition.Mountpoint
+			totalUsed += usage.Used
+			if usage.UsedPercent >= maxUsage {
+				maxUsage = usage.UsedPercent
+				status.DiskMaxUsagePartition = partition.Mountpoint
+			}
 		}
 	}
 	status.DiskTotal = total
 	if total > 0 {
-		status.DiskUsage = float64(totalUsage) / float64(total)
+		status.DiskUsage = float64(totalUsed) / float64(total)
 	}
 	status.DiskMaxUsage = maxUsage / 100
 
