@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
@@ -110,6 +111,18 @@ func TestFileListHashMap_Load(t *testing.T) {
 	for _, hash := range []string{"33347bb4441265405347816cad36a0f8", "a", "abc", "123"} {
 		t.Log(hash, "=>", m.Exist(hash))
 	}
+}
+
+func TestFileListHashMap_Delete(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
+	var m = caches.NewFileListHashMap()
+	m.SetIsReady(true)
+	m.SetIsAvailable(true)
+	m.Add("a")
+	a.IsTrue(m.Len() == 1)
+	m.Delete("a")
+	a.IsTrue(m.Len() == 0)
 }
 
 func Benchmark_BigInt(b *testing.B) {
