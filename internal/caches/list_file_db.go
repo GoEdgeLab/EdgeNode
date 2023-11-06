@@ -65,10 +65,10 @@ func (this *FileListDB) Open(dbPath string) error {
 	this.dbPath = dbPath
 
 	// 动态调整Cache值
-	var cacheSize = 32000
+	var cacheSize = 512
 	var memoryGB = utils.SystemMemoryGB()
-	if memoryGB >= 8 {
-		cacheSize += 32000 * memoryGB / 8
+	if memoryGB >= 1 {
+		cacheSize = 128 * memoryGB
 	}
 
 	// write db
