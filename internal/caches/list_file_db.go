@@ -68,7 +68,7 @@ func (this *FileListDB) Open(dbPath string) error {
 	var cacheSize = 512
 	var memoryGB = utils.SystemMemoryGB()
 	if memoryGB >= 1 {
-		cacheSize = 128 * memoryGB
+		cacheSize = 256 * memoryGB
 	}
 
 	// write db

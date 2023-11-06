@@ -116,7 +116,7 @@ func TestFileListDB_Memory(t *testing.T) {
 		_ = db.Close()
 	}()
 
-	err := db.Open(Tea.Root + "/data/db-0.db")
+	err := db.Open(Tea.Root + "/data/cache-index/p1/db-0.db")
 	if err != nil {
 		t.Fatal(err)
 	}
