@@ -274,7 +274,13 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		}
 
 		if err != nil {
-			if err == caches.ErrNotFound {
+			if errors.Is(err, caches.ErrNotFound) {
+				// 移除请求中的 If-None-Match 和 If-Modified-Since，防止源站返回304而无法缓存
+				if this.reverseProxy != nil {
+					this.RawReq.Header.Del("If-None-Match")
+					this.RawReq.Header.Del("If-Modified-Since")
+				}
+
 				// cache相关变量
 				this.varMapping["cache.status"] = "MISS"
 
@@ -365,24 +371,24 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	}
 
 	// ETag
-	// 这里强制设置ETag，如果先前源站设置了ETag，将会被覆盖，避免因为源站的ETag导致源站返回304 Not Modified
 	var respHeader = this.writer.Header()
-	var eTag = ""
+	var eTag = respHeader.Get("ETag")
 	var lastModifiedAt = reader.LastModified()
-	if lastModifiedAt > 0 {
-		if len(tags) > 0 {
-			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "_" + strings.Join(tags, "_") + "\""
-		} else {
-			eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
-		}
-		respHeader.Del("Etag")
-		if !isPartialCache {
-			respHeader["ETag"] = []string{eTag}
+	if len(eTag) == 0 {
+		if lastModifiedAt > 0 {
+			if len(tags) > 0 {
+				eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "_" + strings.Join(tags, "_") + "\""
+			} else {
+				eTag = "\"" + strconv.FormatInt(lastModifiedAt, 10) + "\""
+			}
+			respHeader.Del("Etag")
+			if !isPartialCache {
+				respHeader["ETag"] = []string{eTag}
+			}
 		}
 	}
 
 	// 支持 Last-Modified
-	// 这里强制设置Last-Modified，如果先前源站设置了Last-Modified，将会被覆盖，避免因为源站的Last-Modified导致源站返回304 Not Modified
 	var modifiedTime = ""
 	if lastModifiedAt > 0 {
 		modifiedTime = time.Unix(utils.GMTUnixTime(lastModifiedAt), 0).Format("Mon, 02 Jan 2006 15:04:05") + " GMT"
@@ -490,7 +496,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			if err != nil {
 				this.varMapping["cache.status"] = "MISS"
 
-				if err == caches.ErrInvalidRange {
+				if errors.Is(err, caches.ErrInvalidRange) {
 					this.ProcessResponseHeaders(this.writer.Header(), http.StatusRequestedRangeNotSatisfiable)
 					this.writer.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 					return true
