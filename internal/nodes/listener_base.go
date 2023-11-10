@@ -194,7 +194,7 @@ func (this *BaseListener) findNamedServer(name string) (serverConfig *serverconf
 		}
 	}
 
-	if matchDomainStrictly && !configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) && (!globalServerConfig.HTTPAll.AllowNodeIP || !utils.IsWildIP(name)) {
+	if matchDomainStrictly && !configutils.MatchDomains(globalServerConfig.HTTPAll.AllowMismatchDomains, name) && (!globalServerConfig.HTTPAll.AllowNodeIP || (!utils.IsWildIP(name) || globalServerConfig.HTTPAll.NodeIPShowPage)) {
 		return
 	}
 
