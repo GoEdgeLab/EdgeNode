@@ -1,7 +1,7 @@
 package nodes
 
 import (
-	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
@@ -18,7 +18,7 @@ func (this *HTTPRequest) doShutdown() {
 		return
 	}
 
-	if len(shutdown.BodyType) == 0 || shutdown.BodyType == shared.BodyTypeURL {
+	if len(shutdown.BodyType) == 0 || shutdown.BodyType == serverconfigs.HTTPPageBodyTypeURL {
 		// URL
 		if urlSchemeRegexp.MatchString(shutdown.URL) {
 			this.doURL(http.MethodGet, shutdown.URL, "", shutdown.Status, true)
@@ -80,7 +80,7 @@ func (this *HTTPRequest) doShutdown() {
 		} else {
 			this.writer.SetOk()
 		}
-	} else if shutdown.BodyType == shared.BodyTypeHTML {
+	} else if shutdown.BodyType == serverconfigs.HTTPPageBodyTypeHTML {
 		// 自定义响应Headers
 		if shutdown.Status > 0 {
 			this.ProcessResponseHeaders(this.writer.Header(), shutdown.Status)
@@ -98,5 +98,17 @@ func (this *HTTPRequest) doShutdown() {
 		} else {
 			this.writer.SetOk()
 		}
+	} else if shutdown.BodyType == serverconfigs.HTTPPageBodyTypeRedirectURL {
+		var newURL = shutdown.URL
+		if len(newURL) == 0 {
+			newURL = "/"
+		}
+
+		if shutdown.Status > 0 && httpStatusIsRedirect(shutdown.Status) {
+			httpRedirect(this.writer, this.RawReq, newURL, shutdown.Status)
+		} else {
+			httpRedirect(this.writer, this.RawReq, newURL, http.StatusTemporaryRedirect)
+		}
+		this.writer.SetOk()
 	}
 }

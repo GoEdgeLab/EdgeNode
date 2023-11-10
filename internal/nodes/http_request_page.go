@@ -2,7 +2,6 @@ package nodes
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
-	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
@@ -48,7 +47,7 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, status int) (shouldStop bool) {
 	for _, page := range pages {
 		if page.Match(status) {
-			if len(page.BodyType) == 0 || page.BodyType == shared.BodyTypeURL {
+			if len(page.BodyType) == 0 || page.BodyType == serverconfigs.HTTPPageBodyTypeURL {
 				if urlSchemeRegexp.MatchString(page.URL) {
 					var newStatus = page.NewStatus
 					if newStatus <= 0 {
@@ -115,7 +114,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 				}
 
 				return true
-			} else if page.BodyType == shared.BodyTypeHTML {
+			} else if page.BodyType == serverconfigs.HTTPPageBodyTypeHTML {
 				// 这里需要实现设置Status，因为在Format()中可以获取${status}等变量
 				if page.NewStatus > 0 {
 					this.writer.statusCode = page.NewStatus
@@ -146,6 +145,18 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 				} else {
 					this.writer.SetOk()
 				}
+				return true
+			} else if page.BodyType == serverconfigs.HTTPPageBodyTypeRedirectURL {
+				var newURL = page.URL
+				if len(newURL) == 0 {
+					newURL = "/"
+				}
+				if page.NewStatus > 0 && httpStatusIsRedirect(page.NewStatus) {
+					httpRedirect(this.writer, this.RawReq, newURL, page.NewStatus)
+				} else {
+					httpRedirect(this.writer, this.RawReq, newURL, http.StatusTemporaryRedirect)
+				}
+				this.writer.SetOk()
 				return true
 			}
 		}
