@@ -25,6 +25,13 @@ func (this *HTTPRequest) doHostRedirect() (blocked bool) {
 			continue
 		}
 
+		if len(u.ExceptDomains) > 0 && configutils.MatchDomains(u.ExceptDomains, this.ReqHost) {
+			continue
+		}
+		if len(u.OnlyDomains) > 0 && !configutils.MatchDomains(u.OnlyDomains, this.ReqHost) {
+			continue
+		}
+
 		var status = u.Status
 		if status <= 0 {
 			if searchEngineRegex.MatchString(this.RawReq.UserAgent()) {
