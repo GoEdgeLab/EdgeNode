@@ -12,7 +12,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
-	timeutil "github.com/iwind/TeaGo/utils/time"
 	"net"
 	"net/url"
 	"os"
@@ -48,11 +47,10 @@ type FileListDB struct {
 	deleteByHashStmt *dbs.Stmt // 根据hash删除数据
 	deleteByHashSQL  string
 
-	statStmt             *dbs.Stmt // 统计
-	purgeStmt            *dbs.Stmt // 清理
-	deleteAllStmt        *dbs.Stmt // 删除所有数据
-	listOlderItemsStmt   *dbs.Stmt // 读取较早存储的缓存
-	updateAccessWeekStmt *dbs.Stmt // 修改访问日期
+	statStmt           *dbs.Stmt // 统计
+	purgeStmt          *dbs.Stmt // 清理
+	deleteAllStmt      *dbs.Stmt // 删除所有数据
+	listOlderItemsStmt *dbs.Stmt // 读取较早存储的缓存
 }
 
 func NewFileListDB() *FileListDB {
@@ -136,7 +134,7 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.insertSQL = `INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt", "accessWeek") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	this.insertSQL = `INSERT INTO "` + this.itemsTableName + `" ("hash", "key", "headerSize", "bodySize", "metaSize", "expiredAt", "staleAt", "host", "serverId", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	this.insertStmt, err = this.writeDB.Prepare(this.insertSQL)
 	if err != nil {
 		return err
@@ -173,12 +171,7 @@ func (this *FileListDB) Init() error {
 		return err
 	}
 
-	this.updateAccessWeekStmt, err = this.writeDB.Prepare(`UPDATE "` + this.itemsTableName + `" SET "accessWeek"=? WHERE "hash"=?`)
-	if err != nil {
-		return err
-	}
-
-	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "accessWeek" ASC, "id" ASC LIMIT ?`)
+	this.listOlderItemsStmt, err = this.readDB.Prepare(`SELECT "hash" FROM "` + this.itemsTableName + `" ORDER BY "id" ASC LIMIT ?`)
 	if err != nil {
 		return err
 	}
@@ -213,7 +206,7 @@ func (this *FileListDB) AddSync(hash string, item *Item) error {
 		item.StaleAt = item.ExpiredAt
 	}
 
-	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, fasttime.Now().Unix(), timeutil.Format("YW"))
+	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, fasttime.Now().Unix())
 	if err != nil {
 		return this.WrapError(err)
 	}
@@ -309,8 +302,8 @@ func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64
 }
 
 func (this *FileListDB) IncreaseHitAsync(hash string) error {
-	_, err := this.updateAccessWeekStmt.Exec(timeutil.Format("YW"), hash)
-	return err
+	// do nothing
+	return nil
 }
 
 func (this *FileListDB) CleanPrefix(prefix string) error {
@@ -458,9 +451,6 @@ func (this *FileListDB) Close() error {
 	if this.deleteAllStmt != nil {
 		_ = this.deleteAllStmt.Close()
 	}
-	if this.updateAccessWeekStmt != nil {
-		_ = this.updateAccessWeekStmt.Close()
-	}
 	if this.listOlderItemsStmt != nil {
 		_ = this.listOlderItemsStmt.Close()
 	}
@@ -516,8 +506,7 @@ func (this *FileListDB) initTables(times int) error {
   "staleAt" integer DEFAULT 0,
   "createdAt" integer DEFAULT 0,
   "host" varchar(128),
-  "serverId" integer,
-  "accessWeek" varchar(6)
+  "serverId" integer
 );
 
 DROP INDEX IF EXISTS "createdAt";
@@ -533,8 +522,6 @@ CREATE INDEX IF NOT EXISTS "hash"
 ON "` + this.itemsTableName + `" (
   "hash" ASC
 );
-
-ALTER TABLE "cacheItems" ADD "accessWeek" varchar(6);
 `)
 
 		if err != nil {
