@@ -17,6 +17,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/maps"
@@ -298,7 +299,7 @@ func (this *Node) execUpdatingServersTask(rpcClient *rpc.RPCClient) error {
 
 // 删除IP名单
 func (this *Node) execDeleteIPList(taskType string) error {
-	optionsString, ok := strings.CutPrefix(taskType, "ipListDeleted@")
+	optionsString, ok := utils.CutPrefix(taskType, "ipListDeleted@")
 	if !ok {
 		return errors.New("invalid task type '" + taskType + "'")
 	}
