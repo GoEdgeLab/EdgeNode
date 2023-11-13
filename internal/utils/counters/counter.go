@@ -66,19 +66,16 @@ func (this *Counter) Increase(key uint64, lifeSeconds int) uint64 {
 	var index = int(key % this.countMaps)
 	this.locker.RLock(index)
 	var item = this.itemMaps[index][key]
+	var l = len(this.itemMaps[index])
 	this.locker.RUnlock(index)
 	if item == nil { // no need to care about duplication
-		item = NewItem(lifeSeconds)
-		this.locker.Lock(index)
-
-		// check again
-		oldItem, ok := this.itemMaps[index][key]
-		if !ok {
-			this.itemMaps[index][key] = item
-		} else {
-			item = oldItem
+		if l > maxItemsPerGroup {
+			return 1
 		}
 
+		item = NewItem(lifeSeconds)
+		this.locker.Lock(index)
+		this.itemMaps[index][key] = item
 		this.locker.Unlock(index)
 	}
 
