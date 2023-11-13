@@ -142,7 +142,7 @@ func (this *TrafficStatManager) Add(userId int64, serverId int64, domain string,
 	item.PlanId = planId
 
 	// 单个域名流量
-	if len(domain) <= 64 {
+	if len(domain) < 128 {
 		var domainKey = types.String(timestamp) + "@" + domain
 		serverDomainMap, ok := this.domainsMap[serverId]
 		if !ok {
