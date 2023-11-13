@@ -45,7 +45,11 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 }
 
 func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, status int) (shouldStop bool) {
+	var url = this.URL()
 	for _, page := range pages {
+		if !page.MatchURL(url) {
+			continue
+		}
 		if page.Match(status) {
 			if len(page.BodyType) == 0 || page.BodyType == serverconfigs.HTTPPageBodyTypeURL {
 				if urlSchemeRegexp.MatchString(page.URL) {
