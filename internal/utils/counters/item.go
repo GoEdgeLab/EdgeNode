@@ -6,16 +6,16 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 )
 
-type Item struct {
-	lifeSeconds int64
+const spanMaxValue = 10_000_000
 
-	spanSeconds int64
-	spans       []uint64
-
+type Item[T SupportedUIntType] struct {
+	spans          []T
 	lastUpdateTime int64
+	lifeSeconds    int64
+	spanSeconds    int64
 }
 
-func NewItem(lifeSeconds int) *Item {
+func NewItem[T SupportedUIntType](lifeSeconds int) *Item[T] {
 	if lifeSeconds <= 0 {
 		lifeSeconds = 60
 	}
@@ -25,21 +25,23 @@ func NewItem(lifeSeconds int) *Item {
 	}
 	var countSpans = lifeSeconds/spanSeconds + 1 /** prevent index out of bounds **/
 
-	return &Item{
+	return &Item[T]{
 		lifeSeconds:    int64(lifeSeconds),
 		spanSeconds:    int64(spanSeconds),
-		spans:          make([]uint64, countSpans),
+		spans:          make([]T, countSpans),
 		lastUpdateTime: fasttime.Now().Unix(),
 	}
 }
 
-func (this *Item) Increase() (result uint64) {
+func (this *Item[T]) Increase() (result T) {
 	var currentTime = fasttime.Now().Unix()
 	var currentSpanIndex = this.calculateSpanIndex(currentTime)
 
 	// return quickly
 	if this.lastUpdateTime == currentTime {
-		this.spans[currentSpanIndex]++
+		if this.spans[currentSpanIndex] < spanMaxValue {
+			this.spans[currentSpanIndex]++
+		}
 		for _, count := range this.spans {
 			result += count
 		}
@@ -69,7 +71,9 @@ func (this *Item) Increase() (result uint64) {
 		}
 	}
 
-	this.spans[currentSpanIndex]++
+	if this.spans[currentSpanIndex] < spanMaxValue {
+		this.spans[currentSpanIndex]++
+	}
 	this.lastUpdateTime = currentTime
 
 	for _, count := range this.spans {
@@ -79,7 +83,7 @@ func (this *Item) Increase() (result uint64) {
 	return
 }
 
-func (this *Item) Sum() (result uint64) {
+func (this *Item[T]) Sum() (result T) {
 	if this.lastUpdateTime == 0 {
 		return 0
 	}
@@ -104,16 +108,16 @@ func (this *Item) Sum() (result uint64) {
 	return result
 }
 
-func (this *Item) Reset() {
+func (this *Item[T]) Reset() {
 	for index := range this.spans {
 		this.spans[index] = 0
 	}
 }
 
-func (this *Item) IsExpired(currentTime int64) bool {
+func (this *Item[T]) IsExpired(currentTime int64) bool {
 	return this.lastUpdateTime < currentTime-this.lifeSeconds-this.spanSeconds
 }
 
-func (this *Item) calculateSpanIndex(timestamp int64) int {
+func (this *Item[T]) calculateSpanIndex(timestamp int64) int {
 	return int(timestamp % this.lifeSeconds / this.spanSeconds)
 }

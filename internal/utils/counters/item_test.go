@@ -17,7 +17,7 @@ func TestItem_Increase(t *testing.T) {
 		return
 	}
 
-	var item = counters.NewItem(10)
+	var item = counters.NewItem[uint32](10)
 	t.Log(item.Increase(), item.Sum())
 	time.Sleep(1 * time.Second)
 	t.Log(item.Increase(), item.Sum())
@@ -41,7 +41,7 @@ func TestItem_Increase2(t *testing.T) {
 
 	var a = assert.NewAssertion(t)
 
-	var item = counters.NewItem(20)
+	var item = counters.NewItem[uint32](20)
 	for i := 0; i < 100; i++ {
 		t.Log(item.Increase(), item.Sum(), timeutil.Format("H:i:s"))
 		time.Sleep(2 * time.Second)
@@ -58,7 +58,7 @@ func TestItem_IsExpired(t *testing.T) {
 
 	var currentTime = time.Now().Unix()
 
-	var item = counters.NewItem(10)
+	var item = counters.NewItem[uint32](10)
 	t.Log(item.IsExpired(currentTime))
 	time.Sleep(10 * time.Second)
 	t.Log(item.IsExpired(currentTime))
@@ -73,7 +73,7 @@ func BenchmarkItem_Increase(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var item = counters.NewItem(60)
+			var item = counters.NewItem[uint32](60)
 			item.Increase()
 			item.Sum()
 		}

@@ -13,12 +13,16 @@ import (
 
 const maxItemsPerGroup = 50_000
 
-var SharedCounter = NewCounter().WithGC()
+var SharedCounter = NewCounter[uint32]().WithGC()
 
-type Counter struct {
+type SupportedUIntType interface {
+	uint32 | uint64
+}
+
+type Counter[T SupportedUIntType] struct {
 	countMaps uint64
 	locker    *syncutils.RWMutex
-	itemMaps  []map[uint64]*Item
+	itemMaps  []map[uint64]*Item[T]
 
 	gcTicker *time.Ticker
 	gcIndex  int
@@ -26,18 +30,18 @@ type Counter struct {
 }
 
 // NewCounter create new counter
-func NewCounter() *Counter {
+func NewCounter[T SupportedUIntType]() *Counter[T] {
 	var count = utils.SystemMemoryGB() * 8
 	if count < 8 {
 		count = 8
 	}
 
-	var itemMaps = []map[uint64]*Item{}
+	var itemMaps = []map[uint64]*Item[T]{}
 	for i := 0; i < count; i++ {
-		itemMaps = append(itemMaps, map[uint64]*Item{})
+		itemMaps = append(itemMaps, map[uint64]*Item[T]{})
 	}
 
-	var counter = &Counter{
+	var counter = &Counter[T]{
 		countMaps: uint64(count),
 		locker:    syncutils.NewRWMutex(count),
 		itemMaps:  itemMaps,
@@ -47,7 +51,7 @@ func NewCounter() *Counter {
 }
 
 // WithGC start the counter with gc automatically
-func (this *Counter) WithGC() *Counter {
+func (this *Counter[T]) WithGC() *Counter[T] {
 	if this.gcTicker != nil {
 		return this
 	}
@@ -62,7 +66,7 @@ func (this *Counter) WithGC() *Counter {
 }
 
 // Increase key
-func (this *Counter) Increase(key uint64, lifeSeconds int) uint64 {
+func (this *Counter[T]) Increase(key uint64, lifeSeconds int) T {
 	var index = int(key % this.countMaps)
 	this.locker.RLock(index)
 	var item = this.itemMaps[index][key]
@@ -70,7 +74,7 @@ func (this *Counter) Increase(key uint64, lifeSeconds int) uint64 {
 	if item == nil {
 		// no need to care about duplication
 		// always insert new item even when itemMap is full
-		item = NewItem(lifeSeconds)
+		item = NewItem[T](lifeSeconds)
 		this.locker.Lock(index)
 		this.itemMaps[index][key] = item
 		this.locker.Unlock(index)
@@ -83,12 +87,12 @@ func (this *Counter) Increase(key uint64, lifeSeconds int) uint64 {
 }
 
 // IncreaseKey increase string key
-func (this *Counter) IncreaseKey(key string, lifeSeconds int) uint64 {
+func (this *Counter[T]) IncreaseKey(key string, lifeSeconds int) T {
 	return this.Increase(this.hash(key), lifeSeconds)
 }
 
 // Get value of key
-func (this *Counter) Get(key uint64) uint64 {
+func (this *Counter[T]) Get(key uint64) T {
 	var index = int(key % this.countMaps)
 	this.locker.RLock(index)
 	defer this.locker.RUnlock(index)
@@ -100,12 +104,12 @@ func (this *Counter) Get(key uint64) uint64 {
 }
 
 // GetKey get value of string key
-func (this *Counter) GetKey(key string) uint64 {
+func (this *Counter[T]) GetKey(key string) T {
 	return this.Get(this.hash(key))
 }
 
 // Reset key
-func (this *Counter) Reset(key uint64) {
+func (this *Counter[T]) Reset(key uint64) {
 	var index = int(key % this.countMaps)
 	this.locker.RLock(index)
 	var item = this.itemMaps[index][key]
@@ -119,12 +123,12 @@ func (this *Counter) Reset(key uint64) {
 }
 
 // ResetKey string key
-func (this *Counter) ResetKey(key string) {
+func (this *Counter[T]) ResetKey(key string) {
 	this.Reset(this.hash(key))
 }
 
 // TotalItems get items count
-func (this *Counter) TotalItems() int {
+func (this *Counter[T]) TotalItems() int {
 	var total = 0
 
 	for i := 0; i < int(this.countMaps); i++ {
@@ -137,7 +141,7 @@ func (this *Counter) TotalItems() int {
 }
 
 // GC garbage expired items
-func (this *Counter) GC() {
+func (this *Counter[T]) GC() {
 	this.gcLocker.Lock()
 	var gcIndex = this.gcIndex
 
@@ -186,11 +190,11 @@ func (this *Counter) GC() {
 	}
 }
 
-func (this *Counter) CountMaps() int {
+func (this *Counter[T]) CountMaps() int {
 	return int(this.countMaps)
 }
 
 // calculate hash of the key
-func (this *Counter) hash(key string) uint64 {
+func (this *Counter[T]) hash(key string) uint64 {
 	return xxhash.Sum64String(key)
 }

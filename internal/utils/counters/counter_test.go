@@ -19,7 +19,7 @@ import (
 func TestCounter_Increase(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	var counter = counters.NewCounter()
+	var counter = counters.NewCounter[uint32]()
 	a.IsTrue(counter.Increase(1, 10) == 1)
 	a.IsTrue(counter.Increase(1, 10) == 2)
 	a.IsTrue(counter.Increase(2, 10) == 1)
@@ -32,7 +32,7 @@ func TestCounter_Increase(t *testing.T) {
 func TestCounter_IncreaseKey(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	var counter = counters.NewCounter()
+	var counter = counters.NewCounter[uint32]()
 	a.IsTrue(counter.IncreaseKey("1", 10) == 1)
 	a.IsTrue(counter.IncreaseKey("1", 10) == 2)
 	a.IsTrue(counter.IncreaseKey("2", 10) == 1)
@@ -47,7 +47,7 @@ func TestCounter_GC(t *testing.T) {
 		return
 	}
 
-	var counter = counters.NewCounter()
+	var counter = counters.NewCounter[uint32]()
 	counter.Increase(1, 20)
 	time.Sleep(1 * time.Second)
 	counter.Increase(1, 20)
@@ -61,7 +61,7 @@ func TestCounter_GC2(t *testing.T) {
 		return
 	}
 
-	var counter = counters.NewCounter().WithGC()
+	var counter = counters.NewCounter[uint32]().WithGC()
 	for i := 0; i < 1e5; i++ {
 		counter.Increase(uint64(i), rands.Int(10, 300))
 	}
@@ -79,7 +79,7 @@ func TestCounterMemory(t *testing.T) {
 	var stat = &runtime.MemStats{}
 	runtime.ReadMemStats(stat)
 
-	var counter = counters.NewCounter().WithGC()
+	var counter = counters.NewCounter[uint32]()
 	for i := 0; i < 1_000_000; i++ {
 		counter.Increase(uint64(i), rands.Int(10, 300))
 	}
@@ -98,7 +98,7 @@ func TestCounterMemory(t *testing.T) {
 func BenchmarkCounter_Increase(b *testing.B) {
 	runtime.GOMAXPROCS(4)
 
-	var counter = counters.NewCounter()
+	var counter = counters.NewCounter[uint32]()
 	b.ResetTimer()
 
 	var i uint64
@@ -114,7 +114,7 @@ func BenchmarkCounter_Increase(b *testing.B) {
 func BenchmarkCounter_IncreaseKey(b *testing.B) {
 	runtime.GOMAXPROCS(4)
 
-	var counter = counters.NewCounter()
+	var counter = counters.NewCounter[uint32]()
 
 	go func() {
 		var ticker = time.NewTicker(100 * time.Millisecond)
@@ -138,7 +138,7 @@ func BenchmarkCounter_IncreaseKey(b *testing.B) {
 func BenchmarkCounter_IncreaseKey2(b *testing.B) {
 	runtime.GOMAXPROCS(4)
 
-	var counter = counters.NewCounter()
+	var counter = counters.NewCounter[uint32]()
 
 	go func() {
 		var ticker = time.NewTicker(1 * time.Millisecond)
@@ -162,7 +162,7 @@ func BenchmarkCounter_IncreaseKey2(b *testing.B) {
 func BenchmarkCounter_GC(b *testing.B) {
 	runtime.GOMAXPROCS(4)
 
-	var counter = counters.NewCounter()
+	var counter = counters.NewCounter[uint32]()
 
 	for i := uint64(0); i < 1e5; i++ {
 		counter.IncreaseKey(types.String(i), 20)

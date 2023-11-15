@@ -305,7 +305,7 @@ func (this *ClientConn) increaseSYNFlood(synFloodConfig *firewallconfigs.SYNFloo
 			// 非TLS，设置为两倍，防止误封
 			minAttempts = 2 * minAttempts
 		}
-		if result >= types.Uint64(minAttempts) {
+		if result >= types.Uint32(minAttempts) {
 			var timeout = synFloodConfig.TimeoutSeconds
 			if timeout <= 0 {
 				timeout = 600

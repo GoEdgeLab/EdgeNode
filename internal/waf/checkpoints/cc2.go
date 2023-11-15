@@ -76,7 +76,8 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 	}
 
 	var ccKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(keyValues, "@")
-	value = counters.SharedCounter.IncreaseKey(ccKey, period)
+	var ccValue = counters.SharedCounter.IncreaseKey(ccKey, period)
+	value = ccValue
 
 	// 基于指纹统计
 	var enableFingerprint = true
@@ -96,7 +97,7 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 			}
 			var fpCCKey = "WAF-CC-" + types.String(ruleId) + "-" + strings.Join(fpKeyValues, "@")
 			var fpValue = counters.SharedCounter.IncreaseKey(fpCCKey, period)
-			if fpValue > value.(uint64) {
+			if fpValue > ccValue {
 				value = fpValue
 			}
 		}
