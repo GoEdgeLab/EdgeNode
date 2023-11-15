@@ -257,7 +257,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		return
 	}
 
-	goNext, hasRequestBody, ruleGroup, ruleSet, err := w.MatchRequest(this, this.writer)
+	goNext, hasRequestBody, ruleGroup, ruleSet, err := w.MatchRequest(this, this.writer, this.web.FirewallRef.DefaultCaptchaType)
 	if forceLog && logRequestBody && hasRequestBody && ruleSet != nil && ruleSet.HasAttackActions() {
 		this.wafHasRequestBody = true
 	}
@@ -307,7 +307,7 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 	}
 
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
-		blocked := this.checkWAFResponse(this.web.FirewallPolicy, resp, forceLog, forceLogRequestBody, false)
+		blocked = this.checkWAFResponse(this.web.FirewallPolicy, resp, forceLog, forceLogRequestBody, false)
 		if blocked {
 			return true
 		}
@@ -315,7 +315,7 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 
 	// 公用的防火墙设置
 	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
-		blocked := this.checkWAFResponse(this.ReqServer.HTTPFirewallPolicy, resp, forceLog, forceLogRequestBody, this.web.FirewallRef.IgnoreGlobalRules)
+		blocked = this.checkWAFResponse(this.ReqServer.HTTPFirewallPolicy, resp, forceLog, forceLogRequestBody, this.web.FirewallRef.IgnoreGlobalRules)
 		if blocked {
 			return true
 		}

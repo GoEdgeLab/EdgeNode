@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
@@ -27,6 +28,8 @@ type CaptchaAction struct {
 
 	CountLetters int8 `yaml:"countLetters" json:"countLetters"`
 
+	CaptchaType firewallconfigs.CaptchaType `yaml:"captchaType" json:"captchaType"`
+
 	UIIsOn          bool   `yaml:"uiIsOn" json:"uiIsOn"`                   // 是否使用自定义UI
 	UITitle         string `yaml:"uiTitle" json:"uiTitle"`                 // 消息标题
 	UIPrompt        string `yaml:"uiPrompt" json:"uiPrompt"`               // 消息提示
@@ -35,6 +38,22 @@ type CaptchaAction struct {
 	UICss           string `yaml:"uiCss" json:"uiCss"`                     // CSS样式
 	UIFooter        string `yaml:"uiFooter" json:"uiFooter"`               // 页脚
 	UIBody          string `yaml:"uiBody" json:"uiBody"`                   // 内容轮廓
+
+	OneClickUIIsOn          bool   `yaml:"oneClickUIIsOn" json:"oneClickUIIsOn"`                   // 是否使用自定义UI
+	OneClickUITitle         string `yaml:"oneClickUITitle" json:"oneClickUITitle"`                 // 消息标题
+	OneClickUIPrompt        string `yaml:"oneClickUIPrompt" json:"oneClickUIPrompt"`               // 消息提示
+	OneClickUIShowRequestId bool   `yaml:"oneClickUIShowRequestId" json:"oneClickUIShowRequestId"` // 是否显示请求ID
+	OneClickUICss           string `yaml:"oneClickUICss" json:"oneClickUICss"`                     // CSS样式
+	OneClickUIFooter        string `yaml:"oneClickUIFooter" json:"oneClickUIFooter"`               // 页脚
+	OneClickUIBody          string `yaml:"oneClickUIBody" json:"oneClickUIBody"`                   // 内容轮廓
+
+	SlideUIIsOn          bool   `yaml:"sliceUIIsOn" json:"sliceUIIsOn"`                   // 是否使用自定义UI
+	SlideUITitle         string `yaml:"slideUITitle" json:"slideUITitle"`                 // 消息标题
+	SlideUIPrompt        string `yaml:"slideUIPrompt" json:"slideUIPrompt"`               // 消息提示
+	SlideUIShowRequestId bool   `yaml:"SlideUIShowRequestId" json:"SlideUIShowRequestId"` // 是否显示请求ID
+	SlideUICss           string `yaml:"slideUICss" json:"slideUICss"`                     // CSS样式
+	SlideUIFooter        string `yaml:"slideUIFooter" json:"slideUIFooter"`               // 页脚
+	SlideUIBody          string `yaml:"slideUIBody" json:"slideUIBody"`                   // 内容轮廓
 
 	Lang           string `yaml:"lang" json:"lang"`                     // 语言，zh-CN, en-US ...
 	AddToWhiteList bool   `yaml:"addToWhiteList" json:"addToWhiteList"` // 是否加入到白名单
@@ -80,6 +99,10 @@ func (this *CaptchaAction) Init(waf *WAF) error {
 		}
 		if len(this.Lang) == 0 {
 			this.Lang = waf.DefaultCaptchaAction.Lang
+		}
+
+		if len(this.CaptchaType) == 0 {
+			this.CaptchaType = waf.DefaultCaptchaAction.CaptchaType
 		}
 	}
 

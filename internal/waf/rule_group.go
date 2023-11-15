@@ -74,7 +74,7 @@ func (this *RuleGroup) RemoveRuleSet(id int64) {
 	this.RuleSets = result
 }
 
-func (this *RuleGroup) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, set *RuleSet, err error) {
+func (this *RuleGroup) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, resultSet *RuleSet, err error) {
 	if !this.hasRuleSets {
 		return
 	}
@@ -93,7 +93,7 @@ func (this *RuleGroup) MatchRequest(req requests.Request) (b bool, hasRequestBod
 	return
 }
 
-func (this *RuleGroup) MatchResponse(req requests.Request, resp *requests.Response) (b bool, hasRequestBody bool, set *RuleSet, err error) {
+func (this *RuleGroup) MatchResponse(req requests.Request, resp *requests.Response) (b bool, hasRequestBody bool, resultSet *RuleSet, err error) {
 	if !this.hasRuleSets {
 		return
 	}

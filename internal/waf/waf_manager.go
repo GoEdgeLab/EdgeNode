@@ -192,6 +192,7 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			FailBlockTimeout:  policy.CaptchaOptions.FailBlockTimeout,
 			FailBlockScopeAll: policy.CaptchaOptions.FailBlockScopeAll,
 			CountLetters:      policy.CaptchaOptions.CountLetters,
+			CaptchaType:       policy.CaptchaOptions.CaptchaType,
 			UIIsOn:            policy.CaptchaOptions.UIIsOn,
 			UITitle:           policy.CaptchaOptions.UITitle,
 			UIPrompt:          policy.CaptchaOptions.UIPrompt,

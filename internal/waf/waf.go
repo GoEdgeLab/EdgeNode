@@ -242,7 +242,7 @@ func (this *WAF) MoveOutboundRuleGroup(fromIndex int, toIndex int) {
 	this.Outbound = result
 }
 
-func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, group *RuleGroup, sets *RuleSet, err error) {
+func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter, defaultCaptchaType firewallconfigs.ServerCaptchaType) (goNext bool, hasRequestBody bool, resultGroup *RuleGroup, resultSet *RuleSet, err error) {
 	if !this.hasInboundRules {
 		return true, hasRequestBody, nil, nil, nil
 	}
@@ -251,7 +251,7 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) 
 	var rawPath = req.WAFRaw().URL.Path
 	if rawPath == CaptchaPath {
 		req.DisableAccessLog()
-		captchaValidator.Run(req, writer)
+		captchaValidator.Run(req, writer, defaultCaptchaType)
 		return
 	}
 
@@ -284,7 +284,7 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter) 
 	return true, hasRequestBody, nil, nil, nil
 }
 
-func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, group *RuleGroup, set *RuleSet, err error) {
+func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, resultGroup *RuleGroup, resultSet *RuleSet, err error) {
 	if !this.hasOutboundRules {
 		return true, hasRequestBody, nil, nil, nil
 	}
@@ -310,7 +310,7 @@ func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, wri
 	return true, hasRequestBody, nil, nil, nil
 }
 
-// Save save to file path
+// Save to file path
 func (this *WAF) Save(path string) error {
 	if len(path) == 0 {
 		return errors.New("path should not be empty")
@@ -385,7 +385,7 @@ func (this *WAF) FindCheckpointInstance(prefix string) checkpoints.CheckpointInt
 	return nil
 }
 
-// Start start
+// Start
 func (this *WAF) Start() {
 	for _, checkpoint := range this.checkpointsMap {
 		checkpoint.Start()
