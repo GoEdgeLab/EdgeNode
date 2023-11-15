@@ -27,9 +27,10 @@ func (this *HTTPRequest) doReverseProxy() {
 
 	var failedOriginIds []int64
 	var failedLnNodeIds []int64
+	var failStatusCode int
 
 	for i := 0; i < retries; i++ {
-		originId, lnNodeId, shouldRetry := this.doOriginRequest(failedOriginIds, failedLnNodeIds, i == 0, i == retries-1)
+		originId, lnNodeId, shouldRetry := this.doOriginRequest(failedOriginIds, failedLnNodeIds, i == 0, i == retries-1, &failStatusCode)
 		if !shouldRetry {
 			break
 		}
@@ -43,7 +44,7 @@ func (this *HTTPRequest) doReverseProxy() {
 }
 
 // 请求源站
-func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeIds []int64, isFirstTry bool, isLastRetry bool) (originId int64, lnNodeId int64, shouldRetry bool) {
+func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeIds []int64, isFirstTry bool, isLastRetry bool, failStatusCode *int) (originId int64, lnNodeId int64, shouldRetry bool) {
 	// 对URL的处理
 	var stripPrefix = this.reverseProxy.StripPrefix
 	var requestURI = this.reverseProxy.RequestURI
@@ -91,6 +92,10 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		}
 		if origin == nil {
 			origin = this.reverseProxy.NextOrigin(requestCall)
+			if origin != nil && origin.Id > 0 && (*failStatusCode >= 403 && *failStatusCode <= 404) && lists.ContainsInt64(failedOriginIds, origin.Id) {
+				this.writeCode(*failStatusCode, "", "")
+				return
+			}
 		}
 		requestCall.CallResponseCallbacks(this.writer)
 		if origin == nil {
@@ -376,11 +381,11 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		return
 	}
 
-	// 50x
+	// 40x && 50x
+	*failStatusCode = resp.StatusCode
 	if resp != nil &&
-		resp.StatusCode >= 500 &&
-		resp.StatusCode < 510 &&
-		this.reverseProxy.Retry50X &&
+		((resp.StatusCode >= 500 && resp.StatusCode < 510 && this.reverseProxy.Retry50X) ||
+			(resp.StatusCode >= 403 && resp.StatusCode <= 404 && this.reverseProxy.Retry40X)) &&
 		(originId > 0 || (lnNodeId > 0 && hasMultipleLnNodes)) &&
 		!isLastRetry {
 		if resp.Body != nil {
