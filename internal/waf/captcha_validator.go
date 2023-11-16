@@ -232,7 +232,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	}
 	</script>
 	<style type="text/css">
-	form { width: 20em; margin: 0 auto; text-align: center; }
+	form { max-width: 20em; margin: 0 auto; text-align: center; }
 	.input { font-size:16px;line-height:24px; letter-spacing:0.2em; min-width: 5em; text-align: center; }
 	address { margin-top: 1em; padding-top: 0.5em; border-top: 1px #ccc solid; text-align: center; }
 ` + msgCss + `
@@ -378,7 +378,7 @@ func (this *CaptchaValidator) showOneClickForm(actionConfig *CaptchaAction, req 
 	window.addEventListener("load",function(){var t=document.getElementById("checkbox"),n=!1;t.addEventListener("click",function(){var e;t.className="ui-checkbox checked",n||(n=!0,(e=document.createElement("input")).setAttribute("name","nonce"),e.setAttribute("type","hidden"),e.setAttribute("value","` + types.String(nonce) + `"),document.getElementById("ui-form").appendChild(e),document.getElementById("ui-form").submit())})});
 	</script>
 	<style type="text/css">
-	form { width: 20em; margin: 0 auto; text-align: center; }
+	form { max-width: 20em; margin: 0 auto; text-align: center; }
     .ui-input { position: relative; padding-top: 1em; height: 2.2em; background: #eee; }
     .ui-checkbox { width: 16px; height: 16px; border: 1px #999 solid; float: left; margin-left: 1em; cursor: pointer; }
     .ui-checkbox.checked { background: #276AC6; }
@@ -535,7 +535,7 @@ func (this *CaptchaValidator) showSlideForm(actionConfig *CaptchaAction, req req
 window.addEventListener("load",function(){var n=document.getElementById("input"),s=document.getElementById("handler"),o=document.getElementById("progress-bar"),d=!1,u=0,t=n.offsetLeft,c=s.offsetLeft,i=n.offsetWidth-s.offsetWidth-s.offsetLeft,f=!1;function e(e){e.preventDefault(),d=!0,u=null!=e.touches&&0<e.touches.length?e.touches[0].clientX-t:e.offsetX}function l(e){var t;d&&(t=e.x,null!=e.touches&&0<e.touches.length&&(t=e.touches[0].clientX),(t=t-n.offsetLeft-u)<c?t=c:i<t&&(t=i),s.style.cssText="margin-left: "+t+"px",0<t&&(o.style.cssText="width: "+(t+s.offsetWidth+4)+"px"))}function r(e){var t;d=d&&!1,s.offsetLeft<i-4?(s.style.cssText="margin-left: "+c+"px",n.style.cssText="background: #eee",o.style.cssText="width: 0px"):(s.style.cssText="margin-left: "+i+"px",n.style.cssText="background: #a5dc86",f||(f=!0,(t=document.createElement("input")).setAttribute("name","nonce"),t.setAttribute("type","hidden"),t.setAttribute("value","` + types.String(nonce) + `"),document.getElementById("ui-form").appendChild(t),document.getElementById("ui-form").submit()))}void 0!==document.ontouchstart?(s.addEventListener("touchstart",e),document.addEventListener("touchmove",l),document.addEventListener("touchend",r)):(s.addEventListener("mousedown",e),window.addEventListener("mousemove",l),window.addEventListener("mouseup",r))});
 	</script>
 	<style type="text/css">
-	form { width: 20em; margin: 5em auto; text-align: center; }
+	form { max-width: 20em; margin: 5em auto; text-align: center; }
  		.ui-input {
             height: 4em;
             background: #eee;
