@@ -6,7 +6,10 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/cachehits"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/cespare/xxhash"
+	"github.com/iwind/TeaGo/types"
+	stringutil "github.com/iwind/TeaGo/utils/string"
 	"strconv"
 )
 
@@ -94,4 +97,9 @@ func MatchBytesCache(regex *re.Regexp, byteSlice []byte, cacheLife CacheLife) bo
 	}
 	cacheHits.IncreaseCached(regIdString)
 	return b
+}
+
+// ComposeIPType 组合IP类型
+func ComposeIPType(setId int64, req requests.Request) string {
+	return "set:" + types.String(setId) + "@" + stringutil.Md5(req.WAFRaw().UserAgent())
 }

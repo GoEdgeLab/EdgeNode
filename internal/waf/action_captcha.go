@@ -5,8 +5,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
-	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"net/url"
 	"strings"
@@ -123,7 +123,7 @@ func (this *CaptchaAction) WillChange() bool {
 
 func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
 	// 是否在白名单中
-	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, req.WAFServerId(), req.WAFRemoteIP()) {
+	if SharedIPWhiteList.Contains(wafutils.ComposeIPType(set.Id, req), this.Scope, req.WAFServerId(), req.WAFRemoteIP()) {
 		return true, false
 	}
 

@@ -8,13 +8,13 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
+	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/dchest/captcha"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -263,7 +263,7 @@ func (this *CaptchaValidator) validateVerifyCodeForm(actionConfig *CaptchaAction
 			}
 
 			// 加入到白名单
-			SharedIPWhiteList.RecordIP("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
+			SharedIPWhiteList.RecordIP(wafutils.ComposeIPType(setId, req), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
 
 			req.ProcessResponseHeaders(writer.Header(), http.StatusSeeOther)
 			http.Redirect(writer, req.WAFRaw(), originURL, http.StatusSeeOther)
@@ -416,7 +416,7 @@ func (this *CaptchaValidator) validateOneClickForm(actionConfig *CaptchaAction, 
 				}
 
 				// 加入到白名单
-				SharedIPWhiteList.RecordIP("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
+				SharedIPWhiteList.RecordIP(wafutils.ComposeIPType(setId, req), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
 
 				req.ProcessResponseHeaders(writer.Header(), http.StatusSeeOther)
 				http.Redirect(writer, req.WAFRaw(), originURL, http.StatusSeeOther)
@@ -615,7 +615,7 @@ func (this *CaptchaValidator) validateSlideForm(actionConfig *CaptchaAction, pol
 				}
 
 				// 加入到白名单
-				SharedIPWhiteList.RecordIP("set:"+strconv.FormatInt(setId, 10), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
+				SharedIPWhiteList.RecordIP(wafutils.ComposeIPType(setId, req), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP(), time.Now().Unix()+int64(life), policyId, false, groupId, setId, "")
 
 				req.ProcessResponseHeaders(writer.Header(), http.StatusSeeOther)
 				http.Redirect(writer, req.WAFRaw(), originURL, http.StatusSeeOther)
