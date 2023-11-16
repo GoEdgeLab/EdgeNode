@@ -2,6 +2,7 @@ package waf
 
 import (
 	"bytes"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/lists"
@@ -49,7 +50,7 @@ func Test_Template2(t *testing.T) {
 	}
 
 	now := time.Now()
-	goNext, _, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil)
+	goNext, _, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +78,7 @@ func BenchmarkTemplate(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		_, _, _, _, _ = waf.MatchRequest(requests.NewTestRequest(req), nil)
+		_, _, _, _, _ = waf.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	}
 }
 
@@ -86,7 +87,7 @@ func testTemplate1001(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +102,7 @@ func testTemplate1002(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +117,7 @@ func testTemplate1003(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +183,7 @@ func testTemplate2001(a *assert.Assertion, t *testing.T, template *WAF) {
 
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +198,7 @@ func testTemplate3001(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +213,7 @@ func testTemplate4001(a *assert.Assertion, t *testing.T, template *WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +229,7 @@ func testTemplate5001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -243,7 +244,7 @@ func testTemplate5001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -260,7 +261,7 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -275,7 +276,7 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -298,7 +299,7 @@ func testTemplate7001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -335,7 +336,7 @@ func testTemplate20001(a *assert.Assertion, t *testing.T, template *WAF) {
 			t.Fatal(err)
 		}
 		req.Header.Set("User-Agent", bot)
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}

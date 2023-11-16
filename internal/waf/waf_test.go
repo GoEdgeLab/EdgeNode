@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/assert"
 	"net/http"
@@ -42,7 +43,7 @@ func TestWAF_MatchRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	goNext, _, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil)
+	goNext, _, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
