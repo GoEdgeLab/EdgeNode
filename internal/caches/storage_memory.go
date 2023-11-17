@@ -584,8 +584,7 @@ func (this *MemoryStorage) flushItem(key string) {
 }
 
 func (this *MemoryStorage) memoryCapacityBytes() int64 {
-	var maxSystemBytes = int64(utils.SystemMemoryBytes()) / 3 // 1/3 of the system memory
-
+	var maxSystemBytes = SharedManager.MaxSystemMemoryBytesPerStorage()
 	if this.policy == nil {
 		return maxSystemBytes
 	}
@@ -612,7 +611,6 @@ func (this *MemoryStorage) memoryCapacityBytes() int64 {
 		}
 	}
 
-	// 1/4 of the system memory
 	return maxSystemBytes
 }
 

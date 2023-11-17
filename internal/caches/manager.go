@@ -7,6 +7,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"golang.org/x/sys/unix"
@@ -34,6 +35,9 @@ type Manager struct {
 	MainDiskDir       string
 	SubDiskDirs       []*serverconfigs.CacheDir
 	MaxMemoryCapacity *shared.SizeCapacity
+
+	CountFileStorages   int
+	CountMemoryStorages int
 
 	policyMap  map[int64]*serverconfigs.HTTPCachePolicy // policyId => []*Policy
 	storageMap map[int64]StorageInterface               // policyId => *Storage
@@ -143,6 +147,16 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 			}
 		}
 	}
+
+	this.CountFileStorages = 0
+	this.CountFileStorages = 0
+	for _, storage := range this.storageMap {
+		_, isFileStorage := storage.(*FileStorage)
+		this.CountMemoryStorages++
+		if isFileStorage {
+			this.CountFileStorages++
+		}
+	}
 }
 
 // FindPolicy 获取Policy信息
@@ -170,6 +184,11 @@ func (this *Manager) NewStorageWithPolicy(policy *serverconfigs.HTTPCachePolicy)
 		return NewMemoryStorage(policy, nil)
 	}
 	return nil
+}
+
+// StorageMap 获取已有的存储对象
+func (this *Manager) StorageMap() map[int64]StorageInterface {
+	return this.storageMap
 }
 
 // TotalDiskSize 消耗的磁盘尺寸
@@ -271,4 +290,18 @@ func (this *Manager) ScanGarbageCaches(callback func(path string) error) error {
 		}
 	}
 	return nil
+}
+
+// MaxSystemMemoryBytesPerStorage 计算单个策略能使用的系统最大内存
+func (this *Manager) MaxSystemMemoryBytesPerStorage() int64 {
+	var count = this.CountMemoryStorages
+	if count < 1 {
+		count = 1
+	}
+
+	var resultBytes = int64(utils.SystemMemoryBytes()) / 3 / int64(count) // 1/3 of the system memory
+	if resultBytes < 1<<30 {
+		resultBytes = 1 << 30
+	}
+	return resultBytes
 }
