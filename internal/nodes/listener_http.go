@@ -162,7 +162,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		domain = reqHost
 	}
 
-	server, serverName := this.findNamedServer(domain)
+	server, serverName := this.findNamedServer(domain, false)
 	if server == nil {
 		if server == nil {
 			// 增加默认的一个服务
