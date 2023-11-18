@@ -96,6 +96,8 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		return
 	}
 
+	var isDefendMode = firewallPolicy.Mode == firewallconfigs.FirewallModeDefend
+
 	// 检查IP白名单
 	var remoteAddrs []string
 	if len(this.remoteAddr) > 0 {
@@ -122,7 +124,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 
 	// 检查IP黑名单
-	if firewallPolicy.Mode == firewallconfigs.FirewallModeDefend {
+	if isDefendMode {
 		for _, ref := range inbound.AllDenyListRefs() {
 			if ref.IsOn && ref.ListId > 0 {
 				list := iplibrary.SharedIPListManager.FindList(ref.ListId)
@@ -161,19 +163,20 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 
 	// 检查地区封禁
-	if firewallPolicy.Mode == firewallconfigs.FirewallModeDefend {
-		if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
-			var regionConfig = firewallPolicy.Inbound.Region
-			if regionConfig.IsNotEmpty() {
-				for _, remoteAddr := range remoteAddrs {
-					var result = iplib.LookupIP(remoteAddr)
-					if result != nil && result.IsOk() {
-						var currentURL = this.URL()
-						if regionConfig.MatchCountryURL(currentURL) {
-							// 检查国家/地区级别封禁
-							if !regionConfig.IsAllowedCountry(result.CountryId(), result.ProvinceId()) {
-								this.firewallPolicyId = firewallPolicy.Id
 
+	if firewallPolicy.Inbound.Region != nil && firewallPolicy.Inbound.Region.IsOn {
+		var regionConfig = firewallPolicy.Inbound.Region
+		if regionConfig.IsNotEmpty() {
+			for _, remoteAddr := range remoteAddrs {
+				var result = iplib.LookupIP(remoteAddr)
+				if result != nil && result.IsOk() {
+					var currentURL = this.URL()
+					if regionConfig.MatchCountryURL(currentURL) {
+						// 检查国家/地区级别封禁
+						if !regionConfig.IsAllowedCountry(result.CountryId(), result.ProvinceId()) {
+							this.firewallPolicyId = firewallPolicy.Id
+
+							if isDefendMode {
 								var promptHTML string
 								if len(regionConfig.CountryHTML) > 0 {
 									promptHTML = regionConfig.CountryHTML
@@ -193,23 +196,27 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 								// 延时返回，避免攻击
 								time.Sleep(1 * time.Second)
+							}
 
-								// 停止日志
-								if !logDenying {
-									this.disableLog = true
-								} else {
-									this.tags = append(this.tags, "denyCountry")
-								}
+							// 停止日志
+							if !logDenying {
+								this.disableLog = true
+							} else {
+								this.tags = append(this.tags, "denyCountry")
+							}
 
+							if isDefendMode {
 								return true, false
 							}
 						}
+					}
 
-						if regionConfig.MatchProvinceURL(currentURL) {
-							// 检查省份封禁
-							if !regionConfig.IsAllowedProvince(result.CountryId(), result.ProvinceId()) {
-								this.firewallPolicyId = firewallPolicy.Id
+					if regionConfig.MatchProvinceURL(currentURL) {
+						// 检查省份封禁
+						if !regionConfig.IsAllowedProvince(result.CountryId(), result.ProvinceId()) {
+							this.firewallPolicyId = firewallPolicy.Id
 
+							if isDefendMode {
 								var promptHTML string
 								if len(regionConfig.ProvinceHTML) > 0 {
 									promptHTML = regionConfig.ProvinceHTML
@@ -229,14 +236,16 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 
 								// 延时返回，避免攻击
 								time.Sleep(1 * time.Second)
+							}
 
-								// 停止日志
-								if !logDenying {
-									this.disableLog = true
-								} else {
-									this.tags = append(this.tags, "denyProvince")
-								}
+							// 停止日志
+							if !logDenying {
+								this.disableLog = true
+							} else {
+								this.tags = append(this.tags, "denyProvince")
+							}
 
+							if isDefendMode {
 								return true, false
 							}
 						}
