@@ -85,6 +85,10 @@ func (this *TestRequest) DisableAccessLog() {
 
 }
 
+func (this *TestRequest) DisableStat() {
+
+}
+
 func (this *TestRequest) ProcessResponseHeaders(headers http.Header, status int) {
 
 }

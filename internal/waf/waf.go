@@ -251,6 +251,7 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter, 
 	var rawPath = req.WAFRaw().URL.Path
 	if rawPath == CaptchaPath {
 		req.DisableAccessLog()
+		req.DisableStat()
 		captchaValidator.Run(req, writer, defaultCaptchaType)
 		return
 	}
@@ -258,6 +259,7 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter, 
 	// Get 302验证
 	if rawPath == Get302Path {
 		req.DisableAccessLog()
+		req.DisableStat()
 		get302Validator.Run(req, writer)
 		return
 	}

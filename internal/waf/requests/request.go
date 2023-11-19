@@ -46,4 +46,7 @@ type Request interface {
 
 	// DisableAccessLog 在当前请求中不使用访问日志
 	DisableAccessLog()
+
+	// DisableStat 在当前请求中停用统计
+	DisableStat()
 }

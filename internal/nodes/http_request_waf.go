@@ -478,3 +478,10 @@ func (this *HTTPRequest) WAFMaxRequestSize() int64 {
 func (this *HTTPRequest) DisableAccessLog() {
 	this.disableLog = true
 }
+
+// DisableStat 停用统计
+func (this *HTTPRequest) DisableStat() {
+	if this.web != nil {
+		this.web.StatRef = nil
+	}
+}
