@@ -4,7 +4,6 @@ package waf
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/types"
@@ -45,14 +44,5 @@ func CaptchaDeleteCacheKey(req requests.Request) {
 
 // CaptchaCacheKey 获取Captcha缓存Key
 func CaptchaCacheKey(req requests.Request, pageCode CaptchaPageCode) string {
-	var requestPath = req.WAFRaw().URL.Path
-
-	if req.WAFRaw().URL.Path == CaptchaPath {
-		m, err := utils.SimpleDecryptMap(req.WAFRaw().URL.Query().Get("info"))
-		if err == nil && m != nil {
-			requestPath = m.GetString("url")
-		}
-	}
-
-	return "WAF:CAPTCHA:FAILS:" + pageCode + ":" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId()) + ":" + requestPath
+	return "WAF:CAPTCHA:FAILS:" + pageCode + ":" + req.WAFRemoteIP() + ":" + types.String(req.WAFServerId())
 }
