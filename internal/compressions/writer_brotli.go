@@ -1,4 +1,5 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
+//go:build !plus || !linux
 
 package compressions
 
@@ -27,7 +28,7 @@ func newBrotliWriter(writer io.Writer, level int) (*BrotliWriter, error) {
 	return &BrotliWriter{
 		writer: brotli.NewWriterOptions(writer, brotli.WriterOptions{
 			Quality: level,
-			LGWin:   13, // TODO 在全局设置里可以设置此值
+			LGWin:   14, // TODO 在全局设置里可以设置此值
 		}),
 		level: level,
 	}, nil

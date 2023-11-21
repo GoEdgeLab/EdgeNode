@@ -123,8 +123,8 @@ function build() {
 
 	# libpcap
 	if [ "$OS" == "linux" ] && [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ]] &&  [ "$TAG" == "plus" ]; then
-		CGO_LDFLAGS="-L${SRCDIR}/libs/libpcap/${ARCH} -lpcap"
-		CGO_CFLAGS="-I${SRCDIR}/libs/libpcap/src/libpcap -I${SRCDIR}/libs/libpcap/src/libpcap/pcap"
+		CGO_LDFLAGS="-L${SRCDIR}/libs/libpcap/${ARCH} -lpcap -L${SRCDIR}/libs/libbrotli/${ARCH} -lbrotlienc -lbrotlidec -lbrotlicommon"
+		CGO_CFLAGS="-I${SRCDIR}/libs/libpcap/src/libpcap -I${SRCDIR}/libs/libpcap/src/libpcap/pcap -I${SRCDIR}/libs/libbrotli/src/brotli/c/include"
 	fi
 
 	if [ ! -z $CC_PATH ]; then
