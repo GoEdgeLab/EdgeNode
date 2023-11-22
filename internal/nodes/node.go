@@ -1039,7 +1039,7 @@ func (this *Node) reloadServer() {
 		for serverId, serverConfig := range updatingServerMap {
 			if serverConfig != nil {
 				if countUpdatingServers < maxPrintServers {
-					remotelogs.Debug("NODE", "load server '"+types.String(serverId)+"'")
+					remotelogs.Debug("NODE", "reload server '"+types.String(serverId)+"'")
 				}
 				newNodeConfig.AddServer(serverConfig)
 			} else {
