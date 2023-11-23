@@ -125,6 +125,13 @@ func TestFileListHashMap_Delete(t *testing.T) {
 	a.IsTrue(m.Len() == 0)
 }
 
+func TestFileListHashMap_Clean(t *testing.T) {
+	var m = caches.NewFileListHashMap()
+	m.SetIsAvailable(true)
+	m.Clean()
+	m.Add("a")
+}
+
 func Benchmark_BigInt(b *testing.B) {
 	var hash = stringutil.Md5("123456")
 	b.ResetTimer()

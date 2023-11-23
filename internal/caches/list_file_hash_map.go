@@ -133,7 +133,10 @@ func (this *FileListHashMap) Clean() {
 		this.lockers[i].Lock()
 	}
 
-	this.m = make([]map[uint64]zero.Zero, HashMapSharding)
+	// 这里不能简单清空 this.m ，避免导致别的数据无法写入 map 而产生 panic
+	for i := 0; i < HashMapSharding; i++ {
+		this.m[i] = map[uint64]zero.Zero{}
+	}
 
 	for i := HashMapSharding - 1; i >= 0; i-- {
 		this.lockers[i].Unlock()
