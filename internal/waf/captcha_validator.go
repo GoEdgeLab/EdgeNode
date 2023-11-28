@@ -1,8 +1,6 @@
 package waf
 
 import (
-	"bytes"
-	"encoding/base64"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/ttlcache"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -18,6 +16,8 @@ import (
 	"strings"
 	"time"
 )
+
+const captchaIdName = "GOEDGE_WAF_CAPTCHA_ID"
 
 var captchaValidator = NewCaptchaValidator()
 
@@ -81,7 +81,7 @@ func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWrit
 		captchaType = defaultCaptchaType
 	}
 
-	if req.WAFRaw().Method == http.MethodPost && len(req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")) > 0 {
+	if req.WAFRaw().Method == http.MethodPost && len(req.WAFRaw().FormValue(captchaIdName)) > 0 {
 		switch captchaType {
 		case firewallconfigs.CaptchaTypeOneClick:
 			this.validateOneClickForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer)
@@ -91,9 +91,16 @@ func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWrit
 			this.validateVerifyCodeForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer)
 		}
 	} else {
-		// 增加计数
-		CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeShow)
-		this.show(captchaActionConfig, req, writer, captchaType)
+		var captchaId = req.WAFRaw().URL.Query().Get(captchaIdName)
+		if len(captchaId) > 0 {
+			// 增加计数
+			CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeImage)
+			this.showImage(captchaActionConfig, req, writer, captchaType)
+		} else {
+			// 增加计数
+			CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeShow)
+			this.show(captchaActionConfig, req, writer, captchaType)
+		}
 	}
 }
 
@@ -108,6 +115,17 @@ func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Req
 	}
 }
 
+func (this *CaptchaValidator) showImage(actionConfig *CaptchaAction, req requests.Request, writer http.ResponseWriter, captchaType firewallconfigs.ServerCaptchaType) {
+	switch captchaType {
+	case firewallconfigs.CaptchaTypeOneClick:
+		// stub
+	case firewallconfigs.CaptchaTypeSlide:
+		// stub
+	default:
+		this.showVerifyImage(actionConfig, req, writer)
+	}
+}
+
 func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, req requests.Request, writer http.ResponseWriter) {
 	// show captcha
 	var countLetters = 6
@@ -115,12 +133,6 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 		countLetters = int(actionConfig.CountLetters)
 	}
 	var captchaId = captcha.NewLen(countLetters)
-	var buf = bytes.NewBuffer([]byte{})
-	err := captcha.WriteImage(buf, captchaId, 200, 100)
-	if err != nil {
-		logs.Error(err)
-		return
-	}
 
 	var lang = actionConfig.Lang
 	if len(lang) == 0 {
@@ -191,9 +203,10 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	}
 
 	var body = `<form method="POST">
-	<input type="hidden" name="GOEDGE_WAF_CAPTCHA_ID" value="` + captchaId + `"/>
+	<input type="hidden" name="` + captchaIdName + `" value="` + captchaId + `"/>
 	<div class="ui-image">
-		<img src="data:image/png;base64, ` + base64.StdEncoding.EncodeToString(buf.Bytes()) + `"/>` + `
+		<p id="ui-captcha-image-prompt">loading ...</p>
+		<img id="ui-captcha-image" src="` + req.WAFRaw().URL.String() + `&` + captchaIdName + `=` + captchaId + `" alt=""/>
 	</div>
 	<div class="ui-input">
 		<p class="ui-prompt">` + msgPrompt + `</p>
@@ -226,9 +239,15 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	<meta charset="UTF-8"/>
 	<script type="text/javascript">
 	if (window.addEventListener != null) {
-		window.addEventListener("load", function () {
-			document.getElementById("GOEDGE_WAF_CAPTCHA_CODE").focus()
+		document.addEventListener("DOMContentLoaded", function () {
+			document.getElementById("ui-captcha-image").addEventListener("load", function () {
+				var promptBox = document.getElementById("ui-captcha-image-prompt");
+				promptBox.parentNode.removeChild(promptBox);
+			});
 		})
+		window.addEventListener("load", function () {
+			document.getElementById("GOEDGE_WAF_CAPTCHA_CODE").focus();
+		});
 	}
 	</script>
 	<style type="text/css">
@@ -249,8 +268,22 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	_, _ = writer.Write([]byte(msgHTML))
 }
 
+func (this *CaptchaValidator) showVerifyImage(actionConfig *CaptchaAction, req requests.Request, writer http.ResponseWriter) {
+	var captchaId = req.WAFRaw().URL.Query().Get(captchaIdName)
+	if len(captchaId) == 0 {
+		return
+	}
+
+	writer.Header().Set("Content-Type", "image/png")
+	err := captcha.WriteImage(writer, captchaId, 200, 100)
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+}
+
 func (this *CaptchaValidator) validateVerifyCodeForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {
-	var captchaId = req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
+	var captchaId = req.WAFRaw().FormValue(captchaIdName)
 	if len(captchaId) > 0 {
 		var captchaCode = req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
 		if captcha.VerifyString(captchaId, captchaCode) {
@@ -347,7 +380,7 @@ func (this *CaptchaValidator) showOneClickForm(actionConfig *CaptchaAction, req 
 	}
 
 	var body = `<form method="POST" id="ui-form">
-	<input type="hidden" name="GOEDGE_WAF_CAPTCHA_ID" value="` + captchaId + `"/>
+	<input type="hidden" name="` + captchaIdName + `" value="` + captchaId + `"/>
 	<div class="ui-input">
 		<div class="ui-checkbox" id="checkbox"></div>
 		<p class="ui-prompt">` + msgPrompt + `</p>
@@ -399,7 +432,7 @@ func (this *CaptchaValidator) showOneClickForm(actionConfig *CaptchaAction, req 
 }
 
 func (this *CaptchaValidator) validateOneClickForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {
-	var captchaId = req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
+	var captchaId = req.WAFRaw().FormValue(captchaIdName)
 	var nonce = req.WAFRaw().FormValue("nonce")
 	if len(captchaId) > 0 {
 		var key = "WAF_CAPTCHA:" + captchaId
@@ -501,7 +534,7 @@ func (this *CaptchaValidator) showSlideForm(actionConfig *CaptchaAction, req req
 	}
 
 	var body = `<form method="POST" id="ui-form">
-	<input type="hidden" name="GOEDGE_WAF_CAPTCHA_ID" value="` + captchaId + `"/>
+	<input type="hidden" name="` + captchaIdName + `" value="` + captchaId + `"/>
 	 <div class="ui-input" id="input">
       	<div class="ui-progress-bar" id="progress-bar"></div>
         <div class="ui-handler" id="handler"></div>
@@ -598,7 +631,7 @@ window.addEventListener("load",function(){var n=document.getElementById("input")
 }
 
 func (this *CaptchaValidator) validateSlideForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {
-	var captchaId = req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_ID")
+	var captchaId = req.WAFRaw().FormValue(captchaIdName)
 	var nonce = req.WAFRaw().FormValue("nonce")
 	if len(captchaId) > 0 {
 		var key = "WAF_CAPTCHA:" + captchaId

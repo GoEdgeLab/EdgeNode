@@ -15,6 +15,7 @@ type CaptchaPageCode = string
 const (
 	CaptchaPageCodeInit   CaptchaPageCode = "init"
 	CaptchaPageCodeShow   CaptchaPageCode = "show"
+	CaptchaPageCodeImage  CaptchaPageCode = "image"
 	CaptchaPageCodeSubmit CaptchaPageCode = "submit"
 )
 
@@ -39,6 +40,7 @@ func CaptchaIncreaseFails(req requests.Request, actionConfig *CaptchaAction, pol
 func CaptchaDeleteCacheKey(req requests.Request) {
 	counters.SharedCounter.ResetKey(CaptchaCacheKey(req, CaptchaPageCodeInit))
 	counters.SharedCounter.ResetKey(CaptchaCacheKey(req, CaptchaPageCodeShow))
+	counters.SharedCounter.ResetKey(CaptchaCacheKey(req, CaptchaPageCodeImage))
 	counters.SharedCounter.ResetKey(CaptchaCacheKey(req, CaptchaPageCodeSubmit))
 }
 
