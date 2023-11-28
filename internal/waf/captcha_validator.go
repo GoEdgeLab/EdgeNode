@@ -99,12 +99,18 @@ func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWrit
 		} else {
 			// 增加计数
 			CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeShow)
-			this.show(captchaActionConfig, req, writer, captchaType)
+			this.show(captchaActionConfig, setId, originURL, req, writer, captchaType)
 		}
 	}
 }
 
-func (this *CaptchaValidator) show(actionConfig *CaptchaAction, req requests.Request, writer http.ResponseWriter, captchaType firewallconfigs.ServerCaptchaType) {
+func (this *CaptchaValidator) show(actionConfig *CaptchaAction, setId int64, originURL string, req requests.Request, writer http.ResponseWriter, captchaType firewallconfigs.ServerCaptchaType) {
+	// validated yet?
+	if SharedIPWhiteList.Contains(wafutils.ComposeIPType(setId, req), actionConfig.Scope, req.WAFServerId(), req.WAFRemoteIP()) {
+		http.Redirect(writer, req.WAFRaw(), originURL, http.StatusSeeOther)
+		return
+	}
+
 	switch captchaType {
 	case firewallconfigs.CaptchaTypeOneClick:
 		this.showOneClickForm(actionConfig, req, writer)
