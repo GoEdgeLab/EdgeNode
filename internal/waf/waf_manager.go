@@ -202,6 +202,7 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			UIFooter:          policy.CaptchaOptions.UIFooter,
 			UIBody:            policy.CaptchaOptions.UIBody,
 			Lang:              policy.CaptchaOptions.Lang,
+			GeeTestConfig:     &policy.CaptchaOptions.GeeTestConfig,
 		}
 	}
 
