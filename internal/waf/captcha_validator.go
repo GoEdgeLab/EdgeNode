@@ -12,7 +12,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
-	"github.com/dchest/captcha"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/rands"
@@ -29,6 +28,7 @@ import (
 const captchaIdName = "GOEDGE_WAF_CAPTCHA_ID"
 
 var captchaValidator = NewCaptchaValidator()
+var captchaGenerator = NewCaptchaGenerator()
 
 type CaptchaValidator struct {
 }
@@ -162,7 +162,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	if actionConfig.CountLetters > 0 && actionConfig.CountLetters <= 10 {
 		countLetters = int(actionConfig.CountLetters)
 	}
-	var captchaId = captcha.NewLen(countLetters)
+	var captchaId = captchaGenerator.NewCaptcha(countLetters)
 
 	var lang = actionConfig.Lang
 	if len(lang) == 0 {
@@ -305,7 +305,7 @@ func (this *CaptchaValidator) showVerifyImage(actionConfig *CaptchaAction, req r
 	}
 
 	writer.Header().Set("Content-Type", "image/png")
-	err := captcha.WriteImage(writer, captchaId, 200, 100)
+	err := captchaGenerator.WriteImage(writer, captchaId, 200, 100)
 	if err != nil {
 		logs.Error(err)
 		return
@@ -316,7 +316,7 @@ func (this *CaptchaValidator) validateVerifyCodeForm(actionConfig *CaptchaAction
 	var captchaId = req.WAFRaw().FormValue(captchaIdName)
 	if len(captchaId) > 0 {
 		var captchaCode = req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
-		if captcha.VerifyString(captchaId, captchaCode) {
+		if captchaGenerator.Verify(captchaId, captchaCode) {
 			// 清除计数
 			CaptchaDeleteCacheKey(req)
 
