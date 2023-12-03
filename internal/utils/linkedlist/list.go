@@ -2,7 +2,7 @@
 
 package linkedlist
 
-type List[T any]  struct {
+type List[T any] struct {
 	head  *Item[T]
 	end   *Item[T]
 	count int
@@ -36,6 +36,15 @@ func (this *List[T]) Push(item *Item[T]) {
 	this.add(item)
 }
 
+func (this *List[T]) Shift() *Item[T] {
+	if this.head != nil {
+		var old = this.head
+		this.Remove(this.head)
+		return old
+	}
+	return nil
+}
+
 func (this *List[T]) Remove(item *Item[T]) {
 	if item == nil {
 		return
@@ -64,6 +73,15 @@ func (this *List[T]) Len() int {
 
 func (this *List[T]) Range(f func(item *Item[T]) (goNext bool)) {
 	for e := this.head; e != nil; e = e.next {
+		goNext := f(e)
+		if !goNext {
+			break
+		}
+	}
+}
+
+func (this *List[T]) RangeReverse(f func(item *Item[T]) (goNext bool)) {
+	for e := this.end; e != nil; e = e.prev {
 		goNext := f(e)
 		if !goNext {
 			break
