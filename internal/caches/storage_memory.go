@@ -517,7 +517,7 @@ func (this *MemoryStorage) flushItem(key string) {
 		_ = this.Delete(key)
 
 		// 重用内存，前提是确保内存不再被引用
-		if ok && item.IsDone && !item.isReferring && len(item.BodyValue) > 0 {
+		if enableFragmentPool && ok && item.IsDone && !item.isReferring && len(item.BodyValue) > 0 {
 			SharedFragmentMemoryPool.Put(item.BodyValue)
 		}
 	}()

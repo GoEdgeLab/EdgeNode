@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	enableFragmentPool                  = false
 	minMemoryFragmentPoolItemSize       = 8 << 10
 	maxMemoryFragmentPoolItemSize       = 128 << 20
 	maxItemsInMemoryFragmentPoolBucket  = 1024
