@@ -67,6 +67,7 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 		return true, false
 	}
 
+	request.DisableStat()
 	request.ProcessResponseHeaders(writer.Header(), http.StatusFound)
 	http.Redirect(writer, request.WAFRaw(), Get302Path+"?info="+url.QueryEscape(info), http.StatusFound)
 
