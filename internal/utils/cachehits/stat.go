@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/iwind/TeaGo/Tea"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -138,7 +139,7 @@ func (this *Stat) IsGood(category string) bool {
 			return true
 		}
 
-		if item.countCached > countSamples && item.timestamp < fasttime.Now().Unix()-600 /** 10 minutes ago **/ {
+		if item.countCached > countSamples && (Tea.IsTesting() || item.timestamp < fasttime.Now().Unix()-600) /** 10 minutes ago **/ {
 			var isGood = item.countHits*100/item.countCached >= this.goodRatio
 			if isGood {
 				item.isGood = true

@@ -58,10 +58,10 @@ func TestNewStat(t *testing.T) {
 
 	{
 		var stat = cachehits.NewStat(5)
-		for i := 0; i < 10001; i++ {
+		for i := 0; i < 100001; i++ {
 			stat.IncreaseCached("a")
 		}
-		for i := 0; i < 499; i++ {
+		for i := 0; i < 4999; i++ {
 			stat.IncreaseHit("a")
 		}
 
