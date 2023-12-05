@@ -86,9 +86,6 @@ func MatchBytesCache(regex *re.Regexp, byteSlice []byte, cacheLife CacheLife) bo
 		cacheHits.IncreaseHit(regIdString)
 		return item.Value == 1
 	}
-	if item != nil {
-		return item.Value == 1
-	}
 	var b = regex.Match(byteSlice)
 	if b {
 		cache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
