@@ -12,11 +12,11 @@ type RequestAllCheckpoint struct {
 }
 
 func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param string, options maps.Map, ruleId int64) (value any, hasRequestBody bool, sysErr error, userErr error) {
-	var valueBytes = []byte{}
+	var valueBytes = [][]byte{}
 	if len(req.WAFRaw().RequestURI) > 0 {
-		valueBytes = append(valueBytes, req.WAFRaw().RequestURI...)
+		valueBytes = append(valueBytes, []byte(req.WAFRaw().RequestURI))
 	} else if req.WAFRaw().URL != nil {
-		valueBytes = append(valueBytes, req.WAFRaw().URL.RequestURI()...)
+		valueBytes = append(valueBytes, []byte(req.WAFRaw().URL.RequestURI()))
 	}
 
 	if this.RequestBodyIsEmpty(req) {
@@ -25,8 +25,6 @@ func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param strin
 	}
 
 	if req.WAFRaw().Body != nil {
-		valueBytes = append(valueBytes, ' ')
-
 		var bodyData = req.WAFGetCacheBody()
 		hasRequestBody = true
 		if len(bodyData) == 0 {
@@ -39,7 +37,9 @@ func (this *RequestAllCheckpoint) RequestValue(req requests.Request, param strin
 			req.WAFSetCacheBody(data)
 			req.WAFRestoreBody(data)
 		}
-		valueBytes = append(valueBytes, bodyData...)
+		if len(bodyData) > 0 {
+			valueBytes = append(valueBytes, bodyData)
+		}
 	}
 
 	value = valueBytes

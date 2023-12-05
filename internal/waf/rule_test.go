@@ -206,6 +206,30 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
+		var rule = NewRule()
+		rule.Operator = RuleOperatorMatch
+		rule.Value = "^\\d+"
+		err := rule.Init()
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsTrue(rule.Test([]byte("123")))
+		a.IsFalse(rule.Test([]byte("abc123")))
+	}
+
+	{
+		var rule = NewRule()
+		rule.Operator = RuleOperatorMatch
+		rule.Value = "^\\d+"
+		err := rule.Init()
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsTrue(rule.Test([][]byte{[]byte("123"), []byte("456")}))
+		a.IsFalse(rule.Test([][]byte{[]byte("abc123")}))
+	}
+
+	{
 		rule := NewRule()
 		rule.Operator = RuleOperatorMatch
 		rule.Value = "abc"
@@ -263,6 +287,19 @@ func TestRule_Test(t *testing.T) {
 		}
 		a.IsFalse(rule.Test([]string{"123", "456", "abc"}))
 		a.IsTrue(rule.Test([]string{"abc123"}))
+	}
+
+	{
+		var rule = NewRule()
+		rule.Operator = RuleOperatorNotMatch
+		rule.Value = "^\\d+"
+		err := rule.Init()
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsFalse(rule.Test([][]byte{[]byte("123"), []byte("456")}))
+		a.IsFalse(rule.Test([][]byte{[]byte("123"), []byte("abc")}))
+		a.IsTrue(rule.Test([][]byte{[]byte("abc123")}))
 	}
 
 	{

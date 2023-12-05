@@ -25,8 +25,14 @@ func TestRequestAllCheckpoint_RequestValue(t *testing.T) {
 	if userErr != nil {
 		t.Fatal(userErr)
 	}
-	t.Log(v)
-	t.Log(types.String(v))
+	if v != nil {
+		vv, ok := v.([][]byte)
+		if ok {
+			for _, v2 := range vv {
+				t.Log(string(v2), ":", v2)
+			}
+		}
+	}
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
