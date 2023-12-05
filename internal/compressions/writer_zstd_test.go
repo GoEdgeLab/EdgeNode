@@ -9,6 +9,24 @@ import (
 	"testing"
 )
 
+func TestNewZSTDWriter_Level0(t *testing.T) {
+	var buf = &bytes.Buffer{}
+	writer, err := compressions.NewZSTDWriter(buf, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var originData = []byte(strings.Repeat("Hello", 1024))
+	_, err = writer.Write(originData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = writer.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("origin data:", len(originData), "result:", buf.Len())
+}
+
 func TestNewZSTDWriter(t *testing.T) {
 	var buf = &bytes.Buffer{}
 	writer, err := compressions.NewZSTDWriter(buf, 10)

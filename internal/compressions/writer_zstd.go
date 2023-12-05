@@ -19,6 +19,10 @@ func NewZSTDWriter(writer io.Writer, level int) (Writer, error) {
 }
 
 func newZSTDWriter(writer io.Writer, level int) (Writer, error) {
+	if level < 0 {
+		level = 0
+	}
+
 	var zstdLevel = zstd.EncoderLevelFromZstd(level)
 
 	zstdWriter, err := zstd.NewWriter(writer, zstd.WithEncoderLevel(zstdLevel))

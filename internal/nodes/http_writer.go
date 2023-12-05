@@ -622,7 +622,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		return
 	}
 
-	if this.compressionConfig.Level <= 0 {
+	if this.compressionConfig.Level < 0 {
 		return
 	}
 
