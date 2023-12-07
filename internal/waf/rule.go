@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/filterconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/re"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/runes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
@@ -77,7 +78,7 @@ func (this *Rule) Init() error {
 		this.floatValue = types.Float64(this.Value)
 	case RuleOperatorNeq:
 		this.floatValue = types.Float64(this.Value)
-	case RuleOperatorContainsAny, RuleOperatorContainsAll:
+	case RuleOperatorContainsAny, RuleOperatorContainsAll, RuleOperatorContainsAnyWord, RuleOperatorContainsAllWords, RuleOperatorNotContainsAnyWord:
 		this.stringValues = []string{}
 		if len(this.Value) > 0 {
 			var lines = strings.Split(this.Value, "\n")
@@ -546,6 +547,12 @@ func (this *Rule) Test(value any) bool {
 			return true
 		}
 		return false
+	case RuleOperatorContainsAnyWord:
+		return runes.ContainsAnyWord(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
+	case RuleOperatorContainsAllWords:
+		return runes.ContainsAllWords(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
+	case RuleOperatorNotContainsAnyWord:
+		return !runes.ContainsAnyWord(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
 	case RuleOperatorContainsBinary:
 		data, _ := base64.StdEncoding.DecodeString(this.stringifyValue(this.Value))
 		if this.IsCaseInsensitive {

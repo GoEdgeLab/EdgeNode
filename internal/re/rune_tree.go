@@ -4,7 +4,7 @@ package re
 
 type RuneMap map[rune]*RuneTree
 
-func (this *RuneMap) Lookup(s string, caseInsensitive bool) bool {
+func (this RuneMap) Lookup(s string, caseInsensitive bool) bool {
 	return this.lookup([]rune(s), caseInsensitive, 0)
 }
 

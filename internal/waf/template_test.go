@@ -16,29 +16,38 @@ import (
 )
 
 func Test_Template(t *testing.T) {
-	a := assert.NewAssertion(t)
+	var a = assert.NewAssertion(t)
 
-	template := Template()
-	err := template.Init()
+	var waf = Template()
+
+	for _, group := range waf.Inbound {
+		group.IsOn = true
+
+		for _, set := range group.RuleSets {
+			set.IsOn = true
+		}
+	}
+
+	err := waf.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	testTemplate1001(a, t, template)
-	testTemplate1002(a, t, template)
-	testTemplate1003(a, t, template)
-	testTemplate2001(a, t, template)
-	testTemplate3001(a, t, template)
-	testTemplate4001(a, t, template)
-	testTemplate5001(a, t, template)
-	testTemplate6001(a, t, template)
-	testTemplate7001(a, t, template)
-	testTemplate20001(a, t, template)
+	testTemplate1001(a, t, waf)
+	testTemplate1002(a, t, waf)
+	testTemplate1003(a, t, waf)
+	testTemplate2001(a, t, waf)
+	testTemplate3001(a, t, waf)
+	testTemplate4001(a, t, waf)
+	testTemplate5001(a, t, waf)
+	testTemplate6001(a, t, waf)
+	testTemplate7001(a, t, waf)
+	testTemplate20001(a, t, waf)
 }
 
 func Test_Template2(t *testing.T) {
 	reader := bytes.NewReader([]byte(strings.Repeat("HELLO", 1024)))
-	req, err := http.NewRequest(http.MethodGet, "https://example.com/index.php?id=123", reader)
+	req, err := http.NewRequest(http.MethodPost, "https://example.com/index.php?id=123", reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,15 +74,25 @@ func Test_Template2(t *testing.T) {
 }
 
 func BenchmarkTemplate(b *testing.B) {
-	waf := Template()
+	var waf = Template()
+
+	for _, group := range waf.Inbound {
+		group.IsOn = true
+
+		for _, set := range group.RuleSets {
+			set.IsOn = true
+		}
+	}
+
 	err := waf.Init()
 	if err != nil {
 		b.Fatal(err)
 	}
 
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		reader := bytes.NewReader([]byte(strings.Repeat("Hello", 1024)))
-		req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=123", reader)
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/index.php?id=123", nil)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -310,6 +329,68 @@ func testTemplate7001(a *assert.Assertion, t *testing.T, template *WAF) {
 			t.Log("break:", id)
 		}
 	}
+}
+
+func TestTemplateSQLInjection(t *testing.T) {
+	var template = Template()
+	errs := template.Init()
+	if len(errs) > 0 {
+		t.Fatal(errs)
+		return
+	}
+	var group = template.FindRuleGroupWithCode("sqlInjection")
+	if group == nil {
+		t.Fatal("group not found")
+		return
+	}
+	//
+	//for _, set := range group.RuleSets {
+	//	for _, rule := range set.Rules {
+	//		t.Logf("%#v", rule.singleCheckpoint)
+	//	}
+	//}
+
+	req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1234", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, result, err := group.MatchRequest(requests.NewTestRequest(req))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result != nil {
+		t.Log(result)
+	}
+}
+
+func BenchmarkTemplateSQLInjection(b *testing.B) {
+	var template = Template()
+	errs := template.Init()
+	if len(errs) > 0 {
+		b.Fatal(errs)
+		return
+	}
+	var group = template.FindRuleGroupWithCode("sqlInjection")
+	if group == nil {
+		b.Fatal("group not found")
+		return
+	}
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1234", nil)
+			if err != nil {
+				b.Fatal(err)
+			}
+			_, _, result, err := group.MatchRequest(requests.NewTestRequest(req))
+			if err != nil {
+				b.Fatal(err)
+			}
+			_ = result
+		}
+	})
 }
 
 func testTemplate20001(a *assert.Assertion, t *testing.T, template *WAF) {
