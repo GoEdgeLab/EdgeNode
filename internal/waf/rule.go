@@ -17,7 +17,7 @@ import (
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
-	"github.com/iwind/TeaGo/utils/string"
+	stringutil "github.com/iwind/TeaGo/utils/string"
 	"net"
 	"reflect"
 	"regexp"
