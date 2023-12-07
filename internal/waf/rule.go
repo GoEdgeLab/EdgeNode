@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/runes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/checkpoints"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/injectionutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/values"
@@ -567,6 +568,28 @@ func (this *Rule) Test(value any) bool {
 		return runes.ContainsAllWords(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
 	case RuleOperatorNotContainsAnyWord:
 		return !runes.ContainsAnyWord(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
+	case RuleOperatorContainsSQLInjection:
+		if value == nil {
+			return false
+		}
+		switch xValue := value.(type) {
+		case []string:
+			for _, v := range xValue {
+				if injectionutils.DetectSQLInjection(v) {
+					return true
+				}
+			}
+			return false
+		case [][]byte:
+			for _, v := range xValue {
+				if injectionutils.DetectSQLInjection(string(v)) {
+					return true
+				}
+			}
+			return false
+		default:
+			return injectionutils.DetectSQLInjection(this.stringifyValue(value))
+		}
 	case RuleOperatorContainsBinary:
 		data, _ := base64.StdEncoding.DecodeString(this.stringifyValue(this.Value))
 		if this.IsCaseInsensitive {

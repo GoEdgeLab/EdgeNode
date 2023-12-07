@@ -10,7 +10,7 @@ function build() {
 
 	# for macOS users: precompiled gcc can be downloaded from https://github.com/messense/homebrew-macos-cross-toolchains
 	GCC_X86_64_DIR="/usr/local/gcc/x86_64-unknown-linux-gnu/bin"
-	GCC_ARM64_DIR="//usr/local/gcc/aarch64-unknown-linux-gnu/bin"
+	GCC_ARM64_DIR="/usr/local/gcc/aarch64-unknown-linux-gnu/bin"
 
 	OS=${1}
 	ARCH=${2}

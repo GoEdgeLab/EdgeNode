@@ -508,6 +508,19 @@ func TestRule_Test(t *testing.T) {
 		a.IsTrue(rule.Test("How are you doing"))
 		a.IsFalse(rule.Test("How are dare"))
 	}
+	{
+		var rule = NewRule()
+		rule.Operator = RuleOperatorContainsSQLInjection
+		err := rule.Init()
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsTrue(rule.Test("id=123 OR 1=1"))
+		a.IsTrue(rule.Test("id=456 UNION SELECT"))
+		a.IsTrue(rule.Test("id=456 AND select load_file('') --"))
+		a.IsFalse(rule.Test("id=123"))
+		a.IsFalse(rule.Test("id=abc123 hello world '"))
+	}
 }
 
 func TestRule_MatchStar(t *testing.T) {
