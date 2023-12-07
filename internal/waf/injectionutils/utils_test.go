@@ -17,6 +17,7 @@ func TestDetectSQLInjection(t *testing.T) {
 	a.IsFalse(injectionutils.DetectSQLInjection("1234"))
 	a.IsFalse(injectionutils.DetectSQLInjection(""))
 	a.IsTrue(injectionutils.DetectSQLInjection("id=123 OR 1=1&b=2"))
+	a.IsTrue(injectionutils.DetectSQLInjection("id=123&b=456&c=1' or 2=2"))
 	a.IsFalse(injectionutils.DetectSQLInjection("?"))
 	a.IsFalse(injectionutils.DetectSQLInjection("/hello?age=22"))
 	a.IsTrue(injectionutils.DetectSQLInjection("/sql/injection?id=123 or 1=1"))
@@ -43,7 +44,6 @@ func BenchmarkDetectSQLInjection_URL(b *testing.B) {
 		}
 	})
 }
-
 
 func BenchmarkDetectSQLInjection_URL_Unescape(b *testing.B) {
 	runtime.GOMAXPROCS(4)
