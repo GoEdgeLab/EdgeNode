@@ -27,7 +27,7 @@ func DetectSQLInjection(input string) bool {
 	}
 
 	// 兼容 /PATH?URI
-	if input[0] == '/' {
+	if input[0] == '/' || strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
 		var argsIndex = strings.Index(input, "?")
 		if argsIndex > 0 {
 			var args = input[argsIndex+1:]

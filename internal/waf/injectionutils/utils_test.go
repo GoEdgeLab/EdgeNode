@@ -21,6 +21,7 @@ func TestDetectSQLInjection(t *testing.T) {
 	a.IsFalse(injectionutils.DetectSQLInjection("/hello?age=22"))
 	a.IsTrue(injectionutils.DetectSQLInjection("/sql/injection?id=123 or 1=1"))
 	a.IsTrue(injectionutils.DetectSQLInjection("/sql/injection?id=123%20or%201=1"))
+	a.IsTrue(injectionutils.DetectSQLInjection("https://example.com/sql/injection?id=123%20or%201=1"))
 }
 
 func BenchmarkDetectSQLInjection(b *testing.B) {
