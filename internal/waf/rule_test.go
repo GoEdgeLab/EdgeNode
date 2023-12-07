@@ -49,10 +49,10 @@ func TestRule_Init_Composite(t *testing.T) {
 }
 
 func TestRule_Test(t *testing.T) {
-	a := assert.NewAssertion(t)
+	var a = assert.NewAssertion(t)
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorGt
 		rule.Value = "123"
 		err := rule.Init()
@@ -66,7 +66,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorGte
 		rule.Value = "123"
 		err := rule.Init()
@@ -79,7 +79,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorLt
 		rule.Value = "123"
 		err := rule.Init()
@@ -92,7 +92,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorLte
 		rule.Value = "123"
 		err := rule.Init()
@@ -105,7 +105,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorEq
 		rule.Value = "123"
 		err := rule.Init()
@@ -118,7 +118,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNeq
 		rule.Value = "123"
 		err := rule.Init()
@@ -131,7 +131,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorEqString
 		rule.Value = "123"
 		err := rule.Init()
@@ -144,7 +144,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorEqString
 		rule.Value = "abc"
 		err := rule.Init()
@@ -156,7 +156,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorEqString
 		rule.IsCaseInsensitive = true
 		rule.Value = "abc"
@@ -169,7 +169,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNeqString
 		rule.Value = "abc"
 		err := rule.Init()
@@ -182,7 +182,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNeqString
 		rule.IsCaseInsensitive = true
 		rule.Value = "abc"
@@ -194,7 +194,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorMatch
 		rule.Value = "^\\d+"
 		err := rule.Init()
@@ -230,7 +230,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorMatch
 		rule.Value = "abc"
 		rule.IsCaseInsensitive = true
@@ -242,7 +242,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorMatch
 		rule.Value = "^\\d+"
 		err := rule.Init()
@@ -254,7 +254,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNotMatch
 		rule.Value = "\\d+"
 		err := rule.Init()
@@ -266,7 +266,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNotMatch
 		rule.Value = "abc"
 		rule.IsCaseInsensitive = true
@@ -278,7 +278,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNotMatch
 		rule.Value = "^\\d+"
 		err := rule.Init()
@@ -303,7 +303,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorMatch
 		rule.Value = "^(?i)[a-z]+$"
 		err := rule.Init()
@@ -314,7 +314,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorContains
 		rule.Value = "Hello"
 		err := rule.Init()
@@ -325,7 +325,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorContains
 		rule.Value = "hello"
 		rule.IsCaseInsensitive = true
@@ -337,7 +337,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorContains
 		rule.Value = "Hello"
 		err := rule.Init()
@@ -354,7 +354,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNotContains
 		rule.Value = "Hello"
 		err := rule.Init()
@@ -366,7 +366,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorNotContains
 		rule.Value = "hello"
 		rule.IsCaseInsensitive = true
@@ -379,7 +379,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorPrefix
 		rule.Value = "Hello"
 		err := rule.Init()
@@ -387,11 +387,12 @@ func TestRule_Test(t *testing.T) {
 			t.Fatal(err)
 		}
 		a.IsTrue(rule.Test("Hello, World"))
+		a.IsFalse(rule.Test("hello"))
 		a.IsFalse(rule.Test("World, Hello"))
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorPrefix
 		rule.Value = "hello"
 		rule.IsCaseInsensitive = true
@@ -400,11 +401,13 @@ func TestRule_Test(t *testing.T) {
 			t.Fatal(err)
 		}
 		a.IsTrue(rule.Test("Hello, World"))
+		a.IsTrue(rule.Test("hello, World"))
+		a.IsFalse(rule.Test("hell"))
 		a.IsFalse(rule.Test("World, Hello"))
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorSuffix
 		rule.Value = "Hello"
 		err := rule.Init()
@@ -416,7 +419,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorSuffix
 		rule.Value = "hello"
 		rule.IsCaseInsensitive = true
@@ -425,11 +428,13 @@ func TestRule_Test(t *testing.T) {
 			t.Fatal(err)
 		}
 		a.IsFalse(rule.Test("Hello, World"))
+		a.IsTrue(rule.Test("Hello"))
+		a.IsFalse(rule.Test("llo"))
 		a.IsTrue(rule.Test("World, Hello"))
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorHasKey
 		rule.Value = "Hello"
 		err := rule.Init()
@@ -446,7 +451,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorHasKey
 		rule.Value = "hello"
 		rule.IsCaseInsensitive = true
@@ -464,7 +469,7 @@ func TestRule_Test(t *testing.T) {
 	}
 
 	{
-		rule := NewRule()
+		var rule = NewRule()
 		rule.Operator = RuleOperatorHasKey
 		rule.Value = "3"
 		err := rule.Init()
@@ -476,6 +481,32 @@ func TestRule_Test(t *testing.T) {
 			"Hello": "World",
 		}))
 		a.IsTrue(rule.Test([]int{1, 2, 3, 4}))
+	}
+	{
+		var rule = NewRule()
+		rule.Operator = RuleOperatorContainsAnyWord
+		rule.Value = "How\nare\nyou"
+		rule.IsCaseInsensitive = true
+		err := rule.Init()
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsTrue(rule.Test("how"))
+		a.IsTrue(rule.Test("How doing"))
+		a.IsFalse(rule.Test("doing"))
+	}
+	{
+		var rule = NewRule()
+		rule.Operator = RuleOperatorContainsAllWords
+		rule.Value = "How\nare\nyou"
+		rule.IsCaseInsensitive = true
+		err := rule.Init()
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsTrue(rule.Test("how are you"))
+		a.IsTrue(rule.Test("How are you doing"))
+		a.IsFalse(rule.Test("How are dare"))
 	}
 }
 

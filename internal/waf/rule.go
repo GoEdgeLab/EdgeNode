@@ -510,13 +510,27 @@ func (this *Rule) Test(value any) bool {
 		}
 	case RuleOperatorPrefix:
 		if this.IsCaseInsensitive {
-			return strings.HasPrefix(strings.ToLower(this.stringifyValue(value)), strings.ToLower(this.Value))
+			var s = this.stringifyValue(value)
+			var sl = len(s)
+			var vl = len(this.Value)
+			if sl < vl {
+				return false
+			}
+			s = s[:vl]
+			return strings.HasPrefix(strings.ToLower(s), strings.ToLower(this.Value))
 		} else {
 			return strings.HasPrefix(this.stringifyValue(value), this.Value)
 		}
 	case RuleOperatorSuffix:
 		if this.IsCaseInsensitive {
-			return strings.HasSuffix(strings.ToLower(this.stringifyValue(value)), strings.ToLower(this.Value))
+			var s = this.stringifyValue(value)
+			var sl = len(s)
+			var vl = len(this.Value)
+			if sl < vl {
+				return false
+			}
+			s = s[sl-vl:]
+			return strings.HasSuffix(strings.ToLower(s), strings.ToLower(this.Value))
 		} else {
 			return strings.HasSuffix(this.stringifyValue(value), this.Value)
 		}
