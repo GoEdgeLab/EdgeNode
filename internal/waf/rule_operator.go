@@ -23,7 +23,7 @@ const (
 	RuleOperatorContainsAny        RuleOperator = "contains any"
 	RuleOperatorContainsAll        RuleOperator = "contains all"
 	RuleOperatorContainsAnyWord    RuleOperator = "contains any word"
-	RuleOperatorContainsAllWords   RuleOperator = "contains all word"
+	RuleOperatorContainsAllWords   RuleOperator = "contains all words"
 	RuleOperatorNotContainsAnyWord RuleOperator = "not contains any word"
 	RuleOperatorInIPList           RuleOperator = "in ip list"
 	RuleOperatorHasKey             RuleOperator = "has key" // has key in slice or map
