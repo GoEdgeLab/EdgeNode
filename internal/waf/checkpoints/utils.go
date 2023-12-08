@@ -227,6 +227,14 @@ var AllCheckpoints = []*CheckpointDefinition{
 		Priority:    100,
 	},
 	{
+		Name:        "所有请求报头名称",
+		Prefix:      "headerNames",
+		Description: "使用换行符（\\n）隔开的报头名称字符串，每行一个名称",
+		HasParams:   false,
+		Instance:    new(RequestHeaderNamesCheckpoint),
+		Priority:    100,
+	},
+	{
 		Name:        "单个Header值",
 		Prefix:      "header",
 		Description: "单个Header值",
