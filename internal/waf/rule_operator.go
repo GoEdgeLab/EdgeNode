@@ -26,6 +26,7 @@ const (
 	RuleOperatorContainsAllWords     RuleOperator = "contains all words"
 	RuleOperatorNotContainsAnyWord   RuleOperator = "not contains any word"
 	RuleOperatorContainsSQLInjection RuleOperator = "contains sql injection"
+	RuleOperatorContainsXSS          RuleOperator = "contains xss"
 	RuleOperatorInIPList             RuleOperator = "in ip list"
 	RuleOperatorHasKey               RuleOperator = "has key" // has key in slice or map
 	RuleOperatorVersionGt            RuleOperator = "version gt"

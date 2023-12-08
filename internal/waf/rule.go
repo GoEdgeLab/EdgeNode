@@ -590,6 +590,28 @@ func (this *Rule) Test(value any) bool {
 		default:
 			return injectionutils.DetectSQLInjection(this.stringifyValue(value))
 		}
+	case RuleOperatorContainsXSS:
+		if value == nil {
+			return false
+		}
+		switch xValue := value.(type) {
+		case []string:
+			for _, v := range xValue {
+				if injectionutils.DetectXSS(v) {
+					return true
+				}
+			}
+			return false
+		case [][]byte:
+			for _, v := range xValue {
+				if injectionutils.DetectXSS(string(v)) {
+					return true
+				}
+			}
+			return false
+		default:
+			return injectionutils.DetectXSS(this.stringifyValue(value))
+		}
 	case RuleOperatorContainsBinary:
 		data, _ := base64.StdEncoding.DecodeString(this.stringifyValue(this.Value))
 		if this.IsCaseInsensitive {
