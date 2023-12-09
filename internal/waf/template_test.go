@@ -28,15 +28,13 @@ func Test_Template(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testTemplate1001(a, t, wafInstance)
-	testTemplate1002(a, t, wafInstance)
-	testTemplate1003(a, t, wafInstance)
+	testTemplate1010(a, t, wafInstance)
 	testTemplate2001(a, t, wafInstance)
 	testTemplate3001(a, t, wafInstance)
 	testTemplate4001(a, t, wafInstance)
 	testTemplate5001(a, t, wafInstance)
 	testTemplate6001(a, t, wafInstance)
-	testTemplate7001(a, t, wafInstance)
+	testTemplate7010(a, t, wafInstance)
 	testTemplate20001(a, t, wafInstance)
 }
 
@@ -86,49 +84,50 @@ func BenchmarkTemplate(b *testing.B) {
 	}
 }
 
-func testTemplate1001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
-	req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=onmousedown%3D123", nil)
-	if err != nil {
-		t.Fatal(err)
+func testTemplate1010(a *assert.Assertion, t *testing.T, template *waf.WAF) {
+	for _, id := range []string{
+		"<script",
+		"<script src=\"123.js\">",
+		"<script>alert(123)</script>",
+		"<link",
+		"<link>",
+		"1 onfocus='alert(document.cookie)'",
+	} {
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/index.php?id="+id, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("User-Agent", testUserAgent)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsNotNil(result)
+		if result != nil {
+			a.IsTrue(result.Code == "1010")
+		} else {
+			t.Log("break at:", id)
+		}
 	}
-	req.Header.Set("User-Agent", testUserAgent)
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
-	if err != nil {
-		t.Fatal(err)
-	}
-	a.IsNotNil(result)
-	if result != nil {
-		a.IsTrue(result.Code == "1001")
-	}
-}
 
-func testTemplate1002(a *assert.Assertion, t *testing.T, template *waf.WAF) {
-	req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=eval%28", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
-	if err != nil {
-		t.Fatal(err)
-	}
-	a.IsNotNil(result)
-	if result != nil {
-		a.IsTrue(result.Code == "1002")
-	}
-}
-
-func testTemplate1003(a *assert.Assertion, t *testing.T, template *waf.WAF) {
-	req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=<script src=\"123.js\">", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
-	if err != nil {
-		t.Fatal(err)
-	}
-	a.IsNotNil(result)
-	if result != nil {
-		a.IsTrue(result.Code == "1003")
+	for _, id := range []string{
+		"123",
+		"abc",
+		"<html></html>",
+	} {
+		req, err := http.NewRequest(http.MethodGet, "https://example.com/index.php?id="+url.QueryEscape(id), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("User-Agent", testUserAgent)
+		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.IsNil(result)
+		if result != nil {
+			a.IsTrue(result.Code == "1010")
+		}
 	}
 }
 
@@ -290,7 +289,7 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	}
 }
 
-func testTemplate7001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
+func testTemplate7010(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	for _, id := range []string{
 		" union all select id from credits",
 		"' or 1=1",
