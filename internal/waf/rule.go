@@ -53,6 +53,7 @@ type Rule struct {
 
 	ipRangeListValue *values.IPRangeList
 	stringValues     []string
+	stringValueRunes [][]rune
 	ipList           *values.StringList
 
 	floatValue float64
@@ -96,6 +97,11 @@ func (this *Rule) Init() error {
 			}
 			if this.Operator == RuleOperatorContainsAnyWord || this.Operator == RuleOperatorContainsAllWords || this.Operator == RuleOperatorNotContainsAnyWord {
 				sort.Strings(this.stringValues)
+			}
+
+			this.stringValueRunes = [][]rune{}
+			for _, line := range this.stringValues {
+				this.stringValueRunes = append(this.stringValueRunes, []rune(line))
 			}
 		}
 	case RuleOperatorMatch:
@@ -567,11 +573,11 @@ func (this *Rule) Test(value any) bool {
 		}
 		return false
 	case RuleOperatorContainsAnyWord:
-		return runes.ContainsAnyWord(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
+		return runes.ContainsAnyWordRunes(this.stringifyValue(value), this.stringValueRunes, this.IsCaseInsensitive)
 	case RuleOperatorContainsAllWords:
 		return runes.ContainsAllWords(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
 	case RuleOperatorNotContainsAnyWord:
-		return !runes.ContainsAnyWord(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
+		return !runes.ContainsAnyWordRunes(this.stringifyValue(value), this.stringValueRunes, this.IsCaseInsensitive)
 	case RuleOperatorContainsSQLInjection:
 		if value == nil {
 			return false

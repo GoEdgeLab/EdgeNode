@@ -27,6 +27,7 @@ func TestContainsAnyWord(t *testing.T) {
 	a.IsFalse(runes.ContainsAnyWord("How are you?", []string{"how", "ok"}, false))
 	a.IsTrue(runes.ContainsAnyWord("How are you?", []string{"how"}, true))
 	a.IsTrue(runes.ContainsAnyWord("How are you?", []string{"how", "ok"}, true))
+	a.IsTrue(runes.ContainsAnyWord("How-are you?", []string{"how", "ok"}, true))
 }
 
 func TestContainsAnyWord_Sort(t *testing.T) {
@@ -100,6 +101,12 @@ func BenchmarkContainsAnyWord(b *testing.B) {
 
 	var words = strings.Split("python\npycurl\nhttp-client\nhttpclient\napachebench\nnethttp\nhttp_request\njava\nperl\nruby\nscrapy\nphp\nrust", "\n")
 	sort.Strings(words)
+
+	var wordRunes = [][]rune{}
+	for _, word := range words {
+		wordRunes = append(wordRunes, []rune(word))
+	}
+
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -108,6 +115,27 @@ func BenchmarkContainsAnyWord(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkContainsAnyWordRunes(b *testing.B) {
+	runtime.GOMAXPROCS(4)
+
+	var words = strings.Split("python\npycurl\nhttp-client\nhttpclient\napachebench\nnethttp\nhttp_request\njava\nperl\nruby\nscrapy\nphp\nrust", "\n")
+	sort.Strings(words)
+
+	var wordRunes = [][]rune{}
+	for _, word := range words {
+		wordRunes = append(wordRunes, []rune(word))
+	}
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = runes.ContainsAnyWordRunes("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_0_0) AppleWebKit/500.00 (KHTML, like Gecko) Chrome/100.0.0.0", wordRunes, true)
+		}
+	})
+}
+
 
 func BenchmarkContainsAnyWord_Regexp(b *testing.B) {
 	runtime.GOMAXPROCS(4)

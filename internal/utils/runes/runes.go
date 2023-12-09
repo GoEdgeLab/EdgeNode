@@ -2,6 +2,40 @@
 
 package runes
 
+// ContainsAnyWordRunes 直接使用rune检查字符串是否包含任一单词
+func ContainsAnyWordRunes(s string, words [][]rune, isCaseInsensitive bool) bool {
+	var allRunes = []rune(s)
+	if len(allRunes) == 0 || len(words) == 0 {
+		return false
+	}
+
+	var lastRune rune  // last searching rune in s
+	var lastIndex = -2 // -2: not started, -1: not found, >=0: rune index
+	for _, wordRunes := range words {
+		if len(wordRunes) == 0 {
+			continue
+		}
+
+		if lastIndex > -2 && lastRune == wordRunes[0] {
+			if lastIndex >= 0 {
+				result, _ := ContainsWordRunes(allRunes[lastIndex:], wordRunes, isCaseInsensitive)
+				if result {
+					return true
+				}
+			}
+			continue
+		} else {
+			result, firstIndex := ContainsWordRunes(allRunes, wordRunes, isCaseInsensitive)
+			lastIndex = firstIndex
+			if result {
+				return true
+			}
+		}
+		lastRune = wordRunes[0]
+	}
+	return false
+}
+
 // ContainsAnyWord 检查字符串是否包含任一单词
 func ContainsAnyWord(s string, words []string, isCaseInsensitive bool) bool {
 	var allRunes = []rune(s)
