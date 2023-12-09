@@ -7,13 +7,13 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/cachehits"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/iwind/TeaGo/types"
 	stringutil "github.com/iwind/TeaGo/utils/string"
 	"strconv"
 )
 
-var cache = ttlcache.NewCache[int8]()
+var SharedCache = ttlcache.NewCache[int8]()
 var cacheHits *cachehits.Stat
 
 func init() {
@@ -24,7 +24,7 @@ func init() {
 }
 
 const (
-	maxCacheDataSize = 1024
+	MaxCacheDataSize = 1024
 )
 
 type CacheLife = int64
@@ -45,22 +45,22 @@ func MatchStringCache(regex *re.Regexp, s string, cacheLife CacheLife) bool {
 	var regIdString = regex.IdString()
 
 	// 如果长度超过一定数量，大概率是不能重用的
-	if cacheLife <= 0 || len(s) > maxCacheDataSize || !cacheHits.IsGood(regIdString) {
+	if cacheLife <= 0 || len(s) > MaxCacheDataSize || !cacheHits.IsGood(regIdString) {
 		return regex.MatchString(s)
 	}
 
 	var hash = xxhash.Sum64String(s)
 	var key = regIdString + "@" + strconv.FormatUint(hash, 10)
-	var item = cache.Read(key)
+	var item = SharedCache.Read(key)
 	if item != nil {
 		cacheHits.IncreaseHit(regIdString)
 		return item.Value == 1
 	}
 	var b = regex.MatchString(s)
 	if b {
-		cache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
+		SharedCache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
 	} else {
-		cache.Write(key, 0, fasttime.Now().Unix()+cacheLife)
+		SharedCache.Write(key, 0, fasttime.Now().Unix()+cacheLife)
 	}
 	cacheHits.IncreaseCached(regIdString)
 	return b
@@ -75,22 +75,22 @@ func MatchBytesCache(regex *re.Regexp, byteSlice []byte, cacheLife CacheLife) bo
 	var regIdString = regex.IdString()
 
 	// 如果长度超过一定数量，大概率是不能重用的
-	if cacheLife <= 0 || len(byteSlice) > maxCacheDataSize || !cacheHits.IsGood(regIdString) {
+	if cacheLife <= 0 || len(byteSlice) > MaxCacheDataSize || !cacheHits.IsGood(regIdString) {
 		return regex.Match(byteSlice)
 	}
 
 	var hash = xxhash.Sum64(byteSlice)
 	var key = regIdString + "@" + strconv.FormatUint(hash, 10)
-	var item = cache.Read(key)
+	var item = SharedCache.Read(key)
 	if item != nil {
 		cacheHits.IncreaseHit(regIdString)
 		return item.Value == 1
 	}
 	var b = regex.Match(byteSlice)
 	if b {
-		cache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
+		SharedCache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
 	} else {
-		cache.Write(key, 0, fasttime.Now().Unix()+cacheLife)
+		SharedCache.Write(key, 0, fasttime.Now().Unix()+cacheLife)
 	}
 	cacheHits.IncreaseCached(regIdString)
 	return b

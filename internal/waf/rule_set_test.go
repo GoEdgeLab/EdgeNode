@@ -1,7 +1,8 @@
-package waf
+package waf_test
 
 import (
 	"bytes"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/assert"
@@ -12,18 +13,18 @@ import (
 )
 
 func TestRuleSet_MatchRequest(t *testing.T) {
-	set := NewRuleSet()
-	set.Connector = RuleConnectorAnd
+	var set = waf.NewRuleSet()
+	set.Connector = waf.RuleConnectorAnd
 
-	set.Rules = []*Rule{
+	set.Rules = []*waf.Rule{
 		{
 			Param:    "${arg.name}",
-			Operator: RuleOperatorEqString,
+			Operator: waf.RuleOperatorEqString,
 			Value:    "lu",
 		},
 		{
 			Param:    "${arg.age}",
-			Operator: RuleOperatorEq,
+			Operator: waf.RuleOperatorEq,
 			Value:    "20",
 		},
 	}
@@ -42,20 +43,20 @@ func TestRuleSet_MatchRequest(t *testing.T) {
 }
 
 func TestRuleSet_MatchRequest2(t *testing.T) {
-	a := assert.NewAssertion(t)
+	var a = assert.NewAssertion(t)
 
-	set := NewRuleSet()
-	set.Connector = RuleConnectorOr
+	var set = waf.NewRuleSet()
+	set.Connector = waf.RuleConnectorOr
 
-	set.Rules = []*Rule{
+	set.Rules = []*waf.Rule{
 		{
 			Param:    "${arg.name}",
-			Operator: RuleOperatorEqString,
+			Operator: waf.RuleOperatorEqString,
 			Value:    "lu",
 		},
 		{
 			Param:    "${arg.age}",
-			Operator: RuleOperatorEq,
+			Operator: waf.RuleOperatorEq,
 			Value:    "21",
 		},
 	}
@@ -76,28 +77,28 @@ func TestRuleSet_MatchRequest2(t *testing.T) {
 func BenchmarkRuleSet_MatchRequest(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	set := NewRuleSet()
-	set.Connector = RuleConnectorOr
+	var set = waf.NewRuleSet()
+	set.Connector = waf.RuleConnectorOr
 
-	set.Rules = []*Rule{
+	set.Rules = []*waf.Rule{
 		{
 			Param:    "${requestAll}",
-			Operator: RuleOperatorMatch,
+			Operator: waf.RuleOperatorMatch,
 			Value:    `(onmouseover|onmousemove|onmousedown|onmouseup|onerror|onload|onclick|ondblclick|onkeydown|onkeyup|onkeypress)\s*=`,
 		},
 		{
 			Param:    "${requestAll}",
-			Operator: RuleOperatorMatch,
+			Operator: waf.RuleOperatorMatch,
 			Value:    `\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\s*\(`,
 		},
 		{
 			Param:    "${arg.name}",
-			Operator: RuleOperatorEqString,
+			Operator: waf.RuleOperatorEqString,
 			Value:    "lu",
 		},
 		{
 			Param:    "${arg.age}",
-			Operator: RuleOperatorEq,
+			Operator: waf.RuleOperatorEq,
 			Value:    "21",
 		},
 	}
@@ -120,13 +121,13 @@ func BenchmarkRuleSet_MatchRequest(b *testing.B) {
 func BenchmarkRuleSet_MatchRequest_Regexp(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	set := NewRuleSet()
-	set.Connector = RuleConnectorOr
+	var set = waf.NewRuleSet()
+	set.Connector = waf.RuleConnectorOr
 
-	set.Rules = []*Rule{
+	set.Rules = []*waf.Rule{
 		{
 			Param:             "${requestBody}",
-			Operator:          RuleOperatorMatch,
+			Operator:          waf.RuleOperatorMatch,
 			Value:             `\b(eval|system|exec|execute|passthru|shell_exec|phpinfo)\s*\(`,
 			IsCaseInsensitive: false,
 		},

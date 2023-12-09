@@ -22,6 +22,7 @@ import (
 	"net"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -56,8 +57,8 @@ type Rule struct {
 
 	floatValue float64
 
-	reg          *re.Regexp
-	regCacheLife utils.CacheLife
+	reg       *re.Regexp
+	cacheLife utils.CacheLife
 }
 
 func NewRule() *Rule {
@@ -92,6 +93,9 @@ func (this *Rule) Init() error {
 						this.stringValues = append(this.stringValues, line)
 					}
 				}
+			}
+			if this.Operator == RuleOperatorContainsAnyWord || this.Operator == RuleOperatorContainsAllWords || this.Operator == RuleOperatorNotContainsAnyWord {
+				sort.Strings(this.stringValues)
 			}
 		}
 	case RuleOperatorMatch:
@@ -166,7 +170,7 @@ func (this *Rule) Init() error {
 			this.singleCheckpoint = checkpoint
 			this.Priority = checkpoint.Priority()
 
-			this.regCacheLife = checkpoint.CacheLife()
+			this.cacheLife = checkpoint.CacheLife()
 		} else {
 			var checkpoint = checkpoints.FindCheckpoint(prefix)
 			if checkpoint == nil {
@@ -176,7 +180,7 @@ func (this *Rule) Init() error {
 			this.singleCheckpoint = checkpoint
 			this.Priority = checkpoint.Priority()
 
-			this.regCacheLife = checkpoint.CacheLife()
+			this.cacheLife = checkpoint.CacheLife()
 		}
 
 		return nil
@@ -195,8 +199,8 @@ func (this *Rule) Init() error {
 				this.multipleCheckpoints[prefix] = checkpoint
 				this.Priority = checkpoint.Priority()
 
-				if this.regCacheLife <= 0 || checkpoint.CacheLife() < this.regCacheLife {
-					this.regCacheLife = checkpoint.CacheLife()
+				if this.cacheLife <= 0 || checkpoint.CacheLife() < this.cacheLife {
+					this.cacheLife = checkpoint.CacheLife()
 				}
 			}
 		} else {
@@ -208,7 +212,7 @@ func (this *Rule) Init() error {
 				this.multipleCheckpoints[prefix] = checkpoint
 				this.Priority = checkpoint.Priority()
 
-				this.regCacheLife = checkpoint.CacheLife()
+				this.cacheLife = checkpoint.CacheLife()
 			}
 		}
 
@@ -408,7 +412,7 @@ func (this *Rule) Test(value any) bool {
 		stringList, ok := value.([]string)
 		if ok {
 			for _, s := range stringList {
-				if utils.MatchStringCache(this.reg, s, this.regCacheLife) {
+				if utils.MatchStringCache(this.reg, s, this.cacheLife) {
 					return true
 				}
 			}
@@ -419,7 +423,7 @@ func (this *Rule) Test(value any) bool {
 		byteSlices, ok := value.([][]byte)
 		if ok {
 			for _, byteSlice := range byteSlices {
-				if utils.MatchBytesCache(this.reg, byteSlice, this.regCacheLife) {
+				if utils.MatchBytesCache(this.reg, byteSlice, this.cacheLife) {
 					return true
 				}
 			}
@@ -429,11 +433,11 @@ func (this *Rule) Test(value any) bool {
 		// bytes
 		byteSlice, ok := value.([]byte)
 		if ok {
-			return utils.MatchBytesCache(this.reg, byteSlice, this.regCacheLife)
+			return utils.MatchBytesCache(this.reg, byteSlice, this.cacheLife)
 		}
 
 		// string
-		return utils.MatchStringCache(this.reg, this.stringifyValue(value), this.regCacheLife)
+		return utils.MatchStringCache(this.reg, this.stringifyValue(value), this.cacheLife)
 	case RuleOperatorNotMatch, RuleOperatorWildcardNotMatch:
 		if value == nil {
 			value = ""
@@ -441,7 +445,7 @@ func (this *Rule) Test(value any) bool {
 		stringList, ok := value.([]string)
 		if ok {
 			for _, s := range stringList {
-				if utils.MatchStringCache(this.reg, s, this.regCacheLife) {
+				if utils.MatchStringCache(this.reg, s, this.cacheLife) {
 					return false
 				}
 			}
@@ -452,7 +456,7 @@ func (this *Rule) Test(value any) bool {
 		byteSlices, ok := value.([][]byte)
 		if ok {
 			for _, byteSlice := range byteSlices {
-				if utils.MatchBytesCache(this.reg, byteSlice, this.regCacheLife) {
+				if utils.MatchBytesCache(this.reg, byteSlice, this.cacheLife) {
 					return false
 				}
 			}
@@ -462,10 +466,10 @@ func (this *Rule) Test(value any) bool {
 		// bytes
 		byteSlice, ok := value.([]byte)
 		if ok {
-			return !utils.MatchBytesCache(this.reg, byteSlice, this.regCacheLife)
+			return !utils.MatchBytesCache(this.reg, byteSlice, this.cacheLife)
 		}
 
-		return !utils.MatchStringCache(this.reg, this.stringifyValue(value), this.regCacheLife)
+		return !utils.MatchStringCache(this.reg, this.stringifyValue(value), this.cacheLife)
 	case RuleOperatorContains:
 		if types.IsSlice(value) {
 			_, isBytes := value.([]byte)
@@ -575,20 +579,20 @@ func (this *Rule) Test(value any) bool {
 		switch xValue := value.(type) {
 		case []string:
 			for _, v := range xValue {
-				if injectionutils.DetectSQLInjection(v) {
+				if injectionutils.DetectSQLInjectionCache(v, this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		case [][]byte:
 			for _, v := range xValue {
-				if injectionutils.DetectSQLInjection(string(v)) {
+				if injectionutils.DetectSQLInjectionCache(string(v), this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		default:
-			return injectionutils.DetectSQLInjection(this.stringifyValue(value))
+			return injectionutils.DetectSQLInjectionCache(this.stringifyValue(value), this.cacheLife)
 		}
 	case RuleOperatorContainsXSS:
 		if value == nil {
@@ -597,20 +601,20 @@ func (this *Rule) Test(value any) bool {
 		switch xValue := value.(type) {
 		case []string:
 			for _, v := range xValue {
-				if injectionutils.DetectXSS(v) {
+				if injectionutils.DetectXSSCache(v, this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		case [][]byte:
 			for _, v := range xValue {
-				if injectionutils.DetectXSS(string(v)) {
+				if injectionutils.DetectXSSCache(string(v), this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		default:
-			return injectionutils.DetectXSS(this.stringifyValue(value))
+			return injectionutils.DetectXSSCache(this.stringifyValue(value), this.cacheLife)
 		}
 	case RuleOperatorContainsBinary:
 		data, _ := base64.StdEncoding.DecodeString(this.stringifyValue(this.Value))

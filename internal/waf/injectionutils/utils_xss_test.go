@@ -4,6 +4,7 @@ package injectionutils_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/injectionutils"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/assert"
 	"runtime"
 	"testing"
@@ -25,7 +26,10 @@ func TestDetectXSS(t *testing.T) {
 }
 
 func BenchmarkDetectXSS_MISS(b *testing.B) {
-	b.Log(injectionutils.DetectXSS("<html><body><span>RequestId: 1234567890</span></body></html>"))
+	var result = injectionutils.DetectXSS("<html><body><span>RequestId: 1234567890</span></body></html>")
+	if result {
+		b.Fatal("'result' should not be 'true'")
+	}
 
 	runtime.GOMAXPROCS(4)
 
@@ -36,8 +40,26 @@ func BenchmarkDetectXSS_MISS(b *testing.B) {
 	})
 }
 
+func BenchmarkDetectXSS_MISS_Cache(b *testing.B) {
+	var result = injectionutils.DetectXSS("<html><body><span>RequestId: 1234567890</span></body></html>")
+	if result {
+		b.Fatal("'result' should not be 'true'")
+	}
+
+	runtime.GOMAXPROCS(4)
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = injectionutils.DetectXSSCache("<html><body><span>RequestId: 1234567890</span></body></html>", utils.CacheMiddleLife)
+		}
+	})
+}
+
 func BenchmarkDetectXSS_HIT(b *testing.B) {
-	b.Log(injectionutils.DetectXSS("<html><body><span>RequestId: 1234567890</span><script src=\"\"></script></body></html>"))
+	var result = injectionutils.DetectXSS("<html><body><span>RequestId: 1234567890</span><script src=\"\"></script></body></html>")
+	if !result {
+		b.Fatal("'result' should not be 'false'")
+	}
 
 	runtime.GOMAXPROCS(4)
 

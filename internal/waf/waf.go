@@ -402,7 +402,7 @@ func (this *WAF) Stop() {
 }
 
 // MergeTemplate merge with template
-func (this *WAF) MergeTemplate() (changedItems []string) {
+func (this *WAF) MergeTemplate() (changedItems []string, err error) {
 	changedItems = []string{}
 
 	// compare versions
@@ -411,7 +411,10 @@ func (this *WAF) MergeTemplate() (changedItems []string) {
 	}
 	this.CreatedVersion = teaconst.Version
 
-	template := Template()
+	template, err := Template()
+	if err != nil {
+		return nil, err
+	}
 	groups := []*RuleGroup{}
 	groups = append(groups, template.Inbound...)
 	groups = append(groups, template.Outbound...)

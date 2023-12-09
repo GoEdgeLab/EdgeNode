@@ -1,7 +1,8 @@
-package waf
+package waf_test
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/assert"
 	"net/http"
@@ -9,32 +10,32 @@ import (
 )
 
 func TestWAF_MatchRequest(t *testing.T) {
-	a := assert.NewAssertion(t)
+	var a = assert.NewAssertion(t)
 
-	set := NewRuleSet()
+	var set = waf.NewRuleSet()
 	set.Name = "Name_Age"
-	set.Connector = RuleConnectorAnd
-	set.Rules = []*Rule{
+	set.Connector = waf.RuleConnectorAnd
+	set.Rules = []*waf.Rule{
 		{
 			Param:    "${arg.name}",
-			Operator: RuleOperatorEqString,
+			Operator: waf.RuleOperatorEqString,
 			Value:    "lu",
 		},
 		{
 			Param:    "${arg.age}",
-			Operator: RuleOperatorEq,
+			Operator: waf.RuleOperatorEq,
 			Value:    "20",
 		},
 	}
-	set.AddAction(ActionBlock, nil)
+	set.AddAction(waf.ActionBlock, nil)
 
-	group := NewRuleGroup()
+	var group = waf.NewRuleGroup()
 	group.AddRuleSet(set)
 	group.IsInbound = true
 
-	waf := NewWAF()
-	waf.AddRuleGroup(group)
-	errs := waf.Init()
+	var wafInstance = waf.NewWAF()
+	wafInstance.AddRuleGroup(group)
+	errs := wafInstance.Init()
 	if len(errs) > 0 {
 		t.Fatal(errs[0])
 	}
@@ -43,7 +44,7 @@ func TestWAF_MatchRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	goNext, _, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+	goNext, _, _, set, err := wafInstance.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}

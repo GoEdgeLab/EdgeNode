@@ -1,12 +1,15 @@
-package waf
+package waf_test
 
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/types"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -15,34 +18,26 @@ import (
 	"time"
 )
 
+const testUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_0_0) AppleWebKit/500.00 (KHTML, like Gecko) Chrome/100.0.0.0"
+
 func Test_Template(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	var waf = Template()
-
-	for _, group := range waf.Inbound {
-		group.IsOn = true
-
-		for _, set := range group.RuleSets {
-			set.IsOn = true
-		}
-	}
-
-	err := waf.Init()
+	wafInstance, err := waf.Template()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	testTemplate1001(a, t, waf)
-	testTemplate1002(a, t, waf)
-	testTemplate1003(a, t, waf)
-	testTemplate2001(a, t, waf)
-	testTemplate3001(a, t, waf)
-	testTemplate4001(a, t, waf)
-	testTemplate5001(a, t, waf)
-	testTemplate6001(a, t, waf)
-	testTemplate7001(a, t, waf)
-	testTemplate20001(a, t, waf)
+	testTemplate1001(a, t, wafInstance)
+	testTemplate1002(a, t, wafInstance)
+	testTemplate1003(a, t, wafInstance)
+	testTemplate2001(a, t, wafInstance)
+	testTemplate3001(a, t, wafInstance)
+	testTemplate4001(a, t, wafInstance)
+	testTemplate5001(a, t, wafInstance)
+	testTemplate6001(a, t, wafInstance)
+	testTemplate7001(a, t, wafInstance)
+	testTemplate20001(a, t, wafInstance)
 }
 
 func Test_Template2(t *testing.T) {
@@ -52,14 +47,13 @@ func Test_Template2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	waf := Template()
-	var errs = waf.Init()
-	if len(errs) > 0 {
-		t.Fatal(errs[0])
+	wafInstance, err := waf.Template()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	now := time.Now()
-	goNext, _, _, set, err := waf.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+	goNext, _, _, set, err := wafInstance.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,17 +68,7 @@ func Test_Template2(t *testing.T) {
 }
 
 func BenchmarkTemplate(b *testing.B) {
-	var waf = Template()
-
-	for _, group := range waf.Inbound {
-		group.IsOn = true
-
-		for _, set := range group.RuleSets {
-			set.IsOn = true
-		}
-	}
-
-	err := waf.Init()
+	wafInstance, err := waf.Template()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -96,16 +80,18 @@ func BenchmarkTemplate(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+		req.Header.Set("User-Agent", testUserAgent)
 
-		_, _, _, _, _ = waf.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		_, _, _, _, _ = wafInstance.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	}
 }
 
-func testTemplate1001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate1001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=onmousedown%3D123", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Set("User-Agent", testUserAgent)
 	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +102,7 @@ func testTemplate1001(a *assert.Assertion, t *testing.T, template *WAF) {
 	}
 }
 
-func testTemplate1002(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate1002(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=eval%28", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +117,7 @@ func testTemplate1002(a *assert.Assertion, t *testing.T, template *WAF) {
 	}
 }
 
-func testTemplate1003(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate1003(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/index.php?id=<script src=\"123.js\">", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +132,7 @@ func testTemplate1003(a *assert.Assertion, t *testing.T, template *WAF) {
 	}
 }
 
-func testTemplate2001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate2001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	body := bytes.NewBuffer([]byte{})
 
 	writer := multipart.NewWriter(body)
@@ -212,7 +198,7 @@ func testTemplate2001(a *assert.Assertion, t *testing.T, template *WAF) {
 	}
 }
 
-func testTemplate3001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate3001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	req, err := http.NewRequest(http.MethodPost, "http://example.com/index.php?exec1+(", bytes.NewReader([]byte("exec('rm -rf /hello');")))
 	if err != nil {
 		t.Fatal(err)
@@ -227,7 +213,7 @@ func testTemplate3001(a *assert.Assertion, t *testing.T, template *WAF) {
 	}
 }
 
-func testTemplate4001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate4001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	req, err := http.NewRequest(http.MethodPost, "http://example.com/index.php?whoami", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -242,7 +228,7 @@ func testTemplate4001(a *assert.Assertion, t *testing.T, template *WAF) {
 	}
 }
 
-func testTemplate5001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate5001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	{
 		req, err := http.NewRequest(http.MethodPost, "http://example.com/.././..", nil)
 		if err != nil {
@@ -274,12 +260,13 @@ func testTemplate5001(a *assert.Assertion, t *testing.T, template *WAF) {
 	}
 }
 
-func testTemplate6001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate6001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	{
 		req, err := http.NewRequest(http.MethodPost, "http://example.com/.svn/123.txt", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		req.Header.Set("User-Agent", testUserAgent)
 		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
@@ -299,11 +286,11 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNil(result)
+		a.IsNotNil(result)
 	}
 }
 
-func testTemplate7001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate7001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	for _, id := range []string{
 		"union select",
 		" and if(",
@@ -311,13 +298,14 @@ func testTemplate7001(a *assert.Assertion, t *testing.T, template *WAF) {
 		" and select ",
 		" and id=123 ",
 		"(case when a=1 then ",
-		"updatexml (",
+		" and updatexml (",
 		"; delete from table",
 	} {
 		req, err := http.NewRequest(http.MethodPost, "http://example.com/?id="+url.QueryEscape(id), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		req.Header.Set("User-Agent", testUserAgent)
 		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
@@ -332,11 +320,9 @@ func testTemplate7001(a *assert.Assertion, t *testing.T, template *WAF) {
 }
 
 func TestTemplateSQLInjection(t *testing.T) {
-	var template = Template()
-	errs := template.Init()
-	if len(errs) > 0 {
-		t.Fatal(errs)
-		return
+	template, err := waf.Template()
+	if err != nil {
+		t.Fatal(err)
 	}
 	var group = template.FindRuleGroupWithCode("sqlInjection")
 	if group == nil {
@@ -354,6 +340,7 @@ func TestTemplateSQLInjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Set("User-Agent", testUserAgent)
 	_, _, result, err := group.MatchRequest(requests.NewTestRequest(req))
 	if err != nil {
 		t.Fatal(err)
@@ -364,11 +351,9 @@ func TestTemplateSQLInjection(t *testing.T) {
 }
 
 func BenchmarkTemplateSQLInjection(b *testing.B) {
-	var template = Template()
-	errs := template.Init()
-	if len(errs) > 0 {
-		b.Fatal(errs)
-		return
+	template, err := waf.Template()
+	if err != nil {
+		b.Fatal(err)
 	}
 	var group = template.FindRuleGroupWithCode("sqlInjection")
 	if group == nil {
@@ -380,10 +365,12 @@ func BenchmarkTemplateSQLInjection(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1234", nil)
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1234" + types.String(rand.Int()%10000), nil)
 			if err != nil {
 				b.Fatal(err)
 			}
+			req.Header.Set("User-Agent", testUserAgent)
+
 			_, _, result, err := group.MatchRequest(requests.NewTestRequest(req))
 			if err != nil {
 				b.Fatal(err)
@@ -393,7 +380,7 @@ func BenchmarkTemplateSQLInjection(b *testing.B) {
 	})
 }
 
-func testTemplate20001(a *assert.Assertion, t *testing.T, template *WAF) {
+func testTemplate20001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	// enable bot rule set
 	for _, g := range template.Inbound {
 		if g.Code == "bot" {
@@ -404,7 +391,7 @@ func testTemplate20001(a *assert.Assertion, t *testing.T, template *WAF) {
 
 	for _, bot := range []string{
 		"Googlebot",
-		"AdsBot",
+		"AdsBot-Google",
 		"bingbot",
 		"BingPreview",
 		"facebookexternalhit",

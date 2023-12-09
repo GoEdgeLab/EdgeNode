@@ -10,10 +10,41 @@ package injectionutils
 */
 import "C"
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
+	"github.com/cespare/xxhash/v2"
 	"net/url"
+	"strconv"
 	"strings"
 	"unsafe"
 )
+
+func DetectXSSCache(input string, cacheLife utils.CacheLife) bool {
+	var l = len(input)
+
+	if l == 0 {
+		return false
+	}
+
+	if cacheLife <= 0 || l < 512 || l > utils.MaxCacheDataSize {
+		return DetectXSS(input)
+	}
+
+	var hash = xxhash.Sum64String(input)
+	var key = "WAF@XSS@" + strconv.FormatUint(hash, 10)
+	var item = utils.SharedCache.Read(key)
+	if item != nil {
+		return item.Value == 1
+	}
+
+	var result = DetectXSS(input)
+	if result {
+		utils.SharedCache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
+	} else {
+		utils.SharedCache.Write(key, 0, fasttime.Now().Unix()+cacheLife)
+	}
+	return result
+}
 
 // DetectXSS detect XSS in string
 func DetectXSS(input string) bool {
@@ -26,7 +57,7 @@ func DetectXSS(input string) bool {
 	}
 
 	// 兼容 /PATH?URI
-	if (input[0] == '/' || strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")) && len(input) < 4096 {
+	if (input[0] == '/' || strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")) && len(input) < 1024 {
 		var argsIndex = strings.Index(input, "?")
 		if argsIndex > 0 {
 			var args = input[argsIndex+1:]
