@@ -292,16 +292,31 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 
 func testTemplate7001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	for _, id := range []string{
-		"union select",
-		" and if(",
-		"/*!",
-		" and select ",
-		" and id=123 ",
-		"(case when a=1 then ",
-		" and updatexml (",
-		"; delete from table",
+		" union all select id from credits",
+		"' or 1=1",
+		"' or '1'='1",
+		"1' or '1'='1')) /*",
+		"OR 1/** this is comment **/=1",
+		"AND 1=2",
+		"; INSERT INTO users (...)",
+		"order by 10--",
+		"UNION SELECT 1,null,null--",
+		"' AND ASCII(SUBSTRING(username, 1, 1))=97 AND '1'='1",
+		"||UTL_INADDR.GET_HOST_NAME((SELECT user FROM dual) )--",
+		" AND IF(version() like '5%', sleep(10), 'false')",
+		"; update tablename set code='javascript code' where 1--",
+		"AND @@version like '5.0%', ",
+		"/*!40110 and 1=0*/",
+		"AND 1=0 UNION SELECT DATABASE()",
+		"load_file('filename')",
+		"limit 1 into outfile 'aaa'",
+		"OR IF(1, BENCHMARK(#ofcicies, action_to_be_performed), 'false')",
+		"AND 1=CONVERT(int, db_name())",
+
+		// PostgresSQL
+		"and 1::int=1",
 	} {
-		req, err := http.NewRequest(http.MethodPost, "http://example.com/?id="+url.QueryEscape(id), nil)
+		req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1 "+url.QueryEscape(id), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -312,7 +327,7 @@ func testTemplate7001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 		}
 		a.IsNotNil(result)
 		if result != nil {
-			a.IsTrue(lists.ContainsAny([]string{"7001", "7002", "7003", "7004", "7005"}, result.Code))
+			a.IsTrue(lists.ContainsAny([]string{"7010"}, result.Code))
 		} else {
 			t.Log("break:", id)
 		}
@@ -365,7 +380,7 @@ func BenchmarkTemplateSQLInjection(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1234" + types.String(rand.Int()%10000), nil)
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1234"+types.String(rand.Int()%10000), nil)
 			if err != nil {
 				b.Fatal(err)
 			}
