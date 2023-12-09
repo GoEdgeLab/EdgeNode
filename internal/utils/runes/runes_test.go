@@ -3,9 +3,13 @@
 package runes_test
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/re"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/runes"
 	"github.com/iwind/TeaGo/assert"
+	"regexp"
 	"runtime"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -23,6 +27,11 @@ func TestContainsAnyWord(t *testing.T) {
 	a.IsFalse(runes.ContainsAnyWord("How are you?", []string{"how", "ok"}, false))
 	a.IsTrue(runes.ContainsAnyWord("How are you?", []string{"how"}, true))
 	a.IsTrue(runes.ContainsAnyWord("How are you?", []string{"how", "ok"}, true))
+}
+
+func TestContainsAnyWord_Sort(t *testing.T) {
+	var a = assert.NewAssertion(t)
+	a.IsTrue(runes.ContainsAnyWord("How are you?", []string{"abc", "ant", "arm", "Hit", "Hi", "Pet", "pie", "are"}, false))
 }
 
 func TestContainsWordRunes(t *testing.T) {
@@ -81,7 +90,45 @@ func BenchmarkContainsWordRunes(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_ = runes.ContainsWordRunes([]rune("How are you"), []rune("YOU"), true)
+			_, _ = runes.ContainsWordRunes([]rune("How are you"), []rune("YOU"), true)
+		}
+	})
+}
+
+func BenchmarkContainsAnyWord(b *testing.B) {
+	runtime.GOMAXPROCS(4)
+
+	var words = strings.Split("python\npycurl\nhttp-client\nhttpclient\napachebench\nnethttp\nhttp_request\njava\nperl\nruby\nscrapy\nphp\nrust", "\n")
+	sort.Strings(words)
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = runes.ContainsAnyWord("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_0_0) AppleWebKit/500.00 (KHTML, like Gecko) Chrome/100.0.0.0", words, true)
+		}
+	})
+}
+
+func BenchmarkContainsAnyWord_Regexp(b *testing.B) {
+	runtime.GOMAXPROCS(4)
+	var reg = regexp.MustCompile("(?i)" + strings.ReplaceAll("python\npycurl\nhttp-client\nhttpclient\napachebench\nnethttp\nhttp_request\njava\nperl\nruby\nscrapy\nphp\nrust", "\n", "|"))
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = reg.MatchString("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_0_0) AppleWebKit/500.00 (KHTML, like Gecko) Chrome/100.0.0.0")
+		}
+	})
+}
+
+func BenchmarkContainsAnyWord_Re(b *testing.B) {
+	runtime.GOMAXPROCS(4)
+	var reg = re.MustCompile("(?i)" + strings.ReplaceAll("python\npycurl\nhttp-client\nhttpclient\napachebench\nnethttp\nhttp_request\njava\nperl\nruby\nscrapy\nphp\nrust", "\n", "|"))
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = reg.MatchString("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_0_0) AppleWebKit/500.00 (KHTML, like Gecko) Chrome/100.0.0.0")
 		}
 	})
 }

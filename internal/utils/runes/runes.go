@@ -9,10 +9,30 @@ func ContainsAnyWord(s string, words []string, isCaseInsensitive bool) bool {
 		return false
 	}
 
+	var lastRune rune  // last searching rune in s
+	var lastIndex = -2 // -2: not started, -1: not found, >=0: rune index
 	for _, word := range words {
-		if ContainsWordRunes(allRunes, []rune(word), isCaseInsensitive) {
-			return true
+		var wordRunes = []rune(word)
+		if len(wordRunes) == 0 {
+			continue
 		}
+
+		if lastIndex > -2 && lastRune == wordRunes[0] {
+			if lastIndex >= 0 {
+				result, _ := ContainsWordRunes(allRunes[lastIndex:], wordRunes, isCaseInsensitive)
+				if result {
+					return true
+				}
+			}
+			continue
+		} else {
+			result, firstIndex := ContainsWordRunes(allRunes, wordRunes, isCaseInsensitive)
+			lastIndex = firstIndex
+			if result {
+				return true
+			}
+		}
+		lastRune = wordRunes[0]
 	}
 	return false
 }
@@ -25,7 +45,7 @@ func ContainsAllWords(s string, words []string, isCaseInsensitive bool) bool {
 	}
 
 	for _, word := range words {
-		if !ContainsWordRunes(allRunes, []rune(word), isCaseInsensitive) {
+		if result, _ := ContainsWordRunes(allRunes, []rune(word), isCaseInsensitive); !result {
 			return false
 		}
 	}
@@ -33,16 +53,22 @@ func ContainsAllWords(s string, words []string, isCaseInsensitive bool) bool {
 }
 
 // ContainsWordRunes 检查字符列表是否包含某个单词子字符列表
-func ContainsWordRunes(allRunes []rune, subRunes []rune, isCaseInsensitive bool) bool {
+func ContainsWordRunes(allRunes []rune, subRunes []rune, isCaseInsensitive bool) (result bool, firstIndex int) {
+	firstIndex = -1
+
 	var l = len(subRunes)
 	if l == 0 {
-		return false
+		return false, 0
 	}
 
 	var al = len(allRunes)
 
 	for index, r := range allRunes {
 		if EqualRune(r, subRunes[0], isCaseInsensitive) && (index == 0 || !isChar(allRunes[index-1]) /**boundary check **/) {
+			if firstIndex < 0 {
+				firstIndex = index
+			}
+
 			var found = true
 			if l > 1 {
 				for i := 1; i < l; i++ {
@@ -56,12 +82,12 @@ func ContainsWordRunes(allRunes []rune, subRunes []rune, isCaseInsensitive bool)
 
 			// check after charset
 			if found && (al <= index+l || !isChar(allRunes[index+l]) /**boundary check **/) {
-				return true
+				return true, firstIndex
 			}
 		}
 	}
 
-	return false
+	return false, firstIndex
 }
 
 // ContainsSubRunes 检查字符列表是否包含某个子子字符列表
