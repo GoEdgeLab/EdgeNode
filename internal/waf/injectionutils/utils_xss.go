@@ -68,6 +68,11 @@ func DetectXSS(input string) bool {
 				return detectXSSOne(args)
 			}
 		}
+	} else {
+		unescapedInput, err := url.QueryUnescape(input)
+		if err == nil && input != unescapedInput {
+			return detectXSSOne(unescapedInput)
+		}
 	}
 
 	return false

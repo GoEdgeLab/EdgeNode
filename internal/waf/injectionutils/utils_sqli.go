@@ -69,6 +69,11 @@ func DetectSQLInjection(input string) bool {
 				return detectSQLInjectionOne(args)
 			}
 		}
+	} else {
+		unescapedInput, err := url.QueryUnescape(input)
+		if err == nil && input != unescapedInput {
+			return detectSQLInjectionOne(unescapedInput)
+		}
 	}
 
 	return false

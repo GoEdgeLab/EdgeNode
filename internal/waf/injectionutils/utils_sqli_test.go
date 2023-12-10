@@ -16,6 +16,7 @@ import (
 func TestDetectSQLInjection(t *testing.T) {
 	var a = assert.NewAssertion(t)
 	a.IsTrue(injectionutils.DetectSQLInjection("' UNION SELECT * FROM myTable"))
+	a.IsTrue(injectionutils.DetectSQLInjection("id=1 ' UNION  select * from a"))
 	a.IsTrue(injectionutils.DetectSQLInjection("asdf asd ; -1' and 1=1 union/* foo */select load_file('/etc/passwd')--"))
 	a.IsFalse(injectionutils.DetectSQLInjection("' UNION SELECT1 * FROM myTable"))
 	a.IsFalse(injectionutils.DetectSQLInjection("1234"))
@@ -27,6 +28,7 @@ func TestDetectSQLInjection(t *testing.T) {
 	a.IsTrue(injectionutils.DetectSQLInjection("/sql/injection?id=123 or 1=1"))
 	a.IsTrue(injectionutils.DetectSQLInjection("/sql/injection?id=123%20or%201=1"))
 	a.IsTrue(injectionutils.DetectSQLInjection("https://example.com/sql/injection?id=123%20or%201=1"))
+	a.IsTrue(injectionutils.DetectSQLInjection("id=123%20or%201=1"))
 	a.IsTrue(injectionutils.DetectSQLInjection("https://example.com/' or 1=1"))
 }
 
@@ -98,7 +100,7 @@ func BenchmarkDetectSQLInjection_Normal_Large(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_ = injectionutils.DetectSQLInjection("a/sql/injection?id=" + types.String(rands.Int64()%10000) + "&s=" + s)
+			_ = injectionutils.DetectSQLInjection("a/sql/injection?id=" + types.String(rands.Int64()%10000) + "&s=" + s + "&v=%20")
 		}
 	})
 }
