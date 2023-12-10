@@ -3,12 +3,18 @@
 package waf
 
 import (
+	"encoding/json"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
+	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
+	"os"
 	"sync"
 	"sync/atomic"
 )
@@ -25,11 +31,30 @@ const (
 
 const IPTypeAll = "*"
 
+func init() {
+	if !teaconst.IsMain {
+		return
+	}
+
+	var cacheFile = Tea.Root + "/data/waf_white_list.cache"
+
+	// save
+	events.On(events.EventTerminated, func() {
+		_ = SharedIPWhiteList.Save(cacheFile)
+	})
+
+	// load
+	go func() {
+		_ = SharedIPWhiteList.Load(cacheFile)
+		_ = os.Remove(cacheFile)
+	}()
+}
+
 // IPList IP列表管理
 type IPList struct {
 	expireList *expires.List
-	ipMap      map[string]uint64 // ip => id
-	idMap      map[uint64]string // id => ip
+	ipMap      map[string]uint64 // ip info => id
+	idMap      map[uint64]string // id => ip info
 	listType   IPListType
 
 	id     uint64
@@ -47,7 +72,7 @@ func NewIPList(listType IPListType) *IPList {
 		listType: listType,
 	}
 
-	e := expires.NewList()
+	var e = expires.NewList()
 	list.expireList = e
 
 	e.OnGC(func(itemId uint64) {
@@ -204,6 +229,85 @@ func (this *IPList) RemoveIP(ip string, serverId int64, shouldExecute bool) {
 	if shouldExecute {
 		_ = firewalls.Firewall().RemoveSourceIP(ip)
 	}
+}
+
+// Save to local file
+func (this *IPList) Save(path string) error {
+	var itemMaps = []maps.Map{} // [ {ip info, expiresAt }, ... ]
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	// prevent too many items
+	if len(this.ipMap) > 100_000 {
+		return nil
+	}
+
+	for ipInfo, id := range this.ipMap {
+		var expiresAt = this.expireList.ExpiresAt(id)
+		if expiresAt <= 0 {
+			continue
+		}
+		itemMaps = append(itemMaps, maps.Map{
+			"ip":        ipInfo,
+			"expiresAt": expiresAt,
+		})
+	}
+
+	itemMapsJSON, err := json.Marshal(itemMaps)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, itemMapsJSON, 0666)
+}
+
+// Load from local file
+func (this *IPList) Load(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		return nil
+	}
+
+	var itemMaps = []maps.Map{}
+	err = json.Unmarshal(data, &itemMaps)
+	if err != nil {
+		return err
+	}
+
+	this.locker.Lock()
+	defer this.locker.Unlock()
+
+	for _, itemMap := range itemMaps {
+		var ip = itemMap.GetString("ip")
+		var expiresAt = itemMap.GetInt64("expiresAt")
+		if len(ip) == 0 || expiresAt < fasttime.Now().Unix()+10 /** seconds **/ {
+			continue
+		}
+
+		var id = this.nextId()
+		this.expireList.Add(id, expiresAt)
+
+		this.ipMap[ip] = id
+		this.idMap[id] = ip
+	}
+
+	return nil
+}
+
+// IPMap get ipMap
+func (this *IPList) IPMap() map[string]uint64 {
+	this.locker.RLock()
+	defer this.locker.RUnlock()
+	return this.ipMap
+}
+
+// IdMap get idMap
+func (this *IPList) IdMap() map[uint64]string {
+	this.locker.RLock()
+	defer this.locker.RUnlock()
+	return this.idMap
 }
 
 func (this *IPList) remove(id uint64) {
