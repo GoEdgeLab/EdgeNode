@@ -2,3 +2,5 @@
 
 #include "libinjection/src/libinjection_xss.c"
 #include "libinjection/src/libinjection_html5.c"
+
+#define GOEDGE_VERSION "23" // last version is for GoEdge change

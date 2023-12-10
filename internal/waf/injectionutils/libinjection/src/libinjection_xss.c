@@ -667,10 +667,11 @@ static attribute_t is_black_attr(const char* s, size_t len)
 
 
         /* XMLNS can be used to create arbitrary tags */
-        if (cstrcasecmp_with_null("XMLNS", s, 5) == 0 || cstrcasecmp_with_null("XLINK", s, 5) == 0) {
+        // goedge: commented for photo uploading
+        //if (cstrcasecmp_with_null("XMLNS", s, 5) == 0 || cstrcasecmp_with_null("XLINK", s, 5) == 0) {
             /*      printf("Got XMLNS and XLINK tags\n"); */
-            return TYPE_BLACK;
-        }
+        //    return TYPE_BLACK;
+        //}
     }
 
     black = BLACKATTR;
@@ -789,9 +790,10 @@ int libinjection_is_xss(const char* s, size_t len, int flags)
             attr = TYPE_NONE;
         } else if (h5.token_type == TAG_COMMENT) {
             /* IE uses a "`" as a tag ending char */
-            if (memchr(h5.token_start, '`', h5.token_len) != NULL) {
+            // goedge: commented for photo uploading
+            /**if (memchr(h5.token_start, '`', h5.token_len) != NULL) {
                 return 1;
-            }
+            }**/
 
             /* IE conditional comment */
             if (h5.token_len > 3) {

@@ -24,6 +24,14 @@ func TestDetectXSS(t *testing.T) {
 	a.IsTrue(injectionutils.DetectXSS("<iframe scrolling='no'>"))
 	a.IsFalse(injectionutils.DetectXSS("<html><body><span>RequestId: 1234567890</span></body></html>"))
 	a.IsTrue(injectionutils.DetectXSS("name=s&description=%3Cscript+src%3D%22a.js%22%3Edddd%3C%2Fscript%3E"))
+	a.IsFalse(injectionutils.DetectXSS(`<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="XMP Core 6.0.0">
+   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+      <rdf:Description rdf:about=""
+            xmlns:tiff="http://ns.adobe.com/tiff/1.0/">
+         <tiff:Orientation>1</tiff:Orientation>
+      </rdf:Description>
+   </rdf:RDF>
+</x:xmpmeta>`)) // included in some photo files
 }
 
 func BenchmarkDetectXSS_MISS(b *testing.B) {
