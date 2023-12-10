@@ -467,3 +467,35 @@ func BenchmarkTemplatePathTraversal(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkTemplateCC2(b *testing.B) {
+	runtime.GOMAXPROCS(4)
+
+	template, err := waf.Template()
+	if err != nil {
+		b.Fatal(err)
+	}
+	var group = template.FindRuleGroupWithCode("cc2")
+	if group == nil {
+		b.Fatal("group not found")
+		return
+	}
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			req, err := http.NewRequest(http.MethodPost, "https://example.com/?id=1234"+types.String(rand.Int()%10000)+"&name=lily&time=12345678910", nil)
+			if err != nil {
+				b.Fatal(err)
+			}
+			req.Header.Set("User-Agent", testUserAgent)
+
+			_, _, result, err := group.MatchRequest(requests.NewTestRequest(req))
+			if err != nil {
+				b.Fatal(err)
+			}
+			_ = result
+		}
+	})
+}
