@@ -90,13 +90,13 @@ func (this *APIStream) loop() error {
 			break
 		}
 
-		message, err := nodeStream.Recv()
-		if err != nil {
+		message, streamErr := nodeStream.Recv()
+		if streamErr != nil {
 			if this.isQuiting {
 				remotelogs.Println("API_STREAM", "quit")
 				return nil
 			}
-			return err
+			return streamErr
 		}
 
 		// 处理消息
