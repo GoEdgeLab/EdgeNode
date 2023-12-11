@@ -11,7 +11,6 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
-	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
@@ -38,20 +37,8 @@ import (
 	"sync/atomic"
 )
 
-var webpMaxBufferSize int64 = 1_000_000_000
-var webpTotalBufferSize int64 = 0
+var webpThreads int32
 var webpIgnoreURLSet = setutils.NewFixedSet(131072)
-
-func init() {
-	if !teaconst.IsMain {
-		return
-	}
-
-	var systemMemory = utils.SystemMemoryGB() / 8
-	if systemMemory > 0 {
-		webpMaxBufferSize = int64(systemMemory) << 30
-	}
-}
 
 // HTTPWriter 响应Writer
 type HTTPWriter struct {
@@ -560,8 +547,8 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 			return
 		}
 
-		// 检查内存
-		if atomic.LoadInt64(&webpTotalBufferSize) >= webpMaxBufferSize {
+		// 检查当前是否正在转换
+		if atomic.LoadInt32(&webpThreads) == 1 {
 			return
 		}
 
@@ -1020,6 +1007,11 @@ func (this *HTTPWriter) calculateStaleLife() int {
 func (this *HTTPWriter) finishWebP() {
 	// 处理WebP
 	if this.webpIsEncoding {
+		atomic.StoreInt32(&webpThreads, 1)
+		defer func() {
+			atomic.StoreInt32(&webpThreads, 0)
+		}()
+
 		var webpCacheWriter caches.Writer
 
 		// 准备WebP Cache
@@ -1099,12 +1091,6 @@ func (this *HTTPWriter) finishWebP() {
 			webpIgnoreURLSet.Push(this.req.URL())
 			return
 		}
-
-		var totalBytes = reader.TotalBytes()
-		atomic.AddInt64(&webpTotalBufferSize, totalBytes)
-		defer func() {
-			atomic.AddInt64(&webpTotalBufferSize, -totalBytes)
-		}()
 
 		var f = types.Float32(this.req.web.WebP.Quality)
 		if f > 100 {
