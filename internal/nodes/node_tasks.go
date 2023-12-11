@@ -100,6 +100,8 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 		err = this.execTOAChangedTask()
 	case "networkSecurityPolicyChanged":
 		err = this.execNetworkSecurityPolicyChangedTask(rpcClient)
+	case "webPPolicyChanged":
+		err = this.execWebPPolicyChangedTask(rpcClient)
 	default:
 		// 特殊任务
 		if strings.HasPrefix(task.Type, "ipListDeleted") { // 删除IP名单
@@ -322,6 +324,34 @@ func (this *Node) execDeleteIPList(taskType string) error {
 		list.SetDeleted()
 	}
 
+	return nil
+}
+
+// WebP策略变更
+func (this *Node) execWebPPolicyChangedTask(rpcClient *rpc.RPCClient) error {
+	remotelogs.Println("NODE", "updating webp policies ...")
+	resp, err := rpcClient.NodeRPC.FindNodeWebPPolicies(rpcClient.Context(), &pb.FindNodeWebPPoliciesRequest{})
+	if err != nil {
+		return err
+	}
+	var webPPolicyMap = map[int64]*nodeconfigs.WebPImagePolicy{}
+	for _, policy := range resp.WebPPolicies {
+		if len(policy.WebPPolicyJSON) > 0 {
+			var webPPolicy = nodeconfigs.NewWebPImagePolicy()
+			err = json.Unmarshal(policy.WebPPolicyJSON, webPPolicy)
+			if err != nil {
+				remotelogs.Error("NODE", "decode webp policy failed: "+err.Error())
+				continue
+			}
+			err = webPPolicy.Init()
+			if err != nil {
+				remotelogs.Error("NODE", "initialize webp policy failed: "+err.Error())
+				continue
+			}
+			webPPolicyMap[policy.NodeClusterId] = webPPolicy
+		}
+	}
+	sharedNodeConfig.UpdateWebPImagePolicies(webPPolicyMap)
 	return nil
 }
 
