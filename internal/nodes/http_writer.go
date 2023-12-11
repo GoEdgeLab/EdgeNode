@@ -67,6 +67,7 @@ type HTTPWriter struct {
 	// WebP
 	webpIsEncoding        bool
 	webpOriginContentType string
+	webpQuality           int
 
 	// Compression
 	compressionConfig      *serverconfigs.HTTPCompressionConfig
@@ -470,8 +471,8 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 					contentTypeWritten = true
 				}
 
-				err := cacheWriter.WriteAt(start, data)
-				if err != nil {
+				writeErr := cacheWriter.WriteAt(start, data)
+				if writeErr != nil {
 					hasError = true
 					this.cacheIsFinished = false
 				}
@@ -518,6 +519,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 	if policy.RequireCache && this.req.cacheRef == nil {
 		return
 	}
+	this.webpQuality = policy.Quality
 
 	// 限制最小和最大尺寸
 	// TODO 需要将reader修改为LimitReader
@@ -1092,9 +1094,17 @@ func (this *HTTPWriter) finishWebP() {
 			return
 		}
 
-		var f = types.Float32(this.req.web.WebP.Quality)
-		if f > 100 {
-			f = 100
+		var f = types.Float32(this.webpQuality)
+		if f <= 0 || f > 100 {
+			if this.size > (8<<20) || this.size <= 0 {
+				f = 30
+			} else if this.size > (1 << 20) {
+				f = 50
+			} else if this.size > (128 << 10) {
+				f = 60
+			} else {
+				f = 75
+			}
 		}
 
 		if imageData != nil {
