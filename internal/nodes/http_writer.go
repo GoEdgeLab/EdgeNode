@@ -33,12 +33,21 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 )
 
-var webpThreads int32
-var webpIgnoreURLSet = setutils.NewFixedSet(131072)
+var webPThreads int32
+var webPMaxThreads int32 = 1
+var webPIgnoreURLSet = setutils.NewFixedSet(131072)
+
+func init() {
+	webPMaxThreads = int32(runtime.NumCPU() / 4)
+	if webPMaxThreads < 1 {
+		webPMaxThreads = 1
+	}
+}
 
 // HTTPWriter 响应Writer
 type HTTPWriter struct {
@@ -539,7 +548,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 		this.req.web.WebP.MatchResponse(contentType, size, filepath.Ext(this.req.Path()), this.req.Format) &&
 		this.req.web.WebP.MatchAccept(this.req.requestHeader("Accept")) {
 		// 检查是否已经因为尺寸过大而忽略
-		if webpIgnoreURLSet.Has(this.req.URL()) {
+		if webPIgnoreURLSet.Has(this.req.URL()) {
 			return
 		}
 
@@ -550,7 +559,7 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 		}
 
 		// 检查当前是否正在转换
-		if atomic.LoadInt32(&webpThreads) == 1 {
+		if atomic.LoadInt32(&webPThreads) >= webPMaxThreads {
 			return
 		}
 
@@ -1009,9 +1018,9 @@ func (this *HTTPWriter) calculateStaleLife() int {
 func (this *HTTPWriter) finishWebP() {
 	// 处理WebP
 	if this.webpIsEncoding {
-		atomic.StoreInt32(&webpThreads, 1)
+		atomic.AddInt32(&webPThreads, 1)
 		defer func() {
-			atomic.StoreInt32(&webpThreads, 0)
+			atomic.AddInt32(&webPThreads, -1)
 		}()
 
 		var webpCacheWriter caches.Writer
@@ -1074,7 +1083,7 @@ func (this *HTTPWriter) finishWebP() {
 		if isGif {
 			gifImage, err = gif.DecodeAll(reader)
 			if gifImage != nil && (gifImage.Config.Width > gowebp.WebPMaxDimension || gifImage.Config.Height > gowebp.WebPMaxDimension) {
-				webpIgnoreURLSet.Push(this.req.URL())
+				webPIgnoreURLSet.Push(this.req.URL())
 				return
 			}
 		} else {
@@ -1082,7 +1091,7 @@ func (this *HTTPWriter) finishWebP() {
 			if imageData != nil {
 				var bound = imageData.Bounds()
 				if bound.Max.X > gowebp.WebPMaxDimension || bound.Max.Y > gowebp.WebPMaxDimension {
-					webpIgnoreURLSet.Push(this.req.URL())
+					webPIgnoreURLSet.Push(this.req.URL())
 					return
 				}
 			}
@@ -1090,7 +1099,7 @@ func (this *HTTPWriter) finishWebP() {
 
 		if err != nil {
 			// 发生了错误终止处理
-			webpIgnoreURLSet.Push(this.req.URL())
+			webPIgnoreURLSet.Push(this.req.URL())
 			return
 		}
 
