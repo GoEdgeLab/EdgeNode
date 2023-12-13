@@ -3,6 +3,7 @@ package nodes
 import (
 	"bytes"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -130,7 +131,22 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	var tags = []string{}
 
 	// 检查是否有缓存
-	var key = this.Format(this.cacheRef.Key)
+	var key string
+	if this.web.Cache.Key != nil && this.web.Cache.Key.IsOn && len(this.web.Cache.Key.Host) > 0 {
+		key = configutils.ParseVariables(this.cacheRef.Key, func(varName string) (value string) {
+			switch varName {
+			case "scheme":
+				return this.web.Cache.Key.Scheme
+			case "host":
+				return this.web.Cache.Key.Host
+			default:
+				return this.Format("${" + varName + "}")
+			}
+		})
+	} else {
+		key = this.Format(this.cacheRef.Key)
+	}
+
 	if len(key) == 0 {
 		this.cacheRef = nil
 		cacheBypassDescription = "BYPASS, empty key"
