@@ -47,9 +47,13 @@ func (this *TCPListener) Serve() error {
 		atomic.AddInt64(&this.countActiveConnections, 1)
 
 		go func(conn net.Conn) {
-			err = this.handleConn(conn)
+			var server = this.Group.FirstServer()
+			if server == nil {
+				return
+			}
+			err = this.handleConn(server, conn)
 			if err != nil {
-				remotelogs.Error("TCP_LISTENER", err.Error())
+				remotelogs.ServerError(server.Id, "TCP_LISTENER", err.Error(), "", nil)
 			}
 			atomic.AddInt64(&this.countActiveConnections, -1)
 		}(conn)
@@ -63,8 +67,7 @@ func (this *TCPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Reset()
 }
 
-func (this *TCPListener) handleConn(conn net.Conn) error {
-	var server = this.Group.FirstServer()
+func (this *TCPListener) handleConn(server *serverconfigs.ServerConfig, conn net.Conn) error {
 	if server == nil {
 		return errors.New("no server available")
 	}
