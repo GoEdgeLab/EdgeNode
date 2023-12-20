@@ -53,19 +53,20 @@ func BenchmarkBandwidthStatManager_Slice(b *testing.B) {
 		for j := 0; j < 100; j++ {
 			var stat = &stats.BandwidthStat{}
 			pbStats = append(pbStats, &pb.ServerBandwidthStat{
-				Id:                  0,
-				UserId:              stat.UserId,
-				ServerId:            stat.ServerId,
-				Day:                 stat.Day,
-				TimeAt:              stat.TimeAt,
-				Bytes:               stat.MaxBytes / 2,
-				TotalBytes:          stat.TotalBytes,
-				CachedBytes:         stat.CachedBytes,
-				AttackBytes:         stat.AttackBytes,
-				CountRequests:       stat.CountRequests,
-				CountCachedRequests: stat.CountCachedRequests,
-				CountAttackRequests: stat.CountAttackRequests,
-				NodeRegionId:        1,
+				Id:                        0,
+				UserId:                    stat.UserId,
+				ServerId:                  stat.ServerId,
+				Day:                       stat.Day,
+				TimeAt:                    stat.TimeAt,
+				Bytes:                     stat.MaxBytes / 2,
+				TotalBytes:                stat.TotalBytes,
+				CachedBytes:               stat.CachedBytes,
+				AttackBytes:               stat.AttackBytes,
+				CountRequests:             stat.CountRequests,
+				CountCachedRequests:       stat.CountCachedRequests,
+				CountAttackRequests:       stat.CountAttackRequests,
+				CountWebsocketConnections: stat.CountWebsocketConnections,
+				NodeRegionId:              1,
 			})
 		}
 		_ = pbStats

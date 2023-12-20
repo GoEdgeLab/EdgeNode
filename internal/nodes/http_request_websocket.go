@@ -61,6 +61,9 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		}
 	}
 
+	// 标记
+	this.isWebsocketResponse = true
+
 	// 设置指定的来源域
 	if !this.web.Websocket.RequestSameOrigin && len(this.web.Websocket.RequestOrigin) > 0 {
 		var newRequestOrigin = this.web.Websocket.RequestOrigin
@@ -77,7 +80,6 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 	}
 
 	// 连接源站
-	// TODO 增加N次错误重试，重试的时候需要尝试不同的源站
 	originConn, _, err := OriginConnect(this.origin, this.requestServerPort(), this.RawReq.RemoteAddr, requestHost)
 	if err != nil {
 		if isLastRetry {

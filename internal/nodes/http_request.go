@@ -85,6 +85,8 @@ type HTTPRequest struct {
 	isAttack        bool   // 是否是攻击请求
 	requestBodyData []byte // 读取的Body内容
 
+	isWebsocketResponse bool // 是否为Websocket响应（非请求）
+
 	// WAF相关
 	firewallPolicyId    int64
 	firewallRuleGroupId int64
@@ -410,6 +412,8 @@ func (this *HTTPRequest) doEnd() {
 		var countAttacks int64 = 0
 		var attackBytes int64 = 0
 
+		var countWebsocketConnections int64 = 0
+
 		if this.isCached {
 			countCached = 1
 			cachedBytes = totalBytes
@@ -421,8 +425,11 @@ func (this *HTTPRequest) doEnd() {
 				attackBytes = totalBytes
 			}
 		}
+		if this.isWebsocketResponse {
+			countWebsocketConnections = 1
+		}
 
-		stats.SharedTrafficStatManager.Add(this.ReqServer.UserId, this.ReqServer.Id, this.ReqHost, totalBytes, cachedBytes, 1, countCached, countAttacks, attackBytes, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
+		stats.SharedTrafficStatManager.Add(this.ReqServer.UserId, this.ReqServer.Id, this.ReqHost, totalBytes, cachedBytes, 1, countCached, countAttacks, attackBytes, countWebsocketConnections, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
 
 		// 指标
 		if metrics.SharedManager.HasHTTPMetrics() {

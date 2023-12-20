@@ -57,12 +57,13 @@ type BandwidthStat struct {
 	MaxBytes         int64 `json:"maxBytes"`
 	TotalBytes       int64 `json:"totalBytes"`
 
-	CachedBytes         int64 `json:"cachedBytes"`
-	AttackBytes         int64 `json:"attackBytes"`
-	CountRequests       int64 `json:"countRequests"`
-	CountCachedRequests int64 `json:"countCachedRequests"`
-	CountAttackRequests int64 `json:"countAttackRequests"`
-	UserPlanId          int64 `json:"userPlanId"`
+	CachedBytes               int64 `json:"cachedBytes"`
+	AttackBytes               int64 `json:"attackBytes"`
+	CountRequests             int64 `json:"countRequests"`
+	CountCachedRequests       int64 `json:"countCachedRequests"`
+	CountAttackRequests       int64 `json:"countAttackRequests"`
+	CountWebsocketConnections int64 `json:"countWebsocketConnections"`
+	UserPlanId                int64 `json:"userPlanId"`
 }
 
 // BandwidthStatManager 服务带宽统计
@@ -142,20 +143,21 @@ func (this *BandwidthStatManager) Loop() error {
 			}
 
 			pbStats = append(pbStats, &pb.ServerBandwidthStat{
-				Id:                  0,
-				UserId:              stat.UserId,
-				ServerId:            stat.ServerId,
-				Day:                 stat.Day,
-				TimeAt:              stat.TimeAt,
-				Bytes:               stat.MaxBytes / bandwidthTimestampDelim,
-				TotalBytes:          stat.TotalBytes,
-				CachedBytes:         stat.CachedBytes,
-				AttackBytes:         stat.AttackBytes,
-				CountRequests:       stat.CountRequests,
-				CountCachedRequests: stat.CountCachedRequests,
-				CountAttackRequests: stat.CountAttackRequests,
-				UserPlanId:          stat.UserPlanId,
-				NodeRegionId:        regionId,
+				Id:                        0,
+				UserId:                    stat.UserId,
+				ServerId:                  stat.ServerId,
+				Day:                       stat.Day,
+				TimeAt:                    stat.TimeAt,
+				Bytes:                     stat.MaxBytes / bandwidthTimestampDelim,
+				TotalBytes:                stat.TotalBytes,
+				CachedBytes:               stat.CachedBytes,
+				AttackBytes:               stat.AttackBytes,
+				CountRequests:             stat.CountRequests,
+				CountCachedRequests:       stat.CountCachedRequests,
+				CountAttackRequests:       stat.CountAttackRequests,
+				CountWebsocketConnections: stat.CountWebsocketConnections,
+				UserPlanId:                stat.UserPlanId,
+				NodeRegionId:              regionId,
 			})
 			delete(this.m, key)
 		}
@@ -231,7 +233,7 @@ func (this *BandwidthStatManager) AddBandwidth(userId int64, userPlanId int64, s
 }
 
 // AddTraffic 添加请求数据
-func (this *BandwidthStatManager) AddTraffic(serverId int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64) {
+func (this *BandwidthStatManager) AddTraffic(serverId int64, cachedBytes int64, countRequests int64, countCachedRequests int64, countAttacks int64, attackBytes int64, countWebsocketConnections int64) {
 	var now = fasttime.Now()
 	var day = now.Ymd()
 	var timeAt = now.Round5Hi()
@@ -245,6 +247,7 @@ func (this *BandwidthStatManager) AddTraffic(serverId int64, cachedBytes int64, 
 		stat.CountCachedRequests += countCachedRequests
 		stat.CountAttackRequests += countAttacks
 		stat.AttackBytes += attackBytes
+		stat.CountWebsocketConnections += countWebsocketConnections
 	}
 	this.locker.Unlock()
 }
