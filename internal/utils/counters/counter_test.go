@@ -91,7 +91,7 @@ func TestCounterMemory(t *testing.T) {
 
 	var stat1 = &runtime.MemStats{}
 	runtime.ReadMemStats(stat1)
-	t.Log((stat1.TotalAlloc-stat.TotalAlloc)/(1<<20), "MB")
+	t.Log((stat1.HeapInuse-stat.HeapInuse)/(1<<20), "MB")
 
 	t.Log(counter.TotalItems())
 

@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
+	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"runtime"
 	"testing"
@@ -41,9 +42,9 @@ func TestItem_Increase2(t *testing.T) {
 
 	var a = assert.NewAssertion(t)
 
-	var item = counters.NewItem[uint32](20)
+	var item = counters.NewItem[uint32](23)
 	for i := 0; i < 100; i++ {
-		t.Log(item.Increase(), item.Sum(), timeutil.Format("H:i:s"))
+		t.Log("round "+types.String(i)+":", item.Increase(), item.Sum(), timeutil.Format("H:i:s"))
 		time.Sleep(2 * time.Second)
 	}
 
@@ -56,14 +57,14 @@ func TestItem_IsExpired(t *testing.T) {
 		return
 	}
 
-	var currentTime = time.Now().Unix()
-
 	var item = counters.NewItem[uint32](10)
-	t.Log(item.IsExpired(currentTime))
+	t.Log(item.IsExpired(time.Now().Unix()))
 	time.Sleep(10 * time.Second)
-	t.Log(item.IsExpired(currentTime))
+	t.Log(item.IsExpired(time.Now().Unix()))
 	time.Sleep(2 * time.Second)
-	t.Log(item.IsExpired(currentTime))
+	t.Log(item.IsExpired(time.Now().Unix()))
+	time.Sleep(2 * time.Second)
+	t.Log(item.IsExpired(time.Now().Unix()))
 }
 
 func BenchmarkItem_Increase(b *testing.B) {
