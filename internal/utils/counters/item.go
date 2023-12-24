@@ -7,9 +7,10 @@ import (
 )
 
 const spanMaxValue = 10_000_000
+const maxSpans = 10
 
 type Item[T SupportedUIntType] struct {
-	spans          []T
+	spans          [maxSpans + 1]T
 	lastUpdateTime int64
 	lifeSeconds    int64
 	spanSeconds    int64
@@ -19,16 +20,16 @@ func NewItem[T SupportedUIntType](lifeSeconds int) *Item[T] {
 	if lifeSeconds <= 0 {
 		lifeSeconds = 60
 	}
-	var spanSeconds = lifeSeconds / 10
+	var spanSeconds = lifeSeconds / maxSpans
 	if spanSeconds < 1 {
 		spanSeconds = 1
+	} else if lifeSeconds > maxSpans && lifeSeconds%maxSpans != 0 {
+		spanSeconds++
 	}
-	var countSpans = lifeSeconds/spanSeconds + 1 /** prevent index out of bounds **/
 
 	return &Item[T]{
 		lifeSeconds:    int64(lifeSeconds),
 		spanSeconds:    int64(spanSeconds),
-		spans:          make([]T, countSpans),
 		lastUpdateTime: fasttime.Now().Unix(),
 	}
 }
@@ -119,5 +120,9 @@ func (this *Item[T]) IsExpired(currentTime int64) bool {
 }
 
 func (this *Item[T]) calculateSpanIndex(timestamp int64) int {
-	return int(timestamp % this.lifeSeconds / this.spanSeconds)
+	var index = int(timestamp % this.lifeSeconds / this.spanSeconds)
+	if index > maxSpans-1 {
+		return maxSpans - 1
+	}
+	return index
 }

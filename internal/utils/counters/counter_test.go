@@ -54,6 +54,7 @@ func TestCounter_GC(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	counter.Increase(1, 20)
 	counter.GC()
+	t.Log(counter.Get(1))
 }
 
 func TestCounter_GC2(t *testing.T) {
@@ -62,7 +63,7 @@ func TestCounter_GC2(t *testing.T) {
 	}
 
 	var counter = counters.NewCounter[uint32]().WithGC()
-	for i := 0; i < 1e5; i++ {
+	for i := 0; i < 100_000; i++ {
 		counter.Increase(uint64(i), rands.Int(10, 300))
 	}
 
@@ -93,6 +94,19 @@ func TestCounterMemory(t *testing.T) {
 	t.Log((stat1.TotalAlloc-stat.TotalAlloc)/(1<<20), "MB")
 
 	t.Log(counter.TotalItems())
+
+	var gcPause = func() {
+		var before = time.Now()
+		runtime.GC()
+		var costSeconds = time.Since(before).Seconds()
+		var stats = &debug.GCStats{}
+		debug.ReadGCStats(stats)
+		t.Log("GC pause:", stats.PauseTotal.Seconds()*1000, "ms", "cost:", costSeconds*1000, "ms")
+	}
+
+	gcPause()
+
+	_ = counter.TotalItems()
 }
 
 func BenchmarkCounter_Increase(b *testing.B) {
