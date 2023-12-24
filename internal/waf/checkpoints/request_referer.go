@@ -23,5 +23,5 @@ func (this *RequestRefererCheckpoint) ResponseValue(req requests.Request, resp *
 }
 
 func (this *RequestRefererCheckpoint) CacheLife() utils.CacheLife {
-	return utils.CacheShortLife
+	return utils.CacheMiddleLife
 }

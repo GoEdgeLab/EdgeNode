@@ -163,7 +163,15 @@ var AllCheckpoints = []*CheckpointDefinition{
 		Priority:    100,
 	},
 	{
-		Name:        "请求来源URL",
+		Name:        "请求来源",
+		Prefix:      "refererOrigin",
+		Description: "请求报头中的Referer或Origin值",
+		HasParams:   false,
+		Instance:    new(RequestRefererOriginCheckpoint),
+		Priority:    100,
+	},
+	{
+		Name:        "请求来源Referer",
 		Prefix:      "referer",
 		Description: "请求Header中的Referer值",
 		HasParams:   false,
