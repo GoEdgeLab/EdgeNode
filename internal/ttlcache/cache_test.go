@@ -1,6 +1,7 @@
 package ttlcache
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
@@ -8,6 +9,7 @@ import (
 	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"sync/atomic"
 	"testing"
@@ -48,15 +50,33 @@ func TestCache_Memory(t *testing.T) {
 	}
 
 	var cache = NewCache[int]()
+	var isReady bool
 
 	testutils.StartMemoryStats(t, func() {
+		if !isReady {
+			return
+		}
 		t.Log(cache.Count(), "items")
 	})
 
-	var count = 20_000_000
+	var count = 1_000_000
+	if utils.SystemMemoryGB() > 4 {
+		count = 20_000_000
+	}
 	for i := 0; i < count; i++ {
 		cache.Write("a"+strconv.Itoa(i), 1, time.Now().Unix()+int64(rands.Int(0, 300)))
 	}
+
+	func() {
+		var before = time.Now()
+		runtime.GC()
+		var costSeconds = time.Since(before).Seconds()
+		var stats = &debug.GCStats{}
+		debug.ReadGCStats(stats)
+		t.Log("GC pause:", stats.Pause[0].Seconds()*1000, "ms", "cost:", costSeconds*1000, "ms")
+	}()
+
+	isReady = true
 
 	t.Log(cache.Count())
 
