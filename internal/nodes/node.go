@@ -784,9 +784,13 @@ func (this *Node) listenSock() error {
 				var costSeconds = time.Since(before).Seconds()
 				var gcStats = &debug.GCStats{}
 				debug.ReadGCStats(gcStats)
+				var pauseMS float64
+				if len(gcStats.Pause) > 0 {
+					pauseMS = gcStats.Pause[0].Seconds() * 1000
+				}
 				_ = cmd.Reply(&gosock.Command{
 					Params: map[string]any{
-						"pauseMS": gcStats.PauseTotal.Seconds() * 1000,
+						"pauseMS": pauseMS,
 						"costMS":  costSeconds * 1000,
 					},
 				})
