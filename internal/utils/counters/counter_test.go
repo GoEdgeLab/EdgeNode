@@ -101,7 +101,7 @@ func TestCounterMemory(t *testing.T) {
 		var costSeconds = time.Since(before).Seconds()
 		var stats = &debug.GCStats{}
 		debug.ReadGCStats(stats)
-		t.Log("GC pause:", stats.PauseTotal.Seconds()*1000, "ms", "cost:", costSeconds*1000, "ms")
+		t.Log("GC pause:", stats.Pause[0].Seconds()*1000, "ms", "cost:", costSeconds*1000, "ms")
 	}
 
 	gcPause()
@@ -113,12 +113,14 @@ func BenchmarkCounter_Increase(b *testing.B) {
 	runtime.GOMAXPROCS(4)
 
 	var counter = counters.NewCounter[uint32]()
+
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	var i uint64
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			counter.Increase(atomic.AddUint64(&i, 1)%1e6, 20)
+			counter.Increase(atomic.AddUint64(&i, 1)%1_000_000, 20)
 		}
 	})
 
@@ -138,11 +140,12 @@ func BenchmarkCounter_IncreaseKey(b *testing.B) {
 	}()
 
 	b.ResetTimer()
+	b.ReportAllocs()
 
 	var i uint64
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			counter.IncreaseKey(types.String(atomic.AddUint64(&i, 1)%1e6), 20)
+			counter.IncreaseKey(types.String(atomic.AddUint64(&i, 1)%1_000_000), 20)
 		}
 	})
 

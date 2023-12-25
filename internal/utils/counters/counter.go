@@ -22,7 +22,7 @@ type SupportedUIntType interface {
 type Counter[T SupportedUIntType] struct {
 	countMaps uint64
 	locker    *syncutils.RWMutex
-	itemMaps  []map[uint64]*Item[T]
+	itemMaps  []map[uint64]Item[T]
 
 	gcTicker *time.Ticker
 	gcIndex  int
@@ -36,9 +36,9 @@ func NewCounter[T SupportedUIntType]() *Counter[T] {
 		count = 8
 	}
 
-	var itemMaps = []map[uint64]*Item[T]{}
+	var itemMaps = []map[uint64]Item[T]{}
 	for i := 0; i < count; i++ {
-		itemMaps = append(itemMaps, map[uint64]*Item[T]{})
+		itemMaps = append(itemMaps, map[uint64]Item[T]{})
 	}
 
 	var counter = &Counter[T]{
@@ -69,19 +69,22 @@ func (this *Counter[T]) WithGC() *Counter[T] {
 func (this *Counter[T]) Increase(key uint64, lifeSeconds int) T {
 	var index = int(key % this.countMaps)
 	this.locker.RLock(index)
-	var item = this.itemMaps[index][key]
+	var item = this.itemMaps[index][key] // item MUST NOT be pointer
 	this.locker.RUnlock(index)
-	if item == nil {
+	if !item.IsOk() {
 		// no need to care about duplication
 		// always insert new item even when itemMap is full
 		item = NewItem[T](lifeSeconds)
+		var result = item.Increase()
 		this.locker.Lock(index)
 		this.itemMaps[index][key] = item
 		this.locker.Unlock(index)
+		return result
 	}
 
 	this.locker.Lock(index)
 	var result = item.Increase()
+	this.itemMaps[index][key] = item // overwrite
 	this.locker.Unlock(index)
 	return result
 }
@@ -97,7 +100,7 @@ func (this *Counter[T]) Get(key uint64) T {
 	this.locker.RLock(index)
 	defer this.locker.RUnlock(index)
 	var item = this.itemMaps[index][key]
-	if item != nil {
+	if item.IsOk() {
 		return item.Sum()
 	}
 	return 0
@@ -115,7 +118,7 @@ func (this *Counter[T]) Reset(key uint64) {
 	var item = this.itemMaps[index][key]
 	this.locker.RUnlock(index)
 
-	if item != nil {
+	if item.IsOk() {
 		this.locker.Lock(index)
 		delete(this.itemMaps[index], key)
 		this.locker.Unlock(index)

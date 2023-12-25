@@ -16,7 +16,7 @@ type Item[T SupportedUIntType] struct {
 	spanSeconds    int64
 }
 
-func NewItem[T SupportedUIntType](lifeSeconds int) *Item[T] {
+func NewItem[T SupportedUIntType](lifeSeconds int) Item[T] {
 	if lifeSeconds <= 0 {
 		lifeSeconds = 60
 	}
@@ -27,7 +27,7 @@ func NewItem[T SupportedUIntType](lifeSeconds int) *Item[T] {
 		spanSeconds++
 	}
 
-	return &Item[T]{
+	return Item[T]{
 		lifeSeconds:    int64(lifeSeconds),
 		spanSeconds:    int64(spanSeconds),
 		lastUpdateTime: fasttime.Now().Unix(),
@@ -125,4 +125,8 @@ func (this *Item[T]) calculateSpanIndex(timestamp int64) int {
 		return maxSpans - 1
 	}
 	return index
+}
+
+func (this *Item[T]) IsOk() bool {
+	return this.lifeSeconds > 0
 }
