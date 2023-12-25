@@ -777,9 +777,19 @@ func (this *Node) listenSock() error {
 					_ = cmd.ReplyOk()
 				}
 			case "gc":
+				var before = time.Now()
 				runtime.GC()
 				debug.FreeOSMemory()
-				_ = cmd.ReplyOk()
+
+				var costSeconds = time.Since(before).Seconds()
+				var gcStats = &debug.GCStats{}
+				debug.ReadGCStats(gcStats)
+				_ = cmd.Reply(&gosock.Command{
+					Params: map[string]any{
+						"pauseMS": gcStats.PauseTotal.Seconds() * 1000,
+						"costMS":  costSeconds * 1000,
+					},
+				})
 			case "reload":
 				err := this.syncConfig(0)
 				if err != nil {

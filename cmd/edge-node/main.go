@@ -228,11 +228,18 @@ func main() {
 	})
 	app.On("gc", func() {
 		var sock = gosock.NewTmpSock(teaconst.ProcessName)
-		_, err := sock.Send(&gosock.Command{Code: "gc"})
+		reply, err := sock.Send(&gosock.Command{Code: "gc"})
 		if err != nil {
 			fmt.Println("[ERROR]" + err.Error())
 		} else {
-			fmt.Println("ok")
+			if reply == nil {
+				fmt.Println("ok")
+			} else {
+				var paramMap = maps.NewMap(reply.Params)
+				var pauseMS = paramMap.GetFloat64("pauseMS")
+				var costMS = paramMap.GetFloat64("costMS")
+				fmt.Printf("ok, cost: %.4fms, pause: %.4fms", costMS, pauseMS)
+			}
 		}
 	})
 	app.On("ip.drop", func() {
