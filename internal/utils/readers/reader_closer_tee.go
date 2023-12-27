@@ -12,12 +12,17 @@ type TeeReaderCloser struct {
 
 	onFail func(err error)
 	onEOF  func()
+
+	mustWrite bool
 }
 
-func NewTeeReaderCloser(reader io.Reader, writer io.Writer) *TeeReaderCloser {
+// NewTeeReaderCloser
+// mustWrite - ensure writing MUST be successfully
+func NewTeeReaderCloser(reader io.Reader, writer io.Writer, mustWrite bool) *TeeReaderCloser {
 	return &TeeReaderCloser{
-		r: reader,
-		w: writer,
+		r:         reader,
+		w:         writer,
+		mustWrite: mustWrite,
 	}
 }
 
@@ -26,7 +31,13 @@ func (this *TeeReaderCloser) Read(p []byte) (n int, err error) {
 	if n > 0 {
 		_, wErr := this.w.Write(p[:n])
 		if (err == nil || err == io.EOF) && wErr != nil {
-			err = wErr
+			if this.mustWrite {
+				err = wErr
+			} else {
+				if this.onFail != nil {
+					this.onFail(wErr)
+				}
+			}
 		}
 	}
 	if err != nil {

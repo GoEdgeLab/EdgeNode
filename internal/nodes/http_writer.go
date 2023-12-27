@@ -494,7 +494,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 		return
 	}
 
-	var cacheReader = readers.NewTeeReaderCloser(resp.Body, this.cacheWriter)
+	var cacheReader = readers.NewTeeReaderCloser(resp.Body, this.cacheWriter, false)
 	resp.Body = cacheReader
 	this.rawReader = cacheReader
 

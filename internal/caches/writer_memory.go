@@ -125,7 +125,6 @@ func (this *MemoryWriter) Close() error {
 	// 需要在Locker之外
 	defer this.once.Do(func() {
 		this.endFunc(this.item)
-		this.item = nil // free memory
 	})
 
 	if this.item == nil {
@@ -164,7 +163,6 @@ func (this *MemoryWriter) Discard() error {
 	// 需要在Locker之外
 	defer this.once.Do(func() {
 		this.endFunc(this.item)
-		this.item = nil // free memory
 	})
 
 	this.storage.locker.Lock()
