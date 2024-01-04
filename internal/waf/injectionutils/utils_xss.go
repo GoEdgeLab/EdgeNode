@@ -19,7 +19,7 @@ import (
 	"unsafe"
 )
 
-func DetectXSSCache(input string, cacheLife utils.CacheLife) bool {
+func DetectXSSCache(input string, isStrict bool, cacheLife utils.CacheLife) bool {
 	var l = len(input)
 
 	if l == 0 {
@@ -27,17 +27,20 @@ func DetectXSSCache(input string, cacheLife utils.CacheLife) bool {
 	}
 
 	if cacheLife <= 0 || l < 512 || l > utils.MaxCacheDataSize {
-		return DetectXSS(input)
+		return DetectXSS(input, isStrict)
 	}
 
 	var hash = xxhash.Sum64String(input)
 	var key = "WAF@XSS@" + strconv.FormatUint(hash, 10)
+	if isStrict {
+		key += "@1"
+	}
 	var item = utils.SharedCache.Read(key)
 	if item != nil {
 		return item.Value == 1
 	}
 
-	var result = DetectXSS(input)
+	var result = DetectXSS(input, isStrict)
 	if result {
 		utils.SharedCache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
 	} else {
@@ -47,12 +50,12 @@ func DetectXSSCache(input string, cacheLife utils.CacheLife) bool {
 }
 
 // DetectXSS detect XSS in string
-func DetectXSS(input string) bool {
+func DetectXSS(input string, isStrict bool) bool {
 	if len(input) == 0 {
 		return false
 	}
 
-	if detectXSSOne(input) {
+	if detectXSSOne(input, isStrict) {
 		return true
 	}
 
@@ -63,22 +66,22 @@ func DetectXSS(input string) bool {
 			var args = input[argsIndex+1:]
 			unescapeArgs, err := url.QueryUnescape(args)
 			if err == nil && args != unescapeArgs {
-				return detectXSSOne(args) || detectXSSOne(unescapeArgs)
+				return detectXSSOne(args, isStrict) || detectXSSOne(unescapeArgs, isStrict)
 			} else {
-				return detectXSSOne(args)
+				return detectXSSOne(args, isStrict)
 			}
 		}
 	} else {
 		unescapedInput, err := url.QueryUnescape(input)
 		if err == nil && input != unescapedInput {
-			return detectXSSOne(unescapedInput)
+			return detectXSSOne(unescapedInput, isStrict)
 		}
 	}
 
 	return false
 }
 
-func detectXSSOne(input string) bool {
+func detectXSSOne(input string, isStrict bool) bool {
 	if len(input) == 0 {
 		return false
 	}
@@ -86,5 +89,9 @@ func detectXSSOne(input string) bool {
 	var cInput = C.CString(input)
 	defer C.free(unsafe.Pointer(cInput))
 
-	return C.libinjection_xss(cInput, C.size_t(len(input))) == 1
+	var isStrictInt = 0
+	if isStrict {
+		isStrictInt = 1
+	}
+	return C.libinjection_xss(cInput, C.size_t(len(input)), C.int(isStrictInt)) == 1
 }

@@ -16,7 +16,7 @@ typedef enum attribute {
 
 
 static attribute_t is_black_attr(const char* s, size_t len);
-static int is_black_tag(const char* s, size_t len);
+static int is_black_tag(const char* s, size_t len, int strictMode);
 static int is_black_url(const char* s, size_t len);
 static int cstrcasecmp_with_null(const char *a, const char *b, size_t n);
 static int html_decode_char_at(const char* src, size_t len, size_t* consumed);
@@ -492,6 +492,35 @@ static stringtype_t BLACKATTR[] = {
   };
 */
 
+// GoEdge: change BLACKTAG to STRICT_BLACKTAG
+static const char* STRICT_BLACKTAG[] = {
+    "APPLET"
+    , "AUDIO"
+    , "BASE"
+    , "COMMENT"  /* IE http://html5sec.org/#38 */
+    , "EMBED"
+    , "FORM"
+    , "FRAME"
+    , "FRAMESET"
+    , "HANDLER" /* Opera SVG, effectively a script tag */
+    , "IFRAME"
+    , "IMPORT"
+    , "ISINDEX"
+    , "LINK"
+    , "LISTENER"
+    /*    , "MARQUEE" */
+    , "META"
+    , "NOSCRIPT"
+    , "OBJECT"
+    , "SCRIPT"
+    , "STYLE"
+    , "VIDEO"
+    , "VMLFRAME"
+    , "XML"
+    , "XSS"
+    , NULL
+};
+
 static const char* BLACKTAG[] = {
     "APPLET"
     /*    , "AUDIO" */
@@ -515,7 +544,6 @@ static const char* BLACKTAG[] = {
     , "STYLE"
     /*    , "VIDEO" */
     , "VMLFRAME"
-    , "XML"
     , "XSS"
     , NULL
 };
@@ -606,7 +634,7 @@ static int htmlencode_startswith(const char *a, const char *b, size_t n)
     return (*a == 0) ? 1 : 0;
 }
 
-static int is_black_tag(const char* s, size_t len)
+static int is_black_tag(const char* s, size_t len, int strictMode)
 {
     const char** black;
 
@@ -614,7 +642,11 @@ static int is_black_tag(const char* s, size_t len)
         return 0;
     }
 
-    black = BLACKTAG;
+	if (strictMode == 1) {
+    	black = STRICT_BLACKTAG;
+    } else {
+    	black = BLACKTAG;
+    }
     while (*black != NULL) {
         if (cstrcasecmp_with_null(*black, s, len) == 0) {
             /* printf("Got black tag %s\n", *black); */
@@ -729,7 +761,7 @@ static int is_black_url(const char* s, size_t len)
     return 0;
 }
 
-int libinjection_is_xss(const char* s, size_t len, int flags)
+int libinjection_is_xss(const char* s, size_t len, int flags, int strictMode)
 {
     h5_state_t h5;
     attribute_t attr = TYPE_NONE;
@@ -743,7 +775,7 @@ int libinjection_is_xss(const char* s, size_t len, int flags)
         if (h5.token_type == DOCTYPE) {
             return 1;
         } else if (h5.token_type == TAG_NAME_OPEN) {
-            if (is_black_tag(h5.token_start, h5.token_len)) {
+            if (is_black_tag(h5.token_start, h5.token_len, strictMode)) {
                 return 1;
             }
         } else if (h5.token_type == ATTR_NAME) {
@@ -835,21 +867,21 @@ int libinjection_is_xss(const char* s, size_t len, int flags)
  * 
  *
  */
-int libinjection_xss(const char* s, size_t slen)
+int libinjection_xss(const char* s, size_t slen, int strictMode)
 {
-    if (libinjection_is_xss(s, slen, DATA_STATE)) {
+    if (libinjection_is_xss(s, slen, DATA_STATE, strictMode)) {
         return 1;
     }
-    if (libinjection_is_xss(s, slen, VALUE_NO_QUOTE)) {
+    if (libinjection_is_xss(s, slen, VALUE_NO_QUOTE, strictMode)) {
         return 1;
     }
-    if (libinjection_is_xss(s, slen, VALUE_SINGLE_QUOTE)) {
+    if (libinjection_is_xss(s, slen, VALUE_SINGLE_QUOTE, strictMode)) {
         return 1;
     }
-    if (libinjection_is_xss(s, slen, VALUE_DOUBLE_QUOTE)) {
+    if (libinjection_is_xss(s, slen, VALUE_DOUBLE_QUOTE, strictMode)) {
         return 1;
     }
-    if (libinjection_is_xss(s, slen, VALUE_BACK_QUOTE)) {
+    if (libinjection_is_xss(s, slen, VALUE_BACK_QUOTE, strictMode)) {
         return 1;
     }
 

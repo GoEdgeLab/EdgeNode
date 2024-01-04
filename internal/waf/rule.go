@@ -600,27 +600,28 @@ func (this *Rule) Test(value any) bool {
 		default:
 			return injectionutils.DetectSQLInjectionCache(this.stringifyValue(value), this.cacheLife)
 		}
-	case RuleOperatorContainsXSS:
+	case RuleOperatorContainsXSS, RuleOperatorContainsXSSStrictly:
 		if value == nil {
 			return false
 		}
+		var isStrict = this.Operator == RuleOperatorContainsXSSStrictly
 		switch xValue := value.(type) {
 		case []string:
 			for _, v := range xValue {
-				if injectionutils.DetectXSSCache(v, this.cacheLife) {
+				if injectionutils.DetectXSSCache(v, isStrict, this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		case [][]byte:
 			for _, v := range xValue {
-				if injectionutils.DetectXSSCache(string(v), this.cacheLife) {
+				if injectionutils.DetectXSSCache(string(v), isStrict, this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		default:
-			return injectionutils.DetectXSSCache(this.stringifyValue(value), this.cacheLife)
+			return injectionutils.DetectXSSCache(this.stringifyValue(value), isStrict, this.cacheLife)
 		}
 	case RuleOperatorContainsBinary:
 		data, _ := base64.StdEncoding.DecodeString(this.stringifyValue(this.Value))
