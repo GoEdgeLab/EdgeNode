@@ -262,7 +262,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	}
 
 	var msgHTML = `<!DOCTYPE html>
-<html>
+<html lang="` + lang + `">
 <head>
 	<title>` + msgTitle + `</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
@@ -281,9 +281,13 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	}
 	</script>
 	<style type="text/css">
-	form { max-width: 20em; margin: 0 auto; text-align: center; }
-	.input { font-size:16px;line-height:24px; letter-spacing:0.2em; min-width: 5em; text-align: center; }
+	* { font-size: 12px; }
+	form { max-width: 20em; margin: 0 auto; text-align: center; font-family: Roboto,"Helvetica Neue Light","Helvetica Neue",Helvetica,Arial,"Lucida Grande",sans-serif; }
+	.ui-prompt { font-size: 1.2rem; }
+	.input { font-size:16px;line-height:24px; letter-spacing:0.2em; min-width: 5em; text-align: center; background: #fff; border: 1px solid rgba(0, 0, 0, 0.38); color: rgba(0, 0, 0, 0.87); outline: none; border-radius: 4px; padding: 0.75rem 0.75rem; }
+	.input:focus { border: 1px #3f51b5 solid; outline: none; }
 	address { margin-top: 1em; padding-top: 0.5em; border-top: 1px #ccc solid; text-align: center; }
+	button { background: #3f51b5; color: #fff; cursor: pointer; padding: 0.571rem 0.75rem; min-width: 8rem; font-size: 1rem; border: 0 none; border-radius: 4px; }
 ` + msgCss + `
 	</style>
 </head>
