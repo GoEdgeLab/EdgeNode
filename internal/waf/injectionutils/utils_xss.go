@@ -3,7 +3,7 @@
 package injectionutils
 
 /*
-#cgo CFLAGS: -I./libinjection/src
+#cgo CFLAGS: -O2 -I./libinjection/src
 
 #include <libinjection.h>
 #include <stdlib.h>
