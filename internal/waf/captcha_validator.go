@@ -232,7 +232,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 		}
 	}
 
-	var body = `<form method="POST">
+	var body = `<form method="POST" id="captcha-form">
 	<input type="hidden" name="` + captchaIdName + `" value="` + captchaId + `"/>
 	<div class="ui-image">
 		<p id="ui-captcha-image-prompt">loading ...</p>
@@ -268,17 +268,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
 	<meta charset="UTF-8"/>
 	<script type="text/javascript">
-	if (window.addEventListener != null) {
-		document.addEventListener("DOMContentLoaded", function () {
-			document.getElementById("ui-captcha-image").addEventListener("load", function () {
-				var promptBox = document.getElementById("ui-captcha-image-prompt");
-				promptBox.parentNode.removeChild(promptBox);
-			});
-		})
-		window.addEventListener("load", function () {
-			document.getElementById("GOEDGE_WAF_CAPTCHA_CODE").focus();
-		});
-	}
+	var isValidated=!1;window.addEventListener("pageshow",function(){isValidated&&window.location.reload()}),null!=window.addEventListener&&(document.addEventListener("DOMContentLoaded",function(){document.getElementById("ui-captcha-image").addEventListener("load",function(){var e=document.getElementById("ui-captcha-image-prompt");e.parentNode.removeChild(e)})}),window.addEventListener("load",function(){document.getElementById("GOEDGE_WAF_CAPTCHA_CODE").focus();var e=document.getElementById("captcha-form");null!=e&&e.addEventListener("submit",function(){isValidated=!0})}));
 	</script>
 	<style type="text/css">
 	* { font-size: 12px; }
@@ -442,10 +432,10 @@ func (this *CaptchaValidator) showOneClickForm(actionConfig *CaptchaAction, req 
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
 	<meta charset="UTF-8"/>
 	<script type="text/javascript">
-	window.addEventListener("load",function(){var t=document.getElementById("checkbox"),n=!1;t.addEventListener("click",function(){var e;t.className="ui-checkbox checked",n||(n=!0,(e=document.createElement("input")).setAttribute("name","nonce"),e.setAttribute("type","hidden"),e.setAttribute("value","` + types.String(nonce) + `"),document.getElementById("ui-form").appendChild(e),document.getElementById("ui-form").submit())})});
+	var isValidated=!1;window.addEventListener("pageshow",function(){isValidated&&window.location.reload()}),window.addEventListener("load",function(){var t=document.getElementById("checkbox"),n=!1;t.addEventListener("click",function(){var e;t.className="ui-checkbox checked",n||(isValidated=n=!0,(e=document.createElement("input")).setAttribute("name","nonce"),e.setAttribute("type","hidden"),e.setAttribute("value","` + types.String(nonce) + `"),document.getElementById("ui-form").appendChild(e),document.getElementById("ui-form").submit())})});
 	</script>
 	<style type="text/css">
-	form { max-width: 20em; margin: 0 auto; text-align: center; }
+	form { max-width: 20em; margin: 0 auto; text-align: center; font-family: Roboto,"Helvetica Neue Light","Helvetica Neue",Helvetica,Arial,"Lucida Grande",sans-serif; }
     .ui-input { position: relative; padding-top: 1em; height: 2.2em; background: #eee; }
     .ui-checkbox { width: 16px; height: 16px; border: 1px #999 solid; float: left; margin-left: 1em; cursor: pointer; }
     .ui-checkbox.checked { background: #276AC6; }
@@ -599,10 +589,10 @@ func (this *CaptchaValidator) showSlideForm(actionConfig *CaptchaAction, req req
 	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
 	<meta charset="UTF-8"/>
 	<script type="text/javascript">
-window.addEventListener("load",function(){var n=document.getElementById("input"),s=document.getElementById("handler"),o=document.getElementById("progress-bar"),d=!1,u=0,t=n.offsetLeft,c=s.offsetLeft,i=n.offsetWidth-s.offsetWidth-s.offsetLeft,f=!1;function e(e){e.preventDefault(),d=!0,u=null!=e.touches&&0<e.touches.length?e.touches[0].clientX-t:e.offsetX}function l(e){var t;d&&(t=e.x,null!=e.touches&&0<e.touches.length&&(t=e.touches[0].clientX),(t=t-n.offsetLeft-u)<c?t=c:i<t&&(t=i),s.style.cssText="margin-left: "+t+"px",0<t&&(o.style.cssText="width: "+(t+s.offsetWidth+4)+"px"))}function r(e){var t;d=d&&!1,s.offsetLeft<i-4?(s.style.cssText="margin-left: "+c+"px",n.style.cssText="background: #eee",o.style.cssText="width: 0px"):(s.style.cssText="margin-left: "+i+"px",n.style.cssText="background: #a5dc86",f||(f=!0,(t=document.createElement("input")).setAttribute("name","nonce"),t.setAttribute("type","hidden"),t.setAttribute("value","` + types.String(nonce) + `"),document.getElementById("ui-form").appendChild(t),document.getElementById("ui-form").submit()))}void 0!==document.ontouchstart?(s.addEventListener("touchstart",e),document.addEventListener("touchmove",l),document.addEventListener("touchend",r)):(s.addEventListener("mousedown",e),window.addEventListener("mousemove",l),window.addEventListener("mouseup",r))});
+	var isValidated=!1;window.addEventListener("pageshow",function(){isValidated&&window.location.reload()}),window.addEventListener("load",function(){var n=document.getElementById("input"),s=document.getElementById("handler"),d=document.getElementById("progress-bar"),o=!1,i=0,t=n.offsetLeft,u=s.offsetLeft,c=n.offsetWidth-s.offsetWidth-s.offsetLeft,a=!1;function e(e){e.preventDefault(),o=!0,i=null!=e.touches&&0<e.touches.length?e.touches[0].clientX-t:e.offsetX}function f(e){var t;o&&(t=e.x,null!=e.touches&&0<e.touches.length&&(t=e.touches[0].clientX),(t=t-n.offsetLeft-i)<u?t=u:c<t&&(t=c),s.style.cssText="margin-left: "+t+"px",0<t&&(d.style.cssText="width: "+(t+s.offsetWidth+4)+"px"))}function l(e){var t;o=o&&!1,s.offsetLeft<c-4?(s.style.cssText="margin-left: "+u+"px",n.style.cssText="background: #eee",d.style.cssText="width: 0px"):(s.style.cssText="margin-left: "+c+"px",n.style.cssText="background: #a5dc86",a||(isValidated=a=!0,(t=document.createElement("input")).setAttribute("name","nonce"),t.setAttribute("type","hidden"),t.setAttribute("value","` + types.String(nonce) + `"),document.getElementById("ui-form").appendChild(t),document.getElementById("ui-form").submit()))}void 0!==document.ontouchstart?(s.addEventListener("touchstart",e),document.addEventListener("touchmove",f),document.addEventListener("touchend",l)):(s.addEventListener("mousedown",e),window.addEventListener("mousemove",f),window.addEventListener("mouseup",l))});
 	</script>
 	<style type="text/css">
-	form { max-width: 20em; margin: 5em auto; text-align: center; }
+	form { max-width: 20em; margin: 5em auto; text-align: center; font-family: Roboto,"Helvetica Neue Light","Helvetica Neue",Helvetica,Arial,"Lucida Grande",sans-serif; }
  		.ui-input {
             height: 4em;
             background: #eee;
@@ -612,7 +602,7 @@ window.addEventListener("load",function(){var n=document.getElementById("input")
         }
 
         .ui-input .ui-progress-bar {
-            background: #a5dc86;
+            background: #689F38;
             position: absolute;
             top: 0;
             left: 0;
@@ -623,7 +613,7 @@ window.addEventListener("load",function(){var n=document.getElementById("input")
             width: 3.6em;
             height: 3.6em;
             margin: 0.2em;
-            background: #276AC6;
+            background: #3f51b5;
             border-radius: 0.6em;
             display: inline-block;
             cursor: pointer;
