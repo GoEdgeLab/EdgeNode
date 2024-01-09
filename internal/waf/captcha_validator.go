@@ -182,6 +182,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	var msgPrompt string
 	var msgButtonTitle string
 	var msgRequestId string
+	var msgPlaceholder string
 
 	switch lang {
 	case "en-US":
@@ -189,16 +190,19 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 		msgPrompt = "Input verify code above:"
 		msgButtonTitle = "Verify Yourself"
 		msgRequestId = "Request ID"
+		msgPlaceholder = ""
 	case "zh-CN":
 		msgTitle = "身份验证"
 		msgPrompt = "请输入上面的验证码"
 		msgButtonTitle = "提交验证"
 		msgRequestId = "请求ID"
+		msgPlaceholder = "点此输入"
 	case "zh-TW":
 		msgTitle = "身份驗證"
 		msgPrompt = "請輸入上面的驗證碼"
 		msgButtonTitle = "提交驗證"
 		msgRequestId = "請求ID"
+		msgPlaceholder = "點此輸入"
 	default:
 		msgTitle = "Verify Yourself"
 		msgPrompt = "Input verify code above:"
@@ -240,7 +244,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	</div>
 	<div class="ui-input">
 		<p class="ui-prompt">` + msgPrompt + `</p>
-		<input type="text" name="GOEDGE_WAF_CAPTCHA_CODE" id="GOEDGE_WAF_CAPTCHA_CODE" size="` + types.String(countLetters*17/10) + `" maxlength="` + types.String(countLetters) + `" autocomplete="off" z-index="1" class="input"/>
+		<input type="text" name="GOEDGE_WAF_CAPTCHA_CODE" id="GOEDGE_WAF_CAPTCHA_CODE" size="` + types.String(countLetters*17/10) + `" maxlength="` + types.String(countLetters) + `" autocomplete="off" z-index="1" class="input" placeholder="` + msgPlaceholder + `"/>
 	</div>
 	<div class="ui-button">
 		<button type="submit" style="line-height:24px;margin-top:10px">` + msgButtonTitle + `</button>
@@ -271,7 +275,7 @@ func (this *CaptchaValidator) showVerifyCodesForm(actionConfig *CaptchaAction, r
 	var isValidated=!1;window.addEventListener("pageshow",function(){isValidated&&window.location.reload()}),null!=window.addEventListener&&(document.addEventListener("DOMContentLoaded",function(){document.getElementById("ui-captcha-image").addEventListener("load",function(){var e=document.getElementById("ui-captcha-image-prompt");e.parentNode.removeChild(e)})}),window.addEventListener("load",function(){document.getElementById("GOEDGE_WAF_CAPTCHA_CODE").focus();var e=document.getElementById("captcha-form");null!=e&&e.addEventListener("submit",function(){isValidated=!0})}));
 	</script>
 	<style type="text/css">
-	* { font-size: 12px; }
+	* { font-size: 13px; }
 	form { max-width: 20em; margin: 0 auto; text-align: center; font-family: Roboto,"Helvetica Neue Light","Helvetica Neue",Helvetica,Arial,"Lucida Grande",sans-serif; }
 	.ui-prompt { font-size: 1.2rem; }
 	.input { font-size:16px;line-height:24px; letter-spacing:0.2em; min-width: 5em; text-align: center; background: #fff; border: 1px solid rgba(0, 0, 0, 0.38); color: rgba(0, 0, 0, 0.87); outline: none; border-radius: 4px; padding: 0.75rem 0.75rem; }
