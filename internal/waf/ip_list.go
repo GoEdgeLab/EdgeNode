@@ -45,8 +45,10 @@ func init() {
 
 	// load
 	go func() {
-		_ = SharedIPWhiteList.Load(cacheFile)
-		_ = os.Remove(cacheFile)
+		if !Tea.IsTesting() {
+			_ = SharedIPWhiteList.Load(cacheFile)
+			_ = os.Remove(cacheFile)
+		}
 	}()
 }
 
