@@ -105,8 +105,13 @@ func (this *HTTPListener) Reload(group *serverconfigs.ServerAddressGroup) {
 	this.Reset()
 }
 
-// ServerHTTP 处理HTTP请求
+// ServeHTTPWithAddr 处理HTTP请求
 func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.Request) {
+	this.ServeHTTPWithAddr(rawWriter, rawReq, this.addr)
+}
+
+// ServeHTTPWithAddr 处理HTTP请求并指定服务地址
+func (this *HTTPListener) ServeHTTPWithAddr(rawWriter http.ResponseWriter, rawReq *http.Request, serverAddr string) {
 	if len(rawReq.Host) > 253 {
 		http.Error(rawWriter, "Host too long.", http.StatusBadRequest)
 		time.Sleep(1 * time.Second) // make connection slow down
@@ -211,7 +216,7 @@ func (this *HTTPListener) ServeHTTP(rawWriter http.ResponseWriter, rawReq *http.
 		ReqServer:  server,
 		ReqHost:    reqHost,
 		ServerName: serverName,
-		ServerAddr: this.addr,
+		ServerAddr: serverAddr,
 		IsHTTP:     this.isHTTP,
 		IsHTTPS:    this.isHTTPS,
 		IsHTTP3:    this.isHTTP3,

@@ -1430,11 +1430,25 @@ func (this *HTTPRequest) requestScheme() string {
 
 // 请求的服务器地址中的端口
 func (this *HTTPRequest) requestServerPort() int {
-	_, port, err := net.SplitHostPort(this.ServerAddr)
-	if err == nil {
-		return types.Int(port)
+	if len(this.ServerAddr) > 0 {
+		_, port, err := net.SplitHostPort(this.ServerAddr)
+		if err == nil && len(port) > 0 {
+			return types.Int(port)
+		}
 	}
-	return 0
+
+	var host = this.RawReq.Host
+	if len(host) > 0 {
+		_, port, err := net.SplitHostPort(host)
+		if err == nil && len(port) > 0 {
+			return types.Int(port)
+		}
+	}
+
+	if this.IsHTTP {
+		return 80
+	}
+	return 443
 }
 
 func (this *HTTPRequest) Id() string {
