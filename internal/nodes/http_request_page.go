@@ -151,7 +151,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 				}
 				return true
 			} else if page.BodyType == serverconfigs.HTTPPageBodyTypeRedirectURL {
-				var newURL = page.URL
+				var newURL = this.Format(page.URL)
 				if len(newURL) == 0 {
 					newURL = "/"
 				}
