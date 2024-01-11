@@ -201,9 +201,10 @@ func (this *HTTPRequest) Do() {
 
 		// 流量限制
 		if this.ReqServer.TrafficLimitStatus != nil && this.ReqServer.TrafficLimitStatus.IsValid() {
-			this.doTrafficLimit()
-			this.doEnd()
-			return
+			if this.doTrafficLimit(this.ReqServer.TrafficLimitStatus) {
+				this.doEnd()
+				return
+			}
 		}
 
 		// WAF

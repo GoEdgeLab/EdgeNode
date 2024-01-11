@@ -807,6 +807,8 @@ func (this *HTTPWriter) Write(data []byte) (n int, err error) {
 	}
 	n, err = this.writer.Write(data)
 
+	this.checkPlanBandwidth(n)
+
 	return
 }
 

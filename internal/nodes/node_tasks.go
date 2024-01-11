@@ -102,6 +102,8 @@ func (this *Node) execTask(rpcClient *rpc.RPCClient, task *pb.NodeTask) error {
 		err = this.execNetworkSecurityPolicyChangedTask(rpcClient)
 	case "webPPolicyChanged":
 		err = this.execWebPPolicyChangedTask(rpcClient)
+	case "planChanged":
+		err = this.execPlanChangedTask(rpcClient)
 	default:
 		// 特殊任务
 		if strings.HasPrefix(task.Type, "ipListDeleted") { // 删除IP名单

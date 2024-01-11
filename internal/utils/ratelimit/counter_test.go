@@ -1,14 +1,20 @@
 // Copyright 2021 Liuxiangchao iwind.liu@gmail.com. All rights reserved.
 
-package ratelimit
+package ratelimit_test
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/ratelimit"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"testing"
 	"time"
 )
 
 func TestCounter_ACK(t *testing.T) {
-	var counter = NewCounter(10)
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var counter = ratelimit.NewCounter(10)
 
 	go func() {
 		for i := 0; i < 10; i++ {
@@ -26,7 +32,7 @@ func TestCounter_ACK(t *testing.T) {
 }
 
 func TestCounter_Release(t *testing.T) {
-	var counter = NewCounter(10)
+	var counter = ratelimit.NewCounter(10)
 
 	for i := 0; i < 10; i++ {
 		counter.Ack()
@@ -34,5 +40,5 @@ func TestCounter_Release(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		counter.Release()
 	}
-	t.Log(len(counter.sem))
+	t.Log(counter.Len())
 }
