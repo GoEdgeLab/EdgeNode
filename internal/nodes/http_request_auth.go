@@ -43,7 +43,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 			if uriChanged {
 				this.uri = newURI
 			}
-			this.tags = append(this.tags, ref.AuthPolicy.Type)
+			this.tags = append(this.tags, "auth:"+ref.AuthPolicy.Type)
 			return
 		} else {
 			// Basic Auth比较特殊
@@ -64,7 +64,7 @@ func (this *HTTPRequest) doAuth() (shouldStop bool) {
 				}
 			}
 			this.writer.WriteHeader(http.StatusUnauthorized)
-			this.tags = append(this.tags, ref.AuthPolicy.Type)
+			this.tags = append(this.tags, "auth:"+ref.AuthPolicy.Type)
 			return true
 		}
 	}
