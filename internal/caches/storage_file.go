@@ -111,6 +111,15 @@ func (this *FileStorage) Policy() *serverconfigs.HTTPCachePolicy {
 
 // CanUpdatePolicy 检查策略是否可以更新
 func (this *FileStorage) CanUpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) bool {
+	if newPolicy == nil {
+		return false
+	}
+
+	// 检查类型
+	if newPolicy.Type != serverconfigs.CachePolicyStorageFile {
+		return false
+	}
+
 	// 检查路径是否有变化
 	oldOptionsJSON, err := json.Marshal(this.policy.Options)
 	if err != nil {

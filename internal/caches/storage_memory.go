@@ -366,7 +366,7 @@ func (this *MemoryStorage) UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy
 
 // CanUpdatePolicy 检查策略是否可以更新
 func (this *MemoryStorage) CanUpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) bool {
-	return true
+	return newPolicy != nil && newPolicy.Type == serverconfigs.CachePolicyStorageMemory
 }
 
 // AddToList 将缓存添加到列表
