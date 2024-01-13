@@ -193,10 +193,11 @@ func (this *HTTPRequest) Do() {
 		}
 
 		// 套餐
-		if this.ReqServer.UserPlan != nil && !this.ReqServer.UserPlan.IsAvailable() {
-			this.doPlanExpires()
-			this.doEnd()
-			return
+		if this.ReqServer.UserPlan != nil {
+			if this.doPlanBefore() {
+				this.doEnd()
+				return
+			}
 		}
 
 		// 流量限制
