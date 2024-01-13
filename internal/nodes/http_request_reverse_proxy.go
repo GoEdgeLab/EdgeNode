@@ -442,13 +442,23 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	}
 
 	// 设置Charset
-	// TODO 这里应该可以设置文本类型的列表，以及是否强制覆盖所有文本类型的字符集
+	// TODO 这里应该可以设置文本类型的列表
 	if this.web.Charset != nil && this.web.Charset.IsOn && len(this.web.Charset.Charset) > 0 {
 		contentTypes, ok := resp.Header["Content-Type"]
 		if ok && len(contentTypes) > 0 {
 			var contentType = contentTypes[0]
+			if this.web.Charset.Force {
+				var semiIndex = strings.Index(contentType, ";")
+				if semiIndex > 0 {
+					contentType = contentType[:semiIndex]
+				}
+			}
 			if _, found := textMimeMap[contentType]; found {
-				resp.Header["Content-Type"][0] = contentType + "; charset=" + this.web.Charset.Charset
+				var newCharset = this.web.Charset.Charset
+				if this.web.Charset.IsUpper {
+					newCharset = strings.ToUpper(newCharset)
+				}
+				resp.Header["Content-Type"][0] = contentType + "; charset=" + newCharset
 			}
 		}
 	}
