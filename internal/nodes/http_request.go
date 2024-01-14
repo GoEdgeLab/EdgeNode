@@ -282,6 +282,16 @@ func (this *HTTPRequest) Do() {
 		if this.web.Compression != nil && this.web.Compression.IsOn && this.web.Compression.Level > 0 {
 			this.writer.SetCompression(this.web.Compression)
 		}
+
+		// HLS
+		if this.web.HLS != nil &&
+			this.web.HLS.Encrypting != nil &&
+			this.web.HLS.Encrypting.IsOn {
+			if this.processHLSBefore() {
+				this.doEnd()
+				return
+			}
+		}
 	}
 
 	// 开始调用
@@ -631,6 +641,11 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	// CC
 	if web.CC != nil && (web.CC.IsPrior || isTop) {
 		this.web.CC = web.CC
+	}
+
+	// HLS
+	if web.HLS != nil && (web.HLS.IsPrior || isTop) {
+		this.web.HLS = web.HLS
 	}
 
 	// 重写规则

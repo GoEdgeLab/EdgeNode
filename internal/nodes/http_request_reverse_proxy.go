@@ -436,7 +436,19 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	if this.web.Optimization != nil && resp.Body != nil && this.cacheRef != nil /** must under cache **/ {
 		err := this.web.Optimization.FilterResponse(this.URL(), resp)
 		if err != nil {
-			this.write50x(err, http.StatusBadGateway, "Page Optimization: Fail to read content from origin", "内容优化：从源站读取内容失败", false)
+			this.write50x(err, http.StatusBadGateway, "Page Optimization: fail to read content from origin", "内容优化：从源站读取内容失败", false)
+			return
+		}
+	}
+
+	// HLS
+	if this.web.HLS != nil &&
+		this.web.HLS.Encrypting != nil &&
+		this.web.HLS.Encrypting.IsOn &&
+		resp.StatusCode == http.StatusOK {
+		m3u8Err := this.processM3u8Response(resp)
+		if m3u8Err != nil {
+			this.write50x(m3u8Err, http.StatusBadGateway, "m3u8 encrypt: fail to read content from origin", "m3u8加密：从源站读取内容失败", false)
 			return
 		}
 	}
