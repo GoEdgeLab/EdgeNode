@@ -1,6 +1,7 @@
 package caches
 
 import (
+	"fmt"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -161,7 +162,7 @@ func (this *MemoryStorage) OpenWriter(key string, expiredAt int64, status int, h
 
 	// TODO 内存缓存暂时不支持分块内容存储
 	if isPartial {
-		return nil, ErrFileIsWriting
+		return nil, fmt.Errorf("%w (004)", ErrFileIsWriting)
 	}
 	return this.openWriter(key, expiredAt, status, headerSize, bodySize, maxSize, true)
 }
@@ -187,7 +188,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	var isWriting = false
 	_, ok := this.writingKeyMap[key]
 	if ok {
-		return nil, ErrFileIsWriting
+		return nil, fmt.Errorf("%w (005)", ErrFileIsWriting)
 	}
 	this.writingKeyMap[key] = zero.New()
 	defer func() {
@@ -208,7 +209,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 			_ = this.list.Remove(hashString)
 			item = nil
 		} else {
-			return nil, ErrFileIsWriting
+			return nil, fmt.Errorf("%w (006)", ErrFileIsWriting)
 		}
 	}
 

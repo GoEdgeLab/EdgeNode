@@ -464,7 +464,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	_, ok := sharedWritingFileKeyMap[key]
 	if ok {
 		sharedWritingFileKeyLocker.Unlock()
-		return nil, ErrFileIsWriting
+		return nil, fmt.Errorf("%w(001)", ErrFileIsWriting)
 	}
 
 	if !isFlushing && !fsutils.WriteReady() {
@@ -505,7 +505,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	// 检查两次写入缓存的时间是否过于相近，分片内容不受此限制
 	if err == nil && !isPartial && time.Since(stat.ModTime()) <= 1*time.Second {
 		// 防止并发连续写入
-		return nil, ErrFileIsWriting
+		return nil, fmt.Errorf("%w(002)", ErrFileIsWriting)
 	}
 
 	// 构造文件名
@@ -606,7 +606,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	err = syscall.Flock(int(writer.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 	if err != nil {
 		removeOnFailure = false
-		return nil, ErrFileIsWriting
+		return nil, fmt.Errorf("%w (003)", ErrFileIsWriting)
 	}
 
 	var metaBodySize int64 = -1

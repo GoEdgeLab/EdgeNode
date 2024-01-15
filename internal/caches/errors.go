@@ -34,16 +34,14 @@ func CanIgnoreErr(err error) bool {
 	if err == nil {
 		return true
 	}
-	if err == ErrFileIsWriting ||
-		err == ErrEntityTooLarge ||
-		err == ErrWritingUnavailable ||
-		err == ErrWritingQueueFull ||
-		err == ErrServerIsBusy {
+	if errors.Is(err, ErrFileIsWriting) ||
+		errors.Is(err, ErrEntityTooLarge) ||
+		errors.Is(err, ErrWritingUnavailable) ||
+		errors.Is(err, ErrWritingQueueFull) ||
+		errors.Is(err, ErrServerIsBusy) {
 		return true
 	}
-	_, ok := err.(*CapacityError)
-	if ok {
-		return true
-	}
-	return false
+
+	var capacityErr *CapacityError
+	return errors.As(err, &capacityErr)
 }

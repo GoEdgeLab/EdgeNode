@@ -231,7 +231,7 @@ func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
 
 			writer, err := storage.OpenWriter("abc"+strconv.Itoa(i), time.Now().Unix()+3600, 200, -1, -1, -1, false)
 			if err != nil {
-				if err != ErrFileIsWriting {
+				if errors.Is(err, ErrFileIsWriting) {
 					t.Error(err)
 					return
 				}
@@ -289,7 +289,7 @@ func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
 
 			writer, err := storage.OpenWriter("abc"+strconv.Itoa(0), time.Now().Unix()+3600, 200, -1, -1, -1, false)
 			if err != nil {
-				if err != ErrFileIsWriting {
+				if errors.Is(err, ErrFileIsWriting) {
 					t.Error(err)
 					return
 				}
