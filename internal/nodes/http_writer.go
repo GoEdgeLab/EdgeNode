@@ -18,7 +18,6 @@ import (
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/writers"
 	_ "github.com/biessek/golang-ico"
-	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"github.com/iwind/gowebp"
 	_ "golang.org/x/image/bmp"
@@ -564,18 +563,18 @@ func (this *HTTPWriter) PrepareWebP(resp *http.Response, size int64) {
 		}
 
 		var contentEncoding = this.GetHeader("Content-Encoding")
-		switch contentEncoding {
-		case "gzip", "deflate", "br", "zstd":
-			reader, err := compressions.NewReader(resp.Body, contentEncoding)
-			if err != nil {
+		if len(contentEncoding) > 0 {
+			if compressions.SupportEncoding(contentEncoding) {
+				reader, err := compressions.NewReader(resp.Body, contentEncoding)
+				if err != nil {
+					return
+				}
+				this.Header().Del("Content-Encoding")
+				this.Header().Del("Content-Length")
+				this.rawReader = reader
+			} else {
 				return
 			}
-			this.Header().Del("Content-Encoding")
-			this.Header().Del("Content-Length")
-			this.rawReader = reader
-		case "": // 空
-		default:
-			return
 		}
 
 		this.webpOriginContentType = contentType
@@ -603,7 +602,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	var contentEncoding = this.GetHeader("Content-Encoding")
 
 	if this.compressionConfig == nil || !this.compressionConfig.IsOn {
-		if lists.ContainsString([]string{"gzip", "deflate", "br", "zstd"}, contentEncoding) && !httpAcceptEncoding(acceptEncodings, contentEncoding) {
+		if compressions.SupportEncoding(contentEncoding) && !httpAcceptEncoding(acceptEncodings, contentEncoding) {
 			reader, err := compressions.NewReader(resp.Body, contentEncoding)
 			if err != nil {
 				return
@@ -625,7 +624,7 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	}
 
 	// 如果已经有编码则不处理
-	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !lists.ContainsString([]string{"gzip", "deflate", "br", "zstd"}, contentEncoding)) {
+	if len(contentEncoding) > 0 && (!this.compressionConfig.DecompressData || !compressions.SupportEncoding(contentEncoding)) {
 		return
 	}
 
