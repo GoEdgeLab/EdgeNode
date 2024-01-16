@@ -210,6 +210,22 @@ func (this *HTTPRequest) Do() {
 			}
 		}
 
+		// UAM
+		var uamIsCalled = false
+		if !this.isHealthCheck {
+			if this.web.UAM == nil && this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
+				this.web.UAM = this.ReqServer.UAM
+			}
+
+			if this.web.UAM != nil && this.web.UAM.IsOn && this.isUAMRequest() {
+				uamIsCalled = true
+				if this.doUAM() {
+					this.doEnd()
+					return
+				}
+			}
+		}
+
 		// WAF
 		if this.web.FirewallRef != nil && this.web.FirewallRef.IsOn {
 			if this.doWAFRequest() {
@@ -219,16 +235,8 @@ func (this *HTTPRequest) Do() {
 		}
 
 		// UAM
-		if !this.isHealthCheck {
-			if this.web.UAM != nil {
-				if this.web.UAM.IsOn {
-					if this.doUAM() {
-						this.doEnd()
-						return
-					}
-				}
-			} else if this.ReqServer.UAM != nil && this.ReqServer.UAM.IsOn {
-				this.web.UAM = this.ReqServer.UAM
+		if !this.isHealthCheck && !uamIsCalled {
+			if this.web.UAM != nil && this.web.UAM.IsOn {
 				if this.doUAM() {
 					this.doEnd()
 					return
