@@ -578,27 +578,28 @@ func (this *Rule) Test(value any) bool {
 		return runes.ContainsAllWords(this.stringifyValue(value), this.stringValues, this.IsCaseInsensitive)
 	case RuleOperatorNotContainsAnyWord:
 		return !runes.ContainsAnyWordRunes(this.stringifyValue(value), this.stringValueRunes, this.IsCaseInsensitive)
-	case RuleOperatorContainsSQLInjection:
+	case RuleOperatorContainsSQLInjection, RuleOperatorContainsSQLInjectionStrictly:
 		if value == nil {
 			return false
 		}
+		var isStrict = this.Operator == RuleOperatorContainsSQLInjectionStrictly
 		switch xValue := value.(type) {
 		case []string:
 			for _, v := range xValue {
-				if injectionutils.DetectSQLInjectionCache(v, this.cacheLife) {
+				if injectionutils.DetectSQLInjectionCache(v, isStrict, this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		case [][]byte:
 			for _, v := range xValue {
-				if injectionutils.DetectSQLInjectionCache(string(v), this.cacheLife) {
+				if injectionutils.DetectSQLInjectionCache(string(v), isStrict, this.cacheLife) {
 					return true
 				}
 			}
 			return false
 		default:
-			return injectionutils.DetectSQLInjectionCache(this.stringifyValue(value), this.cacheLife)
+			return injectionutils.DetectSQLInjectionCache(this.stringifyValue(value), isStrict, this.cacheLife)
 		}
 	case RuleOperatorContainsXSS, RuleOperatorContainsXSSStrictly:
 		if value == nil {

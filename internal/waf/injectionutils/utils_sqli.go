@@ -16,11 +16,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 	"unsafe"
 )
 
 // DetectSQLInjectionCache detect sql injection in string with cache
-func DetectSQLInjectionCache(input string, cacheLife utils.CacheLife) bool {
+func DetectSQLInjectionCache(input string, isStrict bool, cacheLife utils.CacheLife) bool {
 	var l = len(input)
 
 	if l == 0 {
@@ -28,7 +29,7 @@ func DetectSQLInjectionCache(input string, cacheLife utils.CacheLife) bool {
 	}
 
 	if cacheLife <= 0 || l < 128 || l > utils.MaxCacheDataSize {
-		return DetectSQLInjection(input)
+		return DetectSQLInjection(input, isStrict)
 	}
 
 	var hash = xxhash.Sum64String(input)
@@ -38,7 +39,7 @@ func DetectSQLInjectionCache(input string, cacheLife utils.CacheLife) bool {
 		return item.Value == 1
 	}
 
-	var result = DetectSQLInjection(input)
+	var result = DetectSQLInjection(input, isStrict)
 	if result {
 		utils.SharedCache.Write(key, 1, fasttime.Now().Unix()+cacheLife)
 	} else {
@@ -48,9 +49,21 @@ func DetectSQLInjectionCache(input string, cacheLife utils.CacheLife) bool {
 }
 
 // DetectSQLInjection detect sql injection in string
-func DetectSQLInjection(input string) bool {
+func DetectSQLInjection(input string, isStrict bool) bool {
 	if len(input) == 0 {
 		return false
+	}
+
+	if !isStrict {
+		if len(input) > 1024 {
+			if !utf8.ValidString(input[:1024]) && !utf8.ValidString(input[:1023]) && !utf8.ValidString(input[:1022]) {
+				return false
+			}
+		} else {
+			if !utf8.ValidString(input) {
+				return false
+			}
+		}
 	}
 
 	if detectSQLInjectionOne(input) {
