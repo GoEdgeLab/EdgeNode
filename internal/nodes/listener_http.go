@@ -3,6 +3,7 @@ package nodes
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/iwind/TeaGo/Tea"
 	"io"
@@ -52,6 +53,8 @@ func (this *HTTPListener) Serve() error {
 				atomic.AddInt64(&this.countActiveConnections, 1)
 			case http.StateClosed:
 				atomic.AddInt64(&this.countActiveConnections, -1)
+			default:
+				// do nothing
 			}
 		},
 		ConnContext: func(ctx context.Context, conn net.Conn) context.Context {
@@ -74,7 +77,7 @@ func (this *HTTPListener) Serve() error {
 	// HTTP协议
 	if this.isHTTP {
 		err := this.httpServer.Serve(this.Listener)
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 	}
@@ -84,7 +87,7 @@ func (this *HTTPListener) Serve() error {
 		this.httpServer.TLSConfig = this.buildTLSConfig()
 
 		err := this.httpServer.ServeTLS(this.Listener, "", "")
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 	}
@@ -180,10 +183,12 @@ func (this *HTTPListener) ServeHTTPWithAddr(rawWriter http.ResponseWriter, rawRe
 	}
 
 	// 绑定连接
+	var clientConn ClientConnInterface
 	if server != nil && server.Id > 0 {
 		var requestConn = rawReq.Context().Value(HTTPConnContextKey)
 		if requestConn != nil {
-			clientConn, ok := requestConn.(ClientConnInterface)
+			var ok bool
+			clientConn, ok = requestConn.(ClientConnInterface)
 			if ok {
 				var goNext = clientConn.SetServerId(server.Id)
 				if !goNext {
@@ -224,6 +229,14 @@ func (this *HTTPListener) ServeHTTPWithAddr(rawWriter http.ResponseWriter, rawRe
 		nodeConfig: sharedNodeConfig,
 	}
 	req.Do()
+
+	// fix hijacked connection state
+	if req.isHijacked && clientConn != nil && this.httpServer.ConnState != nil {
+		netConn, ok := clientConn.(net.Conn)
+		if ok {
+			this.httpServer.ConnState(netConn, http.StateClosed)
+		}
+	}
 }
 
 // 检查host是否为IP

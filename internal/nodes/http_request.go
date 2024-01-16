@@ -102,6 +102,8 @@ type HTTPRequest struct {
 	disableLog bool // 是否在当前请求中关闭Log
 	forceLog   bool // 是否强制记录日志
 
+	isHijacked bool
+
 	// script相关操作
 	isDone bool
 }

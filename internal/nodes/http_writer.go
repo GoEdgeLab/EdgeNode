@@ -339,7 +339,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 
 	cacheWriter, err := storage.OpenWriter(cacheKey, expiresAt, this.StatusCode(), this.calculateHeaderLength(), totalSize, cacheRef.MaxSizeBytes(), this.isPartial)
 	if err != nil {
-		if err == caches.ErrEntityTooLarge && addStatusHeader {
+		if errors.Is(err, caches.ErrEntityTooLarge) && addStatusHeader {
 			this.Header().Set("X-Cache", "BYPASS, entity too large")
 		}
 
@@ -968,6 +968,7 @@ func (this *HTTPWriter) Close() {
 func (this *HTTPWriter) Hijack() (conn net.Conn, buf *bufio.ReadWriter, err error) {
 	hijack, ok := this.rawWriter.(http.Hijacker)
 	if ok {
+		this.req.isHijacked = true
 		return hijack.Hijack()
 	}
 	return
