@@ -44,6 +44,8 @@ func TestDetectXSS_Strict(t *testing.T) {
 	a.IsFalse(injectionutils.DetectXSS(`<a href="aaaa"></a>`, true))
 	a.IsFalse(injectionutils.DetectXSS(`<span style="color: red"></span>`, false))
 	a.IsTrue(injectionutils.DetectXSS(`<span style="color: red"></span>`, true))
+	a.IsFalse(injectionutils.DetectXSS("https://example.com?style=list", false))
+	a.IsTrue(injectionutils.DetectXSS("https://example.com?style=list", true))
 }
 
 func BenchmarkDetectXSS_MISS(b *testing.B) {
