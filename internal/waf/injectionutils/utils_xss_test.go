@@ -32,16 +32,18 @@ func TestDetectXSS(t *testing.T) {
       </rdf:Description>
    </rdf:RDF>
 </x:xmpmeta>`, true)) // included in some photo files
-	a.IsFalse(injectionutils.DetectXSS(`<xml>
-  
-</xml>`, true))
+	a.IsFalse(injectionutils.DetectXSS(`<xml></xml>`, false))
 }
 
 func TestDetectXSS_Strict(t *testing.T) {
 	var a = assert.NewAssertion(t)
-	a.IsFalse(injectionutils.DetectXSS(`<xml>
-  
-</xml>`, false))
+	a.IsFalse(injectionutils.DetectXSS(`<xml></xml>`, false))
+	a.IsTrue(injectionutils.DetectXSS(`<xml></xml>`, true))
+	a.IsFalse(injectionutils.DetectXSS(`<img src=\"\"/>`, false))
+	a.IsFalse(injectionutils.DetectXSS(`<img src=\"test.jpg\"/>`, true))
+	a.IsFalse(injectionutils.DetectXSS(`<a href="aaaa"></a>`, true))
+	a.IsFalse(injectionutils.DetectXSS(`<span style="color: red"></span>`, false))
+	a.IsTrue(injectionutils.DetectXSS(`<span style="color: red"></span>`, true))
 }
 
 func BenchmarkDetectXSS_MISS(b *testing.B) {

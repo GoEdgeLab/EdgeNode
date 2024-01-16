@@ -15,7 +15,7 @@ typedef enum attribute {
 } attribute_t;
 
 
-static attribute_t is_black_attr(const char* s, size_t len);
+static attribute_t is_black_attr(const char* s, size_t len, int strictMode);
 static int is_black_tag(const char* s, size_t len, int strictMode);
 static int is_black_url(const char* s, size_t len);
 static int cstrcasecmp_with_null(const char *a, const char *b, size_t n);
@@ -451,7 +451,7 @@ static stringtype_t BLACKATTREVENT[] = {
  * data:
  * javascript:
  */
-static stringtype_t BLACKATTR[] = {
+static stringtype_t STRICT_BLACKATTR[] = {
     { "ACTION", TYPE_ATTR_URL }     /* form */
     , { "ATTRIBUTENAME", TYPE_ATTR_INDIRECT } /* SVG allow indirection of attribute names */
     , { "BY", TYPE_ATTR_URL }         /* SVG */
@@ -474,6 +474,31 @@ static stringtype_t BLACKATTR[] = {
     , { "XLINK:HREF", TYPE_ATTR_URL }
     , { NULL, TYPE_NONE }
 };
+
+static stringtype_t BLACKATTR[] = {
+    { "ACTION", TYPE_ATTR_URL }     /* form */
+    , { "ATTRIBUTENAME", TYPE_ATTR_INDIRECT } /* SVG allow indirection of attribute names */
+    , { "BY", TYPE_ATTR_URL }         /* SVG */
+    , { "BACKGROUND", TYPE_ATTR_URL } /* IE6, O11 */
+    , { "DATAFORMATAS", TYPE_BLACK }  /* IE */
+    , { "DATASRC", TYPE_BLACK }       /* IE */
+    , { "DYNSRC", TYPE_ATTR_URL }     /* Obsolete img attribute */
+    , { "FILTER", TYPE_STYLE }        /* Opera, SVG inline style */
+    , { "FORMACTION", TYPE_ATTR_URL } /* HTML 5 */
+    , { "FOLDER", TYPE_ATTR_URL }     /* Only on A tags, IE-only */
+    , { "FROM", TYPE_ATTR_URL }       /* SVG */
+    , { "HANDLER", TYPE_ATTR_URL }    /* SVG Tiny, Opera */
+    , { "HREF", TYPE_ATTR_URL }
+    , { "LOWSRC", TYPE_ATTR_URL }     /* Obsolete img attribute */
+    , { "POSTER", TYPE_ATTR_URL }     /* Opera 10,11 */
+    , { "SRC", TYPE_ATTR_URL }
+    , { "TO", TYPE_ATTR_URL }         /* SVG */
+    , { "VALUES", TYPE_ATTR_URL }     /* SVG */
+    , { "XLINK:HREF", TYPE_ATTR_URL }
+    , { NULL, TYPE_NONE }
+};
+
+
 
 /* xmlns */
 /* `xml-stylesheet` > <eval>, <if expr=> */
@@ -674,7 +699,7 @@ static int is_black_tag(const char* s, size_t len, int strictMode)
     return 0;
 }
 
-static attribute_t is_black_attr(const char* s, size_t len)
+static attribute_t is_black_attr(const char* s, size_t len, int strictMode)
 {
     stringtype_t* black;
 
@@ -706,7 +731,11 @@ static attribute_t is_black_attr(const char* s, size_t len)
         //}
     }
 
-    black = BLACKATTR;
+	if (strictMode == 1) {
+    	black = STRICT_BLACKATTR;
+    } else {
+    	black = BLACKATTR;
+    }
     while (black->name != NULL) {
         if (cstrcasecmp_with_null(black->name, s, len) == 0) {
             /*      printf("Got banned attribute name %s\n", black->name); */
@@ -779,7 +808,7 @@ int libinjection_is_xss(const char* s, size_t len, int flags, int strictMode)
                 return 1;
             }
         } else if (h5.token_type == ATTR_NAME) {
-            attr = is_black_attr(h5.token_start, h5.token_len);
+            attr = is_black_attr(h5.token_start, h5.token_len, strictMode);
         } else if (h5.token_type == ATTR_VALUE) {
             /*
              * IE6,7,8 parsing works a bit differently so
@@ -810,7 +839,7 @@ int libinjection_is_xss(const char* s, size_t len, int flags, int strictMode)
                 return 1;
             case TYPE_ATTR_INDIRECT:
                 /* an attribute name is specified in a _value_ */
-                if (is_black_attr(h5.token_start, h5.token_len)) {
+                if (is_black_attr(h5.token_start, h5.token_len, strictMode)) {
                     return 1;
                 }
                 break;
