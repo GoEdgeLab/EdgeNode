@@ -381,11 +381,20 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		return
 	}
 
+	if resp == nil {
+		this.write50x(requestErr, http.StatusBadGateway, "Failed to read origin site", "源站读取失败", true)
+		return
+	}
+
+	// fix Content-Type
+	if resp.Header["Content-Type"] == nil {
+		resp.Header["Content-Type"] = []string{}
+	}
+
 	// 40x && 50x
 	*failStatusCode = resp.StatusCode
-	if resp != nil &&
-		((resp.StatusCode >= 500 && resp.StatusCode < 510 && this.reverseProxy.Retry50X) ||
-			(resp.StatusCode >= 403 && resp.StatusCode <= 404 && this.reverseProxy.Retry40X)) &&
+	if ((resp.StatusCode >= 500 && resp.StatusCode < 510 && this.reverseProxy.Retry50X) ||
+		(resp.StatusCode >= 403 && resp.StatusCode <= 404 && this.reverseProxy.Retry40X)) &&
 		(originId > 0 || (lnNodeId > 0 && hasMultipleLnNodes)) &&
 		!isLastRetry {
 		if resp.Body != nil {
@@ -397,8 +406,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	}
 
 	// 尝试从缓存中恢复
-	if resp != nil &&
-		resp.StatusCode >= 500 && // support 50X only
+	if resp.StatusCode >= 500 && // support 50X only
 		resp.StatusCode < 510 &&
 		this.cacheCanTryStale &&
 		this.web.Cache.Stale != nil &&
