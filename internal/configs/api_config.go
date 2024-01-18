@@ -12,8 +12,8 @@ const oldConfigFileName = "api.yaml"
 
 type APIConfig struct {
 	OldRPC struct {
-		Endpoints     []string `yaml:"endpoints" json:"endpoints"`
-		DisableUpdate bool     `yaml:"disableUpdate" json:"disableUpdate"`
+		Endpoints     []string `yaml:"endpoints,omitempty" json:"endpoints"`
+		DisableUpdate bool     `yaml:"disableUpdate,omitempty" json:"disableUpdate"`
 	} `yaml:"rpc,omitempty" json:"rpc"`
 
 	RPCEndpoints     []string `yaml:"rpc.endpoints,flow" json:"rpc.endpoints"`

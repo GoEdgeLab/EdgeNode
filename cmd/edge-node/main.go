@@ -16,6 +16,7 @@ import (
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"github.com/iwind/gosock/pkg/gosock"
+	"gopkg.in/yaml.v3"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -30,7 +31,7 @@ func main() {
 	var app = apps.NewAppCmd().
 		Version(teaconst.Version).
 		Product(teaconst.ProductName).
-		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|pprof|accesslog|uninstall]").
+		Usage(teaconst.ProcessName + " [-v|start|stop|restart|status|quit|test|reload|service|daemon|config|pprof|accesslog|uninstall]").
 		Usage(teaconst.ProcessName + " [trackers|goman|conns|gc|bandwidth|disk|cache.garbage]").
 		Usage(teaconst.ProcessName + " [ip.drop|ip.reject|ip.remove|ip.close] IP")
 
@@ -523,6 +524,41 @@ func main() {
 		} else {
 			fmt.Println("[ERROR]" + params.GetString("error"))
 		}
+	})
+	app.On("config", func() {
+		var configString = os.Args[len(os.Args)-1]
+		if configString == "config" {
+			fmt.Println("Usage: edge-node config '\nrpc.endpoints: [\"...\"]\nnodeId: \"...\"\nsecret: \"...\"\n'")
+			return
+		}
+
+		var config = &configs.APIConfig{}
+		err := yaml.Unmarshal([]byte(configString), config)
+		if err != nil {
+			fmt.Println("[ERROR]decode config failed: " + err.Error())
+			return
+		}
+
+		err = config.Init()
+		if err != nil {
+			fmt.Println("[ERROR]validate config failed: " + err.Error())
+			return
+		}
+
+		// marshal again
+		configYAML, err := yaml.Marshal(config)
+		if err != nil {
+			fmt.Println("[ERROR]encode config failed: " + err.Error())
+			return
+		}
+
+		err = os.WriteFile(Tea.Root + "/configs/api_node.yaml", configYAML, 0666)
+		if err != nil {
+			fmt.Println("[ERROR]write config failed: " + err.Error())
+			return
+		}
+
+		fmt.Println("success")
 	})
 	app.Run(func() {
 		var node = nodes.NewNode()
