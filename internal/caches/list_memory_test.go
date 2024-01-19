@@ -1,12 +1,14 @@
-package caches
+package caches_test
 
 import (
 	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
+	stringutil "github.com/iwind/TeaGo/utils/string"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -15,65 +17,65 @@ import (
 )
 
 func TestMemoryList_Add(t *testing.T) {
-	list := NewMemoryList().(*MemoryList)
+	list := caches.NewMemoryList().(*caches.MemoryList)
 	_ = list.Init()
-	_ = list.Add("a", &Item{
+	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("b", &Item{
+	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("123456", &Item{
+	_ = list.Add("123456", &caches.Item{
 		Key:        "c1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	t.Log(list.prefixes)
-	logs.PrintAsJSON(list.itemMaps, t)
+	t.Log(list.Prefixes())
+	logs.PrintAsJSON(list.ItemMaps(), t)
 	t.Log(list.Count())
 }
 
 func TestMemoryList_Remove(t *testing.T) {
-	list := NewMemoryList().(*MemoryList)
+	list := caches.NewMemoryList().(*caches.MemoryList)
 	_ = list.Init()
-	_ = list.Add("a", &Item{
+	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("b", &Item{
+	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Remove("b")
-	list.print(t)
+	list.Print(t)
 	t.Log(list.Count())
 }
 
 func TestMemoryList_Purge(t *testing.T) {
-	list := NewMemoryList().(*MemoryList)
+	list := caches.NewMemoryList().(*caches.MemoryList)
 	_ = list.Init()
-	_ = list.Add("a", &Item{
+	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("b", &Item{
+	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("c", &Item{
+	_ = list.Add("c", &caches.Item{
 		Key:        "c1",
 		ExpiredAt:  time.Now().Unix() - 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("d", &Item{
+	_ = list.Add("d", &caches.Item{
 		Key:        "d1",
 		ExpiredAt:  time.Now().Unix() - 2,
 		HeaderSize: 1024,
@@ -82,25 +84,25 @@ func TestMemoryList_Purge(t *testing.T) {
 		t.Log("delete:", hash)
 		return nil
 	})
-	list.print(t)
+	list.Print(t)
 
 	for i := 0; i < 1000; i++ {
 		_, _ = list.Purge(100, func(hash string) error {
 			t.Log("delete:", hash)
 			return nil
 		})
-		t.Log(list.purgeIndex)
+		t.Log(list.PurgeIndex())
 	}
 
 	t.Log(list.Count())
 }
 
 func TestMemoryList_Purge_Large_List(t *testing.T) {
-	list := NewMemoryList().(*MemoryList)
+	list := caches.NewMemoryList().(*caches.MemoryList)
 	_ = list.Init()
 
 	for i := 0; i < 1_000_000; i++ {
-		_ = list.Add("a"+strconv.Itoa(i), &Item{
+		_ = list.Add("a"+strconv.Itoa(i), &caches.Item{
 			Key:        "a" + strconv.Itoa(i),
 			ExpiredAt:  time.Now().Unix() + int64(rands.Int(0, 24*3600)),
 			HeaderSize: 1024,
@@ -113,43 +115,42 @@ func TestMemoryList_Purge_Large_List(t *testing.T) {
 }
 
 func TestMemoryList_Stat(t *testing.T) {
-	list := NewMemoryList()
+	list := caches.NewMemoryList()
 	_ = list.Init()
-	_ = list.Add("a", &Item{
+	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("b", &Item{
+	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
 		ExpiredAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
-	_ = list.Add("c", &Item{
+	_ = list.Add("c", &caches.Item{
 		Key:        "c1",
 		ExpiredAt:  time.Now().Unix(),
 		HeaderSize: 1024,
 	})
-	_ = list.Add("d", &Item{
+	_ = list.Add("d", &caches.Item{
 		Key:        "d1",
 		ExpiredAt:  time.Now().Unix() - 2,
 		HeaderSize: 1024,
 	})
 	result, _ := list.Stat(func(hash string) bool {
 		// 随机测试
-		rand.Seed(time.Now().UnixNano())
 		return rand.Int()%2 == 0
 	})
 	t.Log(result)
 }
 
 func TestMemoryList_CleanPrefix(t *testing.T) {
-	list := NewMemoryList()
+	list := caches.NewMemoryList()
 	_ = list.Init()
 	before := time.Now()
 	for i := 0; i < 1_000_000; i++ {
 		key := "https://www.teaos.cn/hello/" + strconv.Itoa(i/10000) + "/" + strconv.Itoa(i) + ".html"
-		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &Item{
+		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &caches.Item{
 			Key:        key,
 			ExpiredAt:  time.Now().Unix() + 3600,
 			BodySize:   0,
@@ -203,18 +204,18 @@ func TestMapRandomDelete(t *testing.T) {
 }
 
 func TestMemoryList_PurgeLFU(t *testing.T) {
-	var list = NewMemoryList().(*MemoryList)
+	var list = caches.NewMemoryList().(*caches.MemoryList)
 
 	var before = time.Now()
 	defer func() {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
 	}()
 
-	_ = list.Add("1", &Item{})
-	_ = list.Add("2", &Item{})
-	_ = list.Add("3", &Item{})
-	_ = list.Add("4", &Item{})
-	_ = list.Add("5", &Item{})
+	_ = list.Add("1", &caches.Item{})
+	_ = list.Add("2", &caches.Item{})
+	_ = list.Add("3", &caches.Item{})
+	_ = list.Add("4", &caches.Item{})
+	_ = list.Add("5", &caches.Item{})
 
 	//_ = list.IncreaseHit("1")
 	//_ = list.IncreaseHit("2")
@@ -245,19 +246,23 @@ func TestMemoryList_PurgeLFU(t *testing.T) {
 }
 
 func TestMemoryList_CleanAll(t *testing.T) {
-	var list = NewMemoryList().(*MemoryList)
-	_ = list.Add("a", &Item{})
+	var list = caches.NewMemoryList().(*caches.MemoryList)
+	_ = list.Add("a", &caches.Item{})
 	_ = list.CleanAll()
-	logs.PrintAsJSON(list.itemMaps, t)
+	logs.PrintAsJSON(list.ItemMaps(), t)
 	t.Log(list.Count())
 }
 
 func TestMemoryList_GC(t *testing.T) {
-	list := NewMemoryList().(*MemoryList)
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	list := caches.NewMemoryList().(*caches.MemoryList)
 	_ = list.Init()
 	for i := 0; i < 1_000_000; i++ {
 		key := "https://www.teaos.cn/hello" + strconv.Itoa(i/100000) + "/" + strconv.Itoa(i) + ".html"
-		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &Item{
+		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &caches.Item{
 			Key:        key,
 			ExpiredAt:  0,
 			BodySize:   0,
@@ -265,9 +270,9 @@ func TestMemoryList_GC(t *testing.T) {
 		})
 	}
 	time.Sleep(10 * time.Second)
-	t.Log("clean...", len(list.itemMaps))
+	t.Log("clean...", len(list.ItemMaps()))
 	_ = list.CleanAll()
-	t.Log("cleanAll...", len(list.itemMaps))
+	t.Log("cleanAll...", len(list.ItemMaps()))
 	before := time.Now()
 	//runtime.GC()
 	t.Log("gc cost:", time.Since(before).Seconds()*1000, "ms")
@@ -279,4 +284,31 @@ func TestMemoryList_GC(t *testing.T) {
 
 		time.Sleep(30 * time.Minute)
 	}
+}
+
+func BenchmarkMemoryList(b *testing.B) {
+	var list = caches.NewMemoryList()
+	err := list.Init()
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < 1_000_000; i++ {
+		_ = list.Add(stringutil.Md5(types.String(i)), &caches.Item{
+			Key:        "a1",
+			ExpiredAt:  time.Now().Unix() + 3600,
+			HeaderSize: 1024,
+		})
+	}
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, _ = list.Exist(types.String("a" + types.String(rands.Int(1, 10000))))
+			_ = list.Add("a"+types.String(rands.Int(1, 100000)), &caches.Item{})
+			_, _ = list.Purge(1000, func(hash string) error {
+				return nil
+			})
+		}
+	})
 }

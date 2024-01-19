@@ -400,7 +400,19 @@ func (this *MemoryList) IncreaseHit(hash string) error {
 	return nil
 }
 
-func (this *MemoryList) print(t *testing.T) {
+func (this *MemoryList) Prefixes() []string {
+	return this.prefixes
+}
+
+func (this *MemoryList) ItemMaps() map[string]map[string]*Item {
+	return this.itemMaps
+}
+
+func (this *MemoryList) PurgeIndex() int {
+	return this.purgeIndex
+}
+
+func (this *MemoryList) Print(t *testing.T) {
 	this.locker.Lock()
 	for _, itemMap := range this.itemMaps {
 		if len(itemMap) > 0 {
