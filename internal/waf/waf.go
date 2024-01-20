@@ -27,6 +27,7 @@ type WAF struct {
 	SYNFlood         *firewallconfigs.SYNFloodConfig `yaml:"synFlood" json:"synFlood"`
 
 	DefaultBlockAction   *BlockAction
+	DefaultPageAction    *PageAction
 	DefaultCaptchaAction *CaptchaAction
 
 	hasInboundRules  bool

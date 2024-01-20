@@ -10,11 +10,21 @@ import (
 type PageAction struct {
 	BaseAction
 
-	Status int    `yaml:"status" json:"status"`
-	Body   string `yaml:"body" json:"body"`
+	UseDefault bool   `yaml:"useDefault" json:"useDefault"`
+	Status     int    `yaml:"status" json:"status"`
+	Body       string `yaml:"body" json:"body"`
 }
 
 func (this *PageAction) Init(waf *WAF) error {
+	if waf.DefaultPageAction != nil {
+		if this.Status <= 0 || this.UseDefault {
+			this.Status = waf.DefaultPageAction.Status
+		}
+		if len(this.Body) == 0 || this.UseDefault {
+			this.Body = waf.DefaultPageAction.Body
+		}
+	}
+
 	if this.Status <= 0 {
 		this.Status = http.StatusForbidden
 	}

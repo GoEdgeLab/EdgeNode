@@ -184,6 +184,14 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 		}
 	}
 
+	// page action
+	if policy.PageOptions != nil {
+		w.DefaultPageAction = &PageAction{
+			Status: policy.PageOptions.Status,
+			Body:   policy.PageOptions.Body,
+		}
+	}
+
 	// captcha action
 	if policy.CaptchaOptions != nil {
 		w.DefaultCaptchaAction = &CaptchaAction{
