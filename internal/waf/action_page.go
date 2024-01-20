@@ -48,10 +48,12 @@ func (this *PageAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reques
 	if len(body) == 0 {
 		body = `<!DOCTYPE html>
 <html lang="en">
-<title>403 Forbidden</title>
+<head>
+	<title>403 Forbidden</title>
 	<style>
 		address { line-height: 1.8; }
 	</style>
+</head>
 <body>
 <h1>403 Forbidden By WAF</h1>
 <address>Connection: ${remoteAddr} (Client) -&gt; ${serverAddr} (Server)</address>
