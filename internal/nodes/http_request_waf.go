@@ -67,8 +67,8 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 	// 当前服务的独立设置
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
-		blocked, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying, false)
-		if blocked {
+		blockedRequest, breakChecking := this.checkWAFRequest(this.web.FirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying, false)
+		if blockedRequest {
 			return true
 		}
 		if breakChecking {
@@ -78,8 +78,8 @@ func (this *HTTPRequest) doWAFRequest() (blocked bool) {
 
 	// 公用的防火墙设置
 	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
-		blocked, breakChecking := this.checkWAFRequest(this.ReqServer.HTTPFirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying, this.web.FirewallRef.IgnoreGlobalRules)
-		if blocked {
+		blockedRequest, breakChecking := this.checkWAFRequest(this.ReqServer.HTTPFirewallPolicy, forceLog, forceLogRequestBody, forceLogRegionDenying, this.web.FirewallRef.IgnoreGlobalRules)
+		if blockedRequest {
 			return true
 		}
 		if breakChecking {
@@ -266,8 +266,11 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		return
 	}
 
-	goNext, hasRequestBody, ruleGroup, ruleSet, err := w.MatchRequest(this, this.writer, this.web.FirewallRef.DefaultCaptchaType)
-	if forceLog && logRequestBody && hasRequestBody && ruleSet != nil && ruleSet.HasAttackActions() {
+	result, err := w.MatchRequest(this, this.writer, this.web.FirewallRef.DefaultCaptchaType)
+	if result.IsAllowed && (len(result.AllowScope) == 0 || result.AllowScope == waf.AllowScopeGlobal) {
+		breakChecking = true
+	}
+	if forceLog && logRequestBody && result.HasRequestBody && result.Set != nil && result.Set.HasAttackActions() {
 		this.wafHasRequestBody = true
 	}
 	if err != nil {
@@ -277,28 +280,28 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 		return
 	}
 
-	if ruleSet != nil {
+	if result.Set != nil {
 		if forceLog {
 			this.forceLog = true
 		}
 
-		if ruleSet.HasSpecialActions() {
+		if result.Set.HasSpecialActions() {
 			this.firewallPolicyId = firewallPolicy.Id
-			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
-			this.firewallRuleSetId = types.Int64(ruleSet.Id)
+			this.firewallRuleGroupId = types.Int64(result.Group.Id)
+			this.firewallRuleSetId = types.Int64(result.Set.Id)
 
-			if ruleSet.HasAttackActions() {
+			if result.Set.HasAttackActions() {
 				this.isAttack = true
 			}
 
 			// 添加统计
-			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.ReqServer.Id, this.firewallRuleGroupId, ruleSet.Actions)
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.ReqServer.Id, this.firewallRuleGroupId, result.Set.Actions)
 		}
 
-		this.firewallActions = append(ruleSet.ActionCodes(), firewallPolicy.Mode)
+		this.firewallActions = append(result.Set.ActionCodes(), firewallPolicy.Mode)
 	}
 
-	return !goNext, false
+	return !result.GoNext, breakChecking
 }
 
 // call response waf
@@ -316,23 +319,26 @@ func (this *HTTPRequest) doWAFResponse(resp *http.Response) (blocked bool) {
 	}
 
 	if this.web.FirewallPolicy != nil && this.web.FirewallPolicy.IsOn {
-		blocked = this.checkWAFResponse(this.web.FirewallPolicy, resp, forceLog, forceLogRequestBody, false)
-		if blocked {
+		blockedRequest, breakChecking := this.checkWAFResponse(this.web.FirewallPolicy, resp, forceLog, forceLogRequestBody, false)
+		if blockedRequest {
 			return true
+		}
+		if breakChecking {
+			return
 		}
 	}
 
 	// 公用的防火墙设置
 	if this.ReqServer.HTTPFirewallPolicy != nil && this.ReqServer.HTTPFirewallPolicy.IsOn {
-		blocked = this.checkWAFResponse(this.ReqServer.HTTPFirewallPolicy, resp, forceLog, forceLogRequestBody, this.web.FirewallRef.IgnoreGlobalRules)
-		if blocked {
+		blockedRequest, _ := this.checkWAFResponse(this.ReqServer.HTTPFirewallPolicy, resp, forceLog, forceLogRequestBody, this.web.FirewallRef.IgnoreGlobalRules)
+		if blockedRequest {
 			return true
 		}
 	}
 	return
 }
 
-func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, resp *http.Response, forceLog bool, logRequestBody bool, ignoreRules bool) (blocked bool) {
+func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFirewallPolicy, resp *http.Response, forceLog bool, logRequestBody bool, ignoreRules bool) (blocked bool, breakChecking bool) {
 	if firewallPolicy == nil || !firewallPolicy.IsOn || !firewallPolicy.Outbound.IsOn || firewallPolicy.Mode == firewallconfigs.FirewallModeBypass {
 		return
 	}
@@ -347,8 +353,11 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 		return
 	}
 
-	goNext, hasRequestBody, ruleGroup, ruleSet, err := w.MatchResponse(this, resp, this.writer)
-	if forceLog && logRequestBody && hasRequestBody && ruleSet != nil && ruleSet.HasAttackActions() {
+	result, err := w.MatchResponse(this, resp, this.writer)
+	if result.IsAllowed && (len(result.AllowScope) == 0 || result.AllowScope == waf.AllowScopeGlobal) {
+		breakChecking = true
+	}
+	if forceLog && logRequestBody && result.HasRequestBody && result.Set != nil && result.Set.HasAttackActions() {
 		this.wafHasRequestBody = true
 	}
 	if err != nil {
@@ -358,28 +367,28 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 		return
 	}
 
-	if ruleSet != nil {
+	if result.Set != nil {
 		if forceLog {
 			this.forceLog = true
 		}
 
-		if ruleSet.HasSpecialActions() {
+		if result.Set.HasSpecialActions() {
 			this.firewallPolicyId = firewallPolicy.Id
-			this.firewallRuleGroupId = types.Int64(ruleGroup.Id)
-			this.firewallRuleSetId = types.Int64(ruleSet.Id)
+			this.firewallRuleGroupId = types.Int64(result.Group.Id)
+			this.firewallRuleSetId = types.Int64(result.Set.Id)
 
-			if ruleSet.HasAttackActions() {
+			if result.Set.HasAttackActions() {
 				this.isAttack = true
 			}
 
 			// 添加统计
-			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.ReqServer.Id, this.firewallRuleGroupId, ruleSet.Actions)
+			stats.SharedHTTPRequestStatManager.AddFirewallRuleGroupId(this.ReqServer.Id, this.firewallRuleGroupId, result.Set.Actions)
 		}
 
-		this.firewallActions = append(ruleSet.ActionCodes(), firewallPolicy.Mode)
+		this.firewallActions = append(result.Set.ActionCodes(), firewallPolicy.Mode)
 	}
 
-	return !goNext
+	return !result.GoNext, breakChecking
 }
 
 // WAFRaw 原始请求

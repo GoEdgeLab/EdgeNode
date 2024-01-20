@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/cespare/xxhash"
 	"github.com/iwind/TeaGo/assert"
+	"github.com/iwind/TeaGo/maps"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -72,6 +73,52 @@ func TestRuleSet_MatchRequest2(t *testing.T) {
 	}
 	req := requests.NewTestRequest(rawReq)
 	a.IsTrue(set.MatchRequest(req))
+}
+
+func TestRuleSet_MatchRequest_Allow(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
+	var set = waf.NewRuleSet()
+	set.Connector = waf.RuleConnectorOr
+
+	set.Rules = []*waf.Rule{
+		{
+			Param:    "${requestPath}",
+			Operator: waf.RuleOperatorMatch,
+			Value:    "hello",
+		},
+	}
+
+	set.Actions = []*waf.ActionConfig{
+		{
+			Code: "allow",
+			Options: maps.Map{
+				"scope": waf.AllowScopeGroup,
+			},
+		},
+	}
+
+	var wafInstance = waf.NewWAF()
+
+	err := set.Init(wafInstance)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rawReq, err := http.NewRequest(http.MethodGet, "http://teaos.cn/hello?name=lu&age=20", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var req = requests.NewTestRequest(rawReq)
+	b, _, err := set.MatchRequest(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.IsTrue(b)
+
+	var result = set.PerformActions(wafInstance, &waf.RuleGroup{}, req, nil)
+	a.IsTrue(result.IsAllowed)
+	t.Log("scope:", result.AllowScope)
 }
 
 func BenchmarkRuleSet_MatchRequest(b *testing.B) {

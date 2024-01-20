@@ -45,9 +45,9 @@ func (this *PageAction) WillChange() bool {
 }
 
 // Perform the action
-func (this *PageAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+func (this *PageAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
 	if writer == nil {
-		return
+		return PerformResult{}
 	}
 
 	request.ProcessResponseHeaders(writer.Header(), this.Status)
@@ -73,5 +73,5 @@ func (this *PageAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reques
 	}
 	_, _ = writer.Write([]byte(request.Format(body)))
 
-	return false, false
+	return PerformResult{}
 }

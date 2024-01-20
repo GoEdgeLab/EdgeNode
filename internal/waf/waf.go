@@ -39,7 +39,8 @@ type WAF struct {
 
 func NewWAF() *WAF {
 	return &WAF{
-		IsOn: true,
+		IsOn:      true,
+		actionMap: map[int64]ActionInterface{},
 	}
 }
 
@@ -243,9 +244,11 @@ func (this *WAF) MoveOutboundRuleGroup(fromIndex int, toIndex int) {
 	this.Outbound = result
 }
 
-func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter, defaultCaptchaType firewallconfigs.ServerCaptchaType) (goNext bool, hasRequestBody bool, resultGroup *RuleGroup, resultSet *RuleSet, err error) {
+func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter, defaultCaptchaType firewallconfigs.ServerCaptchaType) (result MatchResult, err error) {
 	if !this.hasInboundRules {
-		return true, hasRequestBody, nil, nil, nil
+		return MatchResult{
+			GoNext: true,
+		}, nil
 	}
 
 	// validate captcha
@@ -266,51 +269,87 @@ func (this *WAF) MatchRequest(req requests.Request, writer http.ResponseWriter, 
 	}
 
 	// match rules
+	var hasRequestBody bool
 	for _, group := range this.Inbound {
 		if !group.IsOn {
 			continue
 		}
-		b, hasCheckedRequestBody, set, err := group.MatchRequest(req)
+		b, hasCheckedRequestBody, set, matchErr := group.MatchRequest(req)
 		if hasCheckedRequestBody {
 			hasRequestBody = true
 		}
-		if err != nil {
-			return true, hasRequestBody, nil, nil, err
+		if matchErr != nil {
+			return MatchResult{
+				GoNext:         true,
+				HasRequestBody: hasRequestBody,
+			}, matchErr
 		}
 		if b {
-			continueRequest, goNextSet := set.PerformActions(this, group, req, writer)
-			if !goNextSet {
-				return continueRequest, hasRequestBody, group, set, nil
+			var performResult = set.PerformActions(this, group, req, writer)
+			if !performResult.GoNextSet {
+				if performResult.GoNextGroup {
+					continue
+				}
+				return MatchResult{
+					GoNext:         performResult.ContinueRequest,
+					HasRequestBody: hasRequestBody,
+					Group:          group,
+					Set:            set,
+					IsAllowed:      performResult.IsAllowed,
+					AllowScope:     performResult.AllowScope,
+				}, nil
 			}
 		}
 	}
-	return true, hasRequestBody, nil, nil, nil
+	return MatchResult{
+		GoNext:         true,
+		HasRequestBody: hasRequestBody,
+	}, nil
 }
 
-func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, writer http.ResponseWriter) (goNext bool, hasRequestBody bool, resultGroup *RuleGroup, resultSet *RuleSet, err error) {
+func (this *WAF) MatchResponse(req requests.Request, rawResp *http.Response, writer http.ResponseWriter) (result MatchResult, err error) {
 	if !this.hasOutboundRules {
-		return true, hasRequestBody, nil, nil, nil
+		return MatchResult{
+			GoNext: true,
+		}, nil
 	}
-	resp := requests.NewResponse(rawResp)
+	var hasRequestBody bool
+	var resp = requests.NewResponse(rawResp)
 	for _, group := range this.Outbound {
 		if !group.IsOn {
 			continue
 		}
-		b, hasCheckedRequestBody, set, err := group.MatchResponse(req, resp)
+		b, hasCheckedRequestBody, set, matchErr := group.MatchResponse(req, resp)
 		if hasCheckedRequestBody {
 			hasRequestBody = true
 		}
-		if err != nil {
-			return true, hasRequestBody, nil, nil, err
+		if matchErr != nil {
+			return MatchResult{
+				GoNext:         true,
+				HasRequestBody: hasRequestBody,
+			}, matchErr
 		}
 		if b {
-			continueRequest, goNextSet := set.PerformActions(this, group, req, writer)
-			if !goNextSet {
-				return continueRequest, hasRequestBody, group, set, nil
+			var performResult = set.PerformActions(this, group, req, writer)
+			if !performResult.GoNextSet {
+				if performResult.GoNextGroup {
+					continue
+				}
+				return MatchResult{
+					GoNext:         performResult.ContinueRequest,
+					HasRequestBody: hasRequestBody,
+					Group:          group,
+					Set:            set,
+					IsAllowed:      performResult.IsAllowed,
+					AllowScope:     performResult.AllowScope,
+				}, nil
 			}
 		}
 	}
-	return true, hasRequestBody, nil, nil, nil
+	return MatchResult{
+		GoNext:         true,
+		HasRequestBody: hasRequestBody,
+	}, nil
 }
 
 // Save to file path

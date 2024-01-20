@@ -34,17 +34,21 @@ func (this *Post307Action) WillChange() bool {
 	return true
 }
 
-func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
 	var cookieName = "WAF_VALIDATOR_ID"
 
 	// 仅限于POST
 	if request.WAFRaw().Method != http.MethodPost {
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+		}
 	}
 
 	// 是否已经在白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+		}
 	}
 
 	// 判断是否有Cookie
@@ -58,7 +62,9 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 			}
 			var setId = types.String(m.GetInt64("setId"))
 			SharedIPWhiteList.RecordIP("set:"+setId, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life, m.GetInt64("policyId"), false, m.GetInt64("groupId"), m.GetInt64("setId"), "")
-			return true, false
+			return PerformResult{
+				ContinueRequest: true,
+			}
 		}
 	}
 
@@ -74,7 +80,9 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	info, err := utils.SimpleEncryptMap(m)
 	if err != nil {
 		remotelogs.Error("WAF_POST_307_ACTION", "encode info failed: "+err.Error())
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+		}
 	}
 
 	// 清空请求内容
@@ -101,5 +109,5 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 		flusher.Flush()
 	}
 
-	return false, false
+	return PerformResult{}
 }

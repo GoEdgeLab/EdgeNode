@@ -52,18 +52,18 @@ func Test_Template2(t *testing.T) {
 	}
 
 	now := time.Now()
-	goNext, _, _, set, err := wafInstance.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+	result, err := wafInstance.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(time.Since(now).Seconds()*1000, "ms")
 
-	if goNext {
+	if result.GoNext {
 		t.Log("ok")
 		return
 	}
 
-	logs.PrintAsJSON(set, t)
+	logs.PrintAsJSON(result.Set, t)
 }
 
 func BenchmarkTemplate(b *testing.B) {
@@ -84,7 +84,7 @@ func BenchmarkTemplate(b *testing.B) {
 			}
 			req.Header.Set("User-Agent", testUserAgent)
 
-			_, _, _, _, _ = wafInstance.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+			_, _ = wafInstance.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		}
 	})
 }
@@ -103,13 +103,13 @@ func testTemplate1010(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 			t.Fatal(err)
 		}
 		req.Header.Set("User-Agent", testUserAgent)
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNotNil(result)
-		if result != nil {
-			a.IsTrue(result.Code == "1010")
+		a.IsNotNil(result.Set)
+		if result.Set != nil {
+			a.IsTrue(result.Set.Code == "1010")
 		} else {
 			t.Log("break at:", id)
 		}
@@ -125,13 +125,13 @@ func testTemplate1010(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 			t.Fatal(err)
 		}
 		req.Header.Set("User-Agent", testUserAgent)
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNil(result)
-		if result != nil {
-			a.IsTrue(result.Code == "1010")
+		a.IsNil(result.Set)
+		if result.Set != nil {
+			a.IsTrue(result.Set.Code == "1010")
 		}
 	}
 }
@@ -192,13 +192,13 @@ func testTemplate2001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+	result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.IsNotNil(result)
-	if result != nil {
-		a.IsTrue(result.Code == "2001")
+	a.IsNotNil(result.Set)
+	if result.Set != nil {
+		a.IsTrue(result.Set.Code == "2001")
 	}
 }
 
@@ -207,13 +207,13 @@ func testTemplate3001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+	result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.IsNotNil(result)
-	if result != nil {
-		a.IsTrue(result.Code == "3001")
+	a.IsNotNil(result.Set)
+	if result.Set != nil {
+		a.IsTrue(result.Set.Code == "3001")
 	}
 }
 
@@ -222,13 +222,13 @@ func testTemplate4001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+	result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.IsNotNil(result)
-	if result != nil {
-		a.IsTrue(result.Code == "4001")
+	a.IsNotNil(result.Set)
+	if result.Set != nil {
+		a.IsTrue(result.Set.Code == "4001")
 	}
 }
 
@@ -238,13 +238,13 @@ func testTemplate5001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNotNil(result)
-		if result != nil {
-			a.IsTrue(result.Code == "5001")
+		a.IsNotNil(result.Set)
+		if result.Set != nil {
+			a.IsTrue(result.Set.Code == "5001")
 		}
 	}
 
@@ -253,13 +253,13 @@ func testTemplate5001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNotNil(result)
-		if result != nil {
-			a.IsTrue(result.Code == "5001")
+		a.IsNotNil(result.Set)
+		if result.Set != nil {
+			a.IsTrue(result.Set.Code == "5001")
 		}
 	}
 }
@@ -271,13 +271,13 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 			t.Fatal(err)
 		}
 		req.Header.Set("User-Agent", testUserAgent)
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNotNil(result)
-		if result != nil {
-			a.IsTrue(result.Code == "6001")
+		a.IsNotNil(result.Set)
+		if result.Set != nil {
+			a.IsTrue(result.Set.Code == "6001")
 		}
 	}
 
@@ -286,11 +286,11 @@ func testTemplate6001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNotNil(result)
+		a.IsNotNil(result.Set)
 	}
 }
 
@@ -325,13 +325,13 @@ func testTemplate7010(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 			t.Fatal(err)
 		}
 		req.Header.Set("User-Agent", testUserAgent)
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNotNil(result)
-		if result != nil {
-			a.IsTrue(lists.ContainsAny([]string{"7010"}, result.Code))
+		a.IsNotNil(result.Set)
+		if result.Set != nil {
+			a.IsTrue(lists.ContainsAny([]string{"7010"}, result.Set.Code))
 		} else {
 			t.Log("break:", id)
 		}
@@ -423,13 +423,13 @@ func testTemplate20001(a *assert.Assertion, t *testing.T, template *waf.WAF) {
 			t.Fatal(err)
 		}
 		req.Header.Set("User-Agent", bot)
-		_, _, _, result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
+		result, err := template.MatchRequest(requests.NewTestRequest(req), nil, firewallconfigs.ServerCaptchaTypeNone)
 		if err != nil {
 			t.Fatal(err)
 		}
-		a.IsNotNil(result)
-		if result != nil {
-			a.IsTrue(lists.ContainsAny([]string{"20001"}, result.Code))
+		a.IsNotNil(result.Set)
+		if result.Set != nil {
+			a.IsTrue(lists.ContainsAny([]string{"20001"}, result.Set.Code))
 		} else {
 			t.Log("break:", bot)
 		}

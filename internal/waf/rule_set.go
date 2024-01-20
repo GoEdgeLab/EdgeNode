@@ -34,6 +34,9 @@ type RuleSet struct {
 	actionCodes     []string
 	actionInstances []ActionInterface
 
+	hasAllowActions bool
+	allowScope      string
+
 	hasRules bool
 }
 
@@ -62,6 +65,12 @@ func (this *RuleSet) Init(waf *WAF) error {
 	// action codes
 	var actionCodes = []string{}
 	for _, action := range this.Actions {
+		if action.Code == ActionAllow {
+			this.hasAllowActions = true
+			if action.Options != nil {
+				this.allowScope = action.Options.GetString("scope")
+			}
+		}
 		if !lists.ContainsString(actionCodes, action.Code) {
 			actionCodes = append(actionCodes, action.Code)
 		}
@@ -141,19 +150,37 @@ func (this *RuleSet) ActionCodes() []string {
 	return this.actionCodes
 }
 
-func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Request, writer http.ResponseWriter) PerformResult {
 	if len(waf.Mode) != 0 && waf.Mode != firewallconfigs.FirewallModeDefend {
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+		}
 	}
+
+	var isAllowed = this.hasAllowActions
+	var allowScope = this.allowScope
+	var continueRequest bool
+	var goNextGroup bool
+	var goNextSet bool
 
 	// 先执行allow
 	for _, instance := range this.actionInstances {
 		if !instance.WillChange() {
 			continueRequest = req.WAFOnAction(instance)
 			if !continueRequest {
-				return false, false
+				return PerformResult{
+					IsAllowed:  isAllowed,
+					AllowScope: allowScope,
+				}
 			}
-			_, goNextSet = instance.Perform(waf, group, this, req, writer)
+			var performResult = instance.Perform(waf, group, this, req, writer)
+			continueRequest = performResult.ContinueRequest
+			goNextSet = performResult.GoNextSet
+			if performResult.IsAllowed {
+				isAllowed = true
+				allowScope = performResult.AllowScope
+				goNextGroup = performResult.GoNextGroup
+			}
 		}
 	}
 
@@ -163,13 +190,36 @@ func (this *RuleSet) PerformActions(waf *WAF, group *RuleGroup, req requests.Req
 		if instance.WillChange() {
 			continueRequest = req.WAFOnAction(instance)
 			if !continueRequest {
-				return false, false
+				return PerformResult{
+					IsAllowed:  isAllowed,
+					AllowScope: allowScope,
+				}
 			}
-			return instance.Perform(waf, group, this, req, writer)
+			var performResult = instance.Perform(waf, group, this, req, writer)
+			continueRequest = performResult.ContinueRequest
+			goNextSet = performResult.GoNextSet
+			if performResult.IsAllowed {
+				isAllowed = true
+				allowScope = performResult.AllowScope
+				goNextGroup = performResult.GoNextGroup
+			}
+			return PerformResult{
+				ContinueRequest: performResult.ContinueRequest,
+				GoNextGroup:     goNextGroup,
+				GoNextSet:       performResult.GoNextSet,
+				IsAllowed:       isAllowed,
+				AllowScope:      allowScope,
+			}
 		}
 	}
 
-	return true, goNextSet
+	return PerformResult{
+		ContinueRequest: true,
+		GoNextGroup:     goNextGroup,
+		GoNextSet:       goNextSet,
+		IsAllowed:       isAllowed,
+		AllowScope:      allowScope,
+	}
 }
 
 func (this *RuleSet) MatchRequest(req requests.Request) (b bool, hasRequestBody bool, err error) {

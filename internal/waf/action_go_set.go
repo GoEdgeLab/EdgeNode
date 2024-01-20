@@ -30,23 +30,35 @@ func (this *GoSetAction) WillChange() bool {
 	return true
 }
 
-func (this *GoSetAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
-	nextGroup := waf.FindRuleGroup(types.Int64(this.GroupId))
+func (this *GoSetAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
+	var nextGroup = waf.FindRuleGroup(types.Int64(this.GroupId))
 	if nextGroup == nil || !nextGroup.IsOn {
-		return true, true
+		return PerformResult{
+			ContinueRequest: true,
+			GoNextSet:       true,
+		}
 	}
-	nextSet := nextGroup.FindRuleSet(types.Int64(this.SetId))
+	var nextSet = nextGroup.FindRuleSet(types.Int64(this.SetId))
 	if nextSet == nil || !nextSet.IsOn {
-		return true, true
+		return PerformResult{
+			ContinueRequest: true,
+			GoNextSet:       true,
+		}
 	}
 
 	b, _, err := nextSet.MatchRequest(request)
 	if err != nil {
 		remotelogs.Error("WAF", "GO_GROUP_ACTION: "+err.Error())
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+			GoNextSet:       true,
+		}
 	}
 	if !b {
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+			GoNextSet:       true,
+		}
 	}
 	return nextSet.PerformActions(waf, nextGroup, request, writer)
 }

@@ -27,6 +27,8 @@ func (this *TagAction) WillChange() bool {
 	return false
 }
 
-func (this *TagAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
-	return true, true
+func (this *TagAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
+	return PerformResult{
+		ContinueRequest: true,
+	}
 }

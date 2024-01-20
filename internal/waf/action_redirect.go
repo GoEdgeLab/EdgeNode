@@ -35,10 +35,10 @@ func (this *RedirectAction) WillChange() bool {
 }
 
 // Perform the action
-func (this *RedirectAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+func (this *RedirectAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
 	request.ProcessResponseHeaders(writer.Header(), this.Status)
 	writer.Header().Set("Location", this.URL)
 	writer.WriteHeader(this.Status)
 
-	return false, false
+	return PerformResult{}
 }

@@ -29,20 +29,29 @@ func (this *GoGroupAction) WillChange() bool {
 	return true
 }
 
-func (this *GoGroupAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
-	nextGroup := waf.FindRuleGroup(types.Int64(this.GroupId))
+func (this *GoGroupAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
+	var nextGroup = waf.FindRuleGroup(types.Int64(this.GroupId))
 	if nextGroup == nil || !nextGroup.IsOn {
-		return true, true
+		return PerformResult{
+			ContinueRequest: true,
+			GoNextSet:       true,
+		}
 	}
 
 	b, _, nextSet, err := nextGroup.MatchRequest(request)
 	if err != nil {
 		remotelogs.Error("WAF", "GO_GROUP_ACTION: "+err.Error())
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+			GoNextSet:       true,
+		}
 	}
 
 	if !b {
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+			GoNextSet:       true,
+		}
 	}
 
 	return nextSet.PerformActions(waf, nextGroup, request, writer)

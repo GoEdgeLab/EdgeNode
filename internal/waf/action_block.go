@@ -61,7 +61,7 @@ func (this *BlockAction) WillChange() bool {
 	return true
 }
 
-func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
 	// 加入到黑名单
 	var timeout = this.Timeout
 	if timeout <= 0 {
@@ -93,14 +93,14 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 				req, err := http.NewRequest(http.MethodGet, this.URL, nil)
 				if err != nil {
 					logs.Error(err)
-					return false, false
+					return PerformResult{}
 				}
 				req.Header.Set("User-Agent", teaconst.GlobalProductName+"/"+teaconst.Version)
 
 				resp, err := httpClient.Do(req)
 				if err != nil {
 					logs.Error(err)
-					return false, false
+					return PerformResult{}
 				}
 				defer func() {
 					_ = resp.Body.Close()
@@ -124,11 +124,11 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 				data, err := os.ReadFile(path)
 				if err != nil {
 					logs.Error(err)
-					return false, false
+					return PerformResult{}
 				}
 				_, _ = writer.Write(data)
 			}
-			return false, false
+			return PerformResult{}
 		}
 		if len(this.Body) > 0 {
 			_, _ = writer.Write([]byte(this.Body))
@@ -137,5 +137,5 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 		}
 	}
 
-	return false, false
+	return PerformResult{}
 }

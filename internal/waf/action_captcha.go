@@ -123,10 +123,12 @@ func (this *CaptchaAction) WillChange() bool {
 	return true
 }
 
-func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req requests.Request, writer http.ResponseWriter) PerformResult {
 	// 是否在白名单中
 	if SharedIPWhiteList.Contains(wafutils.ComposeIPType(set.Id, req), this.Scope, req.WAFServerId(), req.WAFRemoteIP()) {
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+		}
 	}
 
 	var refURL = req.WAFRaw().URL.String()
@@ -153,7 +155,9 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	info, err := utils.SimpleEncryptMap(captchaConfig)
 	if err != nil {
 		remotelogs.Error("WAF_CAPTCHA_ACTION", "encode captcha config failed: "+err.Error())
-		return true, false
+		return PerformResult{
+			ContinueRequest: true,
+		}
 	}
 
 	// 占用一次失败次数
@@ -163,5 +167,5 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
 	http.Redirect(writer, req.WAFRaw(), CaptchaPath+"?info="+url.QueryEscape(info), http.StatusTemporaryRedirect)
 
-	return false, false
+	return PerformResult{}
 }

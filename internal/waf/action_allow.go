@@ -5,8 +5,18 @@ import (
 	"net/http"
 )
 
+type AllowScope = string
+
+const (
+	AllowScopeGroup  AllowScope = "group"
+	AllowScopeServer AllowScope = "server"
+	AllowScopeGlobal AllowScope = "global"
+)
+
 type AllowAction struct {
 	BaseAction
+
+	Scope AllowScope `yaml:"scope" json:"scope"`
 }
 
 func (this *AllowAction) Init(waf *WAF) error {
@@ -25,7 +35,12 @@ func (this *AllowAction) WillChange() bool {
 	return true
 }
 
-func (this *AllowAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) (continueRequest bool, goNextSet bool) {
+func (this *AllowAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
 	// do nothing
-	return true, false
+	return PerformResult{
+		ContinueRequest: true,
+		GoNextGroup:     this.Scope == AllowScopeGroup,
+		IsAllowed:       true,
+		AllowScope:      this.Scope,
+	}
 }
