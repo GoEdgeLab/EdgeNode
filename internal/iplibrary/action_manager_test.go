@@ -7,7 +7,7 @@ import (
 )
 
 func TestActionManager_UpdateActions(t *testing.T) {
-	manager := NewActionManager()
+	var manager = NewActionManager()
 	manager.UpdateActions([]*firewallconfigs.FirewallActionConfig{
 		{
 			Id:   1,

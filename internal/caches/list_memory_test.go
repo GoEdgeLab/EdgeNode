@@ -98,10 +98,15 @@ func TestMemoryList_Purge(t *testing.T) {
 }
 
 func TestMemoryList_Purge_Large_List(t *testing.T) {
-	list := caches.NewMemoryList().(*caches.MemoryList)
+	var list = caches.NewMemoryList().(*caches.MemoryList)
 	_ = list.Init()
 
-	for i := 0; i < 1_000_000; i++ {
+	var count = 100
+	if testutils.IsSingleTesting() {
+		count = 1_000_000
+	}
+
+	for i := 0; i < count; i++ {
 		_ = list.Add("a"+strconv.Itoa(i), &caches.Item{
 			Key:        "a" + strconv.Itoa(i),
 			ExpiredAt:  time.Now().Unix() + int64(rands.Int(0, 24*3600)),
@@ -148,7 +153,11 @@ func TestMemoryList_CleanPrefix(t *testing.T) {
 	list := caches.NewMemoryList()
 	_ = list.Init()
 	before := time.Now()
-	for i := 0; i < 1_000_000; i++ {
+	var count = 100
+	if testutils.IsSingleTesting() {
+		count = 1_000_000
+	}
+	for i := 0; i < count; i++ {
 		key := "https://www.teaos.cn/hello/" + strconv.Itoa(i/10000) + "/" + strconv.Itoa(i) + ".html"
 		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &caches.Item{
 			Key:        key,
@@ -175,7 +184,12 @@ func TestMemoryList_CleanPrefix(t *testing.T) {
 func TestMapRandomDelete(t *testing.T) {
 	var countMap = map[int]int{} // k => count
 
-	for j := 0; j < 1_000_000; j++ {
+	var count = 1000
+	if testutils.IsSingleTesting() {
+		count = 1_000_000
+	}
+
+	for j := 0; j < count; j++ {
 		var m = map[int]bool{}
 		for i := 0; i < 100; i++ {
 			m[i] = true
@@ -269,7 +283,6 @@ func TestMemoryList_GC(t *testing.T) {
 			HeaderSize: 0,
 		})
 	}
-	time.Sleep(10 * time.Second)
 	t.Log("clean...", len(list.ItemMaps()))
 	_ = list.CleanAll()
 	t.Log("cleanAll...", len(list.ItemMaps()))

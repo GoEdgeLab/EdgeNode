@@ -67,7 +67,11 @@ func ParseIPRangeList(value string) *IPRangeList {
 		if strings.Contains(line, ",") { // IPFrom,IPTo
 			var pieces = strings.SplitN(line, ",", 2)
 			if len(pieces) == 2 {
-				var ipFrom = net.ParseIP(strings.TrimSpace(pieces[0]))
+				var ipFromString = strings.TrimSpace(pieces[0])
+				if len(ipFromString) == 0 {
+					ipFromString = "0.0.0.0"
+				}
+				var ipFrom = net.ParseIP(ipFromString)
 				var ipTo = net.ParseIP(strings.TrimSpace(pieces[1]))
 				if ipFrom != nil && ipTo != nil {
 					if bytes.Compare(ipFrom, ipTo) > 0 {

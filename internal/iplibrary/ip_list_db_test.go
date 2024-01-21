@@ -16,6 +16,9 @@ func TestIPListDB_AddItem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		_ = db.Close()
+	}()
 
 	err = db.AddItem(&pb.IPItem{
 		Id:                            1,
@@ -60,6 +63,9 @@ func TestIPListDB_ReadItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		_ = db.Close()
+	}()
 
 	defer func() {
 		_ = db.Close()
@@ -77,6 +83,9 @@ func TestIPListDB_ReadMaxVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		_ = db.Close()
+	}()
 	t.Log(db.ReadMaxVersion())
 }
 
@@ -85,6 +94,10 @@ func TestIPListDB_UpdateMaxVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		_ = db.Close()
+	}()
+
 	err = db.UpdateMaxVersion(1027)
 	if err != nil {
 		t.Fatal(err)

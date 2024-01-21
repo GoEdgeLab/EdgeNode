@@ -125,6 +125,10 @@ func TestCache_IncreaseInt64(t *testing.T) {
 }
 
 func TestCache_Read(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	runtime.GOMAXPROCS(1)
 
 	var cache = NewCache[int](PiecesOption{Count: 32})

@@ -4,6 +4,7 @@ package agents_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/agents"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"testing"
@@ -11,6 +12,10 @@ import (
 )
 
 func TestParseQueue_Process(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var queue = agents.NewQueue()
 	go queue.Start()
 	time.Sleep(1 * time.Second)
@@ -19,6 +24,10 @@ func TestParseQueue_Process(t *testing.T) {
 }
 
 func TestParseQueue_ParseIP(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var queue = agents.NewQueue()
 	for _, ip := range []string{
 		"192.168.1.100",

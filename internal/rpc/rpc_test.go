@@ -5,6 +5,7 @@ package rpc_test
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"sync"
@@ -13,6 +14,10 @@ import (
 )
 
 func TestRPCConcurrentCall(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +48,10 @@ func TestRPCConcurrentCall(t *testing.T) {
 }
 
 func TestRPC_Retry(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	rpcClient, err := rpc.SharedRPC()
 	if err != nil {
 		t.Fatal(err)

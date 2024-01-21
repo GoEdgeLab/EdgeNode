@@ -3,11 +3,16 @@ package iplibrary
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"testing"
 )
 
 func TestHTTPAPIAction_AddItem(t *testing.T) {
-	action := NewHTTPAPIAction()
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var action = NewHTTPAPIAction()
 	action.config = &firewallconfigs.FirewallActionHTTPAPIConfig{
 		URL:            "http://127.0.0.1:2345/post",
 		TimeoutSeconds: 0,
@@ -24,7 +29,11 @@ func TestHTTPAPIAction_AddItem(t *testing.T) {
 }
 
 func TestHTTPAPIAction_DeleteItem(t *testing.T) {
-	action := NewHTTPAPIAction()
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var action = NewHTTPAPIAction()
 	action.config = &firewallconfigs.FirewallActionHTTPAPIConfig{
 		URL:            "http://127.0.0.1:2345/post",
 		TimeoutSeconds: 0,

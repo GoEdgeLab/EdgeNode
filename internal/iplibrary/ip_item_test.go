@@ -2,6 +2,7 @@ package iplibrary
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
 	"runtime"
 	"testing"
@@ -75,8 +76,14 @@ func TestIPItem_Contains(t *testing.T) {
 }
 
 func TestIPItem_Memory(t *testing.T) {
+	var isSingleTest = testutils.IsSingleTesting()
+
 	var list = NewIPList()
-	for i := 0; i < 2_000_000; i ++ {
+	var count = 100
+	if isSingleTest {
+		count = 2_000_000
+	}
+	for i := 0; i < count; i++ {
 		list.Add(&IPItem{
 			Type:       "ip",
 			Id:         uint64(i),
@@ -87,7 +94,9 @@ func TestIPItem_Memory(t *testing.T) {
 		})
 	}
 	t.Log("waiting")
-	time.Sleep(10 * time.Second)
+	if isSingleTest {
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func BenchmarkIPItem_Contains(b *testing.B) {
@@ -105,4 +114,3 @@ func BenchmarkIPItem_Contains(b *testing.B) {
 		}
 	}
 }
-

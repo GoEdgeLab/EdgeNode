@@ -4,12 +4,17 @@ package agents_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/agents"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"testing"
 )
 
 func TestNewManager(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var db = agents.NewDB(Tea.Root + "/data/agents.db")
 	err := db.Init()
 	if err != nil {

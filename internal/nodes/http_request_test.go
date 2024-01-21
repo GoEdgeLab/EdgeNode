@@ -3,6 +3,7 @@ package nodes
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/iwind/TeaGo/assert"
+	"net/http"
 	"runtime"
 	"testing"
 )
@@ -10,26 +11,45 @@ import (
 func TestHTTPRequest_RedirectToHTTPS(t *testing.T) {
 	var a = assert.NewAssertion(t)
 	{
-		req := &HTTPRequest{
+		rawReq, err := http.NewRequest(http.MethodGet, "/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var req = &HTTPRequest{
+			RawReq:    rawReq,
+			RawWriter: NewEmptyResponseWriter(nil),
 			ReqServer: &serverconfigs.ServerConfig{
+				IsOn: true,
 				Web: &serverconfigs.HTTPWebConfig{
+					IsOn:            true,
 					RedirectToHttps: &serverconfigs.HTTPRedirectToHTTPSConfig{},
 				},
 			},
 		}
+		req.init()
 		req.Do()
+
 		a.IsBool(req.web.RedirectToHttps.IsOn == false)
 	}
 	{
-		req := &HTTPRequest{
+		rawReq, err := http.NewRequest(http.MethodGet, "/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var req = &HTTPRequest{
+			RawReq:    rawReq,
+			RawWriter: NewEmptyResponseWriter(nil),
 			ReqServer: &serverconfigs.ServerConfig{
+				IsOn: true,
 				Web: &serverconfigs.HTTPWebConfig{
+					IsOn: true,
 					RedirectToHttps: &serverconfigs.HTTPRedirectToHTTPSConfig{
 						IsOn: true,
 					},
 				},
 			},
 		}
+		req.init()
 		req.Do()
 		a.IsBool(req.web.RedirectToHttps.IsOn == true)
 	}

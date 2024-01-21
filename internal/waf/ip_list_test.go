@@ -4,6 +4,7 @@ package waf_test
 
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/assert"
@@ -32,6 +33,10 @@ func TestNewIPList(t *testing.T) {
 }
 
 func TestIPList_Expire(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = waf.NewIPList(waf.IPListTypeDeny)
 	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.1", time.Now().Unix())
 	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.2", time.Now().Unix()+1)

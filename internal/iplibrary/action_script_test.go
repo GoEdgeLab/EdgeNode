@@ -3,11 +3,16 @@ package iplibrary
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"testing"
 	"time"
 )
 
 func TestScriptAction_AddItem(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	action := NewScriptAction()
 	action.config = &firewallconfigs.FirewallActionScriptConfig{
 		Path: "/tmp/ip-item.sh",
@@ -27,6 +32,10 @@ func TestScriptAction_AddItem(t *testing.T) {
 }
 
 func TestScriptAction_DeleteItem(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	action := NewScriptAction()
 	action.config = &firewallconfigs.FirewallActionScriptConfig{
 		Path: "/tmp/ip-item.sh",

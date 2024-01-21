@@ -42,12 +42,12 @@ func TestIsIPv4(t *testing.T) {
 func TestIsIPv6(t *testing.T) {
 	var a = assert.NewAssertion(t)
 	a.IsFalse(utils.IsIPv6("192.168.1.1"))
-	a.IsFloat32(utils.IsIPv6("0.0.0.0"))
+	a.IsFalse(utils.IsIPv6("0.0.0.0"))
 	a.IsFalse(utils.IsIPv6("192.168.1.256"))
 	a.IsFalse(utils.IsIPv6("192.168.1"))
 	a.IsTrue(utils.IsIPv6("::1"))
 	a.IsTrue(utils.IsIPv6("2001:0db8:85a3:0000:0000:8a2e:0370:7334"))
-	a.IsTrue(utils.IsIPv4("::ffff:192.168.0.1"))
+	a.IsFalse(utils.IsIPv4("::ffff:192.168.0.1"))
 	a.IsTrue(utils.IsIPv6("::ffff:192.168.0.1"))
 }
 

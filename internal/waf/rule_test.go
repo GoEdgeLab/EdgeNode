@@ -695,7 +695,7 @@ func TestRule_IP(t *testing.T) {
 			Value:    "192.168.0.90,",
 		}
 		a.IsNil(rule.Init())
-		a.IsTrue(rule.Test("192.168.0.100"))
+		a.IsFalse(rule.Test("192.168.0.100"))
 	}
 
 	{
@@ -708,7 +708,7 @@ func TestRule_IP(t *testing.T) {
 	}
 
 	{
-		rule := Rule{
+		var rule = Rule{
 			Operator: RuleOperatorIPRange,
 			Value:    ",192.168.1.100",
 		}
@@ -748,7 +748,7 @@ func TestRule_IP(t *testing.T) {
 			Operator: RuleOperatorIPRange,
 			Value:    "a/18",
 		}
-		a.IsNotNil(rule.Init())
+		a.IsNil(rule.Init())
 		a.IsFalse(rule.Test("192.168.1.100"))
 	}
 

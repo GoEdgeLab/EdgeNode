@@ -2,13 +2,18 @@ package iplibrary
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/logs"
 	"testing"
 	"time"
 )
 
 func TestIPListManager_init(t *testing.T) {
-	manager := NewIPListManager()
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var manager = NewIPListManager()
 	manager.init()
 	t.Log(manager.listMap)
 	t.Log(SharedServerListManager.blackMap)
@@ -16,7 +21,11 @@ func TestIPListManager_init(t *testing.T) {
 }
 
 func TestIPListManager_check(t *testing.T) {
-	manager := NewIPListManager()
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var manager = NewIPListManager()
 	manager.init()
 
 	var before = time.Now()
@@ -28,7 +37,11 @@ func TestIPListManager_check(t *testing.T) {
 }
 
 func TestIPListManager_loop(t *testing.T) {
-	manager := NewIPListManager()
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var  manager = NewIPListManager()
 	manager.Start()
 	err := manager.loop()
 	if err != nil {

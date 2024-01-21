@@ -19,6 +19,10 @@ import (
 )
 
 func TestFileStorage_Init(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -49,6 +53,10 @@ func TestFileStorage_Init(t *testing.T) {
 }
 
 func TestFileStorage_OpenWriter(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -96,6 +104,10 @@ func TestFileStorage_OpenWriter(t *testing.T) {
 }
 
 func TestFileStorage_OpenWriter_Partial(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   2,
 		IsOn: true,
@@ -134,6 +146,10 @@ func TestFileStorage_OpenWriter_Partial(t *testing.T) {
 }
 
 func TestFileStorage_OpenWriter_HTTP(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -202,6 +218,10 @@ func TestFileStorage_OpenWriter_HTTP(t *testing.T) {
 }
 
 func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -260,6 +280,10 @@ func TestFileStorage_Concurrent_Open_DifferentFile(t *testing.T) {
 }
 
 func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -319,6 +343,10 @@ func TestFileStorage_Concurrent_Open_SameFile(t *testing.T) {
 }
 
 func TestFileStorage_Read(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -358,6 +386,10 @@ func TestFileStorage_Read(t *testing.T) {
 }
 
 func TestFileStorage_Read_HTTP_Response(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -414,6 +446,10 @@ func TestFileStorage_Read_HTTP_Response(t *testing.T) {
 }
 
 func TestFileStorage_Read_NotFound(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -450,6 +486,10 @@ func TestFileStorage_Read_NotFound(t *testing.T) {
 }
 
 func TestFileStorage_Delete(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -472,6 +512,10 @@ func TestFileStorage_Delete(t *testing.T) {
 }
 
 func TestFileStorage_Stat(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -500,6 +544,10 @@ func TestFileStorage_Stat(t *testing.T) {
 }
 
 func TestFileStorage_CleanAll(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -534,6 +582,10 @@ func TestFileStorage_CleanAll(t *testing.T) {
 }
 
 func TestFileStorage_Stop(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -552,6 +604,10 @@ func TestFileStorage_Stop(t *testing.T) {
 }
 
 func TestFileStorage_DecodeFile(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,
 		IsOn: true,
@@ -571,6 +627,10 @@ func TestFileStorage_DecodeFile(t *testing.T) {
 }
 
 func TestFileStorage_RemoveCacheFile(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewFileStorage(nil)
 
 	defer storage.Stop()

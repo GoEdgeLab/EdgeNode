@@ -6,4 +6,6 @@ if [ -z "$TAG" ]; then
 	TAG="community"
 fi
 
-go test -v ../... -tags=${TAG}
+# reference: https://pkg.go.dev/cmd/go/internal/test
+go clean -testcache
+go test -timeout 10s -tags="${TAG}" -cover ../...

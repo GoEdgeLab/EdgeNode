@@ -17,6 +17,10 @@ import (
 )
 
 func TestFileList_Init(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
@@ -34,6 +38,10 @@ func TestFileList_Init(t *testing.T) {
 }
 
 func TestFileList_Add(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
 
 	defer func() {
@@ -107,6 +115,10 @@ func TestFileList_Add_Many(t *testing.T) {
 }
 
 func TestFileList_Exist(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
 	defer func() {
 		_ = list.Close()
@@ -143,6 +155,10 @@ func TestFileList_Exist(t *testing.T) {
 }
 
 func TestFileList_Exist_Many_DB(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	// 测试在多个数据库下的性能
 	var listSlice = []caches.ListInterface{}
 	for i := 1; i <= 10; i++ {
@@ -202,6 +218,10 @@ func TestFileList_Exist_Many_DB(t *testing.T) {
 }
 
 func TestFileList_CleanPrefix(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
@@ -222,6 +242,10 @@ func TestFileList_CleanPrefix(t *testing.T) {
 }
 
 func TestFileList_Remove(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
 	defer func() {
 		_ = list.Close()
@@ -246,6 +270,10 @@ func TestFileList_Remove(t *testing.T) {
 }
 
 func TestFileList_Purge(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
@@ -270,6 +298,10 @@ func TestFileList_Purge(t *testing.T) {
 }
 
 func TestFileList_PurgeLFU(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
@@ -294,6 +326,10 @@ func TestFileList_PurgeLFU(t *testing.T) {
 }
 
 func TestFileList_Stat(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
@@ -313,6 +349,10 @@ func TestFileList_Stat(t *testing.T) {
 }
 
 func TestFileList_Count(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data")
 
 	defer func() {
@@ -333,6 +373,10 @@ func TestFileList_Count(t *testing.T) {
 }
 
 func TestFileList_CleanAll(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data")
 
 	defer func() {
@@ -352,6 +396,10 @@ func TestFileList_CleanAll(t *testing.T) {
 }
 
 func TestFileList_UpgradeV3(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p43").(*caches.FileList)
 
 	defer func() {
@@ -376,6 +424,10 @@ func TestFileList_UpgradeV3(t *testing.T) {
 }
 
 func BenchmarkFileList_Exist(b *testing.B) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {

@@ -110,6 +110,10 @@ func TestHTTPAccessLogQueue_Push2(t *testing.T) {
 }
 
 func TestHTTPAccessLogQueue_Memory(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	testutils.StartMemoryStats(t)
 
 	debug.SetGCPercent(10)

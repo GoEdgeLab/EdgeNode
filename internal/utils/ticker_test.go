@@ -1,12 +1,17 @@
 package utils
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"sync"
 	"testing"
 	"time"
 )
 
 func TestRawTicker(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var ticker = time.NewTicker(2 * time.Second)
 	go func() {
 		for range ticker.C {
@@ -21,6 +26,10 @@ func TestRawTicker(t *testing.T) {
 }
 
 func TestTicker(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	ticker := NewTicker(3 * time.Second)
 	go func() {
 		time.Sleep(10 * time.Second)
@@ -33,6 +42,10 @@ func TestTicker(t *testing.T) {
 }
 
 func TestTicker2(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	ticker := NewTicker(1 * time.Second)
 	go func() {
 		time.Sleep(5 * time.Second)
@@ -50,6 +63,10 @@ func TestTicker2(t *testing.T) {
 }
 
 func TestTickerEvery(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	i := 0
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -64,8 +81,11 @@ func TestTickerEvery(t *testing.T) {
 	wg.Wait()
 }
 
-
 func TestTicker_StopTwice(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	ticker := NewTicker(3 * time.Second)
 	go func() {
 		time.Sleep(10 * time.Second)

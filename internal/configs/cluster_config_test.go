@@ -4,11 +4,16 @@ package configs_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/configs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"gopkg.in/yaml.v3"
 	"testing"
 )
 
 func TestLoadClusterConfig(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	config, err := configs.LoadClusterConfig()
 	if err != nil {
 		t.Fatal(err)

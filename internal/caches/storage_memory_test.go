@@ -3,6 +3,7 @@ package caches
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
 	"runtime"
@@ -271,6 +272,10 @@ func TestMemoryStorage_Purge(t *testing.T) {
 }
 
 func TestMemoryStorage_Expire(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{
 		MemoryAutoPurgeInterval: 5,
 	}, nil)

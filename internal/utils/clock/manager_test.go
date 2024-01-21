@@ -4,9 +4,14 @@ package clock_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/clock"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"testing"
 )
 
 func TestReadServer(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
 	t.Log(clock.NewClockManager().ReadServer("pool.ntp.org"))
 }

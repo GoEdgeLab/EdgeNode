@@ -3,13 +3,14 @@ package nodes
 import (
 	"context"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"runtime"
 	"testing"
 	"time"
 )
 
 func TestHTTPClientPool_Client(t *testing.T) {
-	pool := NewHTTPClientPool()
+	var pool = NewHTTPClientPool()
 
 	{
 		var origin = &serverconfigs.OriginConfig{
@@ -54,7 +55,10 @@ func TestHTTPClientPool_cleanClients(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Log("get", i)
 		_, _ = pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false)
-		time.Sleep(1 * time.Second)
+
+		if testutils.IsSingleTesting() {
+			time.Sleep(1 * time.Second)
+		}
 	}
 }
 

@@ -4,13 +4,19 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
+	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/iwind/TeaGo/maps"
 	"testing"
 	"time"
 )
 
 func TestIPSetAction_Init(t *testing.T) {
-	action := iplibrary.NewIPSetAction()
+	_, lookupErr := executils.LookPath("iptables")
+	if lookupErr != nil {
+		return
+	}
+
+	var action = iplibrary.NewIPSetAction()
 	err := action.Init(&firewallconfigs.FirewallActionConfig{
 		Params: maps.Map{
 			"path":      "/usr/bin/iptables",
@@ -25,6 +31,11 @@ func TestIPSetAction_Init(t *testing.T) {
 }
 
 func TestIPSetAction_AddItem(t *testing.T) {
+	_, lookupErr := executils.LookPath("iptables")
+	if lookupErr != nil {
+		return
+	}
+
 	var action = iplibrary.NewIPSetAction()
 	action.SetConfig(&firewallconfigs.FirewallActionIPSetConfig{
 		Path:          "/usr/bin/iptables",
@@ -84,7 +95,12 @@ func TestIPSetAction_AddItem(t *testing.T) {
 }
 
 func TestIPSetAction_DeleteItem(t *testing.T) {
-	action := iplibrary.NewIPSetAction()
+	_, lookupErr := executils.LookPath("firewalld")
+	if lookupErr != nil {
+		return
+	}
+
+	var action = iplibrary.NewIPSetAction()
 	err := action.Init(&firewallconfigs.FirewallActionConfig{
 		Params: maps.Map{
 			"path":      "/usr/bin/firewalld",

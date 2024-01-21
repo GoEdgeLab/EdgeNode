@@ -3,12 +3,17 @@
 package iplibrary
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"testing"
 	"time"
 )
 
 func TestIPIsAllowed(t *testing.T) {
-	manager := NewIPListManager()
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	var manager = NewIPListManager()
 	manager.init()
 
 	var before = time.Now()
