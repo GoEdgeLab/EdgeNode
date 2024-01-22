@@ -55,3 +55,9 @@ func StartMemoryStats(t *testing.T, callbacks ...func()) {
 		}
 	}()
 }
+
+func ReadMemoryStat() *runtime.MemStats {
+	var stat = &runtime.MemStats{}
+	runtime.ReadMemStats(stat)
+	return stat
+}
