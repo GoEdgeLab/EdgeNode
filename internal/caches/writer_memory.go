@@ -48,6 +48,10 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 				SharedFragmentMemoryPool.IncreaseNew()
 			}
 		}
+	} else {
+		if expectedBodySize > 0 {
+			valueItem.BodyValue = make([]byte, 0, expectedBodySize)
+		}
 	}
 	var w = &MemoryWriter{
 		storage:          memoryStorage,
