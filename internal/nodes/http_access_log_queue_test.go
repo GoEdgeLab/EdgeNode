@@ -178,3 +178,55 @@ func BenchmarkHTTPAccessLogQueue_ToValidUTF8String(b *testing.B) {
 		_ = strings.ToValidUTF8(s, "")
 	}
 }
+
+func BenchmarkAppendAccessLogs(b *testing.B) {
+	b.ReportAllocs()
+
+	var stat1 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat1)
+
+	const count = 20000
+	var a = make([]*pb.HTTPAccessLog, 0, count)
+	for i := 0; i < b.N; i++ {
+		a = append(a, &pb.HTTPAccessLog{
+			RequestPath: "/hello/world",
+			Host:        "example.com",
+			RequestBody: bytes.Repeat([]byte{'A'}, 1024),
+		})
+		if len(a) == count {
+			a = make([]*pb.HTTPAccessLog, 0, count)
+		}
+	}
+
+	_ = len(a)
+
+	var stat2 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat2)
+	b.Log((stat2.TotalAlloc-stat1.TotalAlloc)>>20, "MB")
+}
+
+func BenchmarkAppendAccessLogs2(b *testing.B) {
+	b.ReportAllocs()
+
+	var stat1 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat1)
+
+	const count = 20000
+	var a = []*pb.HTTPAccessLog{}
+	for i := 0; i < b.N; i++ {
+		a = append(a, &pb.HTTPAccessLog{
+			RequestPath: "/hello/world",
+			Host:        "example.com",
+			RequestBody: bytes.Repeat([]byte{'A'}, 1024),
+		})
+		if len(a) == count {
+			a = []*pb.HTTPAccessLog{}
+		}
+	}
+
+	_ = len(a)
+
+	var stat2 = &runtime.MemStats{}
+	runtime.ReadMemStats(stat2)
+	b.Log((stat2.TotalAlloc-stat1.TotalAlloc)>>20, "MB")
+}

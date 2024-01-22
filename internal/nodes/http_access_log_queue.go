@@ -67,7 +67,8 @@ func (this *HTTPAccessLogQueue) Push(accessLog *pb.HTTPAccessLog) {
 
 // 上传访问日志
 func (this *HTTPAccessLogQueue) loop() error {
-	var accessLogs = []*pb.HTTPAccessLog{}
+	const maxLen = 2000
+	var accessLogs = make([]*pb.HTTPAccessLog, 0, maxLen)
 	var count = 0
 
 Loop:
@@ -78,7 +79,7 @@ Loop:
 			count++
 
 			// 每次只提交 N 条访问日志，防止网络拥堵
-			if count > 2000 {
+			if count >= maxLen {
 				break Loop
 			}
 		default:
