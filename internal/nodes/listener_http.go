@@ -123,7 +123,7 @@ func (this *HTTPListener) ServeHTTPWithAddr(rawWriter http.ResponseWriter, rawRe
 
 	var globalServerConfig = sharedNodeConfig.GlobalServerConfig
 	if globalServerConfig != nil && !globalServerConfig.HTTPAll.SupportsLowVersionHTTP && (rawReq.ProtoMajor < 1 /** 0.x **/ || (rawReq.ProtoMajor == 1 && rawReq.ProtoMinor == 0 /** 1.0 **/)) {
-		http.Error(rawWriter, rawReq.Proto+" request is not supported.", http.StatusBadRequest)
+		http.Error(rawWriter, rawReq.Proto+" request is not supported.", http.StatusHTTPVersionNotSupported)
 		time.Sleep(1 * time.Second) // make connection slow down
 		return
 	}
