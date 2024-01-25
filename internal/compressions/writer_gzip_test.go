@@ -5,12 +5,15 @@ package compressions_test
 import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
-	"strings"
 	"testing"
 )
 
 func BenchmarkGzipWriter_Write(b *testing.B) {
-	var data = []byte(strings.Repeat("A", 1024))
+	var data = make([]byte, 1024)
+	for i := 0; i < 1024; i++ {
+		data[i] = 'A' + byte(i%26)
+	}
+	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		var buf = &bytes.Buffer{}
@@ -36,7 +39,12 @@ func BenchmarkGzipWriter_Write(b *testing.B) {
 }
 
 func BenchmarkGzipWriter_Write_Parallel(b *testing.B) {
-	var data = []byte(strings.Repeat("A", 1024))
+	var data = make([]byte, 1024)
+	for i := 0; i < 1024; i++ {
+		data[i] = 'A' + byte(i%26)
+	}
+
+	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
