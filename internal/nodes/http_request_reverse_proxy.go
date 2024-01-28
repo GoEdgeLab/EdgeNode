@@ -93,8 +93,8 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		if origin == nil {
 			origin = this.reverseProxy.NextOrigin(requestCall)
 			if origin != nil && origin.Id > 0 && (*failStatusCode >= 403 && *failStatusCode <= 404) && lists.ContainsInt64(failedOriginIds, origin.Id) {
-				this.writeCode(*failStatusCode, "", "")
-				return
+				shouldRetry = false
+				isLastRetry = true
 			}
 		}
 		requestCall.CallResponseCallbacks(this.writer)
