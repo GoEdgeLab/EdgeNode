@@ -6,6 +6,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"os"
 	"runtime"
 	"sync"
 )
@@ -33,6 +34,16 @@ func Firewall() FirewallInterface {
 	defer firewallLocker.Unlock()
 	if currentFirewall != nil {
 		return currentFirewall
+	}
+
+	// http firewall
+	{
+		endpoint, _ := os.LookupEnv("EDGE_HTTP_FIREWALL_ENDPOINT")
+		if len(endpoint) > 0 {
+			var httpFirewall = NewHTTPFirewall(endpoint)
+			currentFirewall = httpFirewall
+			return httpFirewall
+		}
 	}
 
 	// nftables
