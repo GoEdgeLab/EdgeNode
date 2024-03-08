@@ -115,6 +115,12 @@ func (this *ServiceManager) installSystemdService(systemd, exePath string, args 
 	var shortName = teaconst.SystemdServiceName
 	var longName = "GoEdge Node" // TODO 将来可以修改
 
+	var startCmd = exePath + " daemon"
+	bashPath, _ := executils.LookPath("bash")
+	if len(bashPath) > 0 {
+		startCmd = bashPath + " -c \"" + startCmd + "\""
+	}
+
 	var desc = `### BEGIN INIT INFO
 # Provides:          ` + shortName + `
 # Required-Start:    $all
@@ -133,7 +139,7 @@ After=network-online.target
 Type=simple
 Restart=always
 RestartSec=1s
-ExecStart=` + exePath + ` daemon
+ExecStart=` + startCmd + `
 ExecStop=` + exePath + ` stop
 ExecReload=` + exePath + ` reload
 
