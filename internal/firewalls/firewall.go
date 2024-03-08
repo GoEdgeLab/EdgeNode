@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 )
 
 var currentFirewall FirewallInterface
@@ -41,7 +42,14 @@ func Firewall() FirewallInterface {
 		endpoint, _ := os.LookupEnv("EDGE_HTTP_FIREWALL_ENDPOINT")
 		if len(endpoint) > 0 {
 			var httpFirewall = NewHTTPFirewall(endpoint)
-			currentFirewall = httpFirewall
+			for i := 0; i < 10; i++ {
+				if httpFirewall.IsReady() {
+					currentFirewall = httpFirewall
+					remotelogs.Println("FIREWALL", "using http firewall '"+endpoint+"'")
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
 			return httpFirewall
 		}
 	}
