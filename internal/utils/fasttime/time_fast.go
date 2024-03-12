@@ -36,6 +36,7 @@ type FastTime struct {
 	unixTimeMilliString string
 	ymd                 string
 	round5Hi            string
+	hour                int
 }
 
 func NewFastTime() *FastTime {
@@ -48,6 +49,7 @@ func NewFastTime() *FastTime {
 		unixTimeMilliString: types.String(rawTime.UnixMilli()),
 		ymd:                 timeutil.Format("Ymd", rawTime),
 		round5Hi:            timeutil.FormatTime("Hi", rawTime.Unix()/300*300),
+		hour:                rawTime.Hour(),
 	}
 }
 
@@ -90,4 +92,8 @@ func (this *FastTime) Round5Hi() string {
 
 func (this *FastTime) Format(layout string) string {
 	return timeutil.Format(layout, this.rawTime)
+}
+
+func (this *FastTime) Hour() int {
+	return this.hour
 }

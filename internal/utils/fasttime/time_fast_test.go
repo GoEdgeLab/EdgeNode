@@ -38,6 +38,11 @@ func TestFastTime_Format(t *testing.T) {
 	t.Log(now.Format("Y-m-d H:i:s"))
 }
 
+func TestFastTime_Hour(t *testing.T) {
+	var now = fasttime.Now()
+	t.Log(now.Hour())
+}
+
 func BenchmarkNewFastTime(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
