@@ -74,23 +74,41 @@ func (this *HTTPRequest) doMismatch() {
 			}
 
 			// 处理当前连接
-			if mismatchAction != nil && mismatchAction.Code == serverconfigs.DomainMismatchActionPage {
-				if mismatchAction.Options != nil {
-					this.writer.statusCode = statusCode
-					var contentHTML = this.Format(mismatchAction.Options.GetString("contentHTML"))
-					this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-					this.writer.Header().Set("Content-Length", types.String(len(contentHTML)))
-					this.writer.WriteHeader(statusCode)
-					_, _ = this.writer.Write([]byte(contentHTML))
-				} else {
-					http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
+			if mismatchAction != nil {
+				if mismatchAction.Code == serverconfigs.DomainMismatchActionPage {
+					if mismatchAction.Options != nil {
+						this.writer.statusCode = statusCode
+						var contentHTML = this.Format(mismatchAction.Options.GetString("contentHTML"))
+						this.writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+						this.writer.Header().Set("Content-Length", types.String(len(contentHTML)))
+						this.writer.WriteHeader(statusCode)
+						_, _ = this.writer.Write([]byte(contentHTML))
+					} else {
+						http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
+					}
+					return
 				}
-				return
-			} else {
-				http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
-				this.Close()
-				return
+
+				if mismatchAction.Code == serverconfigs.DomainMismatchActionRedirect {
+					var url = this.Format(mismatchAction.Options.GetString("url"))
+					if len(url) > 0 {
+						httpRedirect(this.writer, this.RawReq, url, http.StatusTemporaryRedirect)
+					} else {
+						http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
+					}
+					return
+				}
+
+				if mismatchAction.Code == serverconfigs.DomainMismatchActionClose {
+					http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
+					this.Close()
+					return
+				}
 			}
+
+			http.Error(this.writer, "404 page not found: '"+this.URL()+"'", http.StatusNotFound)
+			this.Close()
+			return
 		}
 	}
 
