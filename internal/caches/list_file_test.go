@@ -94,7 +94,9 @@ func TestFileList_Add_Many(t *testing.T) {
 	}
 
 	var before = time.Now()
-	for i := 0; i < 10_000_000; i++ {
+	const offset = 0
+	const count = 1_000_000
+	for i := offset; i < offset+count; i++ {
 		u := "https://edge.teaos.cn/123456" + strconv.Itoa(i)
 		_ = list.Add(stringutil.Md5(u), &caches.Item{
 			Key:        u,
