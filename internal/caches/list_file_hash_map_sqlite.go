@@ -17,8 +17,8 @@ var bigIntPool = sync.Pool{
 	},
 }
 
-// FileListHashMap 文件Hash列表
-type FileListHashMap struct {
+// SQLiteFileListHashMap 文件Hash列表
+type SQLiteFileListHashMap struct {
 	m []map[uint64]zero.Zero
 
 	lockers []*sync.RWMutex
@@ -27,7 +27,7 @@ type FileListHashMap struct {
 	isReady     bool
 }
 
-func NewFileListHashMap() *FileListHashMap {
+func NewSQLiteFileListHashMap() *SQLiteFileListHashMap {
 	var m = make([]map[uint64]zero.Zero, HashMapSharding)
 	var lockers = make([]*sync.RWMutex, HashMapSharding)
 
@@ -36,7 +36,7 @@ func NewFileListHashMap() *FileListHashMap {
 		lockers[i] = &sync.RWMutex{}
 	}
 
-	return &FileListHashMap{
+	return &SQLiteFileListHashMap{
 		m:           m,
 		lockers:     lockers,
 		isAvailable: false,
@@ -44,7 +44,7 @@ func NewFileListHashMap() *FileListHashMap {
 	}
 }
 
-func (this *FileListHashMap) Load(db *FileListDB) error {
+func (this *SQLiteFileListHashMap) Load(db *SQLiteFileListDB) error {
 	// 如果系统内存过小，我们不缓存
 	if utils.SystemMemoryGB() < 3 {
 		return nil
@@ -75,7 +75,7 @@ func (this *FileListHashMap) Load(db *FileListDB) error {
 	return nil
 }
 
-func (this *FileListHashMap) Add(hash string) {
+func (this *SQLiteFileListHashMap) Add(hash string) {
 	if !this.isAvailable {
 		return
 	}
@@ -87,7 +87,7 @@ func (this *FileListHashMap) Add(hash string) {
 	this.lockers[index].Unlock()
 }
 
-func (this *FileListHashMap) AddHashes(hashes []string) {
+func (this *SQLiteFileListHashMap) AddHashes(hashes []string) {
 	if !this.isAvailable {
 		return
 	}
@@ -100,7 +100,7 @@ func (this *FileListHashMap) AddHashes(hashes []string) {
 	}
 }
 
-func (this *FileListHashMap) Delete(hash string) {
+func (this *SQLiteFileListHashMap) Delete(hash string) {
 	if !this.isAvailable {
 		return
 	}
@@ -111,7 +111,7 @@ func (this *FileListHashMap) Delete(hash string) {
 	this.lockers[index].Unlock()
 }
 
-func (this *FileListHashMap) Exist(hash string) bool {
+func (this *SQLiteFileListHashMap) Exist(hash string) bool {
 	if !this.isAvailable {
 		return true
 	}
@@ -128,7 +128,7 @@ func (this *FileListHashMap) Exist(hash string) bool {
 	return ok
 }
 
-func (this *FileListHashMap) Clean() {
+func (this *SQLiteFileListHashMap) Clean() {
 	for i := 0; i < HashMapSharding; i++ {
 		this.lockers[i].Lock()
 	}
@@ -143,11 +143,11 @@ func (this *FileListHashMap) Clean() {
 	}
 }
 
-func (this *FileListHashMap) IsReady() bool {
+func (this *SQLiteFileListHashMap) IsReady() bool {
 	return this.isReady
 }
 
-func (this *FileListHashMap) Len() int {
+func (this *SQLiteFileListHashMap) Len() int {
 	for i := 0; i < HashMapSharding; i++ {
 		this.lockers[i].Lock()
 	}
@@ -164,15 +164,15 @@ func (this *FileListHashMap) Len() int {
 	return count
 }
 
-func (this *FileListHashMap) SetIsAvailable(isAvailable bool) {
+func (this *SQLiteFileListHashMap) SetIsAvailable(isAvailable bool) {
 	this.isAvailable = isAvailable
 }
 
-func (this *FileListHashMap) SetIsReady(isReady bool) {
+func (this *SQLiteFileListHashMap) SetIsReady(isReady bool) {
 	this.isReady = isReady
 }
 
-func (this *FileListHashMap) bigInt(hash string) (hashInt uint64, index int) {
+func (this *SQLiteFileListHashMap) bigInt(hash string) (hashInt uint64, index int) {
 	var bigInt = bigIntPool.Get().(*big.Int)
 	bigInt.SetString(hash, 16)
 	hashInt = bigInt.Uint64()

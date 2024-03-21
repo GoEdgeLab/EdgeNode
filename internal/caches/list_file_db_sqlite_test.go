@@ -18,7 +18,7 @@ func TestFileListDB_ListLFUItems(t *testing.T) {
 		return
 	}
 
-	var db = caches.NewFileListDB()
+	var db = caches.NewSQLiteFileListDB()
 
 	defer func() {
 		_ = db.Close()
@@ -46,7 +46,7 @@ func TestFileListDB_CleanMatchKey(t *testing.T) {
 		return
 	}
 
-	var db = caches.NewFileListDB()
+	var db = caches.NewSQLiteFileListDB()
 
 	defer func() {
 		_ = db.Close()
@@ -78,7 +78,7 @@ func TestFileListDB_CleanMatchPrefix(t *testing.T) {
 		return
 	}
 
-	var db = caches.NewFileListDB()
+	var db = caches.NewSQLiteFileListDB()
 
 	defer func() {
 		_ = db.Close()
@@ -110,7 +110,7 @@ func TestFileListDB_Memory(t *testing.T) {
 		return
 	}
 
-	var db = caches.NewFileListDB()
+	var db = caches.NewSQLiteFileListDB()
 
 	defer func() {
 		_ = db.Close()

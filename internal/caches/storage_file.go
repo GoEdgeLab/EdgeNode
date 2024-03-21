@@ -258,12 +258,12 @@ func (this *FileStorage) Init() error {
 		return errors.New("[CACHE]cache storage dir can not be empty")
 	}
 
-	var list = NewFileList(dir + "/p" + types.String(this.policy.Id) + "/.indexes")
+	var list = NewSQLiteFileList(dir + "/p" + types.String(this.policy.Id) + "/.indexes")
 	err = list.Init()
 	if err != nil {
 		return err
 	}
-	list.(*FileList).SetOldDir(dir + "/p" + types.String(this.policy.Id))
+	list.(*SQLiteFileList).SetOldDir(dir + "/p" + types.String(this.policy.Id))
 	this.list = list
 
 	// 检查目录是否存在
@@ -1608,7 +1608,7 @@ func (this *FileStorage) subDir(hash string) (dirPath string, dirIsFull bool) {
 // ScanGarbageCaches 清理目录中“失联”的缓存文件
 // “失联”为不在HashMap中的文件
 func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error) error {
-	if !this.list.(*FileList).HashMapIsLoaded() {
+	if !this.list.(*SQLiteFileList).HashMapIsLoaded() {
 		return errors.New("cache list is loading")
 	}
 
@@ -1678,7 +1678,7 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 						continue
 					}
 
-					isReady, found := this.list.(*FileList).ExistQuick(hash)
+					isReady, found := this.list.(*SQLiteFileList).ExistQuick(hash)
 					if !isReady {
 						continue
 					}

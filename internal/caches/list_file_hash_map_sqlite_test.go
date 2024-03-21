@@ -22,7 +22,7 @@ func TestFileListHashMap_Memory(t *testing.T) {
 	var stat1 = &runtime.MemStats{}
 	runtime.ReadMemStats(stat1)
 
-	var m = caches.NewFileListHashMap()
+	var m = caches.NewSQLiteFileListHashMap()
 	m.SetIsAvailable(true)
 
 	for i := 0; i < 1_000_000; i++ {
@@ -91,7 +91,7 @@ func TestFileListHashMap_Load(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1").(*caches.SQLiteFileList)
 
 	defer func() {
 		_ = list.Close()
@@ -102,7 +102,7 @@ func TestFileListHashMap_Load(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var m = caches.NewFileListHashMap()
+	var m = caches.NewSQLiteFileListHashMap()
 	var before = time.Now()
 	var db = list.GetDB("abc")
 	err = m.Load(db)
@@ -121,7 +121,7 @@ func TestFileListHashMap_Load(t *testing.T) {
 func TestFileListHashMap_Delete(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	var m = caches.NewFileListHashMap()
+	var m = caches.NewSQLiteFileListHashMap()
 	m.SetIsReady(true)
 	m.SetIsAvailable(true)
 	m.Add("a")
@@ -131,7 +131,7 @@ func TestFileListHashMap_Delete(t *testing.T) {
 }
 
 func TestFileListHashMap_Clean(t *testing.T) {
-	var m = caches.NewFileListHashMap()
+	var m = caches.NewSQLiteFileListHashMap()
 	m.SetIsAvailable(true)
 	m.Clean()
 	m.Add("a")
@@ -149,7 +149,7 @@ func Benchmark_BigInt(b *testing.B) {
 }
 
 func BenchmarkFileListHashMap_Exist(b *testing.B) {
-	var m = caches.NewFileListHashMap()
+	var m = caches.NewSQLiteFileListHashMap()
 	m.SetIsAvailable(true)
 	m.SetIsReady(true)
 

@@ -21,10 +21,10 @@ import (
 
 const CountFileDB = 20
 
-// FileList 文件缓存列表管理
-type FileList struct {
+// SQLiteFileList 文件缓存列表管理
+type SQLiteFileList struct {
 	dir    string
-	dbList [CountFileDB]*FileListDB
+	dbList [CountFileDB]*SQLiteFileListDB
 
 	onAdd    func(item *Item)
 	onRemove func(item *Item)
@@ -35,18 +35,18 @@ type FileList struct {
 	oldDir string
 }
 
-func NewFileList(dir string) ListInterface {
-	return &FileList{
+func NewSQLiteFileList(dir string) ListInterface {
+	return &SQLiteFileList{
 		dir:         dir,
 		memoryCache: ttlcache.NewCache[zero.Zero](),
 	}
 }
 
-func (this *FileList) SetOldDir(oldDir string) {
+func (this *SQLiteFileList) SetOldDir(oldDir string) {
 	this.oldDir = oldDir
 }
 
-func (this *FileList) Init() error {
+func (this *SQLiteFileList) Init() error {
 	// 检查目录是否存在
 	_, err := os.Stat(this.dir)
 	if err != nil {
@@ -73,7 +73,7 @@ func (this *FileList) Init() error {
 		go func(i int) {
 			defer wg.Done()
 
-			var db = NewFileListDB()
+			var db = NewSQLiteFileListDB()
 			dbErr := db.Open(dir + "/db-" + types.String(i) + ".db")
 			if dbErr != nil {
 				lastErr = dbErr
@@ -105,12 +105,12 @@ func (this *FileList) Init() error {
 	return nil
 }
 
-func (this *FileList) Reset() error {
+func (this *SQLiteFileList) Reset() error {
 	// 不做任何事情
 	return nil
 }
 
-func (this *FileList) Add(hash string, item *Item) error {
+func (this *SQLiteFileList) Add(hash string, item *Item) error {
 	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
@@ -130,7 +130,7 @@ func (this *FileList) Add(hash string, item *Item) error {
 	return nil
 }
 
-func (this *FileList) Exist(hash string) (bool, error) {
+func (this *SQLiteFileList) Exist(hash string) (bool, error) {
 	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
@@ -164,7 +164,7 @@ func (this *FileList) Exist(hash string) (bool, error) {
 	return true, nil
 }
 
-func (this *FileList) ExistQuick(hash string) (isReady bool, found bool) {
+func (this *SQLiteFileList) ExistQuick(hash string) (isReady bool, found bool) {
 	var db = this.GetDB(hash)
 
 	if !db.IsReady() || !db.HashMapIsLoaded() {
@@ -177,7 +177,7 @@ func (this *FileList) ExistQuick(hash string) (isReady bool, found bool) {
 }
 
 // CleanPrefix 清理某个前缀的缓存数据
-func (this *FileList) CleanPrefix(prefix string) error {
+func (this *SQLiteFileList) CleanPrefix(prefix string) error {
 	if len(prefix) == 0 {
 		return nil
 	}
@@ -197,7 +197,7 @@ func (this *FileList) CleanPrefix(prefix string) error {
 }
 
 // CleanMatchKey 清理通配符匹配的缓存数据，类似于 https://*.example.com/hello
-func (this *FileList) CleanMatchKey(key string) error {
+func (this *SQLiteFileList) CleanMatchKey(key string) error {
 	if len(key) == 0 {
 		return nil
 	}
@@ -217,7 +217,7 @@ func (this *FileList) CleanMatchKey(key string) error {
 }
 
 // CleanMatchPrefix 清理通配符匹配的缓存数据，类似于 https://*.example.com/prefix/
-func (this *FileList) CleanMatchPrefix(prefix string) error {
+func (this *SQLiteFileList) CleanMatchPrefix(prefix string) error {
 	if len(prefix) == 0 {
 		return nil
 	}
@@ -236,7 +236,7 @@ func (this *FileList) CleanMatchPrefix(prefix string) error {
 	return nil
 }
 
-func (this *FileList) Remove(hash string) error {
+func (this *SQLiteFileList) Remove(hash string) error {
 	_, err := this.remove(hash, false)
 	return err
 }
@@ -244,7 +244,7 @@ func (this *FileList) Remove(hash string) error {
 // Purge 清理过期的缓存
 // count 每次遍历的最大数量，控制此数字可以保证每次清理的时候不用花太多时间
 // callback 每次发现过期key的调用
-func (this *FileList) Purge(count int, callback func(hash string) error) (int, error) {
+func (this *SQLiteFileList) Purge(count int, callback func(hash string) error) (int, error) {
 	count /= CountFileDB
 	if count <= 0 {
 		count = 100
@@ -285,7 +285,7 @@ func (this *FileList) Purge(count int, callback func(hash string) error) (int, e
 	return countFound, nil
 }
 
-func (this *FileList) PurgeLFU(count int, callback func(hash string) error) error {
+func (this *SQLiteFileList) PurgeLFU(count int, callback func(hash string) error) error {
 	count /= CountFileDB
 	if count <= 0 {
 		count = 100
@@ -322,7 +322,7 @@ func (this *FileList) PurgeLFU(count int, callback func(hash string) error) erro
 	return nil
 }
 
-func (this *FileList) CleanAll() error {
+func (this *SQLiteFileList) CleanAll() error {
 	defer this.memoryCache.Clean()
 
 	for _, db := range this.dbList {
@@ -335,7 +335,7 @@ func (this *FileList) CleanAll() error {
 	return nil
 }
 
-func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
+func (this *SQLiteFileList) Stat(check func(hash string) bool) (*Stat, error) {
 	var result = &Stat{}
 
 	for _, db := range this.dbList {
@@ -365,7 +365,7 @@ func (this *FileList) Stat(check func(hash string) bool) (*Stat, error) {
 
 // Count 总数量
 // 常用的方法，所以避免直接查询数据库
-func (this *FileList) Count() (int64, error) {
+func (this *SQLiteFileList) Count() (int64, error) {
 	var total int64
 	for _, db := range this.dbList {
 		count, err := db.Total()
@@ -378,7 +378,7 @@ func (this *FileList) Count() (int64, error) {
 }
 
 // IncreaseHit 增加点击量
-func (this *FileList) IncreaseHit(hash string) error {
+func (this *SQLiteFileList) IncreaseHit(hash string) error {
 	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
@@ -389,16 +389,16 @@ func (this *FileList) IncreaseHit(hash string) error {
 }
 
 // OnAdd 添加事件
-func (this *FileList) OnAdd(f func(item *Item)) {
+func (this *SQLiteFileList) OnAdd(f func(item *Item)) {
 	this.onAdd = f
 }
 
 // OnRemove 删除事件
-func (this *FileList) OnRemove(f func(item *Item)) {
+func (this *SQLiteFileList) OnRemove(f func(item *Item)) {
 	this.onRemove = f
 }
 
-func (this *FileList) Close() error {
+func (this *SQLiteFileList) Close() error {
 	this.memoryCache.Destroy()
 
 	for _, db := range this.dbList {
@@ -410,15 +410,15 @@ func (this *FileList) Close() error {
 	return nil
 }
 
-func (this *FileList) GetDBIndex(hash string) uint64 {
+func (this *SQLiteFileList) GetDBIndex(hash string) uint64 {
 	return fnv.HashString(hash) % CountFileDB
 }
 
-func (this *FileList) GetDB(hash string) *FileListDB {
+func (this *SQLiteFileList) GetDB(hash string) *SQLiteFileListDB {
 	return this.dbList[fnv.HashString(hash)%CountFileDB]
 }
 
-func (this *FileList) HashMapIsLoaded() bool {
+func (this *SQLiteFileList) HashMapIsLoaded() bool {
 	for _, db := range this.dbList {
 		if !db.HashMapIsLoaded() {
 			return false
@@ -427,7 +427,7 @@ func (this *FileList) HashMapIsLoaded() bool {
 	return true
 }
 
-func (this *FileList) remove(hash string, isDeleted bool) (notFound bool, err error) {
+func (this *SQLiteFileList) remove(hash string, isDeleted bool) (notFound bool, err error) {
 	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
@@ -459,14 +459,14 @@ func (this *FileList) remove(hash string, isDeleted bool) (notFound bool, err er
 }
 
 // 升级老版本数据库
-func (this *FileList) upgradeOldDB() {
+func (this *SQLiteFileList) upgradeOldDB() {
 	if len(this.oldDir) == 0 {
 		return
 	}
 	_ = this.UpgradeV3(this.oldDir, false)
 }
 
-func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
+func (this *SQLiteFileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 	// index.db
 	var indexDBPath = oldDir + "/index.db"
 	_, err := os.Stat(indexDBPath)
@@ -565,7 +565,7 @@ func (this *FileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 	return nil
 }
 
-func (this *FileList) maxExpiresAtForMemoryCache(expiresAt int64) int64 {
+func (this *SQLiteFileList) maxExpiresAtForMemoryCache(expiresAt int64) int64 {
 	var maxTimestamp = fasttime.Now().Unix() + 3600
 	if expiresAt > maxTimestamp {
 		return maxTimestamp

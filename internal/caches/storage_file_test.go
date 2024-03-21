@@ -47,7 +47,7 @@ func TestFileStorage_Init(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 	storage.purgeLoop()
-	t.Log(storage.list.(*FileList).Stat(func(hash string) bool {
+	t.Log(storage.list.(*SQLiteFileList).Stat(func(hash string) bool {
 		return true
 	}))
 }

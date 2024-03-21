@@ -20,13 +20,13 @@ import (
 	"time"
 )
 
-type FileListDB struct {
+type SQLiteFileListDB struct {
 	dbPath string
 
 	readDB  *dbs.DB
 	writeDB *dbs.DB
 
-	hashMap *FileListHashMap
+	hashMap *SQLiteFileListHashMap
 
 	itemsTableName string
 
@@ -53,13 +53,13 @@ type FileListDB struct {
 	listOlderItemsStmt *dbs.Stmt // 读取较早存储的缓存
 }
 
-func NewFileListDB() *FileListDB {
-	return &FileListDB{
-		hashMap: NewFileListHashMap(),
+func NewSQLiteFileListDB() *SQLiteFileListDB {
+	return &SQLiteFileListDB{
+		hashMap: NewSQLiteFileListHashMap(),
 	}
 }
 
-func (this *FileListDB) Open(dbPath string) error {
+func (this *SQLiteFileListDB) Open(dbPath string) error {
 	this.dbPath = dbPath
 
 	// 动态调整Cache值
@@ -119,7 +119,7 @@ func (this *FileListDB) Open(dbPath string) error {
 	return nil
 }
 
-func (this *FileListDB) Init() error {
+func (this *SQLiteFileListDB) Init() error {
 	this.itemsTableName = "cacheItems"
 
 	// 创建
@@ -184,11 +184,11 @@ func (this *FileListDB) Init() error {
 	return nil
 }
 
-func (this *FileListDB) IsReady() bool {
+func (this *SQLiteFileListDB) IsReady() bool {
 	return this.isReady
 }
 
-func (this *FileListDB) Total() (int64, error) {
+func (this *SQLiteFileListDB) Total() (int64, error) {
 	// 读取总数量
 	var row = this.readDB.QueryRow(`SELECT COUNT(*) FROM "` + this.itemsTableName + `"`)
 	if row.Err() != nil {
@@ -199,7 +199,7 @@ func (this *FileListDB) Total() (int64, error) {
 	return total, err
 }
 
-func (this *FileListDB) AddSync(hash string, item *Item) error {
+func (this *SQLiteFileListDB) AddSync(hash string, item *Item) error {
 	this.hashMap.Add(hash)
 
 	if item.StaleAt == 0 {
@@ -214,7 +214,7 @@ func (this *FileListDB) AddSync(hash string, item *Item) error {
 	return nil
 }
 
-func (this *FileListDB) DeleteSync(hash string) error {
+func (this *SQLiteFileListDB) DeleteSync(hash string) error {
 	this.hashMap.Delete(hash)
 
 	_, err := this.deleteByHashStmt.Exec(hash)
@@ -224,7 +224,7 @@ func (this *FileListDB) DeleteSync(hash string) error {
 	return nil
 }
 
-func (this *FileListDB) ListExpiredItems(count int) (hashList []string, err error) {
+func (this *SQLiteFileListDB) ListExpiredItems(count int) (hashList []string, err error) {
 	if !this.isReady {
 		return nil, nil
 	}
@@ -252,7 +252,7 @@ func (this *FileListDB) ListExpiredItems(count int) (hashList []string, err erro
 	return hashList, nil
 }
 
-func (this *FileListDB) ListLFUItems(count int) (hashList []string, err error) {
+func (this *SQLiteFileListDB) ListLFUItems(count int) (hashList []string, err error) {
 	if !this.isReady {
 		return nil, nil
 	}
@@ -280,7 +280,7 @@ func (this *FileListDB) ListLFUItems(count int) (hashList []string, err error) {
 	return hashList, nil
 }
 
-func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64, err error) {
+func (this *SQLiteFileListDB) ListHashes(lastId int64) (hashList []string, maxId int64, err error) {
 	rows, err := this.selectHashListStmt.Query(lastId)
 	if err != nil {
 		return nil, 0, err
@@ -301,12 +301,12 @@ func (this *FileListDB) ListHashes(lastId int64) (hashList []string, maxId int64
 	return
 }
 
-func (this *FileListDB) IncreaseHitAsync(hash string) error {
+func (this *SQLiteFileListDB) IncreaseHitAsync(hash string) error {
 	// do nothing
 	return nil
 }
 
-func (this *FileListDB) CleanPrefix(prefix string) error {
+func (this *SQLiteFileListDB) CleanPrefix(prefix string) error {
 	if !this.isReady {
 		return nil
 	}
@@ -327,7 +327,7 @@ func (this *FileListDB) CleanPrefix(prefix string) error {
 	}
 }
 
-func (this *FileListDB) CleanMatchKey(key string) error {
+func (this *SQLiteFileListDB) CleanMatchKey(key string) error {
 	if !this.isReady {
 		return nil
 	}
@@ -372,7 +372,7 @@ func (this *FileListDB) CleanMatchKey(key string) error {
 	return nil
 }
 
-func (this *FileListDB) CleanMatchPrefix(prefix string) error {
+func (this *SQLiteFileListDB) CleanMatchPrefix(prefix string) error {
 	if !this.isReady {
 		return nil
 	}
@@ -404,7 +404,7 @@ func (this *FileListDB) CleanMatchPrefix(prefix string) error {
 	return err
 }
 
-func (this *FileListDB) CleanAll() error {
+func (this *SQLiteFileListDB) CleanAll() error {
 	if !this.isReady {
 		return nil
 	}
@@ -419,7 +419,7 @@ func (this *FileListDB) CleanAll() error {
 	return nil
 }
 
-func (this *FileListDB) Close() error {
+func (this *SQLiteFileListDB) Close() error {
 	if this.isClosed {
 		return nil
 	}
@@ -477,19 +477,19 @@ func (this *FileListDB) Close() error {
 	return errors.New("close database failed: " + strings.Join(errStrings, ", "))
 }
 
-func (this *FileListDB) WrapError(err error) error {
+func (this *SQLiteFileListDB) WrapError(err error) error {
 	if err == nil {
 		return nil
 	}
 	return fmt.Errorf("%w (file: %s)", err, this.dbPath)
 }
 
-func (this *FileListDB) HashMapIsLoaded() bool {
+func (this *SQLiteFileListDB) HashMapIsLoaded() bool {
 	return this.hashMapIsLoaded
 }
 
 // 初始化
-func (this *FileListDB) initTables(times int) error {
+func (this *SQLiteFileListDB) initTables(times int) error {
 	{
 		// expiredAt - 过期时间，用来判断有无过期
 		// staleAt - 过时缓存最大时间，用来清理缓存
@@ -553,7 +553,7 @@ ON "` + this.itemsTableName + `" (
 	return nil
 }
 
-func (this *FileListDB) listOlderItems(count int) (hashList []string, err error) {
+func (this *SQLiteFileListDB) listOlderItems(count int) (hashList []string, err error) {
 	rows, err := this.listOlderItemsStmt.Query(count)
 	if err != nil {
 		return nil, err
@@ -574,7 +574,7 @@ func (this *FileListDB) listOlderItems(count int) (hashList []string, err error)
 	return hashList, nil
 }
 
-func (this *FileListDB) shouldRecover() bool {
+func (this *SQLiteFileListDB) shouldRecover() bool {
 	result, err := this.writeDB.Query("pragma integrity_check;")
 	if err != nil {
 		logs.Println(result)
@@ -592,14 +592,14 @@ func (this *FileListDB) shouldRecover() bool {
 }
 
 // 删除数据库文件
-func (this *FileListDB) deleteDB() {
+func (this *SQLiteFileListDB) deleteDB() {
 	_ = os.Remove(this.dbPath)
 	_ = os.Remove(this.dbPath + "-shm")
 	_ = os.Remove(this.dbPath + "-wal")
 }
 
 // 加载Hash列表
-func (this *FileListDB) loadHashMap() {
+func (this *SQLiteFileListDB) loadHashMap() {
 	this.hashMapIsLoaded = false
 
 	err := this.hashMap.Load(this)

@@ -21,7 +21,7 @@ func TestFileList_Init(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
@@ -42,7 +42,7 @@ func TestFileList_Add(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1").(*caches.SQLiteFileList)
 
 	defer func() {
 		_ = list.Close()
@@ -82,7 +82,7 @@ func TestFileList_Add_Many(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
@@ -121,7 +121,7 @@ func TestFileList_Exist(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1").(*caches.SQLiteFileList)
 	defer func() {
 		_ = list.Close()
 	}()
@@ -164,7 +164,7 @@ func TestFileList_Exist_Many_DB(t *testing.T) {
 	// 测试在多个数据库下的性能
 	var listSlice = []caches.ListInterface{}
 	for i := 1; i <= 10; i++ {
-		var list = caches.NewFileList(Tea.Root + "/data/data" + strconv.Itoa(i))
+		var list = caches.NewSQLiteFileList(Tea.Root + "/data/data" + strconv.Itoa(i))
 		err := list.Init()
 		if err != nil {
 			t.Fatal(err)
@@ -224,7 +224,7 @@ func TestFileList_CleanPrefix(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
@@ -248,7 +248,7 @@ func TestFileList_Remove(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1").(*caches.FileList)
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1").(*caches.SQLiteFileList)
 	defer func() {
 		_ = list.Close()
 	}()
@@ -276,7 +276,7 @@ func TestFileList_Purge(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
@@ -304,7 +304,7 @@ func TestFileList_PurgeLFU(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
@@ -332,7 +332,7 @@ func TestFileList_Stat(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
@@ -355,7 +355,7 @@ func TestFileList_Count(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data")
 
 	defer func() {
 		_ = list.Close()
@@ -379,7 +379,7 @@ func TestFileList_CleanAll(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data")
 
 	defer func() {
 		_ = list.Close()
@@ -402,7 +402,7 @@ func TestFileList_UpgradeV3(t *testing.T) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p43").(*caches.FileList)
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p43").(*caches.SQLiteFileList)
 
 	defer func() {
 		_ = list.Close()
@@ -430,7 +430,7 @@ func BenchmarkFileList_Exist(b *testing.B) {
 		return
 	}
 
-	var list = caches.NewFileList(Tea.Root + "/data/cache-index/p1")
+	var list = caches.NewSQLiteFileList(Tea.Root + "/data/cache-index/p1")
 
 	defer func() {
 		_ = list.Close()
