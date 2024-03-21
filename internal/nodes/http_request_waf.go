@@ -275,7 +275,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 	if err != nil {
 		if !this.canIgnore(err) {
-			remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
 		}
 		return
 	}
@@ -362,7 +362,7 @@ func (this *HTTPRequest) checkWAFResponse(firewallPolicy *firewallconfigs.HTTPFi
 	}
 	if err != nil {
 		if !this.canIgnore(err) {
-			remotelogs.Error("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
+			remotelogs.Warn("HTTP_REQUEST_WAF", this.rawURI+": "+err.Error())
 		}
 		return
 	}
