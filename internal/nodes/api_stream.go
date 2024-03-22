@@ -209,7 +209,7 @@ func (this *APIStream) handleWriteCache(message *pb.NodeStreamMessage) error {
 	storage.AddToList(&caches.Item{
 		Type:       writer.ItemType(),
 		Key:        msg.Key,
-		ExpiredAt:  expiredAt,
+		ExpiresAt:  expiredAt,
 		HeaderSize: writer.HeaderSize(),
 		BodySize:   writer.BodySize(),
 	})

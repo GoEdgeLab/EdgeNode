@@ -1168,7 +1168,7 @@ func (this *HTTPWriter) finishWebP() {
 				this.cacheStorage.AddToList(&caches.Item{
 					Type:       webpCacheWriter.ItemType(),
 					Key:        webpCacheWriter.Key(),
-					ExpiredAt:  webpCacheWriter.ExpiredAt(),
+					ExpiresAt:  webpCacheWriter.ExpiredAt(),
 					StaleAt:    webpCacheWriter.ExpiredAt() + int64(this.calculateStaleLife()),
 					HeaderSize: webpCacheWriter.HeaderSize(),
 					BodySize:   webpCacheWriter.BodySize(),
@@ -1207,7 +1207,7 @@ func (this *HTTPWriter) finishCache() {
 						this.cacheStorage.AddToList(&caches.Item{
 							Type:       this.cacheWriter.ItemType(),
 							Key:        this.cacheWriter.Key(),
-							ExpiredAt:  expiredAt,
+							ExpiresAt:  expiredAt,
 							StaleAt:    expiredAt + int64(this.calculateStaleLife()),
 							HeaderSize: this.cacheWriter.HeaderSize(),
 							BodySize:   this.cacheWriter.BodySize(),
@@ -1228,7 +1228,7 @@ func (this *HTTPWriter) finishCache() {
 					this.cacheStorage.AddToList(&caches.Item{
 						Type:       this.cacheWriter.ItemType(),
 						Key:        this.cacheWriter.Key(),
-						ExpiredAt:  expiredAt,
+						ExpiresAt:  expiredAt,
 						StaleAt:    expiredAt + int64(this.calculateStaleLife()),
 						HeaderSize: this.cacheWriter.HeaderSize(),
 						BodySize:   this.cacheWriter.BodySize(),
@@ -1251,7 +1251,7 @@ func (this *HTTPWriter) finishCompression() {
 				this.cacheStorage.AddToList(&caches.Item{
 					Type:       this.compressionCacheWriter.ItemType(),
 					Key:        this.compressionCacheWriter.Key(),
-					ExpiredAt:  expiredAt,
+					ExpiresAt:  expiredAt,
 					StaleAt:    expiredAt + int64(this.calculateStaleLife()),
 					HeaderSize: this.compressionCacheWriter.HeaderSize(),
 					BodySize:   this.compressionCacheWriter.BodySize(),
