@@ -160,6 +160,11 @@ func (this *SQLiteFileList) Exist(hash string) (bool, error) {
 		}
 		return false, err
 	}
+
+	if expiredAt < fasttime.Now().Unix() {
+		return false, nil
+	}
+
 	this.memoryCache.Write(hash, zero.Zero{}, this.maxExpiresAtForMemoryCache(expiredAt))
 	return true, nil
 }
