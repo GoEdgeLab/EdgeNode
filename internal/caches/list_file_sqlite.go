@@ -122,7 +122,7 @@ func (this *SQLiteFileList) Add(hash string, item *Item) error {
 		return err
 	}
 
-	this.memoryCache.Write(hash, zero.Zero{}, this.maxExpiresAtForMemoryCache(item.ExpiredAt))
+	this.memoryCache.Write(hash, zero.Zero{}, this.maxExpiresAtForMemoryCache(item.ExpiresAt))
 
 	if this.onAdd != nil {
 		this.onAdd(item)
@@ -538,7 +538,7 @@ func (this *SQLiteFileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 				err = this.Add(hash, &Item{
 					Type:       ItemTypeFile,
 					Key:        key,
-					ExpiredAt:  expiredAt,
+					ExpiresAt:  expiredAt,
 					StaleAt:    staleAt,
 					HeaderSize: headerSize,
 					BodySize:   bodySize,

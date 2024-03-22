@@ -157,7 +157,7 @@ func TestMemoryStorage_Stat(t *testing.T) {
 		storage.AddToList(&Item{
 			Key:       "abc",
 			BodySize:  5,
-			ExpiredAt: expiredAt,
+			ExpiresAt: expiredAt,
 		})
 	}
 	{
@@ -174,7 +174,7 @@ func TestMemoryStorage_Stat(t *testing.T) {
 		storage.AddToList(&Item{
 			Key:       "abc1",
 			BodySize:  5,
-			ExpiredAt: expiredAt,
+			ExpiresAt: expiredAt,
 		})
 	}
 	stat, err := storage.Stat()
@@ -201,7 +201,7 @@ func TestMemoryStorage_CleanAll(t *testing.T) {
 		storage.AddToList(&Item{
 			Key:       "abc",
 			BodySize:  5,
-			ExpiredAt: expiredAt,
+			ExpiresAt: expiredAt,
 		})
 	}
 	{
@@ -217,7 +217,7 @@ func TestMemoryStorage_CleanAll(t *testing.T) {
 		storage.AddToList(&Item{
 			Key:       "abc1",
 			BodySize:  5,
-			ExpiredAt: expiredAt,
+			ExpiresAt: expiredAt,
 		})
 	}
 	err := storage.CleanAll()
@@ -244,7 +244,7 @@ func TestMemoryStorage_Purge(t *testing.T) {
 		storage.AddToList(&Item{
 			Key:       "abc",
 			BodySize:  5,
-			ExpiredAt: expiredAt,
+			ExpiresAt: expiredAt,
 		})
 	}
 	{
@@ -260,7 +260,7 @@ func TestMemoryStorage_Purge(t *testing.T) {
 		storage.AddToList(&Item{
 			Key:       "abc1",
 			BodySize:  5,
-			ExpiredAt: expiredAt,
+			ExpiresAt: expiredAt,
 		})
 	}
 	err := storage.Purge([]string{"abc", "abc1"}, "")
@@ -299,7 +299,7 @@ func TestMemoryStorage_Expire(t *testing.T) {
 		storage.AddToList(&Item{
 			Key:       key,
 			BodySize:  5,
-			ExpiredAt: expiredAt,
+			ExpiresAt: expiredAt,
 		})
 	}
 	time.Sleep(70 * time.Second)

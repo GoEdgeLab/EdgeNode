@@ -19,20 +19,20 @@ func currentWeek() int32 {
 }
 
 type Item struct {
-	Type       ItemType `json:"type"`
-	Key        string   `json:"key"`
-	ExpiredAt  int64    `json:"expiredAt"`
-	StaleAt    int64    `json:"staleAt"`
-	HeaderSize int64    `json:"headerSize"`
-	BodySize   int64    `json:"bodySize"`
-	MetaSize   int64    `json:"metaSize"`
-	Host       string   `json:"host"`     // 主机名
-	ServerId   int64    `json:"serverId"` // 服务ID
-	Week       int32    `json:"week"`
+	Type       ItemType `json:"-"`
+	Key        string   `json:"1,omitempty"`
+	ExpiresAt  int64    `json:"2,omitempty"`
+	StaleAt    int64    `json:"-"`
+	HeaderSize int64    `json:"-"`
+	BodySize   int64    `json:"-"`
+	MetaSize   int64    `json:"-"`
+	Host       string   `json:"-"`     // 主机名
+	ServerId   int64    `json:"3,omitempty"` // 服务ID
+	Week       int32    `json:"-"`
 }
 
 func (this *Item) IsExpired() bool {
-	return this.ExpiredAt < fasttime.Now().Unix()
+	return this.ExpiresAt < fasttime.Now().Unix()
 }
 
 func (this *Item) TotalSize() int64 {

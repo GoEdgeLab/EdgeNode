@@ -61,7 +61,7 @@ func TestFileList_Add(t *testing.T) {
 	t.Log("db index:", list.GetDBIndex(hash))
 	err = list.Add(hash, &caches.Item{
 		Key:        "123456",
-		ExpiredAt:  time.Now().Unix() + 1,
+		ExpiresAt:  time.Now().Unix() + 1,
 		HeaderSize: 1,
 		MetaSize:   2,
 		BodySize:   3,
@@ -100,7 +100,7 @@ func TestFileList_Add_Many(t *testing.T) {
 		u := "https://edge.teaos.cn/123456" + strconv.Itoa(i)
 		_ = list.Add(stringutil.Md5(u), &caches.Item{
 			Key:        u,
-			ExpiredAt:  time.Now().Unix() + 3600,
+			ExpiresAt:  time.Now().Unix() + 3600,
 			HeaderSize: 1,
 			MetaSize:   2,
 			BodySize:   3,

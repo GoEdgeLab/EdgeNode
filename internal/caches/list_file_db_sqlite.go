@@ -203,10 +203,10 @@ func (this *SQLiteFileListDB) AddSync(hash string, item *Item) error {
 	this.hashMap.Add(hash)
 
 	if item.StaleAt == 0 {
-		item.StaleAt = item.ExpiredAt
+		item.StaleAt = item.ExpiresAt
 	}
 
-	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiredAt, item.StaleAt, item.Host, item.ServerId, fasttime.Now().Unix())
+	_, err := this.insertStmt.Exec(hash, item.Key, item.HeaderSize, item.BodySize, item.MetaSize, item.ExpiresAt, item.StaleAt, item.Host, item.ServerId, fasttime.Now().Unix())
 	if err != nil {
 		return this.WrapError(err)
 	}

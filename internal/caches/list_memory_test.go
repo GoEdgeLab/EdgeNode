@@ -21,17 +21,17 @@ func TestMemoryList_Add(t *testing.T) {
 	_ = list.Init()
 	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("123456", &caches.Item{
 		Key:        "c1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	t.Log(list.Prefixes())
@@ -44,12 +44,12 @@ func TestMemoryList_Remove(t *testing.T) {
 	_ = list.Init()
 	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Remove("b")
@@ -62,22 +62,22 @@ func TestMemoryList_Purge(t *testing.T) {
 	_ = list.Init()
 	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("c", &caches.Item{
 		Key:        "c1",
-		ExpiredAt:  time.Now().Unix() - 3600,
+		ExpiresAt:  time.Now().Unix() - 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("d", &caches.Item{
 		Key:        "d1",
-		ExpiredAt:  time.Now().Unix() - 2,
+		ExpiresAt:  time.Now().Unix() - 2,
 		HeaderSize: 1024,
 	})
 	_, _ = list.Purge(100, func(hash string) error {
@@ -109,7 +109,7 @@ func TestMemoryList_Purge_Large_List(t *testing.T) {
 	for i := 0; i < count; i++ {
 		_ = list.Add("a"+strconv.Itoa(i), &caches.Item{
 			Key:        "a" + strconv.Itoa(i),
-			ExpiredAt:  time.Now().Unix() + int64(rands.Int(0, 24*3600)),
+			ExpiresAt:  time.Now().Unix() + int64(rands.Int(0, 24*3600)),
 			HeaderSize: 1024,
 		})
 	}
@@ -124,22 +124,22 @@ func TestMemoryList_Stat(t *testing.T) {
 	_ = list.Init()
 	_ = list.Add("a", &caches.Item{
 		Key:        "a1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("b", &caches.Item{
 		Key:        "b1",
-		ExpiredAt:  time.Now().Unix() + 3600,
+		ExpiresAt:  time.Now().Unix() + 3600,
 		HeaderSize: 1024,
 	})
 	_ = list.Add("c", &caches.Item{
 		Key:        "c1",
-		ExpiredAt:  time.Now().Unix(),
+		ExpiresAt:  time.Now().Unix(),
 		HeaderSize: 1024,
 	})
 	_ = list.Add("d", &caches.Item{
 		Key:        "d1",
-		ExpiredAt:  time.Now().Unix() - 2,
+		ExpiresAt:  time.Now().Unix() - 2,
 		HeaderSize: 1024,
 	})
 	result, _ := list.Stat(func(hash string) bool {
@@ -161,7 +161,7 @@ func TestMemoryList_CleanPrefix(t *testing.T) {
 		key := "https://www.teaos.cn/hello/" + strconv.Itoa(i/10000) + "/" + strconv.Itoa(i) + ".html"
 		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &caches.Item{
 			Key:        key,
-			ExpiredAt:  time.Now().Unix() + 3600,
+			ExpiresAt:  time.Now().Unix() + 3600,
 			BodySize:   0,
 			HeaderSize: 0,
 		})
@@ -278,7 +278,7 @@ func TestMemoryList_GC(t *testing.T) {
 		key := "https://www.teaos.cn/hello" + strconv.Itoa(i/100000) + "/" + strconv.Itoa(i) + ".html"
 		_ = list.Add(fmt.Sprintf("%d", xxhash.Sum64String(key)), &caches.Item{
 			Key:        key,
-			ExpiredAt:  0,
+			ExpiresAt:  0,
 			BodySize:   0,
 			HeaderSize: 0,
 		})
@@ -308,7 +308,7 @@ func BenchmarkMemoryList(b *testing.B) {
 	for i := 0; i < 1_000_000; i++ {
 		_ = list.Add(stringutil.Md5(types.String(i)), &caches.Item{
 			Key:        "a1",
-			ExpiredAt:  time.Now().Unix() + 3600,
+			ExpiresAt:  time.Now().Unix() + 3600,
 			HeaderSize: 1024,
 		})
 	}

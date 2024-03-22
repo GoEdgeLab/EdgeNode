@@ -1294,7 +1294,7 @@ func (this *FileStorage) hotLoop() {
 				Type:       writer.ItemType(),
 				Key:        item.Key,
 				Host:       ParseHost(item.Key),
-				ExpiredAt:  expiresAt,
+				ExpiresAt:  expiresAt,
 				HeaderSize: writer.HeaderSize(),
 				BodySize:   writer.BodySize(),
 			})

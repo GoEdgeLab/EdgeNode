@@ -578,7 +578,7 @@ func (this *MemoryStorage) flushItem(key string) {
 		Type:       writer.ItemType(),
 		Key:        key,
 		Host:       ParseHost(key),
-		ExpiredAt:  item.ExpiresAt,
+		ExpiresAt:  item.ExpiresAt,
 		HeaderSize: writer.HeaderSize(),
 		BodySize:   writer.BodySize(),
 	})

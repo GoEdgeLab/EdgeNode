@@ -115,7 +115,7 @@ func (this *MemoryList) CleanPrefix(prefix string) error {
 	for _, itemMap := range this.itemMaps {
 		for _, item := range itemMap {
 			if strings.HasPrefix(item.Key, prefix) {
-				item.ExpiredAt = 0
+				item.ExpiresAt = 0
 			}
 		}
 	}
@@ -153,7 +153,7 @@ func (this *MemoryList) CleanMatchKey(key string) error {
 			if configutils.MatchDomain(host, item.Host) {
 				var itemRequestURI = item.RequestURI()
 				if itemRequestURI == requestURI || strings.HasPrefix(itemRequestURI, requestURI+SuffixAll) {
-					item.ExpiredAt = 0
+					item.ExpiresAt = 0
 				}
 			}
 		}
@@ -189,7 +189,7 @@ func (this *MemoryList) CleanMatchPrefix(prefix string) error {
 			if configutils.MatchDomain(host, item.Host) {
 				var itemRequestURI = item.RequestURI()
 				if isRootPath || strings.HasPrefix(itemRequestURI, requestURI) {
-					item.ExpiredAt = 0
+					item.ExpiresAt = 0
 				}
 			}
 		}

@@ -3,7 +3,9 @@
 package caches_test
 
 import (
+	"encoding/json"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/rands"
@@ -12,6 +14,33 @@ import (
 	"testing"
 	"time"
 )
+
+func TestItem_Marshal(t *testing.T) {
+	{
+		var item = &caches.Item{}
+		data, err := json.Marshal(item)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(string(data))
+	}
+
+	{
+		var item = &caches.Item{
+			Type:       caches.ItemTypeFile,
+			Key:        "https://example.com/index.html",
+			ExpiresAt:  fasttime.Now().Unix(),
+			HeaderSize: 1 << 10,
+			BodySize:   1 << 20,
+			MetaSize:   256,
+		}
+		data, err := json.Marshal(item)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(string(data))
+	}
+}
 
 func TestItems_Memory(t *testing.T) {
 	var stat = &runtime.MemStats{}
