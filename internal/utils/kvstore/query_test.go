@@ -5,6 +5,7 @@ package kvstore_test
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
+	"github.com/iwind/TeaGo/assert"
 	"runtime"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ func TestQuery_FindAll(t *testing.T) {
 		//Desc().
 		FindAll(func(tx *kvstore.Tx[*testCachedItem], item kvstore.Item[*testCachedItem]) (goNext bool, err error) {
 			t.Log("key:", item.Key, "value:", item.Value)
+
 			return true, nil
 		})
 	if err != nil {
@@ -46,11 +48,45 @@ func TestQuery_FindAll_Break(t *testing.T) {
 		FindAll(func(tx *kvstore.Tx[*testCachedItem], item kvstore.Item[*testCachedItem]) (goNext bool, err error) {
 			t.Log("key:", item.Key, "value:", item.Value)
 			count++
+
+			if count > 2 {
+				// break test
+				_ = table.DB().Store().Close()
+			}
+
 			return count < 3, nil
 		})
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestQuery_FindAll_Break_Closed(t *testing.T) {
+	var table = testOpenStoreTable[*testCachedItem](t, "cache_items", &testCacheItemEncoder[*testCachedItem]{})
+
+	var a = assert.NewAssertion(t)
+
+	var before = time.Now()
+	defer func() {
+		t.Log("cost:", time.Since(before).Seconds()*1000, "ms")
+	}()
+
+	var count int
+	err := table.
+		Query().
+		FindAll(func(tx *kvstore.Tx[*testCachedItem], item kvstore.Item[*testCachedItem]) (goNext bool, err error) {
+			t.Log("key:", item.Key, "value:", item.Value)
+			count++
+
+			if count > 2 {
+				// break test
+				_ = table.DB().Store().Close()
+			}
+
+			return count < 3, nil
+		})
+	t.Log("expected error:", err)
+	a.IsTrue(err != nil)
 }
 
 func TestQuery_FindAll_Desc(t *testing.T) {

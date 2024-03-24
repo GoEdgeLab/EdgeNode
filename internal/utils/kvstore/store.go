@@ -26,7 +26,7 @@ type Store struct {
 
 	dbs []*DB
 
-	locker sync.Mutex
+	mu sync.Mutex
 }
 
 // NewStore create store with name
@@ -126,8 +126,8 @@ func (this *Store) NewDB(dbName string) (*DB, error) {
 		return nil, err
 	}
 
-	this.locker.Lock()
-	defer this.locker.Unlock()
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
 	this.dbs = append(this.dbs, db)
 	return db, nil
@@ -142,7 +142,7 @@ func (this *Store) Close() error {
 		return nil
 	}
 
-	this.locker.Lock()
+	this.mu.Lock()
 	var lastErr error
 	for _, db := range this.dbs {
 		err := db.Close()
@@ -151,12 +151,16 @@ func (this *Store) Close() error {
 		}
 	}
 
-	this.locker.Unlock()
+	this.mu.Unlock()
 
 	if this.rawDB != nil {
 		this.isClosed = true
-		return this.rawDB.Close()
+		err := this.rawDB.Close()
+		if err != nil {
+			return err
+		}
 	}
+
 	return lastErr
 }
 

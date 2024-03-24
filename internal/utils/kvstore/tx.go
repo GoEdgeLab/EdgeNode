@@ -4,6 +4,7 @@ package kvstore
 
 import (
 	"errors"
+	"fmt"
 	"github.com/cockroachdb/pebble"
 )
 
@@ -59,7 +60,17 @@ func (this *Tx[T]) Close() error {
 	return this.batch.Close()
 }
 
-func (this *Tx[T]) Commit() error {
+func (this *Tx[T]) Commit() (err error) {
+	defer func() {
+		var panicErr = recover()
+		if panicErr != nil {
+			resultErr, ok := panicErr.(error)
+			if ok {
+				err = fmt.Errorf("commit batch failed: %w", resultErr)
+			}
+		}
+	}()
+
 	return this.batch.Commit(DefaultWriteOptions)
 }
 

@@ -60,6 +60,10 @@ func (this *Table[T]) SetDB(db *DB) {
 	this.db = db
 }
 
+func (this *Table[T]) DB() *DB {
+	return this.db
+}
+
 func (this *Table[T]) Set(key string, value T) error {
 	if len(key) > KeyMaxLength {
 		return ErrKeyTooLong

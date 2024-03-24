@@ -7,7 +7,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
 	"github.com/cockroachdb/pebble"
-	"github.com/iwind/TeaGo/types"
 	"regexp"
 	"strings"
 	"testing"
@@ -20,7 +19,7 @@ type KVListFileStore struct {
 	// tables
 	itemsTable *kvstore.Table[*Item]
 
-	isReady bool
+	rawIsReady bool
 }
 
 func NewKVListFileStore(path string) *KVListFileStore {
@@ -64,7 +63,7 @@ func (this *KVListFileStore) Open() error {
 		this.itemsTable = table
 	}
 
-	this.isReady = true
+	this.rawIsReady = true
 
 	return nil
 }
@@ -74,13 +73,13 @@ func (this *KVListFileStore) Path() string {
 }
 
 func (this *KVListFileStore) AddItem(hash string, item *Item) error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
 	var currentTime = fasttime.Now().Unix()
 	if item.ExpiresAt <= currentTime {
-		return errors.New("invalid expires time '" + types.String(item.ExpiresAt) + "'")
+		return nil
 	}
 	if item.CreatedAt <= 0 {
 		item.CreatedAt = currentTime
@@ -92,7 +91,7 @@ func (this *KVListFileStore) AddItem(hash string, item *Item) error {
 }
 
 func (this *KVListFileStore) ExistItem(hash string) (bool, error) {
-	if !this.isReady {
+	if !this.isReady() {
 		return false, nil
 	}
 
@@ -111,7 +110,7 @@ func (this *KVListFileStore) ExistItem(hash string) (bool, error) {
 }
 
 func (this *KVListFileStore) ExistQuickItem(hash string) (bool, error) {
-	if !this.isReady {
+	if !this.isReady() {
 		return false, nil
 	}
 
@@ -119,7 +118,7 @@ func (this *KVListFileStore) ExistQuickItem(hash string) (bool, error) {
 }
 
 func (this *KVListFileStore) RemoveItem(hash string) error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
@@ -127,7 +126,7 @@ func (this *KVListFileStore) RemoveItem(hash string) error {
 }
 
 func (this *KVListFileStore) RemoveAllItems() error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
@@ -135,7 +134,7 @@ func (this *KVListFileStore) RemoveAllItems() error {
 }
 
 func (this *KVListFileStore) PurgeItems(count int, callback func(hash string) error) (int, error) {
-	if !this.isReady {
+	if !this.isReady() {
 		return 0, nil
 	}
 
@@ -188,7 +187,7 @@ func (this *KVListFileStore) PurgeItems(count int, callback func(hash string) er
 }
 
 func (this *KVListFileStore) PurgeLFUItems(count int, callback func(hash string) error) error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
@@ -234,7 +233,7 @@ func (this *KVListFileStore) PurgeLFUItems(count int, callback func(hash string)
 }
 
 func (this *KVListFileStore) CleanItemsWithPrefix(prefix string) error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
@@ -292,7 +291,7 @@ func (this *KVListFileStore) CleanItemsWithPrefix(prefix string) error {
 }
 
 func (this *KVListFileStore) CleanItemsWithWildcardPrefix(prefix string) error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
@@ -350,7 +349,7 @@ func (this *KVListFileStore) CleanItemsWithWildcardPrefix(prefix string) error {
 }
 
 func (this *KVListFileStore) CleanItemsWithWildcardKey(key string) error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
@@ -419,7 +418,7 @@ func (this *KVListFileStore) CleanItemsWithWildcardKey(key string) error {
 }
 
 func (this *KVListFileStore) CountItems() (int64, error) {
-	if !this.isReady {
+	if !this.isReady() {
 		return 0, nil
 	}
 
@@ -427,7 +426,7 @@ func (this *KVListFileStore) CountItems() (int64, error) {
 }
 
 func (this *KVListFileStore) StatItems() (*Stat, error) {
-	if !this.isReady {
+	if !this.isReady() {
 		return &Stat{}, nil
 	}
 
@@ -447,7 +446,7 @@ func (this *KVListFileStore) StatItems() (*Stat, error) {
 }
 
 func (this *KVListFileStore) TestInspect(t *testing.T) error {
-	if !this.isReady {
+	if !this.isReady() {
 		return nil
 	}
 
@@ -470,11 +469,13 @@ func (this *KVListFileStore) TestInspect(t *testing.T) error {
 }
 
 func (this *KVListFileStore) Close() error {
-	this.isReady = false
-
 	if this.rawStore != nil {
 		return this.rawStore.Close()
 	}
 
 	return nil
+}
+
+func (this *KVListFileStore) isReady() bool {
+	return this.rawIsReady && !this.rawStore.IsClosed()
 }
