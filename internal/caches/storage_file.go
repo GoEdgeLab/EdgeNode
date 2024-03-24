@@ -258,12 +258,25 @@ func (this *FileStorage) Init() error {
 		return errors.New("[CACHE]cache storage dir can not be empty")
 	}
 
-	var list = NewSQLiteFileList(dir + "/p" + types.String(this.policy.Id) + "/.indexes")
-	err = list.Init()
-	if err != nil {
-		return err
+	// read list
+	var list ListInterface
+	var sqliteIndexesDir = dir + "/p" + types.String(this.policy.Id) + "/.indexes"
+	_, sqliteIndexesDirErr := os.Stat(sqliteIndexesDir)
+	if sqliteIndexesDirErr == nil || !teaconst.EnableKVCacheStore {
+		list = NewSQLiteFileList(sqliteIndexesDir)
+		err = list.Init()
+		if err != nil {
+			return err
+		}
+		list.(*SQLiteFileList).SetOldDir(dir + "/p" + types.String(this.policy.Id))
+	} else {
+		list = NewKVFileList(dir + "/p" + types.String(this.policy.Id) + "/.stores")
+		err = list.Init()
+		if err != nil {
+			return err
+		}
 	}
-	list.(*SQLiteFileList).SetOldDir(dir + "/p" + types.String(this.policy.Id))
+
 	this.list = list
 
 	// 检查目录是否存在
@@ -1608,7 +1621,8 @@ func (this *FileStorage) subDir(hash string) (dirPath string, dirIsFull bool) {
 // ScanGarbageCaches 清理目录中“失联”的缓存文件
 // “失联”为不在HashMap中的文件
 func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error) error {
-	if !this.list.(*SQLiteFileList).HashMapIsLoaded() {
+	_, isSQLite := this.list.(*SQLiteFileList)
+	if isSQLite && !this.list.(*SQLiteFileList).HashMapIsLoaded() {
 		return errors.New("cache list is loading")
 	}
 
@@ -1641,8 +1655,8 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 				continue
 			}
 
-			dir2Matches, err := filepath.Glob(dir1 + "/*")
-			if err != nil {
+			dir2Matches, globErr := filepath.Glob(dir1 + "/*")
+			if globErr != nil {
 				// ignore error
 				continue
 			}
@@ -1665,8 +1679,8 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 					}
 				}
 
-				fileMatches, err := filepath.Glob(dir2 + "/*.cache")
-				if err != nil {
+				fileMatches, globDir2Err := filepath.Glob(dir2 + "/*.cache")
+				if globDir2Err != nil {
 					// ignore error
 					continue
 				}
@@ -1678,7 +1692,19 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 						continue
 					}
 
-					isReady, found := this.list.(*SQLiteFileList).ExistQuick(hash)
+					var isReady, found bool
+					switch rawList := this.list.(type) {
+					case *SQLiteFileList:
+						isReady, found = rawList.ExistQuick(hash)
+					case *KVFileList:
+						isReady = true
+						var checkErr error
+						found, checkErr = rawList.ExistQuick(hash)
+						if checkErr != nil {
+							return checkErr
+						}
+					}
+
 					if !isReady {
 						continue
 					}
@@ -1688,8 +1714,8 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 					}
 
 					// 检查文件正在被写入
-					stat, err := os.Stat(file)
-					if err != nil {
+					stat, statErr := os.Stat(file)
+					if statErr != nil {
 						continue
 					}
 					if fasttime.Now().Unix()-stat.ModTime().Unix() < 300 /** 5 minutes **/ {
@@ -1698,9 +1724,9 @@ func (this *FileStorage) ScanGarbageCaches(fileCallback func(path string) error)
 
 					if fileCallback != nil {
 						countFound++
-						err = fileCallback(file)
-						if err != nil {
-							return err
+						callbackErr := fileCallback(file)
+						if callbackErr != nil {
+							return callbackErr
 						}
 					}
 				}

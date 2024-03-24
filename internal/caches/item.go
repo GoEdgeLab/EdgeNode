@@ -22,13 +22,14 @@ type Item struct {
 	Type       ItemType `json:"-"`
 	Key        string   `json:"1,omitempty"`
 	ExpiresAt  int64    `json:"2,omitempty"`
-	StaleAt    int64    `json:"-"`
+	StaleAt    int64    `json:"3,omitempty"`
 	HeaderSize int64    `json:"-"`
-	BodySize   int64    `json:"-"`
+	BodySize   int64    `json:"4,omitempty"`
 	MetaSize   int64    `json:"-"`
-	Host       string   `json:"-"`     // 主机名
-	ServerId   int64    `json:"3,omitempty"` // 服务ID
+	Host       string   `json:"-"`           // 主机名
+	ServerId   int64    `json:"5,omitempty"` // 服务ID
 	Week       int32    `json:"-"`
+	CreatedAt  int64    `json:"6,omitempty"`
 }
 
 func (this *Item) IsExpired() bool {
