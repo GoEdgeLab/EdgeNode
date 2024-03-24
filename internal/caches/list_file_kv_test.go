@@ -167,6 +167,20 @@ func TestKVFileList_Exist(t *testing.T) {
 	}
 }
 
+func TestKVFileList_ExistQuick(t *testing.T) {
+	var list = testOpenKVFileList(t)
+	for _, hash := range []string{
+		stringutil.Md5("123456"),
+		stringutil.Md5("654321"),
+	} {
+		b, err := list.ExistQuick(hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(hash, "=>", b)
+	}
+}
+
 func TestKVFileList_Remove(t *testing.T) {
 	var list = testOpenKVFileList(t)
 	for _, hash := range []string{
