@@ -406,11 +406,16 @@ func (this *SQLiteFileList) OnRemove(f func(item *Item)) {
 func (this *SQLiteFileList) Close() error {
 	this.memoryCache.Destroy()
 
+	var group = goman.NewTaskGroup()
 	for _, db := range this.dbList {
-		if db != nil {
-			_ = db.Close()
-		}
+		var dbCopy = db
+		group.Run(func() {
+			if dbCopy != nil {
+				_ = dbCopy.Close()
+			}
+		})
 	}
+	group.Wait()
 
 	return nil
 }

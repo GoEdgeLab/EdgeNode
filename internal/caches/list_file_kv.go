@@ -5,6 +5,7 @@ package caches
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/iwind/TeaGo/types"
 	"strings"
@@ -37,14 +38,23 @@ func NewKVFileList(dir string) *KVFileList {
 
 // Init 初始化
 func (this *KVFileList) Init() error {
-	for _, store := range this.stores {
-		err := store.Open()
-		if err != nil {
-			return fmt.Errorf("open store '"+store.Path()+"' failed: %w", err)
-		}
-	}
+	remotelogs.Println("CACHE", "loading database from '"+this.dir+"' ...")
 
-	return nil
+	var group = goman.NewTaskGroup()
+	var lastErr error
+
+	for _, store := range this.stores {
+		var storeCopy = store
+		group.Run(func() {
+			err := storeCopy.Open()
+			if err != nil {
+				lastErr = fmt.Errorf("open store '"+storeCopy.Path()+"' failed: %w", err)
+			}
+		})
+	}
+	group.Wait()
+
+	return lastErr
 }
 
 // Reset 重置数据
@@ -266,12 +276,17 @@ func (this *KVFileList) OnRemove(fn func(item *Item)) {
 // Close 关闭
 func (this *KVFileList) Close() error {
 	var lastErr error
+	var group = goman.NewTaskGroup()
 	for _, store := range this.stores {
-		err := store.Close()
-		if err != nil {
-			lastErr = err
-		}
+		var storeCopy = store
+		group.Run(func() {
+			err := storeCopy.Close()
+			if err != nil {
+				lastErr = err
+			}
+		})
 	}
+	group.Wait()
 	return lastErr
 }
 
