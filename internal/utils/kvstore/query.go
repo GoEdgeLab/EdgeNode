@@ -5,6 +5,7 @@ package kvstore
 import (
 	"bytes"
 	"errors"
+	"fmt"
 )
 
 type DataType = int
@@ -162,7 +163,17 @@ func (this *Query[T]) FieldOffset(fieldOffset []byte) *Query[T] {
 //	return this
 //}
 
-func (this *Query[T]) FindAll(fn IteratorFunc[T]) error {
+func (this *Query[T]) FindAll(fn IteratorFunc[T]) (err error) {
+	defer func() {
+		var panicErr = recover()
+		if panicErr != nil {
+			resultErr, ok := panicErr.(error)
+			if ok {
+				err = fmt.Errorf("execute query failed: %w", resultErr)
+			}
+		}
+	}()
+
 	if this.tx != nil {
 		defer func() {
 			_ = this.tx.Close()
