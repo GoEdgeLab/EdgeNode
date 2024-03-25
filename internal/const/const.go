@@ -17,5 +17,5 @@ const (
 	AccessLogSockName    = "edge-node.accesslog"
 	CacheGarbageSockName = "edge-node.cache.garbage"
 
-	EnableKVCacheStore = false // determine store cache keys in KVStore or sqlite
+	EnableKVCacheStore = true // determine store cache keys in KVStore or sqlite
 )
