@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/cockroachdb/pebble"
 	"github.com/iwind/TeaGo/Tea"
 	"io"
@@ -89,7 +90,13 @@ func (this *Store) Open() error {
 		Logger: NewLogger(),
 	}
 
-	// TODO 需要修改 BytesPerSync 和 WALBytesPerSync 等等默认参数
+	var memoryMB = utils.SystemMemoryGB() * 1
+	if memoryMB > 256 {
+		memoryMB = 256
+	}
+	if memoryMB > 4 {
+		opt.MemTableSize = uint64(memoryMB) << 20
+	}
 
 	rawDB, err := pebble.Open(this.path, opt)
 	if err != nil {
