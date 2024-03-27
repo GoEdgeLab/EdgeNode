@@ -129,9 +129,9 @@ func WriteEnd() {
 func calculateDiskMaxWrites() {
 	switch DiskSpeed {
 	case SpeedExtremelyFast:
-		DiskMaxWrites = 256
-	case SpeedFast:
 		DiskMaxWrites = 128
+	case SpeedFast:
+		DiskMaxWrites = 64
 	case SpeedLow:
 		DiskMaxWrites = 32
 	case SpeedExtremelySlow:
