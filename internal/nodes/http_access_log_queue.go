@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"strings"
@@ -26,7 +27,7 @@ type HTTPAccessLogQueue struct {
 // NewHTTPAccessLogQueue 获取新对象
 func NewHTTPAccessLogQueue() *HTTPAccessLogQueue {
 	// 队列中最大的值，超出此数量的访问日志会被丢弃
-	var maxSize = 2_000 * (1 + utils.SystemMemoryGB()/2)
+	var maxSize = 2_000 * (1 + memutils.SystemMemoryGB()/2)
 	if maxSize > 20_000 {
 		maxSize = 20_000
 	}

@@ -1,8 +1,8 @@
 package ttlcache
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"runtime"
 )
 
@@ -25,7 +25,7 @@ type Cache[T any] struct {
 }
 
 func NewBigCache[T any]() *Cache[T] {
-	var delta = utils.SystemMemoryGB() / 2
+	var delta = memutils.SystemMemoryGB() / 2
 	if delta <= 0 {
 		delta = 1
 	}
@@ -36,7 +36,7 @@ func NewCache[T any](opt ...OptionInterface) *Cache[T] {
 	var countPieces = 256
 	var maxItems = 1_000_000
 
-	var totalMemory = utils.SystemMemoryGB()
+	var totalMemory = memutils.SystemMemoryGB()
 	if totalMemory < 2 {
 		// 我们限制内存过小的服务能够使用的数量
 		maxItems = 500_000

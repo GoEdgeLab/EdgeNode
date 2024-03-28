@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/cockroachdb/pebble"
 	"github.com/iwind/TeaGo/Tea"
 	"io"
@@ -90,7 +90,7 @@ func (this *Store) Open() error {
 		Logger: NewLogger(),
 	}
 
-	var memoryMB = utils.SystemMemoryGB() * 1
+	var memoryMB = memutils.SystemMemoryGB() * 1
 	if memoryMB > 256 {
 		memoryMB = 256
 	}

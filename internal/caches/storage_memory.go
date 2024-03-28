@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cespare/xxhash"
@@ -66,7 +67,7 @@ func NewMemoryStorage(policy *serverconfigs.HTTPCachePolicy, parentStorage Stora
 
 	if parentStorage != nil {
 		if queueSize <= 0 {
-			queueSize = utils.SystemMemoryGB() * 100_000
+			queueSize = memutils.SystemMemoryGB() * 100_000
 		}
 
 		dirtyChan = make(chan string, queueSize)

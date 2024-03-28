@@ -5,8 +5,8 @@ package caches
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/iwind/TeaGo/logs"
 	"os"
 	"sync"
@@ -93,7 +93,7 @@ func NewMemoryFragmentPool() *MemoryFragmentPool {
 }
 
 func (this *MemoryFragmentPool) init() {
-	var capacity = int64(utils.SystemMemoryGB()) << 30 / 16
+	var capacity = int64(memutils.SystemMemoryGB()) << 30 / 16
 	if capacity > 256<<20 {
 		this.isOk = true
 		this.capacity = capacity

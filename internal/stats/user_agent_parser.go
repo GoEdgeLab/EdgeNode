@@ -4,8 +4,8 @@ package stats
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	syncutils "github.com/TeaOSLab/EdgeNode/internal/utils/sync"
 	"github.com/mssola/useragent"
 	"sync"
@@ -50,7 +50,7 @@ func NewUserAgentParser() *UserAgentParser {
 // 初始化
 func (this *UserAgentParser) init() {
 	var maxCacheItems = 10_000
-	var systemMemory = utils.SystemMemoryGB()
+	var systemMemory = memutils.SystemMemoryGB()
 	if systemMemory >= 16 {
 		maxCacheItems = 40_000
 	} else if systemMemory >= 8 {

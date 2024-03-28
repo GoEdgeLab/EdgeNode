@@ -4,10 +4,10 @@ import (
 	"sync"
 )
 
-var BytePool1k = NewBytePool(1024)
-var BytePool4k = NewBytePool(4 * 1024)
-var BytePool16k = NewBytePool(16 * 1024)
-var BytePool32k = NewBytePool(32 * 1024)
+var BytePool1k = NewBytePool(1 << 10)
+var BytePool4k = NewBytePool(4 << 10)
+var BytePool16k = NewBytePool(16 << 10)
+var BytePool32k = NewBytePool(32 << 10)
 
 // BytePool pool for get byte slice
 type BytePool struct {

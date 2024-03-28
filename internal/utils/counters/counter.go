@@ -3,8 +3,8 @@
 package counters
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	syncutils "github.com/TeaOSLab/EdgeNode/internal/utils/sync"
 	"github.com/cespare/xxhash"
 	"sync"
@@ -31,7 +31,7 @@ type Counter[T SupportedUIntType] struct {
 
 // NewCounter create new counter
 func NewCounter[T SupportedUIntType]() *Counter[T] {
-	var count = utils.SystemMemoryGB() * 8
+	var count = memutils.SystemMemoryGB() * 8
 	if count < 8 {
 		count = 8
 	}

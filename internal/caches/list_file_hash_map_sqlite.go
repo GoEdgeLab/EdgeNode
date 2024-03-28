@@ -3,7 +3,7 @@
 package caches
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"math/big"
 	"sync"
@@ -46,7 +46,7 @@ func NewSQLiteFileListHashMap() *SQLiteFileListHashMap {
 
 func (this *SQLiteFileListHashMap) Load(db *SQLiteFileListDB) error {
 	// 如果系统内存过小，我们不缓存
-	if utils.SystemMemoryGB() < 3 {
+	if memutils.SystemMemoryGB() < 3 {
 		return nil
 	}
 

@@ -7,9 +7,9 @@ import (
 	"fmt"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
 	"net"
@@ -64,7 +64,7 @@ func (this *SQLiteFileListDB) Open(dbPath string) error {
 
 	// 动态调整Cache值
 	var cacheSize = 512
-	var memoryGB = utils.SystemMemoryGB()
+	var memoryGB = memutils.SystemMemoryGB()
 	if memoryGB >= 1 {
 		cacheSize = 256 * memoryGB
 	}

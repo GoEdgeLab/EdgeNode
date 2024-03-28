@@ -29,6 +29,7 @@ import (
 	_ "github.com/TeaOSLab/EdgeNode/internal/utils/agents" // 引入Agent管理器
 	_ "github.com/TeaOSLab/EdgeNode/internal/utils/clock"  // 触发时钟更新
 	"github.com/TeaOSLab/EdgeNode/internal/utils/jsonutils"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/andybalholm/brotli"
 	"github.com/iwind/TeaGo/Tea"
@@ -1123,7 +1124,7 @@ func (this *Node) tuneSystemParameters() {
 	}
 
 	// vm
-	var systemMemory = utils.SystemMemoryGB()
+	var systemMemory = memutils.SystemMemoryGB()
 	if systemMemory >= 128 {
 		systemParameters = append(systemParameters, []variable{
 			{name: "vm.dirty_background_ratio", minValue: 40},

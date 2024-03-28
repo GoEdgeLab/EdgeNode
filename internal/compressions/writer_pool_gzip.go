@@ -5,7 +5,7 @@ package compressions
 import (
 	"compress/gzip"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"io"
 )
 
@@ -16,7 +16,7 @@ func init() {
 		return
 	}
 
-	var maxSize = utils.SystemMemoryGB() * 256
+	var maxSize = memutils.SystemMemoryGB() * 256
 	if maxSize == 0 {
 		maxSize = 256
 	}

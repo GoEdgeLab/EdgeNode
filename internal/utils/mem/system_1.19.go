@@ -1,7 +1,7 @@
 // Copyright 2023 Liuxiangchao iwind.liu@gmail.com. All rights reserved. Official site: https://goedge.cn .
 //go:build go1.19
 
-package utils
+package memutils
 
 import (
 	"runtime/debug"

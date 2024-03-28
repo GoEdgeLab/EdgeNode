@@ -7,7 +7,7 @@ import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/types"
 	"golang.org/x/sys/unix"
@@ -299,7 +299,7 @@ func (this *Manager) MaxSystemMemoryBytesPerStorage() int64 {
 		count = 1
 	}
 
-	var resultBytes = int64(utils.SystemMemoryBytes()) / 3 / int64(count) // 1/3 of the system memory
+	var resultBytes = int64(memutils.SystemMemoryBytes()) / 3 / int64(count) // 1/3 of the system memory
 	if resultBytes < 1<<30 {
 		resultBytes = 1 << 30
 	}

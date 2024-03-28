@@ -4,8 +4,8 @@ package cachehits
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/iwind/TeaGo/Tea"
 	"sync"
 	"sync/atomic"
@@ -38,7 +38,7 @@ func NewStat(goodRatio uint64) *Stat {
 		goodRatio = 5
 	}
 
-	var maxItems = utils.SystemMemoryGB() * 10_000
+	var maxItems = memutils.SystemMemoryGB() * 10_000
 	if maxItems <= 0 {
 		maxItems = 100_000
 	}

@@ -5,8 +5,8 @@ package caches
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/linkedlist"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/fsnotify/fsnotify"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
@@ -43,7 +43,7 @@ func NewOpenFileCache(maxCount int) (*OpenFileCache, error) {
 		maxCount:     maxCount,
 		poolMap:      map[string]*OpenFilePool{},
 		poolList:     linkedlist.NewList[*OpenFilePool](),
-		capacitySize: (int64(utils.SystemMemoryGB()) << 30) / 16,
+		capacitySize: (int64(memutils.SystemMemoryGB()) << 30) / 16,
 	}
 
 	watcher, err := fsnotify.NewWatcher()

@@ -1,8 +1,8 @@
 package ttlcache
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/rands"
@@ -60,7 +60,7 @@ func TestCache_Memory(t *testing.T) {
 	})
 
 	var count = 1_000_000
-	if utils.SystemMemoryGB() > 4 {
+	if memutils.SystemMemoryGB() > 4 {
 		count = 20_000_000
 	}
 	for i := 0; i < count; i++ {
