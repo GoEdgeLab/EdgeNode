@@ -75,7 +75,22 @@ func (this *Table[T]) Set(key string, value T) error {
 	}
 
 	return this.WriteTx(func(tx *Tx[T]) error {
-		return this.set(tx, key, valueBytes, value)
+		return this.set(tx, key, valueBytes, value, false)
+	})
+}
+
+func (this *Table[T]) Insert(key string, value T) error {
+	if len(key) > KeyMaxLength {
+		return ErrKeyTooLong
+	}
+
+	valueBytes, err := this.encoder.Encode(value)
+	if err != nil {
+		return err
+	}
+
+	return this.WriteTx(func(tx *Tx[T]) error {
+		return this.set(tx, key, valueBytes, value, true)
 	})
 }
 
@@ -283,7 +298,7 @@ func (this *Table[T]) deleteKeys(tx *Tx[T], key ...string) error {
 	return nil
 }
 
-func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T) error {
+func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T, insertOnly bool) error {
 	var keyBytes = this.FullKey(key)
 
 	var batch = tx.batch
@@ -292,23 +307,26 @@ func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T) err
 	var oldValue T
 	var oldFound bool
 	var countFields = len(this.fieldNames)
-	if countFields > 0 {
-		oldValueBytes, closer, getErr := batch.Get(keyBytes)
-		if getErr != nil {
-			if !IsKeyNotFound(getErr) {
-				return getErr
-			}
-		} else {
-			defer func() {
-				_ = closer.Close()
-			}()
 
-			var decodeErr error
-			oldValue, decodeErr = this.encoder.Decode(oldValueBytes)
-			if decodeErr != nil {
-				return decodeErr
+	if !insertOnly {
+		if countFields > 0 {
+			oldValueBytes, closer, getErr := batch.Get(keyBytes)
+			if getErr != nil {
+				if !IsKeyNotFound(getErr) {
+					return getErr
+				}
+			} else {
+				defer func() {
+					_ = closer.Close()
+				}()
+
+				var decodeErr error
+				oldValue, decodeErr = this.encoder.Decode(oldValueBytes)
+				if decodeErr != nil {
+					return decodeErr
+				}
+				oldFound = true
 			}
-			oldFound = true
 		}
 	}
 

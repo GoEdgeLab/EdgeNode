@@ -37,7 +37,24 @@ func (this *Tx[T]) Set(key string, value T) error {
 		return err
 	}
 
-	return this.table.set(this, key, valueBytes, value)
+	return this.table.set(this, key, valueBytes, value, false)
+}
+
+func (this *Tx[T]) Insert(key string, value T) error {
+	if this.readOnly {
+		return errors.New("can not set value in readonly transaction")
+	}
+
+	if len(key) > KeyMaxLength {
+		return ErrKeyTooLong
+	}
+
+	valueBytes, err := this.table.encoder.Encode(value)
+	if err != nil {
+		return err
+	}
+
+	return this.table.set(this, key, valueBytes, value, true)
 }
 
 func (this *Tx[T]) Get(key string) (value T, err error) {
