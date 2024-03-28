@@ -64,6 +64,8 @@ func NewOpenFileCache(maxCount int) (*OpenFileCache, error) {
 }
 
 func (this *OpenFileCache) Get(filename string) *OpenFile {
+	filename = filepath.Clean(filename)
+
 	this.locker.RLock()
 	pool, ok := this.poolMap[filename]
 	this.locker.RUnlock()
@@ -85,6 +87,8 @@ func (this *OpenFileCache) Get(filename string) *OpenFile {
 }
 
 func (this *OpenFileCache) Put(filename string, file *OpenFile) {
+	filename = filepath.Clean(filename)
+
 	if file.size > maxOpenFileSize {
 		return
 	}
@@ -119,6 +123,8 @@ func (this *OpenFileCache) Put(filename string, file *OpenFile) {
 }
 
 func (this *OpenFileCache) Close(filename string) {
+	filename = filepath.Clean(filename)
+
 	this.locker.Lock()
 
 	pool, ok := this.poolMap[filename]

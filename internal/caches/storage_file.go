@@ -622,6 +622,11 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 		return nil, fmt.Errorf("%w (003)", ErrFileIsWriting)
 	}
 
+	// 关闭
+	if openFileCache != nil {
+		openFileCache.Close(cachePath)
+	}
+
 	var metaBodySize int64 = -1
 	var metaHeaderSize = -1
 	if isNewCreated {
