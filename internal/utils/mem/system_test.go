@@ -14,4 +14,5 @@ func TestSystemMemoryGB(t *testing.T) {
 	t.Log(memutils.SystemMemoryBytes())
 	t.Log(memutils.SystemMemoryBytes())
 	t.Log(memutils.SystemMemoryBytes()>>30, "GB")
+	t.Log("available:", memutils.AvailableMemoryGB())
 }

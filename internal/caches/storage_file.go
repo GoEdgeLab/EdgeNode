@@ -125,7 +125,7 @@ func (this *FileStorage) CanUpdatePolicy(newPolicy *serverconfigs.HTTPCachePolic
 	if err != nil {
 		return false
 	}
-	var oldOptions = &serverconfigs.HTTPFileCacheStorage{}
+	var oldOptions = serverconfigs.NewHTTPFileCacheStorage()
 	err = json.Unmarshal(oldOptionsJSON, oldOptions)
 	if err != nil {
 		return false
@@ -135,7 +135,7 @@ func (this *FileStorage) CanUpdatePolicy(newPolicy *serverconfigs.HTTPCachePolic
 	if err != nil {
 		return false
 	}
-	var newOptions = &serverconfigs.HTTPFileCacheStorage{}
+	var newOptions = serverconfigs.NewHTTPFileCacheStorage()
 	err = json.Unmarshal(newOptionsJSON, newOptions)
 	if err != nil {
 		return false
@@ -158,7 +158,7 @@ func (this *FileStorage) UpdatePolicy(newPolicy *serverconfigs.HTTPCachePolicy) 
 	if err != nil {
 		return
 	}
-	var newOptions = &serverconfigs.HTTPFileCacheStorage{}
+	var newOptions = serverconfigs.NewHTTPFileCacheStorage()
 	err = json.Unmarshal(newOptionsJSON, newOptions)
 	if err != nil {
 		remotelogs.Error("CACHE", "update policy '"+types.String(this.policy.Id)+"' failed: decode options failed: "+err.Error())
@@ -223,7 +223,7 @@ func (this *FileStorage) Init() error {
 	var before = time.Now()
 
 	// 配置
-	var options = &serverconfigs.HTTPFileCacheStorage{}
+	var options = serverconfigs.NewHTTPFileCacheStorage()
 	optionsJSON, err := json.Marshal(this.policy.Options)
 	if err != nil {
 		return err
@@ -370,7 +370,6 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 		}
 	}
 
-	// TODO 尝试使用mmap加快读取速度
 	var isOk = false
 	var openFile *OpenFile
 	var openFileCache = this.openFileCache // 因为中间可能有修改，所以先赋值再获取
@@ -378,6 +377,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 		openFile = openFileCache.Get(path)
 	}
 	var fp *os.File
+
 	var err error
 	if openFile == nil {
 		fp, err = os.OpenFile(path, os.O_RDONLY, 0444)
@@ -404,11 +404,24 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 		partialFileReader.openFileCache = openFileCache
 		reader = partialFileReader
 	} else {
-		var fileReader = NewFileReader(fp)
-		fileReader.openFile = openFile
-		fileReader.openFileCache = openFileCache
-		reader = fileReader
+		var options = this.options // copy
+		if options != nil && options.EnableMMAP {
+			if isValid, stat := IsValidForMMAP(fp); isValid {
+				reader, err = NewMMAPFileReader(fp, stat)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		if reader == nil {
+			var fileReader = NewFileReader(fp)
+			fileReader.openFile = openFile
+			fileReader.openFileCache = openFileCache
+			reader = fileReader
+		}
 	}
+
 	err = reader.Init()
 	if err != nil {
 		return nil, err

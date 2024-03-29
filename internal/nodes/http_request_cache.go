@@ -588,18 +588,27 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			this.writer.Prepare(resp, fileSize, reader.Status(), false)
 			this.writer.WriteHeader(reader.Status())
 
-			var pool = this.bytePool(fileSize)
-			var bodyBuf = pool.Get()
 			if storage.CanSendfile() {
+				var pool = this.bytePool(fileSize)
+				var bodyBuf = pool.Get()
 				if fp, canSendFile := this.writer.canSendfile(); canSendFile {
 					this.writer.sentBodyBytes, err = io.CopyBuffer(this.writer.rawWriter, fp, bodyBuf)
 				} else {
 					_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf)
 				}
+				pool.Put(bodyBuf)
 			} else {
-				_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf)
+				mmapReader, isMMAPReader := reader.(*caches.MMAPFileReader)
+				if isMMAPReader {
+					_, err = mmapReader.CopyBodyTo(this.writer)
+				} else {
+					var pool = this.bytePool(fileSize)
+					var bodyBuf = pool.Get()
+					_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf)
+					pool.Put(bodyBuf)
+				}
 			}
-			pool.Put(bodyBuf)
+
 			if err == io.EOF {
 				err = nil
 			}
