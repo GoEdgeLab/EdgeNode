@@ -962,7 +962,7 @@ func (this *Node) onReload(config *nodeconfigs.NodeConfig, reloadAll bool) {
 				runtime.GOMAXPROCS(int(config.MaxCPU))
 				remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(config.MaxCPU)+"'")
 			} else {
-				var threads = runtime.NumCPU() * 4
+				var threads = runtime.NumCPU()
 				runtime.GOMAXPROCS(threads)
 				remotelogs.Println("NODE", "[CPU]set max cpu to '"+types.String(threads)+"'")
 			}
