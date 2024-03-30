@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-// IP2Long 将IP转换为整型
+// IP2LongHash 非标地将IP转换为整型
 // 注意IPv6没有顺序
-func IP2Long(ip string) uint64 {
+func IP2LongHash(ip string) uint64 {
 	if len(ip) == 0 {
 		return 0
 	}

@@ -17,7 +17,7 @@ func TestIPListManager_init(t *testing.T) {
 	manager.init()
 	t.Log(manager.listMap)
 	t.Log(SharedServerListManager.blackMap)
-	logs.PrintAsJSON(GlobalBlackIPList.sortedItems, t)
+	logs.PrintAsJSON(GlobalBlackIPList.SortedRangeItems(), t)
 }
 
 func TestIPListManager_check(t *testing.T) {
@@ -32,8 +32,8 @@ func TestIPListManager_check(t *testing.T) {
 	defer func() {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
 	}()
-	t.Log(SharedServerListManager.FindBlackList(23, true).Contains(utils.IP2Long("127.0.0.2")))
-	t.Log(GlobalBlackIPList.Contains(utils.IP2Long("127.0.0.6")))
+	t.Log(SharedServerListManager.FindBlackList(23, true).Contains(utils.IP2LongHash("127.0.0.2")))
+	t.Log(GlobalBlackIPList.Contains(utils.IP2LongHash("127.0.0.6")))
 }
 
 func TestIPListManager_loop(t *testing.T) {
@@ -41,7 +41,7 @@ func TestIPListManager_loop(t *testing.T) {
 		return
 	}
 
-	var  manager = NewIPListManager()
+	var manager = NewIPListManager()
 	manager.Start()
 	err := manager.loop()
 	if err != nil {

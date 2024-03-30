@@ -1,10 +1,15 @@
-package iplibrary
+package iplibrary_test
 
 import (
+	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
+	"math/rand"
 	"runtime"
 	"runtime/debug"
 	"strconv"
@@ -14,216 +19,256 @@ import (
 )
 
 func TestIPList_Add_Empty(t *testing.T) {
-	ipList := NewIPList()
-	ipList.Add(&IPItem{
+	ipList := iplibrary.NewIPList()
+	ipList.Add(&iplibrary.IPItem{
 		Id: 1,
 	})
-	logs.PrintAsJSON(ipList.itemsMap, t)
-	logs.PrintAsJSON(ipList.allItemsMap, t)
+	logs.PrintAsJSON(ipList.ItemsMap(), t)
+	logs.PrintAsJSON(ipList.AllItemsMap(), t)
+	logs.PrintAsJSON(ipList.IPMap(), t)
 }
 
 func TestIPList_Add_One(t *testing.T) {
-	ipList := NewIPList()
-	ipList.Add(&IPItem{
+	var ipList = iplibrary.NewIPList()
+	ipList.Add(&iplibrary.IPItem{
 		Id:     1,
-		IPFrom: utils.IP2Long("192.168.1.1"),
+		IPFrom: utils.IP2LongHash("192.168.1.1"),
 	})
-	ipList.Add(&IPItem{
+	ipList.Add(&iplibrary.IPItem{
 		Id:   2,
-		IPTo: utils.IP2Long("192.168.1.2"),
+		IPTo: utils.IP2LongHash("192.168.1.2"),
 	})
-	ipList.Add(&IPItem{
+	ipList.Add(&iplibrary.IPItem{
 		Id:     3,
-		IPFrom: utils.IP2Long("192.168.0.2"),
+		IPFrom: utils.IP2LongHash("192.168.0.2"),
 	})
-	ipList.Add(&IPItem{
+	ipList.Add(&iplibrary.IPItem{
 		Id:     4,
-		IPFrom: utils.IP2Long("192.168.0.2"),
-		IPTo:   utils.IP2Long("192.168.0.1"),
+		IPFrom: utils.IP2LongHash("192.168.0.2"),
+		IPTo:   utils.IP2LongHash("192.168.0.1"),
 	})
-	ipList.Add(&IPItem{
+	ipList.Add(&iplibrary.IPItem{
 		Id:     5,
-		IPFrom: utils.IP2Long("2001:db8:0:1::101"),
+		IPFrom: utils.IP2LongHash("2001:db8:0:1::101"),
 	})
-	ipList.Add(&IPItem{
+	ipList.Add(&iplibrary.IPItem{
 		Id:     6,
 		IPFrom: 0,
 		Type:   "all",
 	})
 	t.Log("===items===")
-	logs.PrintAsJSON(ipList.itemsMap, t)
+	logs.PrintAsJSON(ipList.ItemsMap(), t)
 
 	t.Log("===sorted items===")
-	logs.PrintAsJSON(ipList.sortedItems, t)
+	logs.PrintAsJSON(ipList.SortedRangeItems(), t)
 
 	t.Log("===all items===")
-	logs.PrintAsJSON(ipList.allItemsMap, t) // ip => items
+	logs.PrintAsJSON(ipList.AllItemsMap(), t) // ip => items
+
+	t.Log("===ip items===")
+	logs.PrintAsJSON(ipList.IPMap())
 }
 
 func TestIPList_Update(t *testing.T) {
-	ipList := NewIPList()
-	ipList.Add(&IPItem{
+	var ipList = iplibrary.NewIPList()
+	ipList.Add(&iplibrary.IPItem{
 		Id:     1,
-		IPFrom: utils.IP2Long("192.168.1.1"),
+		IPFrom: utils.IP2LongHash("192.168.1.1"),
 	})
-	/**ipList.Add(&IPItem{
+
+	t.Log("===before===")
+	logs.PrintAsJSON(ipList.ItemsMap(), t)
+	logs.PrintAsJSON(ipList.SortedRangeItems(), t)
+	logs.PrintAsJSON(ipList.IPMap(), t)
+
+	/**ipList.Add(&iplibrary.IPItem{
 		Id:     2,
-		IPFrom: utils.IP2Long("192.168.1.1"),
+		IPFrom: utils.IP2LongHash("192.168.1.1"),
 	})**/
-	ipList.Add(&IPItem{
-		Id:   1,
-		IPTo: utils.IP2Long("192.168.1.2"),
+	ipList.Add(&iplibrary.IPItem{
+		Id: 1,
+		//IPFrom: 123,
+		IPTo: utils.IP2LongHash("192.168.1.2"),
 	})
-	logs.PrintAsJSON(ipList.itemsMap, t)
-	logs.PrintAsJSON(ipList.sortedItems, t)
+
+	t.Log("===after===")
+	logs.PrintAsJSON(ipList.ItemsMap(), t)
+	logs.PrintAsJSON(ipList.SortedRangeItems(), t)
+	logs.PrintAsJSON(ipList.IPMap(), t)
 }
 
 func TestIPList_Update_AllItems(t *testing.T) {
-	ipList := NewIPList()
-	ipList.Add(&IPItem{
+	var ipList = iplibrary.NewIPList()
+	ipList.Add(&iplibrary.IPItem{
 		Id:     1,
-		Type:   IPItemTypeAll,
+		Type:   iplibrary.IPItemTypeAll,
 		IPFrom: 0,
 	})
-	ipList.Add(&IPItem{
+	ipList.Add(&iplibrary.IPItem{
 		Id:   1,
 		IPTo: 0,
 	})
 	t.Log("===items map===")
-	logs.PrintAsJSON(ipList.itemsMap, t)
+	logs.PrintAsJSON(ipList.ItemsMap(), t)
 	t.Log("===all items map===")
-	logs.PrintAsJSON(ipList.allItemsMap, t)
+	logs.PrintAsJSON(ipList.AllItemsMap(), t)
+	t.Log("===ip map===")
+	logs.PrintAsJSON(ipList.IPMap())
 }
 
 func TestIPList_Add_Range(t *testing.T) {
-	ipList := NewIPList()
-	ipList.Add(&IPItem{
+	var a = assert.NewAssertion(t)
+
+	var ipList = iplibrary.NewIPList()
+	ipList.Add(&iplibrary.IPItem{
 		Id:     1,
-		IPFrom: utils.IP2Long("192.168.1.1"),
-		IPTo:   utils.IP2Long("192.168.2.1"),
+		IPFrom: utils.IP2LongHash("192.168.1.1"),
+		IPTo:   utils.IP2LongHash("192.168.2.1"),
 	})
-	ipList.Add(&IPItem{
+	ipList.Add(&iplibrary.IPItem{
 		Id:   2,
-		IPTo: utils.IP2Long("192.168.1.2"),
+		IPTo: utils.IP2LongHash("192.168.1.2"),
 	})
-	t.Log(len(ipList.itemsMap), "ips")
-	logs.PrintAsJSON(ipList.itemsMap, t)
-	logs.PrintAsJSON(ipList.allItemsMap, t)
+	ipList.Add(&iplibrary.IPItem{
+		Id:     3,
+		IPFrom: utils.IP2LongHash("192.168.0.1"),
+		IPTo:   utils.IP2LongHash("192.168.0.2"),
+	})
+
+	a.IsTrue(len(ipList.SortedRangeItems()) == 2)
+
+	t.Log(len(ipList.ItemsMap()), "ips")
+	t.Log("===items map===")
+	logs.PrintAsJSON(ipList.ItemsMap(), t)
+	t.Log("===sorted range items===")
+	logs.PrintAsJSON(ipList.SortedRangeItems())
+	t.Log("===all items map===")
+	logs.PrintAsJSON(ipList.AllItemsMap(), t)
+
+	t.Log("===ip map===")
+	logs.PrintAsJSON(ipList.IPMap(), t)
 }
 
 func TestIPList_Add_Overflow(t *testing.T) {
-	a := assert.NewAssertion(t)
+	var a = assert.NewAssertion(t)
 
-	ipList := NewIPList()
-	ipList.Add(&IPItem{
+	var ipList = iplibrary.NewIPList()
+	ipList.Add(&iplibrary.IPItem{
 		Id:     1,
-		IPFrom: utils.IP2Long("192.168.1.1"),
-		IPTo:   utils.IP2Long("192.169.255.1"),
+		IPFrom: utils.IP2LongHash("192.168.1.1"),
+		IPTo:   utils.IP2LongHash("192.169.255.1"),
 	})
-	t.Log(len(ipList.itemsMap), "ips")
-	a.IsTrue(len(ipList.itemsMap) <= 65535)
+	t.Log(len(ipList.ItemsMap()), "ips")
+	a.IsTrue(len(ipList.ItemsMap()) <= 65535)
 }
 
 func TestNewIPList_Memory(t *testing.T) {
-	list := NewIPList()
+	var list = iplibrary.NewIPList()
 
-	for i := 0; i < 200_0000; i++ {
-		list.Add(&IPItem{
+	var count = 100
+	if testutils.IsSingleTesting() {
+		count = 2_000_000
+	}
+	var stat1 = testutils.ReadMemoryStat()
+
+	for i := 0; i < count; i++ {
+		list.AddDelay(&iplibrary.IPItem{
+			Id:        uint64(i),
 			IPFrom:    1,
 			IPTo:      2,
 			ExpiredAt: time.Now().Unix(),
 		})
 	}
+	list.Sort()
 
-	t.Log("ok")
+	runtime.GC()
+
+	var stat2 = testutils.ReadMemoryStat()
+	t.Log((stat2.HeapInuse-stat1.HeapInuse)>>20, "MB")
 }
 
 func TestIPList_Contains(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	list := NewIPList()
+	var list = iplibrary.NewIPList()
 	for i := 0; i < 255; i++ {
-		list.AddDelay(&IPItem{
+		list.Add(&iplibrary.IPItem{
 			Id:        uint64(i),
-			IPFrom:    utils.IP2Long(strconv.Itoa(i) + ".168.0.1"),
-			IPTo:      utils.IP2Long(strconv.Itoa(i) + ".168.255.1"),
+			IPFrom:    utils.IP2LongHash(strconv.Itoa(i) + ".168.0.1"),
+			IPTo:      utils.IP2LongHash(strconv.Itoa(i) + ".168.255.1"),
 			ExpiredAt: 0,
 		})
 	}
 	for i := 0; i < 255; i++ {
-		list.AddDelay(&IPItem{
+		list.Add(&iplibrary.IPItem{
 			Id:     uint64(1000 + i),
-			IPFrom: utils.IP2Long("192.167.2." + strconv.Itoa(i)),
+			IPFrom: utils.IP2LongHash("192.167.2." + strconv.Itoa(i)),
 		})
 	}
-	list.Sort()
-	t.Log(len(list.itemsMap), "ip")
+	t.Log(len(list.ItemsMap()), "ip")
 
-	before := time.Now()
-	a.IsTrue(list.Contains(utils.IP2Long("192.168.1.100")))
-	a.IsTrue(list.Contains(utils.IP2Long("192.168.2.100")))
-	a.IsFalse(list.Contains(utils.IP2Long("192.169.3.100")))
-	a.IsFalse(list.Contains(utils.IP2Long("192.167.3.100")))
-	a.IsTrue(list.Contains(utils.IP2Long("192.167.2.100")))
+	var before = time.Now()
+	a.IsTrue(list.Contains(utils.IP2LongHash("192.168.1.100")))
+	a.IsTrue(list.Contains(utils.IP2LongHash("192.168.2.100")))
+	a.IsFalse(list.Contains(utils.IP2LongHash("192.169.3.100")))
+	a.IsFalse(list.Contains(utils.IP2LongHash("192.167.3.100")))
+	a.IsTrue(list.Contains(utils.IP2LongHash("192.167.2.100")))
 	t.Log(time.Since(before).Seconds()*1000, "ms")
 }
 
 func TestIPList_Contains_Many(t *testing.T) {
-	list := NewIPList()
+	var list = iplibrary.NewIPList()
 	for i := 0; i < 1_000_000; i++ {
-		list.AddDelay(&IPItem{
+		list.AddDelay(&iplibrary.IPItem{
 			Id:        uint64(i),
-			IPFrom:    utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255))),
-			IPTo:      utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255))),
+			IPFrom:    utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255))),
+			IPTo:      utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255))),
 			ExpiredAt: 0,
 		})
 	}
-	list.Sort()
-	t.Log(len(list.itemsMap), "ip")
 
-	before := time.Now()
-	_ = list.Contains(utils.IP2Long("192.168.1.100"))
-	t.Log(time.Since(before).Seconds()*1000, "ms")
+	list.Sort()
+
+	var before = time.Now()
+	t.Log("sort cost:", time.Since(before).Seconds()*1000, "ms")
+	t.Log(len(list.ItemsMap()), "ip")
+
+	before = time.Now()
+	_ = list.Contains(utils.IP2LongHash("192.168.1.100"))
+	t.Log("contains cost:", time.Since(before).Seconds()*1000, "ms")
 }
 
 func TestIPList_ContainsAll(t *testing.T) {
-	list := NewIPList()
-	list.Add(&IPItem{
+	var a = assert.NewAssertion(t)
+
+	var list = iplibrary.NewIPList()
+	list.Add(&iplibrary.IPItem{
 		Id:     1,
 		Type:   "all",
 		IPFrom: 0,
 	})
-	b := list.Contains(utils.IP2Long("192.168.1.1"))
-	if b {
-		t.Log(b)
-	} else {
-		t.Fatal("'b' should be true")
-	}
+	var b = list.Contains(utils.IP2LongHash("192.168.1.1"))
+	a.IsTrue(b)
 
 	list.Delete(1)
 
-	b = list.Contains(utils.IP2Long("192.168.1.1"))
-	if !b {
-		t.Log(b)
-	} else {
-		t.Fatal("'b' should be false")
-	}
-
+	b = list.Contains(utils.IP2LongHash("192.168.1.1"))
+	a.IsFalse(b)
 }
 
 func TestIPList_ContainsIPStrings(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	list := NewIPList()
+	var list = iplibrary.NewIPList()
 	for i := 0; i < 255; i++ {
-		list.Add(&IPItem{
+		list.Add(&iplibrary.IPItem{
 			Id:        uint64(i),
-			IPFrom:    utils.IP2Long(strconv.Itoa(i) + ".168.0.1"),
-			IPTo:      utils.IP2Long(strconv.Itoa(i) + ".168.255.1"),
+			IPFrom:    utils.IP2LongHash(strconv.Itoa(i) + ".168.0.1"),
+			IPTo:      utils.IP2LongHash(strconv.Itoa(i) + ".168.255.1"),
 			ExpiredAt: 0,
 		})
 	}
-	t.Log(len(list.itemsMap), "ip")
+	t.Log(len(list.ItemsMap()), "ip")
 
 	{
 		item, ok := list.ContainsIPStrings([]string{"192.168.1.100"})
@@ -238,85 +283,192 @@ func TestIPList_ContainsIPStrings(t *testing.T) {
 }
 
 func TestIPList_Delete(t *testing.T) {
-	list := NewIPList()
-	list.Add(&IPItem{
+	var list = iplibrary.NewIPList()
+	list.Add(&iplibrary.IPItem{
 		Id:        1,
-		IPFrom:    utils.IP2Long("192.168.0.1"),
+		IPFrom:    utils.IP2LongHash("192.168.0.1"),
 		ExpiredAt: 0,
 	})
-	list.Add(&IPItem{
+	list.Add(&iplibrary.IPItem{
 		Id:        2,
-		IPFrom:    utils.IP2Long("192.168.0.1"),
+		IPFrom:    utils.IP2LongHash("192.168.0.1"),
 		ExpiredAt: 0,
 	})
-	t.Log("===BEFORE===")
-	logs.PrintAsJSON(list.itemsMap, t)
-	logs.PrintAsJSON(list.allItemsMap, t)
+	list.Add(&iplibrary.IPItem{
+		Id:        3,
+		IPFrom:    utils.IP2LongHash("192.168.1.1"),
+		IPTo:      utils.IP2LongHash("192.168.2.1"),
+		ExpiredAt: 0,
+	})
+	t.Log("===before===")
+	logs.PrintAsJSON(list.ItemsMap(), t)
+	logs.PrintAsJSON(list.AllItemsMap(), t)
+	logs.PrintAsJSON(list.SortedRangeItems())
+	logs.PrintAsJSON(list.IPMap(), t)
+
+	{
+		var found bool
+		for _, item := range list.SortedRangeItems() {
+			if item.Id == 3 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatal("should be found")
+		}
+	}
 
 	list.Delete(1)
 
-	t.Log("===AFTER===")
-	logs.PrintAsJSON(list.itemsMap, t)
-	logs.PrintAsJSON(list.allItemsMap, t)
+	t.Log("===after===")
+	logs.PrintAsJSON(list.ItemsMap(), t)
+	logs.PrintAsJSON(list.AllItemsMap(), t)
+	logs.PrintAsJSON(list.SortedRangeItems())
+	logs.PrintAsJSON(list.IPMap(), t)
+
+	list.Delete(3)
+
+	{
+		var found bool
+		for _, item := range list.SortedRangeItems() {
+			if item.Id == 3 {
+				found = true
+				break
+			}
+		}
+		if found {
+			t.Fatal("should be not found")
+		}
+	}
 }
 
-func TestGC(t *testing.T) {
-	list := NewIPList()
-	list.Add(&IPItem{
+func TestIPList_GC(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
+	var list = iplibrary.NewIPList()
+	list.Add(&iplibrary.IPItem{
 		Id:        1,
-		IPFrom:    utils.IP2Long("192.168.1.100"),
-		IPTo:      utils.IP2Long("192.168.1.101"),
+		IPFrom:    utils.IP2LongHash("192.168.1.100"),
+		IPTo:      utils.IP2LongHash("192.168.1.101"),
 		ExpiredAt: time.Now().Unix() + 1,
 	})
-	list.Add(&IPItem{
+	list.Add(&iplibrary.IPItem{
 		Id:        2,
-		IPFrom:    utils.IP2Long("192.168.1.102"),
-		IPTo:      utils.IP2Long("192.168.1.103"),
+		IPFrom:    utils.IP2LongHash("192.168.1.102"),
+		IPTo:      utils.IP2LongHash("192.168.1.103"),
 		ExpiredAt: 0,
 	})
-	logs.PrintAsJSON(list.itemsMap, t)
-	logs.PrintAsJSON(list.allItemsMap, t)
+	logs.PrintAsJSON(list.ItemsMap(), t)
+	logs.PrintAsJSON(list.AllItemsMap(), t)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(3 * time.Second)
+
 	t.Log("===AFTER GC===")
-	logs.PrintAsJSON(list.itemsMap, t)
-	logs.PrintAsJSON(list.sortedItems, t)
+	logs.PrintAsJSON(list.ItemsMap(), t)
+	logs.PrintAsJSON(list.SortedRangeItems(), t)
+
+	a.IsTrue(len(list.ItemsMap()) == 1)
+	a.IsTrue(len(list.SortedRangeItems()) == 1)
 }
 
 func TestTooManyLists(t *testing.T) {
 	debug.SetMaxThreads(20)
 
-	var lists = []*IPList{}
+	var lists = []*iplibrary.IPList{}
 	var locker = &sync.Mutex{}
 	for i := 0; i < 1000; i++ {
 		locker.Lock()
-		lists = append(lists, NewIPList())
+		lists = append(lists, iplibrary.NewIPList())
 		locker.Unlock()
 	}
 
-	time.Sleep(1 * time.Second)
+	if testutils.IsSingleTesting() {
+		time.Sleep(3 * time.Second)
+	}
 	t.Log(runtime.NumGoroutine())
 	t.Log(len(lists), "lists")
+}
+
+func BenchmarkIPList_Add(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	var list = iplibrary.NewIPList()
+	for i := 1; i < 200_000; i++ {
+		list.AddDelay(&iplibrary.IPItem{
+			Id:        uint64(i),
+			IPFrom:    utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
+			IPTo:      utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
+			ExpiredAt: time.Now().Unix() + 60,
+		})
+	}
+
+	list.Sort()
+
+	b.Log(len(list.ItemsMap()), "ip")
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		var ip = fmt.Sprintf("%d.%d.%d.%d", rand.Int()%255, rand.Int()%255, rand.Int()%255, rand.Int()%255)
+		list.Add(&iplibrary.IPItem{
+			Type:       "",
+			Id:         uint64(i % 1_000_000),
+			IPFrom:     utils.IP2LongHash(ip),
+			IPTo:       0,
+			ExpiredAt:  fasttime.Now().Unix() + 3600,
+			EventLevel: "",
+		})
+	}
 }
 
 func BenchmarkIPList_Contains(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var list = NewIPList()
-	for i := 1; i < 200_000; i++ {
-		list.AddDelay(&IPItem{
+	var list = iplibrary.NewIPList()
+	for i := 1; i < 1_000_000; i++ {
+		var item = &iplibrary.IPItem{
 			Id:        uint64(i),
-			IPFrom:    utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
-			IPTo:      utils.IP2Long(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
+			IPFrom:    utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
 			ExpiredAt: time.Now().Unix() + 60,
-		})
+		}
+		if i%1000 == 0 {
+			item.IPTo = utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1")
+		}
+		list.Add(item)
 	}
-	list.Sort()
 
-	b.Log(len(list.itemsMap), "ip")
+	//b.Log(len(list.ItemsMap()), "ip")
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = list.Contains(utils.IP2Long("192.168.1.100"))
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			var ip = fmt.Sprintf("%d.%d.%d.%d", rand.Int()%255, rand.Int()%255, rand.Int()%255, rand.Int()%255)
+			_ = list.Contains(utils.IP2LongHash(ip))
+		}
+	})
+}
+
+func BenchmarkIPList_Sort(b *testing.B) {
+	var list = iplibrary.NewIPList()
+	for i := 0; i < 1_000_000; i++ {
+		var item = &iplibrary.IPItem{
+			Id:        uint64(i),
+			IPFrom:    utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1"),
+			ExpiredAt: time.Now().Unix() + 60,
+		}
+
+		if i%100 == 0 {
+			item.IPTo = utils.IP2LongHash(strconv.Itoa(rands.Int(0, 255)) + "." + strconv.Itoa(rands.Int(0, 255)) + ".0.1")
+		}
+
+		list.Add(item)
 	}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			list.Sort()
+		}
+	})
 }

@@ -281,8 +281,8 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 		list.AddDelay(&IPItem{
 			Id:         uint64(item.Id),
 			Type:       item.Type,
-			IPFrom:     utils.IP2Long(item.IpFrom),
-			IPTo:       utils.IP2Long(item.IpTo),
+			IPFrom:     utils.IP2LongHash(item.IpFrom),
+			IPTo:       utils.IP2LongHash(item.IpTo),
 			ExpiredAt:  item.ExpiredAt,
 			EventLevel: item.EventLevel,
 		})
@@ -294,8 +294,10 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 		}
 	}
 
-	for changedList := range changedLists {
-		changedList.Sort()
+	if len(changedLists) > 0 {
+		for changedList := range changedLists {
+			changedList.Sort()
+		}
 	}
 
 	if fromRemote {

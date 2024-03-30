@@ -24,7 +24,7 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool, expir
 		}
 	}
 
-	var ipLong = utils.IP2Long(ip)
+	var ipLong = utils.IP2LongHash(ip)
 	if ipLong == 0 {
 		return false, false, 0
 	}
@@ -62,7 +62,7 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool, expir
 
 // IsInWhiteList 检查IP是否在白名单中
 func IsInWhiteList(ip string) bool {
-	var ipLong = utils.IP2Long(ip)
+	var ipLong = utils.IP2LongHash(ip)
 	if ipLong == 0 {
 		return false
 	}
