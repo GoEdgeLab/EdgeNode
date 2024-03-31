@@ -106,7 +106,7 @@ func (this *KVListFileStore) ExistItem(hash string) (bool, error) {
 		return false, nil
 	}
 
-	return item.ExpiresAt >= fasttime.NewFastTime().Unix(), nil
+	return item.ExpiresAt >= fasttime.Now().Unix(), nil
 }
 
 func (this *KVListFileStore) ExistQuickItem(hash string) (bool, error) {
