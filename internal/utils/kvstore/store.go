@@ -4,7 +4,6 @@ package kvstore
 
 import (
 	"errors"
-	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
@@ -139,10 +138,7 @@ func (this *Store) Open() error {
 	this.rawDB = rawDB
 
 	// events
-	events.OnKey(events.EventQuit, fmt.Sprintf("kvstore_%p", this), func() {
-		_ = this.Close()
-	})
-	events.OnKey(events.EventTerminated, fmt.Sprintf("kvstore_%p", this), func() {
+	events.OnClose(func() {
 		_ = this.Close()
 	})
 
