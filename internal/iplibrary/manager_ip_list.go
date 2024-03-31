@@ -120,9 +120,9 @@ func (this *IPListManager) init() {
 	var db IPListDB
 	var err error
 	if sqliteErr == nil {
-		db, err = NewIPListSqlite()
+		db, err = NewSQLiteIPList()
 	} else {
-		db, err = NewIPListKV()
+		db, err = NewKVIPList()
 	}
 
 	if err != nil {

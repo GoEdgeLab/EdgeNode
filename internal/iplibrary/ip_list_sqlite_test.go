@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func TestIPListDB_AddItem(t *testing.T) {
-	db, err := iplibrary.NewIPListSqlite()
+func TestSQLiteIPList_AddItem(t *testing.T) {
+	db, err := iplibrary.NewSQLiteIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,8 +58,8 @@ func TestIPListDB_AddItem(t *testing.T) {
 	t.Log("ok")
 }
 
-func TestIPListDB_ReadItems(t *testing.T) {
-	db, err := iplibrary.NewIPListSqlite()
+func TestSQLiteIPList_ReadItems(t *testing.T) {
+	db, err := iplibrary.NewSQLiteIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,8 +79,8 @@ func TestIPListDB_ReadItems(t *testing.T) {
 	logs.PrintAsJSON(items, t)
 }
 
-func TestIPListDB_ReadMaxVersion(t *testing.T) {
-	db, err := iplibrary.NewIPListSqlite()
+func TestSQLiteIPList_ReadMaxVersion(t *testing.T) {
+	db, err := iplibrary.NewSQLiteIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,8 +90,8 @@ func TestIPListDB_ReadMaxVersion(t *testing.T) {
 	t.Log(db.ReadMaxVersion())
 }
 
-func TestIPListDB_UpdateMaxVersion(t *testing.T) {
-	db, err := iplibrary.NewIPListSqlite()
+func TestSQLiteIPList_UpdateMaxVersion(t *testing.T) {
+	db, err := iplibrary.NewSQLiteIPList()
 	if err != nil {
 		t.Fatal(err)
 	}

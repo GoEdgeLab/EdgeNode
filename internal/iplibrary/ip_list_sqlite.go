@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-type IPListSQLite struct {
+type SQLiteIPList struct {
 	db *dbs.DB
 
 	itemTableName    string
@@ -36,8 +36,8 @@ type IPListSQLite struct {
 	isClosed bool
 }
 
-func NewIPListSqlite() (*IPListSQLite, error) {
-	var db = &IPListSQLite{
+func NewSQLiteIPList() (*SQLiteIPList, error) {
+	var db = &SQLiteIPList{
 		itemTableName:    "ipItems",
 		versionTableName: "versions",
 		dir:              filepath.Clean(Tea.Root + "/data"),
@@ -47,7 +47,7 @@ func NewIPListSqlite() (*IPListSQLite, error) {
 	return db, err
 }
 
-func (this *IPListSQLite) init() error {
+func (this *SQLiteIPList) init() error {
 	// 检查目录是否存在
 	_, err := os.Stat(this.dir)
 	if err != nil {
@@ -178,12 +178,12 @@ ON "` + this.itemTableName + `" (
 }
 
 // Name 数据库名称代号
-func (this *IPListSQLite) Name() string {
+func (this *SQLiteIPList) Name() string {
 	return "sqlite"
 }
 
 // DeleteExpiredItems 删除过期的条目
-func (this *IPListSQLite) DeleteExpiredItems() error {
+func (this *SQLiteIPList) DeleteExpiredItems() error {
 	if this.isClosed {
 		return nil
 	}
@@ -192,7 +192,7 @@ func (this *IPListSQLite) DeleteExpiredItems() error {
 	return err
 }
 
-func (this *IPListSQLite) AddItem(item *pb.IPItem) error {
+func (this *SQLiteIPList) AddItem(item *pb.IPItem) error {
 	if this.isClosed {
 		return nil
 	}
@@ -215,7 +215,7 @@ func (this *IPListSQLite) AddItem(item *pb.IPItem) error {
 	return this.UpdateMaxVersion(item.Version)
 }
 
-func (this *IPListSQLite) ReadItems(offset int64, size int64) (items []*pb.IPItem, goNext bool, err error) {
+func (this *SQLiteIPList) ReadItems(offset int64, size int64) (items []*pb.IPItem, goNext bool, err error) {
 	if this.isClosed {
 		return
 	}
@@ -243,7 +243,7 @@ func (this *IPListSQLite) ReadItems(offset int64, size int64) (items []*pb.IPIte
 }
 
 // ReadMaxVersion 读取当前最大版本号
-func (this *IPListSQLite) ReadMaxVersion() (int64, error) {
+func (this *SQLiteIPList) ReadMaxVersion() (int64, error) {
 	if this.isClosed {
 		return 0, nil
 	}
@@ -278,7 +278,7 @@ func (this *IPListSQLite) ReadMaxVersion() (int64, error) {
 }
 
 // UpdateMaxVersion 修改版本号
-func (this *IPListSQLite) UpdateMaxVersion(version int64) error {
+func (this *SQLiteIPList) UpdateMaxVersion(version int64) error {
 	if this.isClosed {
 		return nil
 	}
@@ -287,7 +287,7 @@ func (this *IPListSQLite) UpdateMaxVersion(version int64) error {
 	return err
 }
 
-func (this *IPListSQLite) Close() error {
+func (this *SQLiteIPList) Close() error {
 	this.isClosed = true
 
 	if this.db != nil {

@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-func TestIPListKV_AddItem(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_AddItem(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,8 +71,8 @@ func TestIPListKV_AddItem(t *testing.T) {
 	}
 }
 
-func TestIPListKV_AddItems_Many(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_AddItems_Many(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,8 +109,8 @@ func TestIPListKV_AddItems_Many(t *testing.T) {
 	}
 }
 
-func TestIPListKV_DeleteExpiredItems(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_DeleteExpiredItems(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,8 +125,8 @@ func TestIPListKV_DeleteExpiredItems(t *testing.T) {
 	}
 }
 
-func TestIPListKV_UpdateMaxVersion(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_UpdateMaxVersion(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,8 +148,8 @@ func TestIPListKV_UpdateMaxVersion(t *testing.T) {
 	t.Log("version:", maxVersion)
 }
 
-func TestIPListKV_ReadMaxVersion(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_ReadMaxVersion(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,8 +162,8 @@ func TestIPListKV_ReadMaxVersion(t *testing.T) {
 	t.Log("version:", maxVersion)
 }
 
-func TestIPListKV_ReadItems(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_ReadItems(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,8 +184,8 @@ func TestIPListKV_ReadItems(t *testing.T) {
 	}
 }
 
-func TestIPListKV_CountItems(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_CountItems(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,8 +209,8 @@ func TestIPListKV_CountItems(t *testing.T) {
 	t.Log("count:", count, "len:", len(m))
 }
 
-func TestIPListKV_Inspect(t *testing.T) {
-	kv, err := iplibrary.NewIPListKV()
+func TestKVIPList_Inspect(t *testing.T) {
+	kv, err := iplibrary.NewKVIPList()
 	if err != nil {
 		t.Fatal(err)
 	}

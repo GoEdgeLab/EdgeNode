@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type IPListKV struct {
+type KVIPList struct {
 	ipTable       *kvstore.Table[*pb.IPItem]
 	versionsTable *kvstore.Table[int64]
 
@@ -28,8 +28,8 @@ type IPListKV struct {
 	offsetItemKey string
 }
 
-func NewIPListKV() (*IPListKV, error) {
-	var db = &IPListKV{
+func NewKVIPList() (*KVIPList, error) {
+	var db = &KVIPList{
 		cleanTicker: time.NewTicker(24 * time.Hour),
 		encoder:     &IPItemEncoder[*pb.IPItem]{},
 	}
@@ -37,7 +37,7 @@ func NewIPListKV() (*IPListKV, error) {
 	return db, err
 }
 
-func (this *IPListKV) init() error {
+func (this *KVIPList) init() error {
 	store, storeErr := kvstore.DefaultStore()
 	if storeErr != nil {
 		return storeErr
@@ -89,12 +89,12 @@ func (this *IPListKV) init() error {
 }
 
 // Name 数据库名称代号
-func (this *IPListKV) Name() string {
+func (this *KVIPList) Name() string {
 	return "kvstore"
 }
 
 // DeleteExpiredItems 删除过期的条目
-func (this *IPListKV) DeleteExpiredItems() error {
+func (this *KVIPList) DeleteExpiredItems() error {
 	if this.isClosed {
 		return nil
 	}
@@ -134,7 +134,7 @@ func (this *IPListKV) DeleteExpiredItems() error {
 	return nil
 }
 
-func (this *IPListKV) AddItem(item *pb.IPItem) error {
+func (this *KVIPList) AddItem(item *pb.IPItem) error {
 	if this.isClosed {
 		return nil
 	}
@@ -159,7 +159,7 @@ func (this *IPListKV) AddItem(item *pb.IPItem) error {
 	return this.UpdateMaxVersion(item.Version)
 }
 
-func (this *IPListKV) ReadItems(offset int64, size int64) (items []*pb.IPItem, goNextLoop bool, err error) {
+func (this *KVIPList) ReadItems(offset int64, size int64) (items []*pb.IPItem, goNextLoop bool, err error) {
 	if this.isClosed {
 		return
 	}
@@ -181,7 +181,7 @@ func (this *IPListKV) ReadItems(offset int64, size int64) (items []*pb.IPItem, g
 }
 
 // ReadMaxVersion 读取当前最大版本号
-func (this *IPListKV) ReadMaxVersion() (int64, error) {
+func (this *KVIPList) ReadMaxVersion() (int64, error) {
 	if this.isClosed {
 		return 0, errors.New("database has been closed")
 	}
@@ -197,15 +197,15 @@ func (this *IPListKV) ReadMaxVersion() (int64, error) {
 }
 
 // UpdateMaxVersion 修改版本号
-func (this *IPListKV) UpdateMaxVersion(version int64) error {
+func (this *KVIPList) UpdateMaxVersion(version int64) error {
 	if this.isClosed {
 		return nil
 	}
 
-	return this.versionsTable.SetSync("version", version)
+	return this.versionsTable.Set("version", version)
 }
 
-func (this *IPListKV) TestInspect(t *testing.T) error {
+func (this *KVIPList) TestInspect(t *testing.T) error {
 	return this.ipTable.
 		Query().
 		FindAll(func(tx *kvstore.Tx[*pb.IPItem], item kvstore.Item[*pb.IPItem]) (goNext bool, err error) {
@@ -219,11 +219,11 @@ func (this *IPListKV) TestInspect(t *testing.T) error {
 }
 
 // Flush to disk
-func (this *IPListKV) Flush() error {
+func (this *KVIPList) Flush() error {
 	return this.ipTable.DB().Store().Flush()
 }
 
-func (this *IPListKV) Close() error {
+func (this *KVIPList) Close() error {
 	this.isClosed = true
 	return nil
 }
