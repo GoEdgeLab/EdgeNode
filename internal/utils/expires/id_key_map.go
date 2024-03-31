@@ -58,3 +58,11 @@ func (this *IdKeyMap) DeleteKey(key string) {
 func (this *IdKeyMap) Len() int {
 	return len(this.idKeys)
 }
+
+func (this *IdKeyMap) IdKeys() map[int64]string {
+	return this.idKeys
+}
+
+func (this *IdKeyMap) KeyIds() map[string]int64 {
+	return this.keyIds
+}
