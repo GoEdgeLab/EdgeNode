@@ -21,7 +21,7 @@ func (this *CounterTable[T]) Increase(key string, delta T) (newValue T, err erro
 	err = this.Table.WriteTx(func(tx *Tx[T]) error {
 		value, getErr := tx.Get(key)
 		if getErr != nil {
-			if !IsKeyNotFound(getErr) {
+			if !IsNotFound(getErr) {
 				return getErr
 			}
 		}

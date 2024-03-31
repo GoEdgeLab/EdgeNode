@@ -64,6 +64,10 @@ func (this *Table[T]) DB() *DB {
 	return this.db
 }
 
+func (this *Table[T]) Encoder() ValueEncoder[T] {
+	return this.encoder
+}
+
 func (this *Table[T]) Set(key string, value T) error {
 	if len(key) > KeyMaxLength {
 		return ErrKeyTooLong
@@ -75,7 +79,22 @@ func (this *Table[T]) Set(key string, value T) error {
 	}
 
 	return this.WriteTx(func(tx *Tx[T]) error {
-		return this.set(tx, key, valueBytes, value, false)
+		return this.set(tx, key, valueBytes, value, false, false)
+	})
+}
+
+func (this *Table[T]) SetSync(key string, value T) error {
+	if len(key) > KeyMaxLength {
+		return ErrKeyTooLong
+	}
+
+	valueBytes, err := this.encoder.Encode(value)
+	if err != nil {
+		return err
+	}
+
+	return this.WriteTxSync(func(tx *Tx[T]) error {
+		return this.set(tx, key, valueBytes, value, false, true)
 	})
 }
 
@@ -90,7 +109,7 @@ func (this *Table[T]) Insert(key string, value T) error {
 	}
 
 	return this.WriteTx(func(tx *Tx[T]) error {
-		return this.set(tx, key, valueBytes, value, true)
+		return this.set(tx, key, valueBytes, value, true, false)
 	})
 }
 
@@ -111,7 +130,7 @@ func (this *Table[T]) ComposeFieldKey(keyBytes []byte, fieldName string, fieldVa
 func (this *Table[T]) Exist(key string) (found bool, err error) {
 	_, closer, err := this.db.store.rawDB.Get(this.FullKey(key))
 	if err != nil {
-		if IsKeyNotFound(err) {
+		if IsNotFound(err) {
 			return false, nil
 		}
 		return false, err
@@ -171,6 +190,20 @@ func (this *Table[T]) WriteTx(fn func(tx *Tx[T]) error) error {
 	}
 
 	return tx.Commit()
+}
+
+func (this *Table[T]) WriteTxSync(fn func(tx *Tx[T]) error) error {
+	var tx = NewTx[T](this, false)
+	defer func() {
+		_ = tx.Close()
+	}()
+
+	err := fn(tx)
+	if err != nil {
+		return err
+	}
+
+	return tx.CommitSync()
 }
 
 func (this *Table[T]) Truncate() error {
@@ -256,7 +289,7 @@ func (this *Table[T]) deleteKeys(tx *Tx[T], key ...string) error {
 			if len(this.fieldNames) > 0 {
 				valueBytes, closer, getErr := batch.Get(keyBytes)
 				if getErr != nil {
-					if IsKeyNotFound(getErr) {
+					if IsNotFound(getErr) {
 						return nil
 					}
 					return getErr
@@ -298,8 +331,12 @@ func (this *Table[T]) deleteKeys(tx *Tx[T], key ...string) error {
 	return nil
 }
 
-func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T, insertOnly bool) error {
+func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T, insertOnly bool, syncMode bool) error {
 	var keyBytes = this.FullKey(key)
+	var writeOptions = DefaultWriteOptions
+	if syncMode {
+		writeOptions = DefaultWriteSyncOptions
+	}
 
 	var batch = tx.batch
 
@@ -312,7 +349,7 @@ func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T, ins
 		if countFields > 0 {
 			oldValueBytes, closer, getErr := batch.Get(keyBytes)
 			if getErr != nil {
-				if !IsKeyNotFound(getErr) {
+				if !IsNotFound(getErr) {
 					return getErr
 				}
 			} else {
@@ -330,7 +367,7 @@ func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T, ins
 		}
 	}
 
-	setErr := batch.Set(keyBytes, valueBytes, DefaultWriteOptions)
+	setErr := batch.Set(keyBytes, valueBytes, writeOptions)
 	if setErr != nil {
 		return setErr
 	}
@@ -362,14 +399,14 @@ func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T, ins
 					// skip the field
 					continue
 				}
-				deleteFieldErr := batch.Delete(oldFieldKeyBytes, DefaultWriteOptions)
+				deleteFieldErr := batch.Delete(oldFieldKeyBytes, writeOptions)
 				if deleteFieldErr != nil {
 					return deleteFieldErr
 				}
 			}
 
 			// set new field key
-			setFieldErr := batch.Set(newFieldKeyBytes, nil, DefaultWriteOptions)
+			setFieldErr := batch.Set(newFieldKeyBytes, nil, writeOptions)
 			if setFieldErr != nil {
 				return setFieldErr
 			}

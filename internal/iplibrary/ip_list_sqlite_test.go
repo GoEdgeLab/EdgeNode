@@ -12,7 +12,7 @@ import (
 )
 
 func TestIPListDB_AddItem(t *testing.T) {
-	db, err := iplibrary.NewIPListDB()
+	db, err := iplibrary.NewIPListSqlite()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestIPListDB_AddItem(t *testing.T) {
 }
 
 func TestIPListDB_ReadItems(t *testing.T) {
-	db, err := iplibrary.NewIPListDB()
+	db, err := iplibrary.NewIPListSqlite()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,15 +71,16 @@ func TestIPListDB_ReadItems(t *testing.T) {
 		_ = db.Close()
 	}()
 
-	items, err := db.ReadItems(0, 2)
+	items, goNext, err := db.ReadItems(0, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log("goNext:", goNext)
 	logs.PrintAsJSON(items, t)
 }
 
 func TestIPListDB_ReadMaxVersion(t *testing.T) {
-	db, err := iplibrary.NewIPListDB()
+	db, err := iplibrary.NewIPListSqlite()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +91,7 @@ func TestIPListDB_ReadMaxVersion(t *testing.T) {
 }
 
 func TestIPListDB_UpdateMaxVersion(t *testing.T) {
-	db, err := iplibrary.NewIPListDB()
+	db, err := iplibrary.NewIPListSqlite()
 	if err != nil {
 		t.Fatal(err)
 	}

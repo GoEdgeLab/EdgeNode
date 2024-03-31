@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/cockroachdb/pebble"
 	"github.com/iwind/TeaGo/Tea"
@@ -85,6 +86,31 @@ func OpenStoreDir(dir string, storeName string) (*Store, error) {
 	return store, nil
 }
 
+var storeOnce = &sync.Once{}
+var defaultSore *Store
+
+func DefaultStore() (*Store, error) {
+	if defaultSore != nil {
+		return defaultSore, nil
+	}
+
+	storeOnce.Do(func() {
+		store, err := NewStore("default")
+		if err != nil {
+			remotelogs.Error("KV", "create default store failed: "+err.Error())
+			return
+		}
+		err = store.Open()
+		if err != nil {
+			remotelogs.Error("KV", "open default store failed: "+err.Error())
+			return
+		}
+		defaultSore = store
+	})
+
+	return defaultSore, nil
+}
+
 func (this *Store) Open() error {
 	var opt = &pebble.Options{
 		Logger: NewLogger(),
@@ -142,6 +168,10 @@ func (this *Store) NewDB(dbName string) (*DB, error) {
 
 func (this *Store) RawDB() *pebble.DB {
 	return this.rawDB
+}
+
+func (this *Store) Flush() error {
+	return this.rawDB.Flush()
 }
 
 func (this *Store) Close() error {

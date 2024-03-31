@@ -97,7 +97,7 @@ func (this *KVListFileStore) ExistItem(hash string) (bool, error) {
 
 	item, err := this.itemsTable.Get(hash)
 	if err != nil {
-		if kvstore.IsKeyNotFound(err) {
+		if kvstore.IsNotFound(err) {
 			return false, nil
 		}
 		return false, err

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	byteutils "github.com/TeaOSLab/EdgeNode/internal/utils/byte"
 )
 
 type DataType = int
@@ -222,11 +223,11 @@ func (this *Query[T]) iterateKeys(fn IteratorFunc[T]) error {
 	var prefix []byte
 	switch this.dataType {
 	case DataTypeKey:
-		prefix = append(this.table.Namespace(), KeyPrefix...)
+		prefix = byteutils.Append(this.table.Namespace(), []byte(KeyPrefix)...)
 	case DataTypeField:
-		prefix = append(this.table.Namespace(), FieldPrefix...)
+		prefix = byteutils.Append(this.table.Namespace(), []byte(FieldPrefix)...)
 	default:
-		prefix = append(this.table.Namespace(), KeyPrefix...)
+		prefix = byteutils.Append(this.table.Namespace(), []byte(KeyPrefix)...)
 	}
 
 	var prefixLen = len(prefix)
@@ -238,21 +239,21 @@ func (this *Query[T]) iterateKeys(fn IteratorFunc[T]) error {
 	var offsetKey []byte
 	if this.reverse {
 		if len(this.offsetKey) > 0 {
-			offsetKey = append(prefix, this.offsetKey...)
+			offsetKey = byteutils.Append(prefix, []byte(this.offsetKey)...)
 		} else {
-			offsetKey = append(prefix, 0xFF)
+			offsetKey = byteutils.Append(prefix, 0xFF)
 		}
 
 		opt.LowerBound = prefix
 		opt.UpperBound = offsetKey
 	} else {
 		if len(this.offsetKey) > 0 {
-			offsetKey = append(prefix, this.offsetKey...)
+			offsetKey = byteutils.Append(prefix, []byte(this.offsetKey)...)
 		} else {
 			offsetKey = prefix
 		}
 		opt.LowerBound = offsetKey
-		opt.UpperBound = append(offsetKey, 0xFF)
+		opt.UpperBound = byteutils.Append(prefix, 0xFF)
 	}
 
 	var hasOffsetKey = len(this.offsetKey) > 0
@@ -267,7 +268,7 @@ func (this *Query[T]) iterateKeys(fn IteratorFunc[T]) error {
 
 	var count int
 
-	var itemFn = func() (goNext bool, err error) {
+	var itemFn = func() (goNextItem bool, err error) {
 		var keyBytes = it.Key()
 
 		// skip first offset key
@@ -297,7 +298,11 @@ func (this *Query[T]) iterateKeys(fn IteratorFunc[T]) error {
 			Value: value,
 		})
 		if callbackErr != nil {
-			return false, callbackErr
+			if IsSkipError(callbackErr) {
+				return true, nil
+			} else {
+				return false, callbackErr
+			}
 		}
 		if !goNext {
 			return false, nil
@@ -361,9 +366,9 @@ func (this *Query[T]) iterateFields(fn IteratorFunc[T]) error {
 		if len(this.fieldOffsetKey) > 0 {
 			offsetKey = this.fieldOffsetKey
 		} else if len(this.offsetKey) > 0 {
-			offsetKey = append(prefix, this.offsetKey...)
+			offsetKey = byteutils.Append(prefix, []byte(this.offsetKey)...)
 		} else {
-			offsetKey = append(prefix, 0xFF)
+			offsetKey = byteutils.Append(prefix, 0xFF)
 		}
 		opt.LowerBound = prefix
 		opt.UpperBound = offsetKey
@@ -371,14 +376,14 @@ func (this *Query[T]) iterateFields(fn IteratorFunc[T]) error {
 		if len(this.fieldOffsetKey) > 0 {
 			offsetKey = this.fieldOffsetKey
 		} else if len(this.offsetKey) > 0 {
-			offsetKey = append(prefix, this.offsetKey...)
+			offsetKey = byteutils.Append(prefix, []byte(this.offsetKey)...)
 			offsetKey = append(offsetKey, 0)
 		} else {
 			offsetKey = prefix
 		}
 
 		opt.LowerBound = offsetKey
-		opt.UpperBound = append(prefix, 0xFF)
+		opt.UpperBound = byteutils.Append(prefix, 0xFF)
 	}
 
 	it, itErr := this.tx.NewIterator(opt)
@@ -391,7 +396,7 @@ func (this *Query[T]) iterateFields(fn IteratorFunc[T]) error {
 
 	var count int
 
-	var itemFn = func() (goNext bool, err error) {
+	var itemFn = func() (goNextItem bool, err error) {
 		var fieldKeyBytes = it.Key()
 
 		fieldValueBytes, keyBytes, decodeKeyErr := this.table.DecodeFieldKey(this.fieldName, fieldKeyBytes)
@@ -423,7 +428,7 @@ func (this *Query[T]) iterateFields(fn IteratorFunc[T]) error {
 		if !this.keysOnly {
 			value, getErr := this.table.getWithKeyBytes(this.tx, this.table.FullKeyBytes(keyBytes))
 			if getErr != nil {
-				if IsKeyNotFound(getErr) {
+				if IsNotFound(getErr) {
 					return true, nil
 				}
 				return false, getErr
@@ -432,11 +437,15 @@ func (this *Query[T]) iterateFields(fn IteratorFunc[T]) error {
 			resultItem.Value = value
 		}
 
-		goNext, err = fn(this.tx, resultItem)
+		goNextItem, err = fn(this.tx, resultItem)
 		if err != nil {
-			return
+			if IsSkipError(err) {
+				return true, nil
+			} else {
+				return false, err
+			}
 		}
-		if !goNext {
+		if !goNextItem {
 			return false, nil
 		}
 

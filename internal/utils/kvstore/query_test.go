@@ -138,6 +138,26 @@ func TestQuery_FindAll_Offset(t *testing.T) {
 	}
 }
 
+func TestQuery_FindAll_Skip(t *testing.T) {
+	var table = testOpenStoreTable[*testCachedItem](t, "cache_items", &testCacheItemEncoder[*testCachedItem]{})
+
+	{
+		err := table.Query().
+			Offset("a3").
+			Limit(10).
+			FindAll(func(tx *kvstore.Tx[*testCachedItem], item kvstore.Item[*testCachedItem]) (goNext bool, err error) {
+				if item.Key == "a30" || item.Key == "a3000005" {
+					return kvstore.Skip()
+				}
+				t.Log("key:", item.Key, "value:", item.Value)
+				return true, nil
+			})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestQuery_FindAll_Count(t *testing.T) {
 	var table = testOpenStoreTable[*testCachedItem](t, "cache_items", &testCacheItemEncoder[*testCachedItem]{})
 

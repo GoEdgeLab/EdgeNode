@@ -9,10 +9,16 @@ import (
 
 var ErrTableNotFound = errors.New("table not found")
 var ErrKeyTooLong = errors.New("too long key")
+var ErrSkip= errors.New("skip") // skip count in iterator
 
-func IsKeyNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	return errors.Is(err, pebble.ErrNotFound)
+func IsNotFound(err error) bool {
+	return err != nil && errors.Is(err, pebble.ErrNotFound)
+}
+
+func IsSkipError(err error) bool {
+	return err != nil && errors.Is(err, ErrSkip)
+}
+
+func Skip() (bool, error) {
+	return true, ErrSkip
 }

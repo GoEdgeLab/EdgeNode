@@ -8,10 +8,13 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/types"
+	"os"
 	"sync"
 	"time"
 )
@@ -45,7 +48,7 @@ func init() {
 type IPListManager struct {
 	ticker *time.Ticker
 
-	db *IPListDB
+	db IPListDB
 
 	lastVersion   int64
 	fetchPageSize int64
@@ -83,7 +86,7 @@ func (this *IPListManager) Start() {
 		case <-this.ticker.C:
 		case <-IPListUpdateNotify:
 		}
-		err := this.loop()
+		err = this.loop()
 		if err != nil {
 			countErrors++
 
@@ -110,7 +113,18 @@ func (this *IPListManager) Stop() {
 
 func (this *IPListManager) init() {
 	// 从数据库中当中读取数据
-	db, err := NewIPListDB()
+	// 检查sqlite文件是否存在，以便决定使用sqlite还是kv
+	var sqlitePath = Tea.Root + "/data/ip_list.db"
+	_, sqliteErr := os.Stat(sqlitePath)
+
+	var db IPListDB
+	var err error
+	if sqliteErr == nil {
+		db, err = NewIPListSqlite()
+	} else {
+		db, err = NewIPListKV()
+	}
+
 	if err != nil {
 		remotelogs.Error("IP_LIST_MANAGER", "create ip list local database failed: "+err.Error())
 	} else {
@@ -120,24 +134,30 @@ func (this *IPListManager) init() {
 		_ = db.DeleteExpiredItems()
 
 		// 本地数据库中最大版本号
-		this.lastVersion = db.ReadMaxVersion()
+		this.lastVersion, err = db.ReadMaxVersion()
+		if err != nil {
+			remotelogs.Error("IP_LIST_MANAGER", "find max version failed: "+err.Error())
+			this.lastVersion = 0
+		}
+		remotelogs.Println("IP_LIST_MANAGER", "starting from '"+db.Name()+"' version '"+types.String(this.lastVersion)+"' ...")
 
 		// 从本地数据库中加载
 		var offset int64 = 0
 		var size int64 = 2_000
+
+		var tr = trackers.Begin("IP_LIST_MANAGER:load")
+		defer tr.End()
+
 		for {
-			items, err := db.ReadItems(offset, size)
+			items, goNext, readErr := db.ReadItems(offset, size)
 			var l = len(items)
-			if err != nil {
-				remotelogs.Error("IP_LIST_MANAGER", "read ip list from local database failed: "+err.Error())
+			if readErr != nil {
+				remotelogs.Error("IP_LIST_MANAGER", "read ip list from local database failed: "+readErr.Error())
 			} else {
-				if l == 0 {
+				if !goNext {
 					break
 				}
 				this.processItems(items, false)
-				if int64(l) < size {
-					break
-				}
 			}
 			offset += int64(l)
 		}
@@ -310,9 +330,14 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 
 // 调试IP信息
 func (this *IPListManager) debugItem(item *pb.IPItem) {
+	var ipRange = item.IpFrom
+	if len(item.IpTo) > 0 {
+		ipRange += " - " + item.IpTo
+	}
+
 	if item.IsDeleted {
-		remotelogs.Debug("IP_ITEM_DEBUG", "delete '"+item.IpFrom+"'")
+		remotelogs.Debug("IP_ITEM_DEBUG", "delete '"+ipRange+"'")
 	} else {
-		remotelogs.Debug("IP_ITEM_DEBUG", "add '"+item.IpFrom+"'")
+		remotelogs.Debug("IP_ITEM_DEBUG", "add '"+ipRange+"'")
 	}
 }

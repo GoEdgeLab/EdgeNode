@@ -45,7 +45,7 @@ func TestTable_Set(t *testing.T) {
 
 	value, err := table.Get("a")
 	if err != nil {
-		if kvstore.IsKeyNotFound(err) {
+		if kvstore.IsNotFound(err) {
 			t.Log("not found key")
 			return
 		}
@@ -81,7 +81,7 @@ func TestTable_Get(t *testing.T) {
 	for _, key := range []string{"a", "b", "c"} {
 		value, getErr := table.Get(key)
 		if getErr != nil {
-			if kvstore.IsKeyNotFound(getErr) {
+			if kvstore.IsNotFound(getErr) {
 				t.Log("not found key", key)
 				continue
 			}
@@ -146,7 +146,7 @@ func TestTable_Delete(t *testing.T) {
 
 	value, err := table.Get("a123")
 	if err != nil {
-		if !kvstore.IsKeyNotFound(err) {
+		if !kvstore.IsNotFound(err) {
 			t.Fatal(err)
 		}
 	} else {
@@ -173,7 +173,7 @@ func TestTable_Delete(t *testing.T) {
 
 	{
 		_, err = table.Get("a123")
-		a.IsTrue(kvstore.IsKeyNotFound(err))
+		a.IsTrue(kvstore.IsNotFound(err))
 	}
 }
 
@@ -357,7 +357,7 @@ func BenchmarkTable_Get(b *testing.B) {
 		for pb.Next() {
 			_, putErr := table.Get(types.String(rand.Int()))
 			if putErr != nil {
-				if kvstore.IsKeyNotFound(putErr) {
+				if kvstore.IsNotFound(putErr) {
 					continue
 				}
 				b.Fatal(putErr)

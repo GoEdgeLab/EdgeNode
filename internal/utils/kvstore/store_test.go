@@ -6,7 +6,9 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
 	"github.com/cockroachdb/pebble"
 	"github.com/iwind/TeaGo/Tea"
+	"github.com/iwind/TeaGo/assert"
 	_ "github.com/iwind/TeaGo/bootstrap"
+	"sync"
 	"testing"
 	"time"
 )
@@ -19,6 +21,44 @@ func TestMain(m *testing.M) {
 	}
 }
 
+func TestStore_Default(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
+	store, err := kvstore.DefaultStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.IsTrue(store != nil)
+}
+
+func TestStore_Default_Concurrent(t *testing.T) {
+	var lastStore *kvstore.Store
+
+	const threads = 32
+
+	var wg = &sync.WaitGroup{}
+	wg.Add(threads)
+	for i := 0; i < threads; i++ {
+		go func() {
+			defer wg.Done()
+
+			store, err := kvstore.DefaultStore()
+			if err != nil {
+				t.Log("ERROR", err)
+				t.Fail()
+			}
+
+			if lastStore != nil && lastStore != store {
+				t.Log("ERROR", "should be single instance")
+				t.Fail()
+			}
+
+			lastStore = store
+		}()
+	}
+	wg.Wait()
+}
+
 func TestStore_Open(t *testing.T) {
 	store, err := kvstore.OpenStore("test")
 	if err != nil {
@@ -29,6 +69,7 @@ func TestStore_Open(t *testing.T) {
 	}()
 
 	t.Log("opened")
+	_ = store
 }
 
 func TestStore_RawDB(t *testing.T) {
