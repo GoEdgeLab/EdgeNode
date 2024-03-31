@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/iwind/TeaGo/Tea"
+	"os"
 	"sync"
 	"time"
 )
@@ -33,7 +34,7 @@ type Manager struct {
 	ipMap  map[string]string // ip => agentCode
 	locker sync.RWMutex
 
-	db *DB
+	db DB
 
 	lastId int64
 }
@@ -44,7 +45,7 @@ func NewManager() *Manager {
 	}
 }
 
-func (this *Manager) SetDB(db *DB) {
+func (this *Manager) SetDB(db DB) {
 	this.db = db
 }
 
@@ -195,7 +196,14 @@ func (this *Manager) ContainsIP(ip string) bool {
 }
 
 func (this *Manager) loadDB() error {
-	var db = NewDB(Tea.Root + "/data/agents.db")
+	var sqlitePath = Tea.Root + "/data/agents.db"
+	_, sqliteErr := os.Stat(sqlitePath)
+	var db DB
+	if sqliteErr == nil {
+		db = NewSQLiteDB(sqlitePath)
+	} else {
+		db = NewKVDB()
+	}
 	err := db.Init()
 	if err != nil {
 		return err

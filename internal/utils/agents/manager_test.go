@@ -15,7 +15,7 @@ func TestNewManager(t *testing.T) {
 		return
 	}
 
-	var db = agents.NewDB(Tea.Root + "/data/agents.db")
+	var db = agents.NewSQLiteDB(Tea.Root + "/data/agents.db")
 	err := db.Init()
 	if err != nil {
 		t.Fatal(err)

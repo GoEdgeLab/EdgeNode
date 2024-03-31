@@ -4,6 +4,7 @@ package kvstore
 
 import (
 	"errors"
+	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
@@ -38,16 +39,16 @@ func NewStore(storeName string) (*Store, error) {
 		return nil, errors.New("invalid store name '" + storeName + "'")
 	}
 
-	var root = Tea.Root + "/data/stores"
-	_, err := os.Stat(root)
+	var path = Tea.Root + "/data/stores/" + storeName + StoreSuffix
+	_, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
-		_ = os.MkdirAll(root, 0777)
+		_ = os.MkdirAll(path, 0777)
 	}
 
 	return &Store{
 		name:   storeName,
-		path:   Tea.Root + "/data/stores/" + storeName + StoreSuffix,
-		locker: fsutils.NewLocker(Tea.Root + "/data/stores/" + storeName + StoreSuffix + "/.fs"),
+		path:   path,
+		locker: fsutils.NewLocker(path + "/.fs"),
 	}, nil
 }
 
@@ -96,21 +97,24 @@ func DefaultStore() (*Store, error) {
 		return defaultSore, nil
 	}
 
+	var resultErr error
 	storeOnce.Do(func() {
 		store, err := NewStore("default")
 		if err != nil {
-			remotelogs.Error("KV", "create default store failed: "+err.Error())
+			resultErr = fmt.Errorf("create default store failed: %w", err)
+			remotelogs.Error("KV", resultErr.Error())
 			return
 		}
 		err = store.Open()
 		if err != nil {
-			remotelogs.Error("KV", "open default store failed: "+err.Error())
+			resultErr = fmt.Errorf("open default store failed: %w", err)
+			remotelogs.Error("KV", resultErr.Error())
 			return
 		}
 		defaultSore = store
 	})
 
-	return defaultSore, nil
+	return defaultSore, resultErr
 }
 
 func (this *Store) Open() error {
