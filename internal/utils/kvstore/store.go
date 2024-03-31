@@ -70,16 +70,16 @@ func OpenStoreDir(dir string, storeName string) (*Store, error) {
 		return nil, errors.New("invalid store name '" + storeName + "'")
 	}
 
-	_, err := os.Stat(dir)
+	var path = strings.TrimSuffix(dir, "/") + "/" + storeName + StoreSuffix
+	_, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
-		_ = os.MkdirAll(dir, 0777)
+		_ = os.MkdirAll(path, 0777)
 	}
 
-	dir = strings.TrimSuffix(dir, "/")
-
 	var store = &Store{
-		name: storeName,
-		path: dir + "/" + storeName + StoreSuffix,
+		name:   storeName,
+		path:   path,
+		locker: fsutils.NewLocker(path + "/.fs"),
 	}
 
 	err = store.Open()
