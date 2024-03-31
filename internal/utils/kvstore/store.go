@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/cockroachdb/pebble"
 	"github.com/iwind/TeaGo/Tea"
@@ -21,8 +22,9 @@ const StoreSuffix = ".store"
 type Store struct {
 	name string
 
-	path  string
-	rawDB *pebble.DB
+	path   string
+	rawDB  *pebble.DB
+	locker *fsutils.Locker
 
 	isClosed bool
 
@@ -44,8 +46,9 @@ func NewStore(storeName string) (*Store, error) {
 	}
 
 	return &Store{
-		name: storeName,
-		path: Tea.Root + "/data/stores/" + storeName + StoreSuffix,
+		name:   storeName,
+		path:   Tea.Root + "/data/stores/" + storeName + StoreSuffix,
+		locker: fsutils.NewLocker(Tea.Root + "/data/stores/" + storeName + StoreSuffix + "/.fs"),
 	}, nil
 }
 
@@ -112,6 +115,11 @@ func DefaultStore() (*Store, error) {
 }
 
 func (this *Store) Open() error {
+	err := this.locker.Lock()
+	if err != nil {
+		return err
+	}
+
 	var opt = &pebble.Options{
 		Logger: NewLogger(),
 	}
@@ -178,6 +186,8 @@ func (this *Store) Close() error {
 	if this.isClosed {
 		return nil
 	}
+
+	_ = this.locker.Release()
 
 	this.mu.Lock()
 	var lastErr error

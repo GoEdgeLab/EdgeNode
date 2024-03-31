@@ -14,7 +14,7 @@ type DB struct {
 	namespace string
 	tableMap  map[string]TableInterface
 
-	locker sync.RWMutex
+	mu sync.RWMutex
 }
 
 func NewDB(store *Store, dbName string) (*DB, error) {
@@ -34,8 +34,8 @@ func (this *DB) AddTable(table TableInterface) {
 	table.SetNamespace([]byte(this.Namespace() + table.Name() + "$"))
 	table.SetDB(this)
 
-	this.locker.Lock()
-	defer this.locker.Unlock()
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
 	this.tableMap[table.Name()] = table
 }
@@ -53,8 +53,8 @@ func (this *DB) Store() *Store {
 }
 
 func (this *DB) Close() error {
-	this.locker.Lock()
-	defer this.locker.Unlock()
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
 	var lastErr error
 	for _, table := range this.tableMap {

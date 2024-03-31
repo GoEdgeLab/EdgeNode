@@ -72,6 +72,30 @@ func TestStore_Open(t *testing.T) {
 	_ = store
 }
 
+func TestStore_Twice(t *testing.T) {
+	{
+		t.Log(1)
+		store, err := kvstore.OpenStore("test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = store.Close()
+	}
+
+	{
+		t.Log("2")
+		store, err := kvstore.OpenStore("test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			_ = store.Close()
+		}()
+	}
+
+	t.Log("opened")
+}
+
 func TestStore_RawDB(t *testing.T) {
 	store, err := kvstore.OpenStore("test")
 	if err != nil {
