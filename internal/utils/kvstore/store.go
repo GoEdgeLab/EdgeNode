@@ -162,13 +162,21 @@ func (this *Store) Delete(keyBytes []byte) error {
 }
 
 func (this *Store) NewDB(dbName string) (*DB, error) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	// check existence
+	for _, db := range this.dbs {
+		if db.name == dbName {
+			return db, nil
+		}
+	}
+
+	// create new
 	db, err := NewDB(this, dbName)
 	if err != nil {
 		return nil, err
 	}
-
-	this.mu.Lock()
-	defer this.mu.Unlock()
 
 	this.dbs = append(this.dbs, db)
 	return db, nil

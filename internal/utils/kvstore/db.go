@@ -52,6 +52,15 @@ func (this *DB) Store() *Store {
 	return this.store
 }
 
+// Truncate the database
+func (this *DB) Truncate() error {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	var start = []byte(this.Namespace())
+	return this.store.rawDB.DeleteRange(start, append(start, 0xFF), DefaultWriteOptions)
+}
+
 func (this *DB) Close() error {
 	this.mu.Lock()
 	defer this.mu.Unlock()

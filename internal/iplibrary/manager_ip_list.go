@@ -119,7 +119,7 @@ func (this *IPListManager) init() {
 
 	var db IPListDB
 	var err error
-	if sqliteErr == nil {
+	if sqliteErr == nil || !teaconst.EnableKVCacheStore {
 		db, err = NewSQLiteIPList()
 	} else {
 		db, err = NewKVIPList()

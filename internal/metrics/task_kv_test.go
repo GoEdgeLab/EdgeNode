@@ -37,8 +37,8 @@ func (this *testObj) MetricCategory() string {
 	return "http"
 }
 
-func TestTask_Init(t *testing.T) {
-	var task = metrics.NewTask(&serverconfigs.MetricItemConfig{
+func TestKVTask_Init(t *testing.T) {
+	var task = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
 		Id:         1,
 		IsOn:       false,
 		Category:   "",
@@ -57,8 +57,8 @@ func TestTask_Init(t *testing.T) {
 	t.Log("ok")
 }
 
-func TestTask_Add(t *testing.T) {
-	var task = metrics.NewTask(&serverconfigs.MetricItemConfig{
+func TestKVTask_Add(t *testing.T) {
+	var task = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
 		Id:         1,
 		IsOn:       false,
 		Category:   "",
@@ -80,15 +80,18 @@ func TestTask_Add(t *testing.T) {
 	}()
 
 	task.Add(&testObj{ip: "127.0.0.2"})
-	time.Sleep(1 * time.Second) // waiting for inserting
+
+	if testutils.IsSingleTesting() {
+		time.Sleep(1 * time.Second) // waiting for inserting
+	}
 }
 
-func TestTask_Add_Many(t *testing.T) {
+func TestKVTask_Add_Many(t *testing.T) {
 	if !testutils.IsSingleTesting() {
 		return
 	}
 
-	var task = metrics.NewTask(&serverconfigs.MetricItemConfig{
+	var task = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
 		Id:         1,
 		IsOn:       false,
 		Category:   "",
@@ -120,7 +123,7 @@ func TestTask_Add_Many(t *testing.T) {
 	}
 }
 
-func TestTask_InsertStat(t *testing.T) {
+func TestKVTask_InsertStat(t *testing.T) {
 	var item = &serverconfigs.MetricItemConfig{
 		Id:         1,
 		IsOn:       false,
@@ -131,11 +134,19 @@ func TestTask_InsertStat(t *testing.T) {
 		Value:      "${countRequest}",
 		Version:    1,
 	}
-	var task = metrics.NewTask(item)
+	var task = metrics.NewKVTask(item)
 	err := task.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer func() {
+		err = task.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
 	err = task.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -144,21 +155,50 @@ func TestTask_InsertStat(t *testing.T) {
 		_ = task.Stop()
 	}()
 
-	err = task.InsertStat(&metrics.Stat{
-		ServerId: 1,
-		Keys:     []string{"127.0.0.1"},
-		Hash:     "",
-		Value:    1,
-		Time:     item.CurrentTime(),
-	})
-	if err != nil {
-		t.Fatal(err)
+	{
+		err = task.InsertStat(&metrics.Stat{
+			ServerId: 1,
+			Keys:     []string{"127.0.0.1"},
+			Hash:     "",
+			Value:    1,
+			Time:     item.CurrentTime(),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
-	t.Log("ok")
+
+	{
+		err = task.InsertStat(&metrics.Stat{
+			ServerId: 2,
+			Keys:     []string{"127.0.0.2"},
+			Hash:     "",
+			Value:    3,
+			Time:     item.CurrentTime(),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	{
+		err = task.InsertStat(&metrics.Stat{
+			ServerId: 1,
+			Keys:     []string{"127.0.0.3"},
+			Hash:     "",
+			Value:    2,
+			Time:     item.CurrentTime(),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	TestKVTask_TestInspect(t)
 }
 
-func TestTask_CleanExpired(t *testing.T) {
-	var task = metrics.NewTask(&serverconfigs.MetricItemConfig{
+func TestKVTask_CleanExpired(t *testing.T) {
+	var task = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
 		Id:         1,
 		IsOn:       false,
 		Category:   "",
@@ -184,12 +224,18 @@ func TestTask_CleanExpired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("ok")
+
+	defer func() {
+		_ = task.Flush()
+	}()
+
+	t.Log("=== inspect ===")
+	task.TestInspect(t)
 }
 
-func TestTask_Upload(t *testing.T) {
-	var task = metrics.NewTask(&serverconfigs.MetricItemConfig{
-		Id:         1,
+func TestKVTask_Upload(t *testing.T) {
+	var task = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
+		Id:         31,
 		IsOn:       false,
 		Category:   "",
 		Period:     1,
@@ -218,11 +264,51 @@ func TestTask_Upload(t *testing.T) {
 	t.Log("ok")
 }
 
-var testingTask *metrics.Task
+func TestKVTask_TestInspect(t *testing.T) {
+	var task = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
+		Id:         1,
+		IsOn:       false,
+		Category:   "",
+		Period:     1,
+		PeriodUnit: serverconfigs.MetricItemPeriodUnitDay,
+		Keys:       []string{"${remoteAddr}"},
+		Value:      "${countRequest}",
+		Version:    1,
+	})
+	err := task.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	task.TestInspect(t)
+}
+
+func TestKVTask_Truncate(t *testing.T) {
+	var task = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
+		Id:         1,
+		IsOn:       false,
+		Category:   "",
+		Period:     1,
+		PeriodUnit: serverconfigs.MetricItemPeriodUnitDay,
+		Keys:       []string{"${remoteAddr}"},
+		Value:      "${countRequest}",
+		Version:    1,
+	})
+	err := task.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if testutils.IsSingleTesting() {
+		_ = task.Truncate()
+	}
+}
+
+var testingTask metrics.Task
 var testingTaskInitOnce = &sync.Once{}
 
 func initTestingTask() {
-	testingTask = metrics.NewTask(&serverconfigs.MetricItemConfig{
+	testingTask = metrics.NewKVTask(&serverconfigs.MetricItemConfig{
 		Id:         1,
 		IsOn:       false,
 		Category:   "tcp",
@@ -243,7 +329,7 @@ func initTestingTask() {
 	}
 }
 
-func BenchmarkTask_Add(b *testing.B) {
+func BenchmarkKVTask_Add(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
 	testingTaskInitOnce.Do(func() {

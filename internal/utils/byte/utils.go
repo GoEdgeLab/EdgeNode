@@ -18,8 +18,8 @@ func Append(b []byte, b2 ...byte) []byte {
 	return append(Copy(b), b2...)
 }
 
-// Contact bytes
-func Contact(b []byte, b2 ...[]byte) []byte {
+// Concat bytes
+func Concat(b []byte, b2 ...[]byte) []byte {
 	b = Copy(b)
 	for _, b3 := range b2 {
 		b = append(b, b3...)

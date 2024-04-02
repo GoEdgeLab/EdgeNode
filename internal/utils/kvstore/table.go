@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/cockroachdb/pebble"
 	"github.com/iwind/TeaGo/types"
 	"sync"
@@ -213,6 +214,10 @@ func (this *Table[T]) Truncate() error {
 	return this.db.store.rawDB.DeleteRange(this.Namespace(), append(this.Namespace(), 0xFF), DefaultWriteOptions)
 }
 
+func (this *Table[T]) DeleteRange(start string, end string) error {
+	return this.db.store.rawDB.DeleteRange(this.FullKeyBytes([]byte(start)), this.FullKeyBytes([]byte(end)), DefaultWriteOptions)
+}
+
 func (this *Table[T]) Query() *Query[T] {
 	var query = NewQuery[T]()
 	query.SetTable(this)
@@ -275,6 +280,7 @@ func (this *Table[T]) DecodeFieldKey(fieldName string, fieldKey []byte) (fieldVa
 }
 
 func (this *Table[T]) Close() error {
+	// nothing to do
 	return nil
 }
 
@@ -300,7 +306,7 @@ func (this *Table[T]) deleteKeys(tx *Tx[T], key ...string) error {
 
 				value, decodeErr := this.encoder.Decode(valueBytes)
 				if decodeErr != nil {
-					return decodeErr
+					return fmt.Errorf("decode value failed: %w", decodeErr)
 				}
 
 				for _, fieldName := range this.fieldNames {
@@ -360,7 +366,7 @@ func (this *Table[T]) set(tx *Tx[T], key string, valueBytes []byte, value T, ins
 				var decodeErr error
 				oldValue, decodeErr = this.encoder.Decode(oldValueBytes)
 				if decodeErr != nil {
-					return decodeErr
+					return fmt.Errorf("decode value failed: %w", decodeErr)
 				}
 				oldFound = true
 			}
@@ -431,7 +437,7 @@ func (this *Table[T]) getWithKeyBytes(tx *Tx[T], keyBytes []byte) (value T, err 
 
 	resultValue, decodeErr := this.encoder.Decode(valueBytes)
 	if decodeErr != nil {
-		return value, decodeErr
+		return value, fmt.Errorf("decode value failed: %w", decodeErr)
 	}
 	value = resultValue
 	return

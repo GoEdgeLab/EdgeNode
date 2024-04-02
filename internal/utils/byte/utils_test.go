@@ -39,7 +39,7 @@ func TestConcat(t *testing.T) {
 	var prefix []byte
 	prefix = append(prefix, 1, 2, 3)
 
-	var b = byteutils.Contact(prefix, []byte{4, 5, 6}, []byte{7})
+	var b = byteutils.Concat(prefix, []byte{4, 5, 6}, []byte{7})
 	t.Log(b)
 
 	a.IsTrue(bytes.Equal(b, []byte{1, 2, 3, 4, 5, 6, 7}))

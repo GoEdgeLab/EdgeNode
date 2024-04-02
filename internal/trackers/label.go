@@ -26,3 +26,7 @@ func (this *tracker) End() {
 func (this *tracker) Begin(subLabel string) *tracker {
 	return Begin(this.label + ":" + subLabel)
 }
+
+func (this *tracker) Add(duration time.Duration) {
+	this.startTime = this.startTime.Add(-duration)
+}

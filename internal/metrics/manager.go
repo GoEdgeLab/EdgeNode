@@ -26,8 +26,8 @@ func init() {
 type Manager struct {
 	isQuiting bool
 
-	taskMap         map[int64]*Task    // itemId => *Task
-	categoryTaskMap map[string][]*Task // category => []*Task
+	taskMap         map[int64]Task    // itemId => Task
+	categoryTaskMap map[string][]Task // category => []Task
 	locker          sync.RWMutex
 
 	hasHTTPMetrics bool
@@ -37,8 +37,8 @@ type Manager struct {
 
 func NewManager() *Manager {
 	return &Manager{
-		taskMap:         map[int64]*Task{},
-		categoryTaskMap: map[string][]*Task{},
+		taskMap:         map[int64]Task{},
+		categoryTaskMap: map[string][]Task{},
 	}
 }
 
@@ -64,11 +64,20 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 			if err != nil {
 				remotelogs.Error("METRIC_MANAGER", "stop task '"+strconv.FormatInt(itemId, 10)+"' failed: "+err.Error())
 			}
+
+			// deleted
+			if newItem != nil && !newItem.IsOn {
+				deleteErr := task.Delete()
+				if deleteErr != nil {
+					remotelogs.Error("METRIC_MANAGER", "delete task '"+strconv.FormatInt(itemId, 10)+"' failed: "+err.Error())
+				}
+			}
+
 			delete(this.taskMap, itemId)
 		} else { // 更新已存在的
-			if newItem.Version != task.item.Version {
+			if newItem.Version != task.Item().Version {
 				remotelogs.Println("METRIC_MANAGER", "update task '"+strconv.FormatInt(itemId, 10)+"'")
-				task.item = newItem
+				task.SetItem(newItem)
 			}
 		}
 	}
@@ -81,7 +90,14 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 		_, ok := this.taskMap[newItem.Id]
 		if !ok {
 			remotelogs.Println("METRIC_MANAGER", "start task '"+strconv.FormatInt(newItem.Id, 10)+"'")
-			task := NewTask(newItem)
+			var task Task
+
+			if CheckSQLiteDB(newItem.Id) || !teaconst.EnableKVCacheStore {
+				task = NewSQLiteTask(newItem)
+			} else {
+				task = NewKVTask(newItem)
+			}
+
 			err := task.Init()
 			if err != nil {
 				remotelogs.Error("METRIC_MANAGER", "initialized task failed: "+err.Error())
@@ -100,13 +116,13 @@ func (this *Manager) Update(items []*serverconfigs.MetricItemConfig) {
 	this.hasHTTPMetrics = false
 	this.hasTCPMetrics = false
 	this.hasUDPMetrics = false
-	this.categoryTaskMap = map[string][]*Task{}
+	this.categoryTaskMap = map[string][]Task{}
 	for _, task := range this.taskMap {
-		var tasks = this.categoryTaskMap[task.item.Category]
+		var tasks = this.categoryTaskMap[task.Item().Category]
 		tasks = append(tasks, task)
-		this.categoryTaskMap[task.item.Category] = tasks
+		this.categoryTaskMap[task.Item().Category] = tasks
 
-		switch task.item.Category {
+		switch task.Item().Category {
 		case serverconfigs.MetricItemCategoryHTTP:
 			this.hasHTTPMetrics = true
 		case serverconfigs.MetricItemCategoryTCP:
@@ -144,6 +160,10 @@ func (this *Manager) HasUDPMetrics() bool {
 	return this.hasUDPMetrics
 }
 
+func (this *Manager) TaskMap() map[int64]Task {
+	return this.taskMap
+}
+
 // Quit 退出管理器
 func (this *Manager) Quit() {
 	this.isQuiting = true
@@ -154,6 +174,6 @@ func (this *Manager) Quit() {
 	for _, task := range this.taskMap {
 		_ = task.Stop()
 	}
-	this.taskMap = map[int64]*Task{}
+	this.taskMap = map[int64]Task{}
 	this.locker.Unlock()
 }

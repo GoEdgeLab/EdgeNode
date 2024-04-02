@@ -199,7 +199,7 @@ func (this *Manager) loadDB() error {
 	var sqlitePath = Tea.Root + "/data/agents.db"
 	_, sqliteErr := os.Stat(sqlitePath)
 	var db DB
-	if sqliteErr == nil {
+	if sqliteErr == nil || !teaconst.EnableKVCacheStore {
 		db = NewSQLiteDB(sqlitePath)
 	} else {
 		db = NewKVDB()
