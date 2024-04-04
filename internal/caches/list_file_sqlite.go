@@ -130,26 +130,26 @@ func (this *SQLiteFileList) Add(hash string, item *Item) error {
 	return nil
 }
 
-func (this *SQLiteFileList) Exist(hash string) (bool, error) {
+func (this *SQLiteFileList) Exist(hash string) (bool, int64, error) {
 	var db = this.GetDB(hash)
 
 	if !db.IsReady() {
-		return false, nil
+		return false, -1, nil
 	}
 
 	// 如果Hash列表里不存在，那么必然不存在
 	if !db.hashMap.Exist(hash) {
-		return false, nil
+		return false, -1, nil
 	}
 
 	var item = this.memoryCache.Read(hash)
 	if item != nil {
-		return true, nil
+		return true, -1, nil
 	}
 
 	var row = db.existsByHashStmt.QueryRow(hash, time.Now().Unix())
 	if row.Err() != nil {
-		return false, nil
+		return false, -1, nil
 	}
 
 	var expiredAt int64
@@ -158,15 +158,15 @@ func (this *SQLiteFileList) Exist(hash string) (bool, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = nil
 		}
-		return false, err
+		return false, -1, err
 	}
 
-	if expiredAt < fasttime.Now().Unix() {
-		return false, nil
+	if expiredAt <= fasttime.Now().Unix() {
+		return false, -1, nil
 	}
 
 	this.memoryCache.Write(hash, zero.Zero{}, this.maxExpiresAtForMemoryCache(expiredAt))
-	return true, nil
+	return true, -1, nil
 }
 
 func (this *SQLiteFileList) ExistQuick(hash string) (isReady bool, found bool) {

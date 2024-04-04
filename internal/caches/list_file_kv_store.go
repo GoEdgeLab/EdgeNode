@@ -90,23 +90,23 @@ func (this *KVListFileStore) AddItem(hash string, item *Item) error {
 	return this.itemsTable.Set(hash, item)
 }
 
-func (this *KVListFileStore) ExistItem(hash string) (bool, error) {
+func (this *KVListFileStore) ExistItem(hash string) (bool, int64, error) {
 	if !this.isReady() {
-		return false, nil
+		return false, -1, nil
 	}
 
 	item, err := this.itemsTable.Get(hash)
 	if err != nil {
 		if kvstore.IsNotFound(err) {
-			return false, nil
+			return false, -1, nil
 		}
-		return false, err
+		return false, -1, err
 	}
 	if item == nil {
-		return false, nil
+		return false, -1, nil
 	}
 
-	return item.ExpiresAt >= fasttime.Now().Unix(), nil
+	return item.ExpiresAt > fasttime.Now().Unix(), item.HeaderSize + item.BodySize, nil
 }
 
 func (this *KVListFileStore) ExistQuickItem(hash string) (bool, error) {

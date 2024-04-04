@@ -304,7 +304,12 @@ func (this *FileStorage) Init() error {
 		} else if totalSize > 1*sizes.K {
 			sizeMB = fmt.Sprintf("%.3f K", float64(totalSize)/float64(sizes.K))
 		}
-		remotelogs.Println("CACHE", "init policy "+types.String(this.policy.Id)+" from '"+this.options.Dir+"', cost: "+fmt.Sprintf("%.2f", cost)+" ms, size: "+sizeMB)
+
+		var mmapTag = "disabled"
+		if this.options.EnableMMAP {
+			mmapTag = "enabled"
+		}
+		remotelogs.Println("CACHE", "init policy "+types.String(this.policy.Id)+" from '"+this.options.Dir+"', cost: "+fmt.Sprintf("%.2f", cost)+" ms, size: "+sizeMB+", mmap: "+mmapTag)
 	}()
 
 	// 初始化list
@@ -360,13 +365,26 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 	hash, path, _ := this.keyPath(key)
 
 	// 检查文件记录是否已过期
+	var estimatedSize int64
 	if !useStale {
-		exists, err := this.list.Exist(hash)
+		exists, filesize, err := this.list.Exist(hash)
 		if err != nil {
 			return nil, err
 		}
 		if !exists {
 			return nil, ErrNotFound
+		}
+		estimatedSize = filesize
+	}
+
+	// 尝试通过MMAP读取
+	if estimatedSize > 0 {
+		reader, err := this.tryMMAPReader(isPartial, estimatedSize, path)
+		if err != nil {
+			return nil, err
+		}
+		if reader != nil {
+			return reader, nil
 		}
 	}
 
@@ -404,22 +422,10 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 		partialFileReader.openFileCache = openFileCache
 		reader = partialFileReader
 	} else {
-		var options = this.options // copy
-		if options != nil && options.EnableMMAP {
-			if isValid, stat := IsValidForMMAP(fp); isValid {
-				reader, err = NewMMAPFileReader(fp, stat)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		if reader == nil {
-			var fileReader = NewFileReader(fp)
-			fileReader.openFile = openFile
-			fileReader.openFileCache = openFileCache
-			reader = fileReader
-		}
+		var fileReader = NewFileReader(fp)
+		fileReader.openFile = openFile
+		fileReader.openFileCache = openFileCache
+		reader = fileReader
 	}
 
 	err = reader.Init()
@@ -562,7 +568,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	var partialRanges *PartialRanges
 	if isPartial {
 		// 数据库中是否存在
-		existsCacheItem, _ := this.list.Exist(hash)
+		existsCacheItem, _, _ := this.list.Exist(hash)
 		if existsCacheItem {
 			readerFp, err := os.OpenFile(tmpPath, os.O_RDONLY, 0444)
 			if err == nil {

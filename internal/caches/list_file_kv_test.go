@@ -159,7 +159,7 @@ func TestKVFileList_Exist(t *testing.T) {
 		stringutil.Md5("123456"),
 		stringutil.Md5("654321"),
 	} {
-		b, err := list.Exist(hash)
+		b, _, err := list.Exist(hash)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -322,7 +322,7 @@ func BenchmarkKVFileList_Exist(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, existErr := list.Exist(stringutil.Md5(strconv.Itoa(rand.Int() % 2_000_000)))
+			_, _, existErr := list.Exist(stringutil.Md5(strconv.Itoa(rand.Int() % 2_000_000)))
 			if existErr != nil {
 				b.Fatal(existErr)
 			}

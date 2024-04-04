@@ -128,7 +128,7 @@ func (this *MemoryStorage) OpenReader(key string, useStale bool, isPartial bool)
 	var hash = this.hash(key)
 
 	// check if exists in list
-	exists, _ := this.list.Exist(types.String(hash))
+	exists, _, _ := this.list.Exist(types.String(hash))
 	if !exists {
 		return nil, ErrNotFound
 	}
@@ -212,7 +212,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	item, ok := this.valuesMap[hash]
 	if ok && !item.IsExpired() {
 		var hashString = types.String(hash)
-		exists, _ := this.list.Exist(hashString)
+		exists, _, _ := this.list.Exist(hashString)
 		if !exists {
 			// remove from values map
 			delete(this.valuesMap, hash)
@@ -546,7 +546,7 @@ func (this *MemoryStorage) flushItem(key string) {
 	}
 
 	// 检查是否在列表中，防止未加入列表时就开始flush
-	isInList, err := this.list.Exist(types.String(hash))
+	isInList, _, err := this.list.Exist(types.String(hash))
 	if err != nil {
 		remotelogs.Error("CACHE", "flush items failed: "+err.Error())
 		return

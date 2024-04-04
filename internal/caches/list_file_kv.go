@@ -78,7 +78,7 @@ func (this *KVFileList) Add(hash string, item *Item) error {
 }
 
 // Exist 检查内容是否存在
-func (this *KVFileList) Exist(hash string) (bool, error) {
+func (this *KVFileList) Exist(hash string) (bool, int64, error) {
 	return this.getStore(hash).ExistItem(hash)
 }
 

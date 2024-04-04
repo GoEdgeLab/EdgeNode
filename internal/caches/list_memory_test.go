@@ -317,7 +317,7 @@ func BenchmarkMemoryList(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, _ = list.Exist(types.String("a" + types.String(rands.Int(1, 10000))))
+			_, _, _ = list.Exist(types.String("a" + types.String(rands.Int(1, 10000))))
 			_ = list.Add("a"+types.String(rands.Int(1, 100000)), &caches.Item{})
 			_, _ = list.Purge(1000, func(hash string) error {
 				return nil

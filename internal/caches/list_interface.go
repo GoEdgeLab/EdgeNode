@@ -13,7 +13,7 @@ type ListInterface interface {
 	Add(hash string, item *Item) error
 
 	// Exist 检查内容是否存在
-	Exist(hash string) (bool, error)
+	Exist(hash string) (ok bool, size int64, err error)
 
 	// CleanPrefix 清除某个前缀的缓存
 	CleanPrefix(prefix string) error
