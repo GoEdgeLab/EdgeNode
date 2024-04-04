@@ -228,6 +228,11 @@ func (this *Node) Start() {
 		stats.SharedHTTPRequestStatManager.Start()
 	})
 
+	// 硬盘TRIM任务
+	goman.New(func() {
+		NewTrimDisksTask().Start()
+	})
+
 	// 启动端口
 	err = sharedListenerManager.Start(nodeConfig)
 	if err != nil {
