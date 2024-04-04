@@ -27,7 +27,7 @@ func (this *TrimDisksTask) Start() {
 		remotelogs.Warn("TRIM_DISKS", "trim disks failed: "+err.Error())
 	}
 
-	var ticker = time.NewTicker(7 * 24 * time.Hour) // 1 week
+	var ticker = time.NewTicker(2 * 24 * time.Hour) // every 2 days
 	for range ticker.C {
 		// prevent system overload
 		for i := 0; i < 24; i++ {
