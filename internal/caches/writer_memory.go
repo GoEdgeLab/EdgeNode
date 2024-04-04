@@ -32,27 +32,11 @@ func NewMemoryWriter(memoryStorage *MemoryStorage, key string, expiredAt int64, 
 		ModifiedAt: fasttime.Now().Unix(),
 		Status:     status,
 	}
-	if enableFragmentPool &&
-		expectedBodySize > 0 &&
-		expectedBodySize <= maxMemoryFragmentPoolItemSize {
-		bodyBytes, ok := SharedFragmentMemoryPool.Get(expectedBodySize) // try to reuse memory
-		if ok {
-			valueItem.BodyValue = bodyBytes
-			valueItem.IsPrepared = true
-		} else {
-			if expectedBodySize <= (16 << 20) {
-				var allocSize = (expectedBodySize/16384 + 1) * 16384
-				valueItem.BodyValue = make([]byte, allocSize)[:expectedBodySize]
-				valueItem.IsPrepared = true
 
-				SharedFragmentMemoryPool.IncreaseNew()
-			}
-		}
-	} else {
-		if expectedBodySize > 0 {
-			valueItem.BodyValue = make([]byte, 0, expectedBodySize)
-		}
+	if expectedBodySize > 0 {
+		valueItem.BodyValue = make([]byte, 0, expectedBodySize)
 	}
+
 	var w = &MemoryWriter{
 		storage:          memoryStorage,
 		key:              key,
@@ -171,13 +155,6 @@ func (this *MemoryWriter) Discard() error {
 
 	this.storage.locker.Lock()
 	delete(this.storage.valuesMap, this.hash)
-
-	if enableFragmentPool &&
-		this.item != nil &&
-		!this.item.isReferring &&
-		cap(this.item.BodyValue) >= minMemoryFragmentPoolItemSize {
-		SharedFragmentMemoryPool.Put(this.item.BodyValue)
-	}
 
 	this.storage.locker.Unlock()
 	return nil
