@@ -149,7 +149,7 @@ func (this *Manager) UpdatePolicies(newPolicies []*serverconfigs.HTTPCachePolicy
 	}
 
 	this.CountFileStorages = 0
-	this.CountFileStorages = 0
+	this.CountMemoryStorages = 0
 	for _, storage := range this.storageMap {
 		_, isFileStorage := storage.(*FileStorage)
 		this.CountMemoryStorages++
