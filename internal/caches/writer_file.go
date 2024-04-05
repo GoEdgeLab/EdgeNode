@@ -136,6 +136,13 @@ func (this *FileWriter) Close() error {
 
 	var path = this.rawWriter.Name()
 
+	// check content length
+	if this.metaBodySize > 0 && this.bodySize != this.metaBodySize {
+		_ = this.rawWriter.Close()
+		_ = os.Remove(path)
+		return ErrUnexpectedContentLength
+	}
+
 	err := this.WriteHeaderLength(types.Int(this.headerSize))
 	if err != nil {
 		fsutils.WriteBegin()

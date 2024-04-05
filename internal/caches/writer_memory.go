@@ -121,6 +121,14 @@ func (this *MemoryWriter) Close() error {
 		return nil
 	}
 
+	// check content length
+	if this.expectedBodySize > 0 && this.bodySize != this.expectedBodySize {
+		this.storage.locker.Lock()
+		delete(this.storage.valuesMap, this.hash)
+		this.storage.locker.Unlock()
+		return ErrUnexpectedContentLength
+	}
+
 	this.storage.locker.Lock()
 	this.item.IsDone = true
 	var err error
@@ -129,7 +137,7 @@ func (this *MemoryWriter) Close() error {
 			this.storage.valuesMap[this.hash] = this.item
 
 			select {
-			case this.storage.dirtyChan <- types.String(this.bodySize) + "@" +this.key  :
+			case this.storage.dirtyChan <- types.String(this.bodySize) + "@" + this.key:
 				atomic.AddInt64(&this.storage.totalDirtySize, this.bodySize)
 			default:
 				// remove from values map
@@ -158,7 +166,6 @@ func (this *MemoryWriter) Discard() error {
 
 	this.storage.locker.Lock()
 	delete(this.storage.valuesMap, this.hash)
-
 	this.storage.locker.Unlock()
 	return nil
 }
