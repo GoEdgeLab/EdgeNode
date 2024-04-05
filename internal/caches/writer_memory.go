@@ -4,7 +4,9 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/cespare/xxhash"
+	"github.com/iwind/TeaGo/types"
 	"sync"
+	"sync/atomic"
 )
 
 type MemoryWriter struct {
@@ -127,7 +129,8 @@ func (this *MemoryWriter) Close() error {
 			this.storage.valuesMap[this.hash] = this.item
 
 			select {
-			case this.storage.dirtyChan <- this.key:
+			case this.storage.dirtyChan <- types.String(this.bodySize) + "@" +this.key  :
+				atomic.AddInt64(&this.storage.totalDirtySize, this.bodySize)
 			default:
 				// remove from values map
 				delete(this.storage.valuesMap, this.hash)

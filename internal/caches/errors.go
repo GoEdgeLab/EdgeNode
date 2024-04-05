@@ -45,3 +45,12 @@ func CanIgnoreErr(err error) bool {
 	var capacityErr *CapacityError
 	return errors.As(err, &capacityErr)
 }
+
+func IsCapacityError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var capacityErr *CapacityError
+	return errors.As(err, &capacityErr)
+}

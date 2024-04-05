@@ -6,6 +6,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
+	"math/rand"
 	"runtime"
 	"runtime/debug"
 	"strconv"
@@ -378,6 +379,34 @@ func BenchmarkValuesMap(b *testing.B) {
 			locker.Lock()
 			delete(m, uint64(rands.Int(2, 1000000)))
 			locker.Unlock()
+		}
+	})
+}
+
+func BenchmarkNewMemoryStorage(b *testing.B) {
+	var storage = NewMemoryStorage(&serverconfigs.HTTPCachePolicy{}, nil)
+
+	var data = bytes.Repeat([]byte{'A'}, 1024)
+
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			func() {
+				writer, err := storage.OpenWriter("abc"+strconv.Itoa(rand.Int()), time.Now().Unix()+60, 200, -1, -1, -1, false)
+				if err != nil {
+					b.Fatal(err)
+				}
+				if err != nil {
+					b.Fatal(err)
+				}
+				_, _ = writer.WriteHeader([]byte("Header"))
+				_, _ = writer.Write(data)
+				err = writer.Close()
+				if err != nil {
+					b.Fatal(err)
+				}
+			}()
 		}
 	})
 }

@@ -55,7 +55,9 @@ type MemoryStorage struct {
 
 	purgeTicker *utils.Ticker
 
-	usedSize      int64
+	usedSize       int64
+	totalDirtySize int64
+
 	writingKeyMap map[string]zero.Zero // key => bool
 
 	ignoreKeys *setutils.FixedSet
@@ -340,6 +342,9 @@ func (this *MemoryStorage) Stop() {
 		close(this.dirtyChan)
 	}
 
+	this.usedSize = 0
+	this.totalDirtySize = 0
+
 	_ = this.list.Close()
 
 	this.locker.Unlock()
@@ -506,14 +511,20 @@ func (this *MemoryStorage) startFlush() {
 
 		if fsutils.IsInExtremelyHighLoad {
 			time.Sleep(1 * time.Second)
-		} else if fsutils.IsInHighLoad {
-			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
 
 // 单次Flush任务
-func (this *MemoryStorage) flushItem(key string) {
+func (this *MemoryStorage) flushItem(fullKey string) {
+	sizeString, key, found := strings.Cut(fullKey, "@")
+	if !found {
+		return
+	}
+	defer func() {
+		atomic.AddInt64(&this.totalDirtySize, -types.Int64(sizeString))
+	}()
+
 	if this.parentStorage == nil {
 		return
 	}
@@ -547,7 +558,17 @@ func (this *MemoryStorage) flushItem(key string) {
 		return
 	}
 	if !isInList {
-		time.Sleep(1 * time.Second)
+		for i := 0; i < 1000; i++ {
+			isInList, _, err = this.list.Exist(types.String(hash))
+			if isInList {
+				break
+			}
+			time.Sleep(1 * time.Millisecond)
+		}
+		if !isInList {
+			// discard
+			return
+		}
 	}
 
 	writer, err := this.parentStorage.OpenFlushWriter(key, item.ExpiresAt, item.Status, len(item.HeaderValue), int64(len(item.BodyValue)))

@@ -54,10 +54,10 @@ const (
 )
 
 const (
-	FileStorageMaxIgnoreKeys        = 32768        // 最大可忽略的键值数（尺寸过大的键值）
-	HotItemSize                     = 1024         // 热点数据数量
-	HotItemLifeSeconds       int64  = 3600         // 热点数据生命周期
-	FileToMemoryMaxSize             = 32 * sizes.M // 可以从文件写入到内存的最大文件尺寸
+	FileStorageMaxIgnoreKeys        = 32768    // 最大可忽略的键值数（尺寸过大的键值）
+	HotItemSize                     = 1024     // 热点数据数量
+	HotItemLifeSeconds       int64  = 3600     // 热点数据生命周期
+	FileToMemoryMaxSize      int64  = 32 << 20 // 可以从文件写入到内存的最大文件尺寸
 	FileTmpSuffix                   = ".tmp"
 	DefaultMinDiskFreeSpace  uint64 = 5 << 30 // 当前磁盘最小剩余空间
 	DefaultStaleCacheSeconds        = 1200    // 过时缓存留存时间
@@ -478,7 +478,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 		maxMemorySize = maxSize
 	}
 	var memoryStorage = this.memoryStorage
-	if !fsutils.DiskIsExtremelyFast() && !isFlushing && !isPartial && memoryStorage != nil && ((bodySize > 0 && bodySize < maxMemorySize) || bodySize < 0) {
+	if !isFlushing && !isPartial && memoryStorage != nil && ((bodySize > 0 && bodySize < maxMemorySize) || bodySize < 0) {
 		writer, err := memoryStorage.OpenWriter(key, expiredAt, status, headerSize, bodySize, maxMemorySize, false)
 		if err == nil {
 			return writer, nil
@@ -486,6 +486,10 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 
 		// 如果队列满了，则等待
 		if errors.Is(err, ErrWritingQueueFull) {
+			return nil, err
+		}
+
+		if IsCapacityError(err) && bodySize > 0 && memoryStorage.totalDirtySize > (128<<20) {
 			return nil, err
 		}
 	}
@@ -607,7 +611,6 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	writer, err := os.OpenFile(tmpPath, flags, 0666)
 	fsutils.WriteEnd()
 	if err != nil {
-		// TODO 检查在各个系统中的稳定性
 		if os.IsNotExist(err) {
 			_ = os.MkdirAll(dir, 0777)
 
