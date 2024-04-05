@@ -467,6 +467,9 @@ func (this *KVTask) uploadServerStats(rpcClient *rpc.RPCClient, serverId int64, 
 	{
 		sumValue, err := this.sumTable.Get(prefix)
 		if err != nil {
+			if kvstore.IsNotFound(err) {
+				return 0, nil
+			}
 			return 0, err
 		}
 		count, total = DecodeSumValue(sumValue)
