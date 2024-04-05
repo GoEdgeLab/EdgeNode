@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/shirou/gopsutil/v3/load"
+	"runtime"
 	"time"
 )
 
@@ -50,6 +51,10 @@ func (this *TrimDisksTask) Start() {
 
 // run the task once
 func (this *TrimDisksTask) loop() error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+
 	var nodeConfig = sharedNodeConfig
 	if nodeConfig == nil {
 		return nil
