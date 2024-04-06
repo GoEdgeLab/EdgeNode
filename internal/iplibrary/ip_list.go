@@ -1,6 +1,7 @@
 package iplibrary
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/iputils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"sort"
@@ -145,7 +146,7 @@ func (this *IPList) ContainsIPStrings(ipStrings []string) (item *IPItem, found b
 		if len(ipString) == 0 {
 			continue
 		}
-		item = this.lookupIP(IPBytes(ipString))
+		item = this.lookupIP(iputils.ToBytes(ipString))
 		if item != nil {
 			found = true
 			return
@@ -189,7 +190,7 @@ func (this *IPList) addItem(item *IPItem, lock bool, sortable bool) {
 
 	var shouldSort bool
 
-	if CompareBytes(item.IPFrom, item.IPTo) == 0 {
+	if iputils.CompareBytes(item.IPFrom, item.IPTo) == 0 {
 		item.IPTo = nil
 	}
 
@@ -198,7 +199,7 @@ func (this *IPList) addItem(item *IPItem, lock bool, sortable bool) {
 			return
 		}
 	} else if !IsZero(item.IPTo) {
-		if CompareBytes(item.IPFrom, item.IPTo) > 0 {
+		if iputils.CompareBytes(item.IPFrom, item.IPTo) > 0 {
 			item.IPFrom, item.IPTo = item.IPTo, item.IPFrom
 		} else if IsZero(item.IPFrom) {
 			item.IPFrom = item.IPTo
@@ -254,10 +255,10 @@ func (this *IPList) sortRangeItems(force bool) {
 		sort.Slice(this.sortedRangeItems, func(i, j int) bool {
 			var item1 = this.sortedRangeItems[i]
 			var item2 = this.sortedRangeItems[j]
-			if CompareBytes(item1.IPFrom, item2.IPFrom) == 0 {
-				return CompareBytes(item1.IPTo, item2.IPTo) < 0
+			if iputils.CompareBytes(item1.IPFrom, item2.IPFrom) == 0 {
+				return iputils.CompareBytes(item1.IPTo, item2.IPTo) < 0
 			}
-			return CompareBytes(item1.IPFrom, item2.IPFrom) < 0
+			return iputils.CompareBytes(item1.IPFrom, item2.IPFrom) < 0
 		})
 	}
 }
@@ -279,9 +280,9 @@ func (this *IPList) lookupIP(ipBytes []byte) *IPItem {
 	var resultIndex = -1
 	sort.Search(count, func(i int) bool {
 		var item = this.sortedRangeItems[i]
-		var cmp = CompareBytes(item.IPFrom, ipBytes)
+		var cmp = iputils.CompareBytes(item.IPFrom, ipBytes)
 		if cmp < 0 {
-			if CompareBytes(item.IPTo, ipBytes) >= 0 {
+			if iputils.CompareBytes(item.IPTo, ipBytes) >= 0 {
 				resultIndex = i
 			}
 			return false

@@ -1,6 +1,7 @@
 package iplibrary_test
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/iputils"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
@@ -16,64 +17,64 @@ func TestIPItem_Contains(t *testing.T) {
 
 	{
 		var item = &iplibrary.IPItem{
-			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPFrom:    iputils.ToBytes("192.168.1.100"),
 			IPTo:      nil,
 			ExpiredAt: 0,
 		}
-		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
+		a.IsTrue(item.Contains(iputils.ToBytes("192.168.1.100")))
 	}
 
 	{
 		var item = &iplibrary.IPItem{
-			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPFrom:    iputils.ToBytes("192.168.1.100"),
 			IPTo:      nil,
 			ExpiredAt: time.Now().Unix() + 1,
 		}
-		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
+		a.IsTrue(item.Contains(iputils.ToBytes("192.168.1.100")))
 	}
 
 	{
 		var item = &iplibrary.IPItem{
-			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPFrom:    iputils.ToBytes("192.168.1.100"),
 			IPTo:      nil,
 			ExpiredAt: time.Now().Unix() - 1,
 		}
-		a.IsFalse(item.Contains(iplibrary.IPBytes("192.168.1.100")))
+		a.IsFalse(item.Contains(iputils.ToBytes("192.168.1.100")))
 	}
 	{
 		var item = &iplibrary.IPItem{
-			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPFrom:    iputils.ToBytes("192.168.1.100"),
 			IPTo:      nil,
 			ExpiredAt: 0,
 		}
-		a.IsFalse(item.Contains(iplibrary.IPBytes("192.168.1.101")))
+		a.IsFalse(item.Contains(iputils.ToBytes("192.168.1.101")))
 	}
 
 	{
 		var item = &iplibrary.IPItem{
-			IPFrom:    iplibrary.IPBytes("192.168.1.1"),
-			IPTo:      iplibrary.IPBytes("192.168.1.101"),
+			IPFrom:    iputils.ToBytes("192.168.1.1"),
+			IPTo:      iputils.ToBytes("192.168.1.101"),
 			ExpiredAt: 0,
 		}
-		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
+		a.IsTrue(item.Contains(iputils.ToBytes("192.168.1.100")))
 	}
 
 	{
 		var item = &iplibrary.IPItem{
-			IPFrom:    iplibrary.IPBytes("192.168.1.1"),
-			IPTo:      iplibrary.IPBytes("192.168.1.100"),
+			IPFrom:    iputils.ToBytes("192.168.1.1"),
+			IPTo:      iputils.ToBytes("192.168.1.100"),
 			ExpiredAt: 0,
 		}
-		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
+		a.IsTrue(item.Contains(iputils.ToBytes("192.168.1.100")))
 	}
 
 	{
 		var item = &iplibrary.IPItem{
-			IPFrom:    iplibrary.IPBytes("192.168.1.1"),
-			IPTo:      iplibrary.IPBytes("192.168.1.101"),
+			IPFrom:    iputils.ToBytes("192.168.1.1"),
+			IPTo:      iputils.ToBytes("192.168.1.101"),
 			ExpiredAt: 0,
 		}
-		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.1")))
+		a.IsTrue(item.Contains(iputils.ToBytes("192.168.1.1")))
 	}
 }
 
@@ -89,7 +90,7 @@ func TestIPItem_Memory(t *testing.T) {
 		list.Add(&iplibrary.IPItem{
 			Type:       "ip",
 			Id:         uint64(i),
-			IPFrom:     iplibrary.IPBytes("192.168.1.1"),
+			IPFrom:     iputils.ToBytes("192.168.1.1"),
 			IPTo:       nil,
 			ExpiredAt:  time.Now().Unix(),
 			EventLevel: "",
@@ -108,8 +109,8 @@ func BenchmarkIPItem_Contains(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
 	var item = &iplibrary.IPItem{
-		IPFrom:    iplibrary.IPBytes("192.168.1.1"),
-		IPTo:      iplibrary.IPBytes("192.168.1.101"),
+		IPFrom:    iputils.ToBytes("192.168.1.1"),
+		IPTo:      iputils.ToBytes("192.168.1.101"),
 		ExpiredAt: 0,
 	}
 
@@ -117,7 +118,7 @@ func BenchmarkIPItem_Contains(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var ip = iplibrary.IPBytes("192.168.1." + strconv.Itoa(rand.Int()%255))
+			var ip = iputils.ToBytes("192.168.1." + strconv.Itoa(rand.Int()%255))
 			item.Contains(ip)
 		}
 	})

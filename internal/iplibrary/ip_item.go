@@ -1,6 +1,7 @@
 package iplibrary
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/iputils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 )
 
@@ -40,11 +41,11 @@ func (this *IPItem) Contains(ipBytes []byte) bool {
 // 检查是否包含某个
 func (this *IPItem) containsIP(ipBytes []byte) bool {
 	if IsZero(this.IPTo) {
-		if CompareBytes(this.IPFrom, ipBytes) != 0 {
+		if iputils.CompareBytes(this.IPFrom, ipBytes) != 0 {
 			return false
 		}
 	} else {
-		if CompareBytes(this.IPFrom, ipBytes) > 0 || CompareBytes(this.IPTo, ipBytes) < 0 {
+		if iputils.CompareBytes(this.IPFrom, ipBytes) > 0 || iputils.CompareBytes(this.IPTo, ipBytes) < 0 {
 			return false
 		}
 	}

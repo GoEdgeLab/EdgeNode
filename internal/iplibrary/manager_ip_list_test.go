@@ -1,6 +1,7 @@
 package iplibrary_test
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/iputils"
 	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/logs"
@@ -32,8 +33,8 @@ func TestIPListManager_check(t *testing.T) {
 	defer func() {
 		t.Log(time.Since(before).Seconds()*1000, "ms")
 	}()
-	t.Log(iplibrary.SharedServerListManager.FindBlackList(23, true).Contains(iplibrary.IPBytes("127.0.0.2")))
-	t.Log(iplibrary.GlobalBlackIPList.Contains(iplibrary.IPBytes("127.0.0.6")))
+	t.Log(iplibrary.SharedServerListManager.FindBlackList(23, true).Contains(iputils.ToBytes("127.0.0.2")))
+	t.Log(iplibrary.GlobalBlackIPList.Contains(iputils.ToBytes("127.0.0.6")))
 }
 
 func TestIPListManager_loop(t *testing.T) {

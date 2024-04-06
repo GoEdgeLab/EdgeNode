@@ -3,11 +3,10 @@
 package iplibrary
 
 import (
-	"bytes"
 	"encoding/hex"
+	"github.com/TeaOSLab/EdgeCommon/pkg/iputils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/iwind/TeaGo/Tea"
-	"net"
 )
 
 // AllowIP 检查IP是否被允许访问
@@ -26,7 +25,7 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool, expir
 		}
 	}
 
-	var ipBytes = IPBytes(ip)
+	var ipBytes = iputils.ToBytes(ip)
 	if IsZero(ipBytes) {
 		return false, false, 0
 	}
@@ -64,7 +63,7 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool, expir
 
 // IsInWhiteList 检查IP是否在白名单中
 func IsInWhiteList(ip string) bool {
-	var ipBytes = IPBytes(ip)
+	var ipBytes = iputils.ToBytes(ip)
 	if IsZero(ipBytes) {
 		return false
 	}
@@ -89,36 +88,6 @@ func AllowIPStrings(ipStrings []string, serverId int64) bool {
 
 func IsZero(ipBytes []byte) bool {
 	return len(ipBytes) == 0
-}
-
-func CompareBytes(b1 []byte, b2 []byte) int {
-	var l1 = len(b1)
-	var l2 = len(b2)
-	if l1 < l2 {
-		return -1
-	}
-	if l1 > l2 {
-		return 1
-	}
-	return bytes.Compare(b1, b2)
-}
-
-func IPBytes(ip string) []byte {
-	if len(ip) == 0 {
-		return nil
-	}
-
-	var i = net.ParseIP(ip)
-	if i == nil {
-		return nil
-	}
-
-	var i4 = i.To4()
-	if i4 != nil {
-		return i4
-	}
-
-	return i.To16()
 }
 
 func ToHex(b []byte) string {

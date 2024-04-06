@@ -1,6 +1,7 @@
 package iplibrary
 
 import (
+	"github.com/TeaOSLab/EdgeCommon/pkg/iputils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
@@ -53,7 +54,7 @@ type IPListManager struct {
 	fetchPageSize int64
 
 	listMap map[int64]*IPList
-	locker  sync.Mutex
+	mu  sync.RWMutex
 
 	isFirstTime bool
 }
@@ -232,9 +233,10 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 }
 
 func (this *IPListManager) FindList(listId int64) *IPList {
-	this.locker.Lock()
+	this.mu.RLock()
 	var list = this.listMap[listId]
-	this.locker.Unlock()
+	this.mu.RUnlock()
+
 	return list
 }
 
@@ -274,15 +276,15 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 				list = GlobalWhiteIPList
 			}
 		} else { // 其他List
-			this.locker.Lock()
+			this.mu.Lock()
 			list = this.listMap[item.ListId]
-			this.locker.Unlock()
+			this.mu.Unlock()
 		}
 		if list == nil {
 			list = NewIPList()
-			this.locker.Lock()
+			this.mu.Lock()
 			this.listMap[item.ListId] = list
-			this.locker.Unlock()
+			this.mu.Unlock()
 		}
 
 		changedLists[list] = zero.New()
@@ -304,8 +306,8 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 		list.AddDelay(&IPItem{
 			Id:         uint64(item.Id),
 			Type:       item.Type,
-			IPFrom:     IPBytes(item.IpFrom),
-			IPTo:       IPBytes(item.IpTo),
+			IPFrom:     iputils.ToBytes(item.IpFrom),
+			IPTo:       iputils.ToBytes(item.IpTo),
 			ExpiredAt:  item.ExpiredAt,
 			EventLevel: item.EventLevel,
 		})

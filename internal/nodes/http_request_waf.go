@@ -112,7 +112,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	}
 	for _, ref := range inbound.AllAllowListRefs() {
 		if ref.IsOn && ref.ListId > 0 {
-			list := iplibrary.SharedIPListManager.FindList(ref.ListId)
+			var list = iplibrary.SharedIPListManager.FindList(ref.ListId)
 			if list != nil {
 				_, found := list.ContainsIPStrings(remoteAddrs)
 				if found {
@@ -127,7 +127,7 @@ func (this *HTTPRequest) checkWAFRequest(firewallPolicy *firewallconfigs.HTTPFir
 	if isDefendMode {
 		for _, ref := range inbound.AllDenyListRefs() {
 			if ref.IsOn && ref.ListId > 0 {
-				list := iplibrary.SharedIPListManager.FindList(ref.ListId)
+				var list = iplibrary.SharedIPListManager.FindList(ref.ListId)
 				if list != nil {
 					item, found := list.ContainsIPStrings(remoteAddrs)
 					if found {
