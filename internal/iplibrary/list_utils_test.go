@@ -14,7 +14,7 @@ func TestIPIsAllowed(t *testing.T) {
 	}
 
 	var manager = NewIPListManager()
-	manager.init()
+	manager.Init()
 
 	var before = time.Now()
 	defer func() {

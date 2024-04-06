@@ -6,7 +6,7 @@ package firewalls
 import (
 	"errors"
 	"fmt"
-	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
+	"github.com/TeaOSLab/EdgeCommon/pkg/iputils"
 	"github.com/TeaOSLab/EdgeNode/internal/conns"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
@@ -386,12 +386,12 @@ func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int, async 
 	// 再次尝试关闭连接
 	defer conns.SharedMap.CloseIPConns(ip)
 
-	var ipLong = configutils.IPString2Long(ip)
 	if strings.Contains(ip, ":") { // ipv6
 		if len(this.denyIPv6Sets) == 0 {
 			return errors.New("ipv6 ip set not found")
 		}
-		return this.denyIPv6Sets[ipLong%uint64(len(this.denyIPv6Sets))].AddElement(data.To16(), &nftables.ElementOptions{
+		var setIndex = iputils.ParseIP(ip).Mod(len(this.denyIPv6Sets))
+		return this.denyIPv6Sets[setIndex].AddElement(data.To16(), &nftables.ElementOptions{
 			Timeout: time.Duration(timeoutSeconds) * time.Second,
 		}, false)
 	}
@@ -400,7 +400,8 @@ func (this *NFTablesFirewall) DropSourceIP(ip string, timeoutSeconds int, async 
 	if len(this.denyIPv4Sets) == 0 {
 		return errors.New("ipv4 ip set not found")
 	}
-	return this.denyIPv4Sets[ipLong%uint64(len(this.denyIPv4Sets))].AddElement(data.To4(), &nftables.ElementOptions{
+	var setIndex = iputils.ParseIP(ip).Mod(len(this.denyIPv4Sets))
+	return this.denyIPv4Sets[setIndex].AddElement(data.To4(), &nftables.ElementOptions{
 		Timeout: time.Duration(timeoutSeconds) * time.Second,
 	}, false)
 }
@@ -412,10 +413,10 @@ func (this *NFTablesFirewall) RemoveSourceIP(ip string) error {
 		return errors.New("invalid ip '" + ip + "'")
 	}
 
-	var ipLong = configutils.IPString2Long(ip)
 	if strings.Contains(ip, ":") { // ipv6
+		var setIndex = iputils.ParseIP(ip).Mod(len(this.denyIPv6Sets))
 		if len(this.denyIPv6Sets) > 0 {
-			err := this.denyIPv6Sets[ipLong%uint64(len(this.denyIPv6Sets))].DeleteElement(data.To16())
+			err := this.denyIPv6Sets[setIndex].DeleteElement(data.To16())
 			if err != nil {
 				return err
 			}
@@ -433,7 +434,8 @@ func (this *NFTablesFirewall) RemoveSourceIP(ip string) error {
 
 	// ipv4
 	if len(this.denyIPv4Sets) > 0 {
-		err := this.denyIPv4Sets[ipLong%uint64(len(this.denyIPv4Sets))].DeleteElement(data.To4())
+		var setIndex = iputils.ParseIP(ip).Mod(len(this.denyIPv4Sets))
+		err := this.denyIPv4Sets[setIndex].DeleteElement(data.To4())
 		if err != nil {
 			return err
 		}

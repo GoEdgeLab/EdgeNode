@@ -1,7 +1,8 @@
 package utils
 
 import (
-	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
+	"encoding/binary"
+	"net"
 	"strings"
 )
 
@@ -15,5 +16,9 @@ func VersionToLong(version string) uint32 {
 	} else if countDots == 0 {
 		version += ".0.0.0"
 	}
-	return uint32(configutils.IPString2Long(version))
+	var ip = net.ParseIP(version)
+	if ip == nil || ip.To4() == nil {
+		return 0
+	}
+	return binary.BigEndian.Uint32(ip.To4())
 }

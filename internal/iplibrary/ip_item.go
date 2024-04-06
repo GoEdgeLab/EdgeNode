@@ -14,49 +14,39 @@ const (
 
 // IPItem IP条目
 type IPItem struct {
-	Type       string `json:"type"`
-	Id         uint64 `json:"id"`
-	IPFrom     uint64 `json:"ipFrom"`
-	IPTo       uint64 `json:"ipTo"`
+	Type   string `json:"type"`
+	Id     uint64 `json:"id"`
+	IPFrom []byte `json:"ipFrom"`
+	IPTo   []byte `json:"ipTo"`
+
 	ExpiredAt  int64  `json:"expiredAt"`
 	EventLevel string `json:"eventLevel"`
 }
 
 // Contains 检查是否包含某个IP
-func (this *IPItem) Contains(ip uint64) bool {
+func (this *IPItem) Contains(ipBytes []byte) bool {
 	switch this.Type {
 	case IPItemTypeIPv4:
-		return this.containsIPv4(ip)
+		return this.containsIP(ipBytes)
 	case IPItemTypeIPv6:
-		return this.containsIPv6(ip)
+		return this.containsIP(ipBytes)
 	case IPItemTypeAll:
 		return this.containsAll()
 	default:
-		return this.containsIPv4(ip)
+		return this.containsIP(ipBytes)
 	}
 }
 
-// 检查是否包含某个IPv4
-func (this *IPItem) containsIPv4(ip uint64) bool {
-	if this.IPTo == 0 {
-		if this.IPFrom != ip {
+// 检查是否包含某个
+func (this *IPItem) containsIP(ipBytes []byte) bool {
+	if IsZero(this.IPTo) {
+		if CompareBytes(this.IPFrom, ipBytes) != 0 {
 			return false
 		}
 	} else {
-		if this.IPFrom > ip || this.IPTo < ip {
+		if CompareBytes(this.IPFrom, ipBytes) > 0 || CompareBytes(this.IPTo, ipBytes) < 0 {
 			return false
 		}
-	}
-	if this.ExpiredAt > 0 && this.ExpiredAt < fasttime.Now().Unix() {
-		return false
-	}
-	return true
-}
-
-// 检查是否包含某个IPv6
-func (this *IPItem) containsIPv6(ip uint64) bool {
-	if this.IPFrom != ip {
-		return false
 	}
 	if this.ExpiredAt > 0 && this.ExpiredAt < fasttime.Now().Unix() {
 		return false

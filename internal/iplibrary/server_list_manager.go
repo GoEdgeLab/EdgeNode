@@ -59,3 +59,7 @@ func (this *ServerListManager) FindBlackList(serverId int64, autoCreate bool) *I
 
 	return nil
 }
+
+func (this *ServerListManager) BlackMap() map[int64]*IPList {
+	return this.blackMap
+}

@@ -3,9 +3,11 @@
 package iplibrary
 
 import (
+	"bytes"
+	"encoding/hex"
 	"github.com/TeaOSLab/EdgeCommon/pkg/nodeconfigs"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/iwind/TeaGo/Tea"
+	"net"
 )
 
 // AllowIP 检查IP是否被允许访问
@@ -24,25 +26,25 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool, expir
 		}
 	}
 
-	var ipLong = utils.IP2LongHash(ip)
-	if ipLong == 0 {
+	var ipBytes = IPBytes(ip)
+	if IsZero(ipBytes) {
 		return false, false, 0
 	}
 
 	// check white lists
-	if GlobalWhiteIPList.Contains(ipLong) {
+	if GlobalWhiteIPList.Contains(ipBytes) {
 		return true, true, 0
 	}
 
 	if serverId > 0 {
 		var list = SharedServerListManager.FindWhiteList(serverId, false)
-		if list != nil && list.Contains(ipLong) {
+		if list != nil && list.Contains(ipBytes) {
 			return true, true, 0
 		}
 	}
 
 	// check black lists
-	expiresAt, ok := GlobalBlackIPList.ContainsExpires(ipLong)
+	expiresAt, ok := GlobalBlackIPList.ContainsExpires(ipBytes)
 	if ok {
 		return false, false, expiresAt
 	}
@@ -50,7 +52,7 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool, expir
 	if serverId > 0 {
 		var list = SharedServerListManager.FindBlackList(serverId, false)
 		if list != nil {
-			expiresAt, ok = list.ContainsExpires(ipLong)
+			expiresAt, ok = list.ContainsExpires(ipBytes)
 			if ok {
 				return false, false, expiresAt
 			}
@@ -62,13 +64,13 @@ func AllowIP(ip string, serverId int64) (canGoNext bool, inAllowList bool, expir
 
 // IsInWhiteList 检查IP是否在白名单中
 func IsInWhiteList(ip string) bool {
-	var ipLong = utils.IP2LongHash(ip)
-	if ipLong == 0 {
+	var ipBytes = IPBytes(ip)
+	if IsZero(ipBytes) {
 		return false
 	}
 
 	// check white lists
-	return GlobalWhiteIPList.Contains(ipLong)
+	return GlobalWhiteIPList.Contains(ipBytes)
 }
 
 // AllowIPStrings 检查一组IP是否被允许访问
@@ -83,4 +85,46 @@ func AllowIPStrings(ipStrings []string, serverId int64) bool {
 		}
 	}
 	return true
+}
+
+func IsZero(ipBytes []byte) bool {
+	return len(ipBytes) == 0
+}
+
+func CompareBytes(b1 []byte, b2 []byte) int {
+	var l1 = len(b1)
+	var l2 = len(b2)
+	if l1 < l2 {
+		return -1
+	}
+	if l1 > l2 {
+		return 1
+	}
+	return bytes.Compare(b1, b2)
+}
+
+func IPBytes(ip string) []byte {
+	if len(ip) == 0 {
+		return nil
+	}
+
+	var i = net.ParseIP(ip)
+	if i == nil {
+		return nil
+	}
+
+	var i4 = i.To4()
+	if i4 != nil {
+		return i4
+	}
+
+	return i.To16()
+}
+
+func ToHex(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+
+	return hex.EncodeToString(b)
 }

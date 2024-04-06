@@ -9,7 +9,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
@@ -68,10 +67,10 @@ func NewIPListManager() *IPListManager {
 }
 
 func (this *IPListManager) Start() {
-	this.init()
+	this.Init()
 
 	// 第一次读取
-	err := this.loop()
+	err := this.Loop()
 	if err != nil {
 		remotelogs.ErrorObject("IP_LIST_MANAGER", err)
 	}
@@ -86,7 +85,7 @@ func (this *IPListManager) Start() {
 		case <-this.ticker.C:
 		case <-IPListUpdateNotify:
 		}
-		err = this.loop()
+		err = this.Loop()
 		if err != nil {
 			countErrors++
 
@@ -111,7 +110,7 @@ func (this *IPListManager) Stop() {
 	}
 }
 
-func (this *IPListManager) init() {
+func (this *IPListManager) Init() {
 	// 从数据库中当中读取数据
 	// 检查sqlite文件是否存在，以便决定使用sqlite还是kv
 	var sqlitePath = Tea.Root + "/data/ip_list.db"
@@ -164,7 +163,7 @@ func (this *IPListManager) init() {
 	}
 }
 
-func (this *IPListManager) loop() error {
+func (this *IPListManager) Loop() error {
 	// 是否同步IP名单
 	nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 	if nodeConfig != nil && !nodeConfig.EnableIPLists {
@@ -245,6 +244,10 @@ func (this *IPListManager) DeleteExpiredItems() {
 	}
 }
 
+func (this *IPListManager) ListMap() map[int64]*IPList {
+	return this.listMap
+}
+
 // 处理IP条目
 func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 	var changedLists = map[*IPList]zero.Zero{}
@@ -301,8 +304,8 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 		list.AddDelay(&IPItem{
 			Id:         uint64(item.Id),
 			Type:       item.Type,
-			IPFrom:     utils.IP2LongHash(item.IpFrom),
-			IPTo:       utils.IP2LongHash(item.IpTo),
+			IPFrom:     IPBytes(item.IpFrom),
+			IPTo:       IPBytes(item.IpTo),
 			ExpiredAt:  item.ExpiredAt,
 			EventLevel: item.EventLevel,
 		})

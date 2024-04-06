@@ -1,7 +1,7 @@
-package iplibrary
+package iplibrary_test
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
 	"math/rand"
@@ -12,89 +12,92 @@ import (
 )
 
 func TestIPItem_Contains(t *testing.T) {
-	a := assert.NewAssertion(t)
+	var a = assert.NewAssertion(t)
 
 	{
-		item := &IPItem{
-			IPFrom:    utils.IP2LongHash("192.168.1.100"),
-			IPTo:      0,
+		var item = &iplibrary.IPItem{
+			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPTo:      nil,
 			ExpiredAt: 0,
 		}
-		a.IsTrue(item.Contains(utils.IP2LongHash("192.168.1.100")))
+		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
 	}
 
 	{
-		item := &IPItem{
-			IPFrom:    utils.IP2LongHash("192.168.1.100"),
-			IPTo:      0,
+		var item = &iplibrary.IPItem{
+			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPTo:      nil,
 			ExpiredAt: time.Now().Unix() + 1,
 		}
-		a.IsTrue(item.Contains(utils.IP2LongHash("192.168.1.100")))
+		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
 	}
 
 	{
-		item := &IPItem{
-			IPFrom:    utils.IP2LongHash("192.168.1.100"),
-			IPTo:      0,
+		var item = &iplibrary.IPItem{
+			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPTo:      nil,
 			ExpiredAt: time.Now().Unix() - 1,
 		}
-		a.IsFalse(item.Contains(utils.IP2LongHash("192.168.1.100")))
+		a.IsFalse(item.Contains(iplibrary.IPBytes("192.168.1.100")))
 	}
 	{
-		item := &IPItem{
-			IPFrom:    utils.IP2LongHash("192.168.1.100"),
-			IPTo:      0,
+		var item = &iplibrary.IPItem{
+			IPFrom:    iplibrary.IPBytes("192.168.1.100"),
+			IPTo:      nil,
 			ExpiredAt: 0,
 		}
-		a.IsFalse(item.Contains(utils.IP2LongHash("192.168.1.101")))
-	}
-
-	{
-		item := &IPItem{
-			IPFrom:    utils.IP2LongHash("192.168.1.1"),
-			IPTo:      utils.IP2LongHash("192.168.1.101"),
-			ExpiredAt: 0,
-		}
-		a.IsTrue(item.Contains(utils.IP2LongHash("192.168.1.100")))
+		a.IsFalse(item.Contains(iplibrary.IPBytes("192.168.1.101")))
 	}
 
 	{
-		item := &IPItem{
-			IPFrom:    utils.IP2LongHash("192.168.1.1"),
-			IPTo:      utils.IP2LongHash("192.168.1.100"),
+		var item = &iplibrary.IPItem{
+			IPFrom:    iplibrary.IPBytes("192.168.1.1"),
+			IPTo:      iplibrary.IPBytes("192.168.1.101"),
 			ExpiredAt: 0,
 		}
-		a.IsTrue(item.Contains(utils.IP2LongHash("192.168.1.100")))
+		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
 	}
 
 	{
-		item := &IPItem{
-			IPFrom:    utils.IP2LongHash("192.168.1.1"),
-			IPTo:      utils.IP2LongHash("192.168.1.101"),
+		var item = &iplibrary.IPItem{
+			IPFrom:    iplibrary.IPBytes("192.168.1.1"),
+			IPTo:      iplibrary.IPBytes("192.168.1.100"),
 			ExpiredAt: 0,
 		}
-		a.IsTrue(item.Contains(utils.IP2LongHash("192.168.1.1")))
+		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.100")))
+	}
+
+	{
+		var item = &iplibrary.IPItem{
+			IPFrom:    iplibrary.IPBytes("192.168.1.1"),
+			IPTo:      iplibrary.IPBytes("192.168.1.101"),
+			ExpiredAt: 0,
+		}
+		a.IsTrue(item.Contains(iplibrary.IPBytes("192.168.1.1")))
 	}
 }
 
 func TestIPItem_Memory(t *testing.T) {
 	var isSingleTest = testutils.IsSingleTesting()
 
-	var list = NewIPList()
+	var list = iplibrary.NewIPList()
 	var count = 100
 	if isSingleTest {
 		count = 2_000_000
 	}
 	for i := 0; i < count; i++ {
-		list.Add(&IPItem{
+		list.Add(&iplibrary.IPItem{
 			Type:       "ip",
 			Id:         uint64(i),
-			IPFrom:     utils.IP2LongHash("192.168.1.1"),
-			IPTo:       0,
+			IPFrom:     iplibrary.IPBytes("192.168.1.1"),
+			IPTo:       nil,
 			ExpiredAt:  time.Now().Unix(),
 			EventLevel: "",
 		})
 	}
+
+	runtime.GC()
+
 	t.Log("waiting")
 	if isSingleTest {
 		time.Sleep(10 * time.Second)
@@ -104,9 +107,9 @@ func TestIPItem_Memory(t *testing.T) {
 func BenchmarkIPItem_Contains(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var item = &IPItem{
-		IPFrom:    utils.IP2LongHash("192.168.1.1"),
-		IPTo:      utils.IP2LongHash("192.168.1.101"),
+	var item = &iplibrary.IPItem{
+		IPFrom:    iplibrary.IPBytes("192.168.1.1"),
+		IPTo:      iplibrary.IPBytes("192.168.1.101"),
 		ExpiredAt: 0,
 	}
 
@@ -114,7 +117,7 @@ func BenchmarkIPItem_Contains(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var ip = utils.IP2LongHash("192.168.1." + strconv.Itoa(rand.Int()%255))
+			var ip = iplibrary.IPBytes("192.168.1." + strconv.Itoa(rand.Int()%255))
 			item.Contains(ip)
 		}
 	})

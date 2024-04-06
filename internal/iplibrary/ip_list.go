@@ -1,7 +1,6 @@
 package iplibrary
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/expires"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"sort"
@@ -12,7 +11,6 @@ var GlobalBlackIPList = NewIPList()
 var GlobalWhiteIPList = NewIPList()
 
 // IPList IP名单
-// TODO 考虑将ipv6单独放入buckets
 // TODO 对ipMap进行分区
 type IPList struct {
 	isDeleted bool
@@ -20,8 +18,8 @@ type IPList struct {
 	itemsMap map[uint64]*IPItem // id => item
 
 	sortedRangeItems []*IPItem
-	ipMap            map[uint64]*IPItem // ipFrom => *IPItem
-	bufferItemsMap   map[uint64]*IPItem // id => *IPItem
+	ipMap            map[string]*IPItem // ipFrom => IPItem
+	bufferItemsMap   map[uint64]*IPItem // id => IPItem
 
 	allItemsMap map[uint64]*IPItem // id => item
 
@@ -35,7 +33,7 @@ func NewIPList() *IPList {
 		itemsMap:       map[uint64]*IPItem{},
 		bufferItemsMap: map[uint64]*IPItem{},
 		allItemsMap:    map[uint64]*IPItem{},
-		ipMap:          map[uint64]*IPItem{},
+		ipMap:          map[string]*IPItem{},
 	}
 
 	var expireList = expires.NewList()
@@ -59,7 +57,7 @@ func (this *IPList) AddDelay(item *IPItem) {
 		return
 	}
 
-	if item.IPTo > 0 {
+	if !IsZero(item.IPTo) {
 		this.mu.Lock()
 		this.bufferItemsMap[item.Id] = item
 		this.mu.Unlock()
@@ -81,7 +79,7 @@ func (this *IPList) Delete(itemId uint64) {
 }
 
 // Contains 判断是否包含某个IP
-func (this *IPList) Contains(ip uint64) bool {
+func (this *IPList) Contains(ipBytes []byte) bool {
 	if this.isDeleted {
 		return false
 	}
@@ -93,13 +91,12 @@ func (this *IPList) Contains(ip uint64) bool {
 		return true
 	}
 
-	var item = this.lookupIP(ip)
-
+	var item = this.lookupIP(ipBytes)
 	return item != nil
 }
 
 // ContainsExpires 判断是否包含某个IP
-func (this *IPList) ContainsExpires(ip uint64) (expiresAt int64, ok bool) {
+func (this *IPList) ContainsExpires(ipBytes []byte) (expiresAt int64, ok bool) {
 	if this.isDeleted {
 		return
 	}
@@ -111,7 +108,7 @@ func (this *IPList) ContainsExpires(ip uint64) (expiresAt int64, ok bool) {
 		return 0, true
 	}
 
-	var item = this.lookupIP(ip)
+	var item = this.lookupIP(ipBytes)
 
 	if item == nil {
 		return
@@ -148,7 +145,7 @@ func (this *IPList) ContainsIPStrings(ipStrings []string) (item *IPItem, found b
 		if len(ipString) == 0 {
 			continue
 		}
-		item = this.lookupIP(utils.IP2LongHash(ipString))
+		item = this.lookupIP(IPBytes(ipString))
 		if item != nil {
 			found = true
 			return
@@ -165,7 +162,7 @@ func (this *IPList) SortedRangeItems() []*IPItem {
 	return this.sortedRangeItems
 }
 
-func (this *IPList) IPMap() map[uint64]*IPItem {
+func (this *IPList) IPMap() map[string]*IPItem {
 	return this.ipMap
 }
 
@@ -175,6 +172,10 @@ func (this *IPList) ItemsMap() map[uint64]*IPItem {
 
 func (this *IPList) AllItemsMap() map[uint64]*IPItem {
 	return this.allItemsMap
+}
+
+func (this *IPList) BufferItemsMap() map[uint64]*IPItem {
+	return this.bufferItemsMap
 }
 
 func (this *IPList) addItem(item *IPItem, lock bool, sortable bool) {
@@ -188,20 +189,20 @@ func (this *IPList) addItem(item *IPItem, lock bool, sortable bool) {
 
 	var shouldSort bool
 
-	if item.IPFrom == item.IPTo {
-		item.IPTo = 0
+	if CompareBytes(item.IPFrom, item.IPTo) == 0 {
+		item.IPTo = nil
 	}
 
-	if item.IPFrom == 0 && item.IPTo == 0 {
+	if IsZero(item.IPFrom) && IsZero(item.IPTo) {
 		if item.Type != IPItemTypeAll {
 			return
 		}
-	} else if item.IPTo > 0 {
-		if item.IPFrom > item.IPTo {
+	} else if !IsZero(item.IPTo) {
+		if CompareBytes(item.IPFrom, item.IPTo) > 0 {
 			item.IPFrom, item.IPTo = item.IPTo, item.IPFrom
-		} else if item.IPFrom == 0 {
+		} else if IsZero(item.IPFrom) {
 			item.IPFrom = item.IPTo
-			item.IPTo = 0
+			item.IPTo = nil
 		}
 	}
 
@@ -219,12 +220,12 @@ func (this *IPList) addItem(item *IPItem, lock bool, sortable bool) {
 	this.itemsMap[item.Id] = item
 
 	// 展开
-	if item.IPFrom > 0 {
-		if item.IPTo > 0 {
+	if !IsZero(item.IPFrom) {
+		if !IsZero(item.IPTo) {
 			this.sortedRangeItems = append(this.sortedRangeItems, item)
 			shouldSort = true
 		} else {
-			this.ipMap[item.IPFrom] = item
+			this.ipMap[ToHex(item.IPFrom)] = item
 		}
 	} else {
 		this.allItemsMap[item.Id] = item
@@ -253,18 +254,18 @@ func (this *IPList) sortRangeItems(force bool) {
 		sort.Slice(this.sortedRangeItems, func(i, j int) bool {
 			var item1 = this.sortedRangeItems[i]
 			var item2 = this.sortedRangeItems[j]
-			if item1.IPFrom == item2.IPFrom {
-				return item1.IPTo < item2.IPTo
+			if CompareBytes(item1.IPFrom, item2.IPFrom) == 0 {
+				return CompareBytes(item1.IPTo, item2.IPTo) < 0
 			}
-			return item1.IPFrom < item2.IPFrom
+			return CompareBytes(item1.IPFrom, item2.IPFrom) < 0
 		})
 	}
 }
 
 // 不加锁的情况下查找Item
-func (this *IPList) lookupIP(ip uint64) *IPItem {
+func (this *IPList) lookupIP(ipBytes []byte) *IPItem {
 	{
-		item, ok := this.ipMap[ip]
+		item, ok := this.ipMap[ToHex(ipBytes)]
 		if ok {
 			return item
 		}
@@ -278,12 +279,13 @@ func (this *IPList) lookupIP(ip uint64) *IPItem {
 	var resultIndex = -1
 	sort.Search(count, func(i int) bool {
 		var item = this.sortedRangeItems[i]
-		if item.IPFrom < ip {
-			if item.IPTo >= ip {
+		var cmp = CompareBytes(item.IPFrom, ipBytes)
+		if cmp < 0 {
+			if CompareBytes(item.IPTo, ipBytes) >= 0 {
 				resultIndex = i
 			}
 			return false
-		} else if item.IPFrom == ip {
+		} else if cmp == 0 {
 			resultIndex = i
 			return false
 		}
@@ -310,10 +312,11 @@ func (this *IPList) deleteItem(itemId uint64) {
 	}
 
 	// 从ipMap中删除
-	if oldItem.IPTo == 0 {
-		ipItem, ok := this.ipMap[oldItem.IPFrom]
+	if IsZero(oldItem.IPTo) {
+		var ipHex = ToHex(oldItem.IPFrom)
+		ipItem, ok := this.ipMap[ipHex]
 		if ok && ipItem.Id == itemId {
-			delete(this.ipMap, oldItem.IPFrom)
+			delete(this.ipMap, ipHex)
 		}
 	}
 
@@ -327,7 +330,7 @@ func (this *IPList) deleteItem(itemId uint64) {
 	}
 
 	// 删除排序中的Item
-	if oldItem.IPTo > 0 {
+	if !IsZero(oldItem.IPTo) {
 		var index = -1
 		for itemIndex, item := range this.sortedRangeItems {
 			if item.Id == itemId {
