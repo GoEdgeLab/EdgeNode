@@ -18,6 +18,11 @@ func NewCounterTable[T int64 | uint64](name string) (*CounterTable[T], error) {
 }
 
 func (this *CounterTable[T]) Increase(key string, delta T) (newValue T, err error) {
+	if this.isClosed {
+		err = NewTableClosedErr(this.name)
+		return
+	}
+
 	err = this.Table.WriteTx(func(tx *Tx[T]) error {
 		value, getErr := tx.Get(key)
 		if getErr != nil {

@@ -165,6 +165,10 @@ func (this *Query[T]) FieldOffset(fieldOffset []byte) *Query[T] {
 //}
 
 func (this *Query[T]) FindAll(fn IteratorFunc[T]) (err error) {
+	if this.table != nil && this.table.isClosed {
+		return NewTableClosedErr(this.table.name)
+	}
+
 	defer func() {
 		var panicErr = recover()
 		if panicErr != nil {

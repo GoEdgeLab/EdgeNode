@@ -75,10 +75,17 @@ func (this *Tx[T]) Insert(key string, value T) error {
 }
 
 func (this *Tx[T]) Get(key string) (value T, err error) {
+	if this.table.isClosed {
+		err = NewTableClosedErr(this.table.name)
+		return
+	}
 	return this.table.get(this, key)
 }
 
 func (this *Tx[T]) Delete(key string) error {
+	if this.table.isClosed {
+		return NewTableClosedErr(this.table.name)
+	}
 	if this.readOnly {
 		return errors.New("can not delete value in readonly transaction")
 	}

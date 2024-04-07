@@ -27,6 +27,7 @@ type Table[T any] struct {
 	db           *DB
 	encoder      ValueEncoder[T]
 	fieldNames   []string
+	isClosed     bool
 
 	mu *sync.RWMutex
 }
@@ -70,6 +71,10 @@ func (this *Table[T]) Encoder() ValueEncoder[T] {
 }
 
 func (this *Table[T]) Set(key string, value T) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	if len(key) > KeyMaxLength {
 		return ErrKeyTooLong
 	}
@@ -85,6 +90,10 @@ func (this *Table[T]) Set(key string, value T) error {
 }
 
 func (this *Table[T]) SetSync(key string, value T) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	if len(key) > KeyMaxLength {
 		return ErrKeyTooLong
 	}
@@ -100,6 +109,10 @@ func (this *Table[T]) SetSync(key string, value T) error {
 }
 
 func (this *Table[T]) Insert(key string, value T) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	if len(key) > KeyMaxLength {
 		return ErrKeyTooLong
 	}
@@ -129,6 +142,10 @@ func (this *Table[T]) ComposeFieldKey(keyBytes []byte, fieldName string, fieldVa
 }
 
 func (this *Table[T]) Exist(key string) (found bool, err error) {
+	if this.isClosed {
+		return false, NewTableClosedErr(this.name)
+	}
+
 	_, closer, err := this.db.store.rawDB.Get(this.FullKey(key))
 	if err != nil {
 		if IsNotFound(err) {
@@ -144,6 +161,11 @@ func (this *Table[T]) Exist(key string) (found bool, err error) {
 }
 
 func (this *Table[T]) Get(key string) (value T, err error) {
+	if this.isClosed {
+		err = NewTableClosedErr(this.name)
+		return
+	}
+
 	err = this.ReadTx(func(tx *Tx[T]) error {
 		resultValue, getErr := this.get(tx, key)
 		if getErr == nil {
@@ -156,6 +178,10 @@ func (this *Table[T]) Get(key string) (value T, err error) {
 }
 
 func (this *Table[T]) Delete(key ...string) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	if len(key) == 0 {
 		return nil
 	}
@@ -166,6 +192,10 @@ func (this *Table[T]) Delete(key ...string) error {
 }
 
 func (this *Table[T]) ReadTx(fn func(tx *Tx[T]) error) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	var tx = NewTx[T](this, true)
 	defer func() {
 		_ = tx.Close()
@@ -180,6 +210,10 @@ func (this *Table[T]) ReadTx(fn func(tx *Tx[T]) error) error {
 }
 
 func (this *Table[T]) WriteTx(fn func(tx *Tx[T]) error) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	var tx = NewTx[T](this, false)
 	defer func() {
 		_ = tx.Close()
@@ -194,6 +228,10 @@ func (this *Table[T]) WriteTx(fn func(tx *Tx[T]) error) error {
 }
 
 func (this *Table[T]) WriteTxSync(fn func(tx *Tx[T]) error) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	var tx = NewTx[T](this, false)
 	defer func() {
 		_ = tx.Close()
@@ -208,6 +246,10 @@ func (this *Table[T]) WriteTxSync(fn func(tx *Tx[T]) error) error {
 }
 
 func (this *Table[T]) Truncate() error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
@@ -215,6 +257,10 @@ func (this *Table[T]) Truncate() error {
 }
 
 func (this *Table[T]) DeleteRange(start string, end string) error {
+	if this.isClosed {
+		return NewTableClosedErr(this.name)
+	}
+
 	return this.db.store.rawDB.DeleteRange(this.FullKeyBytes([]byte(start)), this.FullKeyBytes([]byte(end)), DefaultWriteOptions)
 }
 
@@ -280,7 +326,7 @@ func (this *Table[T]) DecodeFieldKey(fieldName string, fieldKey []byte) (fieldVa
 }
 
 func (this *Table[T]) Close() error {
-	// nothing to do
+	this.isClosed = true
 	return nil
 }
 
