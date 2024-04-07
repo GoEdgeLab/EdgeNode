@@ -267,7 +267,7 @@ func (this *IPList) sortRangeItems(force bool) {
 func (this *IPList) lookupIP(ipBytes []byte) *IPItem {
 	{
 		item, ok := this.ipMap[ToHex(ipBytes)]
-		if ok {
+		if ok && (item.ExpiredAt == 0 || item.ExpiredAt > fasttime.Now().Unix()) {
 			return item
 		}
 	}
@@ -297,7 +297,11 @@ func (this *IPList) lookupIP(ipBytes []byte) *IPItem {
 		return nil
 	}
 
-	return this.sortedRangeItems[resultIndex]
+	var item = this.sortedRangeItems[resultIndex]
+	if item.ExpiredAt == 0 || item.ExpiredAt > fasttime.Now().Unix() {
+		return item
+	}
+	return nil
 }
 
 // 在不加锁的情况下删除某个Item
