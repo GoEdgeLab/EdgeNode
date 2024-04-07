@@ -176,11 +176,12 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 	// block action
 	if policy.BlockOptions != nil {
 		w.DefaultBlockAction = &BlockAction{
-			StatusCode: policy.BlockOptions.StatusCode,
-			Body:       policy.BlockOptions.Body,
-			URL:        policy.BlockOptions.URL,
-			Timeout:    policy.BlockOptions.Timeout,
-			TimeoutMax: policy.BlockOptions.TimeoutMax,
+			StatusCode:        policy.BlockOptions.StatusCode,
+			Body:              policy.BlockOptions.Body,
+			URL:               policy.BlockOptions.URL,
+			Timeout:           policy.BlockOptions.Timeout,
+			TimeoutMax:        policy.BlockOptions.TimeoutMax,
+			FailBlockScopeAll: policy.BlockOptions.FailBlockScopeAll,
 		}
 	}
 
@@ -211,6 +212,33 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 			UIBody:            policy.CaptchaOptions.UIBody,
 			Lang:              policy.CaptchaOptions.Lang,
 			GeeTestConfig:     &policy.CaptchaOptions.GeeTestConfig,
+		}
+	}
+
+	// get302
+	if policy.Get302Options != nil {
+		w.DefaultGet302Action = &Get302Action{
+			Life:  policy.Get302Options.Life,
+			Scope: policy.Get302Options.Scope,
+		}
+	}
+
+	// post307
+	if policy.Post307Options != nil {
+		w.DefaultPost307Action = &Post307Action{
+			Life:  policy.Post307Options.Life,
+			Scope: policy.Post307Options.Scope,
+		}
+	}
+
+	// jscookie
+	if policy.JSCookieOptions != nil {
+		w.DefaultJSCookieAction = &JSCookieAction{
+			Life:              policy.JSCookieOptions.Life,
+			MaxFails:          policy.JSCookieOptions.MaxFails,
+			FailBlockTimeout:  policy.JSCookieOptions.FailBlockTimeout,
+			Scope:             policy.JSCookieOptions.Scope,
+			FailBlockScopeAll: policy.JSCookieOptions.FailBlockScopeAll,
 		}
 	}
 

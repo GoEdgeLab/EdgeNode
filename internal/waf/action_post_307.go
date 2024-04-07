@@ -4,7 +4,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"io"
 	"net/http"
@@ -35,7 +34,7 @@ func (this *Post307Action) WillChange() bool {
 }
 
 func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
-	var cookieName = "WAF_VALIDATOR_ID"
+	const cookieName = "WAF_VALIDATOR_ID"
 
 	// 仅限于POST
 	if request.WAFRaw().Method != http.MethodPost {
@@ -52,32 +51,64 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	}
 
 	// 判断是否有Cookie
-	cookie, err := request.WAFRaw().Cookie(cookieName)
-	if err == nil && cookie != nil {
-		m, err := utils.SimpleDecryptMap(cookie.Value)
-		if err == nil && m.GetString("remoteIP") == request.WAFRemoteIP() && time.Now().Unix() < m.GetInt64("timestamp")+10 {
-			var life = m.GetInt64("life")
+	cookie, cookieErr := request.WAFRaw().Cookie(cookieName)
+	if cookieErr == nil && cookie != nil {
+		var remoteIP string
+		var life int64
+		var setId int64
+		var policyId int64
+		var groupId int64
+		var timestamp int64
+
+		var infoArg = &InfoArg{}
+		var success bool
+		decodeErr := infoArg.Decode(cookie.Value)
+		if decodeErr == nil && infoArg.IsValid() {
+			success = true
+
+			remoteIP = infoArg.RemoteIP
+			life = int64(infoArg.Life)
+			setId = infoArg.SetId
+			policyId = infoArg.PolicyId
+			groupId = infoArg.GroupId
+			timestamp = infoArg.Timestamp
+		} else {
+			// 兼容老版本
+			m, decodeMapErr := utils.SimpleDecryptMap(cookie.Value)
+			if decodeMapErr == nil {
+				success = true
+
+				remoteIP = m.GetString("remoteIP")
+				timestamp = m.GetInt64("timestamp")
+				life = m.GetInt64("life")
+				setId = m.GetInt64("setId")
+				groupId = m.GetInt64("groupId")
+				policyId = m.GetInt64("policyId")
+			}
+		}
+
+		if success && remoteIP == request.WAFRemoteIP() && time.Now().Unix() < timestamp+10 {
 			if life <= 0 {
 				life = 600 // 默认10分钟
 			}
-			var setId = types.String(m.GetInt64("setId"))
-			SharedIPWhiteList.RecordIP("set:"+setId, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life, m.GetInt64("policyId"), false, m.GetInt64("groupId"), m.GetInt64("setId"), "")
+			SharedIPWhiteList.RecordIP("set:"+types.String(setId), this.Scope, request.WAFServerId(), request.WAFRemoteIP(), time.Now().Unix()+life, policyId, false, groupId, setId, "")
 			return PerformResult{
 				ContinueRequest: true,
 			}
 		}
 	}
 
-	var m = maps.Map{
-		"timestamp": time.Now().Unix(),
-		"life":      this.Life,
-		"scope":     this.Scope,
-		"policyId":  waf.Id,
-		"groupId":   group.Id,
-		"setId":     set.Id,
-		"remoteIP":  request.WAFRemoteIP(),
+	var m = &InfoArg{
+		Timestamp:        time.Now().Unix(),
+		Life:             this.Life,
+		Scope:            this.Scope,
+		PolicyId:         waf.Id,
+		GroupId:          group.Id,
+		SetId:            set.Id,
+		RemoteIP:         request.WAFRemoteIP(),
+		UseLocalFirewall: false,
 	}
-	info, err := utils.SimpleEncryptMap(m)
+	info, err := utils.SimpleEncryptObject(m)
 	if err != nil {
 		remotelogs.Error("WAF_POST_307_ACTION", "encode info failed: "+err.Error())
 		return PerformResult{

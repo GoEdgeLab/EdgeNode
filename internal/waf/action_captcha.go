@@ -6,7 +6,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
-	"github.com/iwind/TeaGo/maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -135,24 +134,32 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 
 	// 覆盖配置
 	if strings.HasPrefix(refURL, CaptchaPath) {
-		info := req.WAFRaw().URL.Query().Get("info")
+		var info = req.WAFRaw().URL.Query().Get("info")
 		if len(info) > 0 {
-			m, err := utils.SimpleDecryptMap(info)
-			if err == nil && m != nil {
-				refURL = m.GetString("url")
+			var oldArg = &InfoArg{}
+			decodeErr := oldArg.Decode(info)
+			if decodeErr == nil && oldArg.IsValid() {
+				refURL = oldArg.URL
+			} else {
+				// 兼容老版本
+				m, err := utils.SimpleDecryptMap(info)
+				if err == nil && m != nil {
+					refURL = m.GetString("url")
+				}
 			}
 		}
 	}
 
-	var captchaConfig = maps.Map{
-		"actionId":  this.ActionId(),
-		"timestamp": time.Now().Unix(),
-		"url":       refURL,
-		"policyId":  waf.Id,
-		"groupId":   group.Id,
-		"setId":     set.Id,
+	var captchaConfig = &InfoArg{
+		ActionId:         this.ActionId(),
+		Timestamp:        time.Now().Unix(),
+		URL:              refURL,
+		PolicyId:         waf.Id,
+		GroupId:          group.Id,
+		SetId:            set.Id,
+		UseLocalFirewall: waf.UseLocalFirewall && (this.FailBlockScopeAll || this.Scope == firewallconfigs.AllowScopeGlobal),
 	}
-	info, err := utils.SimpleEncryptMap(captchaConfig)
+	info, err := utils.SimpleEncryptObject(captchaConfig)
 	if err != nil {
 		remotelogs.Error("WAF_CAPTCHA_ACTION", "encode captcha config failed: "+err.Error())
 		return PerformResult{
@@ -161,11 +168,11 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	}
 
 	// 占用一次失败次数
-	CaptchaIncreaseFails(req, this, waf.Id, group.Id, set.Id, CaptchaPageCodeInit)
+	CaptchaIncreaseFails(req, this, waf.Id, group.Id, set.Id, CaptchaPageCodeInit, waf.UseLocalFirewall && (this.FailBlockScopeAll || this.Scope == firewallconfigs.FirewallScopeGlobal))
 
 	req.DisableStat()
 	req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
-	http.Redirect(writer, req.WAFRaw(), CaptchaPath+"?info="+url.QueryEscape(info), http.StatusTemporaryRedirect)
+	http.Redirect(writer, req.WAFRaw(), CaptchaPath+"?info="+url.QueryEscape(info)+"&from="+url.QueryEscape(refURL), http.StatusTemporaryRedirect)
 
 	return PerformResult{}
 }

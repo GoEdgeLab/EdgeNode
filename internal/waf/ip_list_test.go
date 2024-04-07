@@ -23,7 +23,7 @@ func TestNewIPList(t *testing.T) {
 	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.1", time.Now().Unix())
 	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.2", time.Now().Unix()+1)
 	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.1", time.Now().Unix()+2)
-	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeService, 1, "127.0.0.3", time.Now().Unix()+3)
+	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeServer, 1, "127.0.0.3", time.Now().Unix()+3)
 	list.Add(waf.IPTypeAll, firewallconfigs.FirewallScopeGlobal, 1, "127.0.0.10", time.Now().Unix()+10)
 
 	list.RemoveIP("127.0.0.1", 1, false)

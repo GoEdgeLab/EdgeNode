@@ -89,7 +89,7 @@ func (this *IPList) Add(ipType string, scope firewallconfigs.FirewallScope, serv
 	switch scope {
 	case firewallconfigs.FirewallScopeGlobal:
 		ip = "*@" + ip + "@" + ipType
-	case firewallconfigs.FirewallScopeService:
+	case firewallconfigs.FirewallScopeServer:
 		ip = types.String(serverId) + "@" + ip + "@" + ipType
 	default:
 		ip = "*@" + ip + "@" + ipType
@@ -127,7 +127,7 @@ func (this *IPList) RecordIP(ipType string,
 	if this.listType == IPListTypeDeny {
 		// 作用域
 		var scopeServerId int64
-		if scope == firewallconfigs.FirewallScopeService {
+		if scope == firewallconfigs.FirewallScopeServer {
 			scopeServerId = serverId
 		}
 
@@ -167,7 +167,7 @@ func (this *IPList) Contains(ipType string, scope firewallconfigs.FirewallScope,
 	switch scope {
 	case firewallconfigs.FirewallScopeGlobal:
 		ip = "*@" + ip + "@" + ipType
-	case firewallconfigs.FirewallScopeService:
+	case firewallconfigs.FirewallScopeServer:
 		ip = types.String(serverId) + "@" + ip + "@" + ipType
 	default:
 		ip = "*@" + ip + "@" + ipType
@@ -184,7 +184,7 @@ func (this *IPList) ContainsExpires(ipType string, scope firewallconfigs.Firewal
 	switch scope {
 	case firewallconfigs.FirewallScopeGlobal:
 		ip = "*@" + ip + "@" + ipType
-	case firewallconfigs.FirewallScopeService:
+	case firewallconfigs.FirewallScopeServer:
 		ip = types.String(serverId) + "@" + ip + "@" + ipType
 	default:
 		ip = "*@" + ip + "@" + ipType

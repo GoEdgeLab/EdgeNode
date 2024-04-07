@@ -178,7 +178,7 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 	// 上报
 	if ipListId > 0 && ipListIsAvailable {
 		var serverId int64
-		if this.Scope == firewallconfigs.FirewallScopeService {
+		if this.Scope == firewallconfigs.FirewallScopeServer {
 			serverId = request.WAFServerId()
 		}
 

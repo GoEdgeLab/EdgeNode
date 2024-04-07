@@ -74,7 +74,7 @@ func SimpleEncryptMap(m maps.Map) (base64String string, err error) {
 	if err != nil {
 		return "", err
 	}
-	data := SimpleEncrypt(mJSON)
+	var data = SimpleEncrypt(mJSON)
 	return base64.StdEncoding.EncodeToString(data), nil
 }
 
@@ -83,13 +83,32 @@ func SimpleDecryptMap(base64String string) (maps.Map, error) {
 	if err != nil {
 		return nil, err
 	}
-	mJSON := SimpleDecrypt(data)
+	var mJSON = SimpleDecrypt(data)
 	var result = maps.Map{}
 	err = json.Unmarshal(mJSON, &result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+func SimpleEncryptObject(ptr any) (string, error) {
+	mJSON, err := json.Marshal(ptr)
+	if err != nil {
+		return "", err
+	}
+	var data = SimpleEncrypt(mJSON)
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+func SimpleDecryptObjet(base64String string, ptr any) error {
+	data, err := base64.StdEncoding.DecodeString(base64String)
+	if err != nil {
+		return err
+	}
+	var mJSON = SimpleDecrypt(data)
+	err = json.Unmarshal(mJSON, ptr)
+	return err
 }
 
 type AES256CFBMethod struct {
@@ -99,7 +118,7 @@ type AES256CFBMethod struct {
 
 func (this *AES256CFBMethod) Init(key, iv []byte) error {
 	// 判断key是否为32长度
-	l := len(key)
+	var l = len(key)
 	if l > 32 {
 		key = key[:32]
 	} else if l < 32 {
@@ -113,7 +132,7 @@ func (this *AES256CFBMethod) Init(key, iv []byte) error {
 	this.block = block
 
 	// 判断iv长度
-	l2 := len(iv)
+	var l2 = len(iv)
 	if l2 > aes.BlockSize {
 		iv = iv[:aes.BlockSize]
 	} else if l2 < aes.BlockSize {
@@ -130,7 +149,7 @@ func (this *AES256CFBMethod) Encrypt(src []byte) (dst []byte, err error) {
 	}
 
 	defer func() {
-		r := recover()
+		var r = recover()
 		if r != nil {
 			err = errors.New("encrypt failed")
 		}
@@ -138,7 +157,7 @@ func (this *AES256CFBMethod) Encrypt(src []byte) (dst []byte, err error) {
 
 	dst = make([]byte, len(src))
 
-	encrypter := cipher.NewCFBEncrypter(this.block, this.iv)
+	var encrypter = cipher.NewCFBEncrypter(this.block, this.iv)
 	encrypter.XORKeyStream(dst, src)
 
 	return
@@ -157,7 +176,7 @@ func (this *AES256CFBMethod) Decrypt(dst []byte) (src []byte, err error) {
 	}()
 
 	src = make([]byte, len(dst))
-	decrypter := cipher.NewCFBDecrypter(this.block, this.iv)
+	var decrypter = cipher.NewCFBDecrypter(this.block, this.iv)
 	decrypter.XORKeyStream(src, dst)
 
 	return

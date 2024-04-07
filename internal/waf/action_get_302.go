@@ -4,7 +4,6 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"net/url"
@@ -56,16 +55,17 @@ func (this *Get302Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, requ
 		}
 	}
 
-	var m = maps.Map{
-		"url":       request.WAFRaw().URL.String(),
-		"timestamp": time.Now().Unix(),
-		"life":      this.Life,
-		"scope":     this.Scope,
-		"policyId":  waf.Id,
-		"groupId":   group.Id,
-		"setId":     set.Id,
+	var m = InfoArg{
+		URL:              request.WAFRaw().URL.String(),
+		Timestamp:        time.Now().Unix(),
+		Life:             this.Life,
+		Scope:            this.Scope,
+		PolicyId:         waf.Id,
+		GroupId:          group.Id,
+		SetId:            set.Id,
+		UseLocalFirewall: false,
 	}
-	info, err := utils.SimpleEncryptMap(m)
+	info, err := utils.SimpleEncryptObject(m)
 	if err != nil {
 		remotelogs.Error("WAF_GET_302_ACTION", "encode info failed: "+err.Error())
 		return PerformResult{

@@ -38,33 +38,79 @@ func NewCaptchaValidator() *CaptchaValidator {
 }
 
 func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWriter, defaultCaptchaType firewallconfigs.ServerCaptchaType) {
+	var realURL string
+	var urlObj = req.WAFRaw().URL
+	if urlObj != nil {
+		realURL = urlObj.Query().Get("from")
+	}
+
 	var info = req.WAFRaw().URL.Query().Get("info")
 	if len(info) == 0 {
-		req.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
-		writer.WriteHeader(http.StatusBadRequest)
-		_, _ = writer.Write([]byte("invalid request"))
-		return
-	}
-	m, err := utils.SimpleDecryptMap(info)
-	if err != nil {
-		req.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
-		writer.WriteHeader(http.StatusBadRequest)
-		_, _ = writer.Write([]byte("invalid request"))
+		if len(realURL) > 0 {
+			req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
+			http.Redirect(writer, req.WAFRaw(), realURL, http.StatusTemporaryRedirect)
+		} else {
+			req.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
+			writer.WriteHeader(http.StatusBadRequest)
+			_, _ = writer.Write([]byte("invalid request (001)"))
+		}
 		return
 	}
 
-	var timestamp = m.GetInt64("timestamp")
-	if timestamp < time.Now().Unix()-600 { // 10分钟之后信息过期
+	var success bool
+	var actionId int64
+	var setId int64
+	var originURL string
+	var policyId int64
+	var groupId int64
+	var useLocalFirewall bool
+	var timestamp int64
+
+	var infoArg = &InfoArg{}
+	decodeErr := infoArg.Decode(info)
+	if decodeErr == nil && infoArg.IsValid() {
+		success = true
+
+		actionId = infoArg.ActionId
+		setId = infoArg.SetId
+		originURL = infoArg.URL
+		policyId = infoArg.PolicyId
+		groupId = infoArg.GroupId
+		useLocalFirewall = infoArg.UseLocalFirewall
+		timestamp = infoArg.Timestamp
+	} else {
+		// 兼容老版本
+		m, decodeMapErr := utils.SimpleDecryptMap(info)
+		if decodeMapErr == nil {
+			success = true
+
+			actionId = m.GetInt64("actionId")
+			setId = m.GetInt64("setId")
+			originURL = m.GetString("url")
+			policyId = m.GetInt64("policyId")
+			groupId = m.GetInt64("groupId")
+			useLocalFirewall = m.GetBool("useLocalFirewall")
+			timestamp = m.GetInt64("timestamp")
+		}
+	}
+
+	if !success {
+		if len(realURL) > 0 {
+			req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
+			http.Redirect(writer, req.WAFRaw(), realURL, http.StatusTemporaryRedirect)
+		} else {
+			req.ProcessResponseHeaders(writer.Header(), http.StatusBadRequest)
+			writer.WriteHeader(http.StatusBadRequest)
+			_, _ = writer.Write([]byte("invalid request (005)"))
+		}
+		return
+	}
+
+	if timestamp < fasttime.Now().Unix()-600 { // 10分钟之后信息过期
 		req.ProcessResponseHeaders(writer.Header(), http.StatusTemporaryRedirect)
-		http.Redirect(writer, req.WAFRaw(), m.GetString("url"), http.StatusTemporaryRedirect)
+		http.Redirect(writer, req.WAFRaw(), originURL, http.StatusTemporaryRedirect)
 		return
 	}
-
-	var actionId = m.GetInt64("actionId")
-	var setId = m.GetInt64("setId")
-	var originURL = m.GetString("url")
-	var policyId = m.GetInt64("policyId")
-	var groupId = m.GetInt64("groupId")
 
 	var waf = SharedWAFManager.FindWAF(policyId)
 	if waf == nil {
@@ -102,23 +148,23 @@ func (this *CaptchaValidator) Run(req requests.Request, writer http.ResponseWrit
 	if req.WAFRaw().Method == http.MethodPost && len(req.WAFRaw().FormValue(captchaIdName)) > 0 {
 		switch captchaType {
 		case firewallconfigs.CaptchaTypeOneClick:
-			this.validateOneClickForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer)
+			this.validateOneClickForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer, useLocalFirewall)
 		case firewallconfigs.CaptchaTypeSlide:
-			this.validateSlideForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer)
+			this.validateSlideForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer, useLocalFirewall)
 		case firewallconfigs.CaptchaTypeGeeTest:
-			this.validateGeeTestForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer)
+			this.validateGeeTestForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer, useLocalFirewall)
 		default:
-			this.validateVerifyCodeForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer)
+			this.validateVerifyCodeForm(captchaActionConfig, policyId, groupId, setId, originURL, req, writer, useLocalFirewall)
 		}
 	} else {
 		var captchaId = req.WAFRaw().URL.Query().Get(captchaIdName)
 		if len(captchaId) > 0 {
 			// 增加计数
-			CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeImage)
+			CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeImage, useLocalFirewall)
 			this.showImage(captchaActionConfig, req, writer, captchaType)
 		} else {
 			// 增加计数
-			CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeShow)
+			CaptchaIncreaseFails(req, captchaActionConfig, policyId, groupId, setId, CaptchaPageCodeShow, useLocalFirewall)
 			this.show(captchaActionConfig, setId, originURL, req, writer, captchaType)
 		}
 	}
@@ -310,7 +356,7 @@ func (this *CaptchaValidator) showVerifyImage(actionConfig *CaptchaAction, req r
 	}
 }
 
-func (this *CaptchaValidator) validateVerifyCodeForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *CaptchaValidator) validateVerifyCodeForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter, useLocalFirewall bool) (allow bool) {
 	var captchaId = req.WAFRaw().FormValue(captchaIdName)
 	if len(captchaId) > 0 {
 		var captchaCode = req.WAFRaw().FormValue("GOEDGE_WAF_CAPTCHA_CODE")
@@ -332,7 +378,7 @@ func (this *CaptchaValidator) validateVerifyCodeForm(actionConfig *CaptchaAction
 			return false
 		} else {
 			// 增加计数
-			if !CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit) {
+			if !CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit, useLocalFirewall) {
 				return false
 			}
 
@@ -459,7 +505,7 @@ func (this *CaptchaValidator) showOneClickForm(actionConfig *CaptchaAction, req 
 	_, _ = writer.Write([]byte(msgHTML))
 }
 
-func (this *CaptchaValidator) validateOneClickForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *CaptchaValidator) validateOneClickForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter, useLocalFirewall bool) (allow bool) {
 	var captchaId = req.WAFRaw().FormValue(captchaIdName)
 	var nonce = req.WAFRaw().FormValue("nonce")
 	if len(captchaId) > 0 {
@@ -486,7 +532,7 @@ func (this *CaptchaValidator) validateOneClickForm(actionConfig *CaptchaAction, 
 			}
 		} else {
 			// 增加计数
-			if !CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit) {
+			if !CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit, useLocalFirewall) {
 				return false
 			}
 
@@ -658,7 +704,7 @@ func (this *CaptchaValidator) showSlideForm(actionConfig *CaptchaAction, req req
 	_, _ = writer.Write([]byte(msgHTML))
 }
 
-func (this *CaptchaValidator) validateSlideForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *CaptchaValidator) validateSlideForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter, useLocalFirewall bool) (allow bool) {
 	var captchaId = req.WAFRaw().FormValue(captchaIdName)
 	var nonce = req.WAFRaw().FormValue("nonce")
 	if len(captchaId) > 0 {
@@ -685,7 +731,7 @@ func (this *CaptchaValidator) validateSlideForm(actionConfig *CaptchaAction, pol
 			}
 		} else {
 			// 增加计数
-			if !CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit) {
+			if !CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit, useLocalFirewall) {
 				return false
 			}
 
@@ -697,7 +743,7 @@ func (this *CaptchaValidator) validateSlideForm(actionConfig *CaptchaAction, pol
 	return true
 }
 
-func (this *CaptchaValidator) validateGeeTestForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter) (allow bool) {
+func (this *CaptchaValidator) validateGeeTestForm(actionConfig *CaptchaAction, policyId int64, groupId int64, setId int64, originURL string, req requests.Request, writer http.ResponseWriter, useLocalFirewall bool) (allow bool) {
 	var geeTestConfig = actionConfig.GeeTestConfig
 	if geeTestConfig == nil || !geeTestConfig.IsOn {
 		return
@@ -719,7 +765,7 @@ func (this *CaptchaValidator) validateGeeTestForm(actionConfig *CaptchaAction, p
 			writer.WriteHeader(http.StatusOK)
 		} else {
 			// 增加计数
-			CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit)
+			CaptchaIncreaseFails(req, actionConfig, policyId, groupId, setId, CaptchaPageCodeSubmit, useLocalFirewall)
 
 			writer.WriteHeader(http.StatusBadRequest)
 		}
