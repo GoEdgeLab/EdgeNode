@@ -33,7 +33,7 @@ func (this *TrimDisksTask) Start() {
 		// prevent system overload
 		for i := 0; i < 24; i++ {
 			stat, loadErr := load.Avg()
-			if loadErr == nil && stat != nil && stat.Load1 > 20 {
+			if loadErr == nil && stat != nil && stat.Load1 > 15 {
 				// wait load downgrade
 				time.Sleep(1 * time.Hour)
 			} else {
