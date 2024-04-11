@@ -4,8 +4,10 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
+	"github.com/iwind/TeaGo/types"
 	"net/http"
 	"net/url"
 	"strings"
@@ -127,6 +129,22 @@ func (this *CaptchaAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	if SharedIPWhiteList.Contains(wafutils.ComposeIPType(set.Id, req), this.Scope, req.WAFServerId(), req.WAFRemoteIP()) {
 		return PerformResult{
 			ContinueRequest: true,
+		}
+	}
+
+	// 检查Cookie值
+	var fullCookieName = captchaCookiePrefix + "_" + types.String(set.Id)
+	cookie, err := req.WAFRaw().Cookie(fullCookieName)
+	if err == nil && cookie != nil && len(cookie.Value) > 0 {
+		var info = &AllowCookieInfo{}
+		err = info.Decode(cookie.Value)
+		if err == nil && set.Id == info.SetId && info.ExpiresAt > fasttime.Now().Unix() {
+			// 重新记录到白名单
+			SharedIPWhiteList.RecordIP(wafutils.ComposeIPType(set.Id, req), this.Scope, req.WAFServerId(), req.WAFRemoteIP(), info.ExpiresAt, waf.Id, false, group.Id, set.Id, "")
+
+			return PerformResult{
+				ContinueRequest: true,
+			}
 		}
 	}
 
