@@ -19,8 +19,11 @@ import (
 )
 
 var (
-	simpleEncryptMagicKey = rands.HexString(32)
+	defaultNodeEncryptKey    = rands.HexString(32)
+	defaultClusterEncryptKey = rands.HexString(32)
 )
+
+var encryptV2Suffix = []byte("$v2")
 
 func init() {
 	if !teaconst.IsMain {
@@ -30,7 +33,8 @@ func init() {
 	events.On(events.EventReload, func() {
 		nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 		if nodeConfig != nil {
-			simpleEncryptMagicKey = stringutil.Md5(nodeConfig.NodeId + "@" + nodeConfig.Secret)
+			defaultNodeEncryptKey = stringutil.Md5(nodeConfig.NodeId + "@" + nodeConfig.Secret)
+			defaultClusterEncryptKey = stringutil.Md5(defaultClusterEncryptKey)
 		}
 	})
 }
@@ -38,7 +42,7 @@ func init() {
 // SimpleEncrypt 加密特殊信息
 func SimpleEncrypt(data []byte) []byte {
 	var method = &AES256CFBMethod{}
-	err := method.Init([]byte(simpleEncryptMagicKey), []byte(simpleEncryptMagicKey[:16]))
+	err := method.Init([]byte(defaultClusterEncryptKey), []byte(defaultClusterEncryptKey[:16]))
 	if err != nil {
 		logs.Println("[SimpleEncrypt]" + err.Error())
 		return data
@@ -49,13 +53,24 @@ func SimpleEncrypt(data []byte) []byte {
 		logs.Println("[SimpleEncrypt]" + err.Error())
 		return data
 	}
+	dst = append(dst, encryptV2Suffix...)
 	return dst
 }
 
 // SimpleDecrypt 解密特殊信息
 func SimpleDecrypt(data []byte) []byte {
+	if bytes.HasSuffix(data, encryptV2Suffix) {
+		data = data[:len(data)-len(encryptV2Suffix)]
+		return simpleDecrypt(data, defaultClusterEncryptKey)
+	}
+
+	// 兼容老的Key
+	return simpleDecrypt(data, defaultNodeEncryptKey)
+}
+
+func simpleDecrypt(data []byte, key string) []byte {
 	var method = &AES256CFBMethod{}
-	err := method.Init([]byte(simpleEncryptMagicKey), []byte(simpleEncryptMagicKey[:16]))
+	err := method.Init([]byte(key), []byte(key[:16]))
 	if err != nil {
 		logs.Println("[MagicKeyEncode]" + err.Error())
 		return data
