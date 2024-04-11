@@ -34,7 +34,7 @@ func init() {
 		nodeConfig, _ := nodeconfigs.SharedNodeConfig()
 		if nodeConfig != nil {
 			defaultNodeEncryptKey = stringutil.Md5(nodeConfig.NodeId + "@" + nodeConfig.Secret)
-			defaultClusterEncryptKey = stringutil.Md5(defaultClusterEncryptKey)
+			defaultClusterEncryptKey = stringutil.Md5(nodeConfig.ClusterSecret)
 		}
 	})
 }
