@@ -16,6 +16,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
@@ -54,15 +55,29 @@ const (
 )
 
 const (
-	FileStorageMaxIgnoreKeys        = 32768    // 最大可忽略的键值数（尺寸过大的键值）
-	HotItemSize                     = 1024     // 热点数据数量
-	HotItemLifeSeconds       int64  = 3600     // 热点数据生命周期
-	FileToMemoryMaxSize      int64  = 32 << 20 // 可以从文件写入到内存的最大文件尺寸
+	FileStorageMaxIgnoreKeys        = 32768 // 最大可忽略的键值数（尺寸过大的键值）
+	HotItemSize                     = 1024  // 热点数据数量
+	HotItemLifeSeconds       int64  = 3600  // 热点数据生命周期
 	FileTmpSuffix                   = ".tmp"
 	DefaultMinDiskFreeSpace  uint64 = 5 << 30 // 当前磁盘最小剩余空间
 	DefaultStaleCacheSeconds        = 1200    // 过时缓存留存时间
 	HashKeyLength                   = 32
 )
+
+var FileToMemoryMaxSize int64 = 32 << 20 // 可以从文件写入到内存的最大文件尺寸
+
+func init() {
+	var availableMemoryGB = memutils.AvailableMemoryGB()
+	if availableMemoryGB > 64 {
+		FileToMemoryMaxSize = 512 << 20
+	} else if availableMemoryGB > 32 {
+		FileToMemoryMaxSize = 256 << 20
+	} else if availableMemoryGB > 16 {
+		FileToMemoryMaxSize = 128 << 20
+	} else if availableMemoryGB > 8 {
+		FileToMemoryMaxSize = 64 << 20
+	}
+}
 
 var sharedWritingFileKeyMap = map[string]zero.Zero{} // key => bool
 var sharedWritingFileKeyLocker = sync.Mutex{}
