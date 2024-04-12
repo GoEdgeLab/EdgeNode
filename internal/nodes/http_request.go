@@ -453,6 +453,9 @@ func (this *HTTPRequest) doEnd() {
 
 		stats.SharedTrafficStatManager.Add(this.ReqServer.UserId, this.ReqServer.Id, this.ReqHost, totalBytes, cachedBytes, 1, countCached, countAttacks, attackBytes, countWebsocketConnections, this.ReqServer.ShouldCheckTrafficLimit(), this.ReqServer.PlanId())
 
+		// unique IP
+		stats.SharedDAUManager.AddIP(this.ReqServer.Id, this.requestRemoteAddr(true))
+
 		// 指标
 		if metrics.SharedManager.HasHTTPMetrics() {
 			this.doMetricsResponse()

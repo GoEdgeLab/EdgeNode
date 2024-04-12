@@ -4,6 +4,7 @@ package kvstore
 
 import (
 	"errors"
+	"github.com/cockroachdb/pebble"
 	"sync"
 )
 
@@ -50,6 +51,29 @@ func (this *DB) Namespace() string {
 
 func (this *DB) Store() *Store {
 	return this.store
+}
+
+func (this *DB) Inspect(fn func(key []byte, value []byte)) error {
+	it, err := this.store.rawDB.NewIter(&pebble.IterOptions{
+		LowerBound: []byte(this.namespace),
+		UpperBound: append([]byte(this.namespace), 0xFF, 0xFF),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = it.Close()
+	}()
+
+	for it.First(); it.Valid(); it.Next() {
+		value, valueErr := it.ValueAndErr()
+		if valueErr != nil {
+			return valueErr
+		}
+		fn(it.Key(), value)
+	}
+
+	return nil
 }
 
 // Truncate the database
