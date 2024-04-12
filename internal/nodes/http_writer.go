@@ -367,7 +367,7 @@ func (this *HTTPWriter) PrepareCache(resp *http.Response, size int64) {
 			if this.isPartial && k == "Content-Type" && strings.Contains(v1, "multipart/byteranges") {
 				continue
 			}
-			_, err = headerBuf.Write([]byte(k + ":" + v1 + "\n"))
+			_, err = headerBuf.WriteString(k + ":" + v1 + "\n")
 			if err != nil {
 				utils.SharedBufferPool.Put(headerBuf)
 
@@ -694,15 +694,15 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		}
 
 		// 写入Header
-		var headerBuffer = utils.SharedBufferPool.Get()
+		var headerBuf = utils.SharedBufferPool.Get()
 		for k, v := range this.Header() {
 			if this.shouldIgnoreHeader(k) {
 				continue
 			}
 			for _, v1 := range v {
-				_, err = headerBuffer.Write([]byte(k + ":" + v1 + "\n"))
+				_, err = headerBuf.WriteString(k + ":" + v1 + "\n")
 				if err != nil {
-					utils.SharedBufferPool.Put(headerBuffer)
+					utils.SharedBufferPool.Put(headerBuf)
 					remotelogs.Error("HTTP_WRITER", "write compression cache failed: "+err.Error())
 					_ = compressionCacheWriter.Discard()
 					compressionCacheWriter = nil
@@ -710,28 +710,24 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 				}
 			}
 		}
-
-		_, err = compressionCacheWriter.WriteHeader(headerBuffer.Bytes())
-		utils.SharedBufferPool.Put(headerBuffer)
+		_, err = compressionCacheWriter.WriteHeader(headerBuf.Bytes())
+		utils.SharedBufferPool.Put(headerBuf)
 		if err != nil {
 			remotelogs.Error("HTTP_WRITER", "write compression cache failed: "+err.Error())
 			_ = compressionCacheWriter.Discard()
 			compressionCacheWriter = nil
 			return
 		}
-
-		if compressionCacheWriter != nil {
-			if this.compressionCacheWriter != nil {
-				_ = this.compressionCacheWriter.Close()
-			}
-			this.compressionCacheWriter = compressionCacheWriter
-			var teeWriter = writers.NewTeeWriterCloser(this.writer, compressionCacheWriter)
-			teeWriter.OnFail(func(err error) {
-				_ = compressionCacheWriter.Discard()
-				this.compressionCacheWriter = nil
-			})
-			this.writer = teeWriter
+		if this.compressionCacheWriter != nil {
+			_ = this.compressionCacheWriter.Close()
 		}
+		this.compressionCacheWriter = compressionCacheWriter
+		var teeWriter = writers.NewTeeWriterCloser(this.writer, compressionCacheWriter)
+		teeWriter.OnFail(func(err error) {
+			_ = compressionCacheWriter.Discard()
+			this.compressionCacheWriter = nil
+		})
+		this.writer = teeWriter
 	}
 
 	// compression writer
@@ -1294,6 +1290,6 @@ func (this *HTTPWriter) shouldIgnoreHeader(name string) bool {
 	case "Set-Cookie", "Strict-Transport-Security", "Alt-Svc", "Upgrade", "X-Cache":
 		return true
 	default:
-		return (this.isPartial && name == "Content-Range")
+		return this.isPartial && name == "Content-Range"
 	}
 }

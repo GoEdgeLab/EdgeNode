@@ -45,3 +45,29 @@ func BenchmarkNewBufferPool2(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkNewBufferPool3(b *testing.B) {
+	var pool = utils.NewBufferPool()
+	var dataString = strings.Repeat("Hello", 1024)
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			var buffer = pool.Get()
+			buffer.Write([]byte(dataString))
+			pool.Put(buffer)
+		}
+	})
+}
+
+func BenchmarkNewBufferPool4(b *testing.B) {
+	var pool = utils.NewBufferPool()
+	var dataString = strings.Repeat("Hello", 1024)
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			var buffer = pool.Get()
+			buffer.WriteString(dataString)
+			pool.Put(buffer)
+		}
+	})
+}
