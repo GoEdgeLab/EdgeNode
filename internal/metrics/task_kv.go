@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	byteutils "github.com/TeaOSLab/EdgeNode/internal/utils/byte"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cockroachdb/pebble"
@@ -287,6 +288,8 @@ func (this *KVTask) Start() error {
 	this.cleanTicker = utils.NewTicker(24 * time.Hour)
 	goman.New(func() {
 		for this.cleanTicker.Next() {
+			fsutils.WaitLoad(15, 16, 1*time.Hour)
+
 			var tr = trackers.Begin("METRIC:CLEAN_EXPIRED")
 			err := this.CleanExpired()
 			tr.End()

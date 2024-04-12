@@ -13,6 +13,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
@@ -209,6 +210,8 @@ func (this *SQLiteTask) Start() error {
 	this.cleanTicker = utils.NewTicker(24 * time.Hour)
 	goman.New(func() {
 		for this.cleanTicker.Next() {
+			fsutils.WaitLoad(15, 16, 1*time.Hour)
+
 			var tr = trackers.Begin("METRIC:CLEAN_EXPIRED")
 			err := this.CleanExpired()
 			tr.End()

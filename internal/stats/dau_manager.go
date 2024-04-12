@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
@@ -94,6 +95,8 @@ func (this *DAUManager) Init() error {
 	// clean expires items
 	goman.New(func() {
 		for range this.cleanTicker.C {
+			fsutils.WaitLoad(15, 16, 1*time.Hour)
+
 			err := this.CleanStats()
 			if err != nil {
 				remotelogs.Error("DAU_MANAGER", "clean stats failed: "+err.Error())

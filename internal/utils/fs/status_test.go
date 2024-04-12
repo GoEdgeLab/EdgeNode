@@ -6,6 +6,7 @@ import (
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/assert"
 	"testing"
+	"time"
 )
 
 func TestWrites(t *testing.T) {
@@ -18,6 +19,10 @@ func TestWrites(t *testing.T) {
 
 	fsutils.WriteEnd()
 	a.IsTrue(fsutils.WriteReady())
+}
+
+func TestWaitLoad(t *testing.T) {
+	fsutils.WaitLoad(100, 1, 1 * time.Minute)
 }
 
 func BenchmarkWrites(b *testing.B) {

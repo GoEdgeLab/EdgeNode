@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/Tea"
 	"os"
 	"path/filepath"
@@ -167,9 +168,11 @@ ON "` + this.itemTableName + `" (
 		})
 
 		for range this.cleanTicker.C {
-			err := this.DeleteExpiredItems()
-			if err != nil {
-				remotelogs.Error("IP_LIST_DB", "clean expired items failed: "+err.Error())
+			fsutils.WaitLoad(15, 16, 1*time.Hour)
+
+			deleteErr := this.DeleteExpiredItems()
+			if deleteErr != nil {
+				remotelogs.Error("IP_LIST_DB", "clean expired items failed: "+deleteErr.Error())
 			}
 		}
 	})

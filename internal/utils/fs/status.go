@@ -140,3 +140,13 @@ func calculateDiskMaxWrites() {
 		DiskMaxWrites = 4
 	}
 }
+
+// WaitLoad wait system load to downgrade
+func WaitLoad(maxLoad float64, maxLoops int, delay time.Duration) {
+	for i := 0; i < maxLoops; i++ {
+		stat, err := load.Avg()
+		if err == nil && stat.Load1 > maxLoad {
+			time.Sleep(delay)
+		}
+	}
+}

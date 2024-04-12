@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
-	"github.com/shirou/gopsutil/v3/load"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"runtime"
 	"time"
 )
@@ -31,15 +31,7 @@ func (this *TrimDisksTask) Start() {
 	var ticker = time.NewTicker(2 * 24 * time.Hour) // every 2 days
 	for range ticker.C {
 		// prevent system overload
-		for i := 0; i < 24; i++ {
-			stat, loadErr := load.Avg()
-			if loadErr == nil && stat != nil && stat.Load1 > 15 {
-				// wait load downgrade
-				time.Sleep(1 * time.Hour)
-			} else {
-				break
-			}
-		}
+		fsutils.WaitLoad(15, 24, 1*time.Hour)
 
 		// run the task
 		err = this.loop()
