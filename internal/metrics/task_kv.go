@@ -84,7 +84,7 @@ func (this *KVTask) Init() error {
 	}
 
 	{
-		table, tableErr := kvstore.NewTable[[]byte]("sumValues", kvstore.NewBytesValueEncoder())
+		table, tableErr := kvstore.NewTable[[]byte]("sum_values", kvstore.NewBytesValueEncoder())
 		if tableErr != nil {
 			return tableErr
 		}
