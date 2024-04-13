@@ -4,31 +4,15 @@ package checkpoints
 
 import (
 	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/counters"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/TeaOSLab/EdgeNode/internal/waf/utils"
-	"github.com/TeaOSLab/EdgeNode/internal/zero"
+	wafutils "github.com/TeaOSLab/EdgeNode/internal/waf/utils"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
 	"path/filepath"
 	"strings"
 )
-
-var commonFileExtensionsMap = map[string]zero.Zero{
-	".ico":   zero.New(),
-	".jpg":   zero.New(),
-	".jpeg":  zero.New(),
-	".gif":   zero.New(),
-	".png":   zero.New(),
-	".webp":  zero.New(),
-	".woff2": zero.New(),
-	".js":    zero.New(),
-	".css":   zero.New(),
-	".ttf":   zero.New(),
-	".otf":   zero.New(),
-	".fnt":   zero.New(),
-	".svg":   zero.New(),
-}
 
 // CC2Checkpoint 新的CC
 type CC2Checkpoint struct {
@@ -61,16 +45,12 @@ func (this *CC2Checkpoint) RequestValue(req requests.Request, param string, opti
 		threshold = 1000
 	}**/
 
-	var ignoreCommonFiles = options.GetBool("ignoreCommonFiles")
-	if ignoreCommonFiles {
+	if options.GetBool("ignoreCommonFiles") {
 		var rawReq = req.WAFRaw()
 		if len(rawReq.Referer()) > 0 {
 			var ext = filepath.Ext(rawReq.URL.Path)
-			if len(ext) > 0 {
-				_, ok := commonFileExtensionsMap[strings.ToLower(ext)]
-				if ok {
-					return
-				}
+			if len(ext) > 0 && utils.IsCommonFileExtension(ext) {
+				return
 			}
 		}
 	}
@@ -114,6 +94,6 @@ func (this *CC2Checkpoint) ResponseValue(req requests.Request, resp *requests.Re
 	return
 }
 
-func (this *CC2Checkpoint) CacheLife() utils.CacheLife {
-	return utils.CacheDisabled
+func (this *CC2Checkpoint) CacheLife() wafutils.CacheLife {
+	return wafutils.CacheDisabled
 }
