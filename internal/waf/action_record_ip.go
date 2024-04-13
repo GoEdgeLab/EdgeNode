@@ -65,6 +65,7 @@ func init() {
 
 							pbItemMap[task.ip] = &pb.CreateIPItemsRequest_IPItem{
 								IpListId:                      task.listId,
+								Value:                         task.ip,
 								IpFrom:                        task.ip,
 								IpTo:                          "",
 								ExpiredAt:                     task.expiresAt,
