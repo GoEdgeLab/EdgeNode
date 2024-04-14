@@ -11,7 +11,7 @@ import (
 )
 
 func TestRemoveDB(t *testing.T) {
-	err := kvstore.RemoveStore(Tea.Root + "/data/stores/test.store")
+	err := kvstore.RemoveStore(Tea.Root + "/data/stores/test2.store")
 	if err != nil {
 		t.Fatal(err)
 	}

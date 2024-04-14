@@ -249,6 +249,10 @@ func TestTable_Delete_Empty(t *testing.T) {
 func TestTable_Count(t *testing.T) {
 	var table = testOpenStoreTable[*testCachedItem](t, "cache_items", &testCacheItemEncoder[*testCachedItem]{})
 
+	defer func() {
+		_ = testingStore.Close()
+	}()
+
 	var before = time.Now()
 	count, err := table.Count()
 	if err != nil {
@@ -265,6 +269,11 @@ func TestTable_Count(t *testing.T) {
 
 func TestTable_Truncate(t *testing.T) {
 	var table = testOpenStoreTable[*testCachedItem](t, "cache_items", &testCacheItemEncoder[*testCachedItem]{})
+
+	defer func() {
+		_ = testingStore.Close()
+	}()
+
 	var before = time.Now()
 	err := table.Truncate()
 	if err != nil {
@@ -282,6 +291,11 @@ func TestTable_ComposeFieldKey(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
 	var table = testOpenStoreTable[*testCachedItem](t, "cache_items", &testCacheItemEncoder[*testCachedItem]{})
+
+	defer func() {
+		_ = testingStore.Close()
+	}()
+
 	var fieldKeyBytes = table.ComposeFieldKey([]byte("Lily"), "username", []byte("lucy"))
 	t.Log(string(fieldKeyBytes))
 	fieldValueBytes, keyValueBytes, err := table.DecodeFieldKey("username", fieldKeyBytes)

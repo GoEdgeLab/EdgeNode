@@ -142,6 +142,8 @@ func TestStore_CloseTwice(t *testing.T) {
 
 func TestStore_Count(t *testing.T) {
 	testCountStore(t)
+
+	_ = testingStore.Close()
 }
 
 var testingStore *kvstore.Store

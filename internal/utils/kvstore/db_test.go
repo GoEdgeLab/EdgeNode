@@ -4,6 +4,7 @@ package kvstore_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/cockroachdb/pebble"
 	"testing"
 )
@@ -38,11 +39,17 @@ func testInspectDB(t *testing.T) {
 		_ = it.Close()
 	}()
 
+	var isSingleTesting = testutils.IsSingleTesting()
+
 	for it.First(); it.Valid(); it.Next() {
 		valueBytes, valueErr := it.ValueAndErr()
 		if valueErr != nil {
 			t.Fatal(valueErr)
 		}
 		t.Log(string(it.Key()), "=>", string(valueBytes))
+
+		if !isSingleTesting {
+			break
+		}
 	}
 }

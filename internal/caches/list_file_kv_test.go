@@ -18,14 +18,6 @@ import (
 
 var testingKVList *caches.KVFileList
 
-func TestMain(m *testing.M) {
-	m.Run()
-
-	if testingKVList != nil {
-		_ = testingKVList.Close()
-	}
-}
-
 func testOpenKVFileList(t *testing.T) *caches.KVFileList {
 	var list = caches.NewKVFileList(Tea.Root + "/data/stores/cache-stores")
 	err := list.Init()
@@ -38,11 +30,18 @@ func testOpenKVFileList(t *testing.T) *caches.KVFileList {
 }
 
 func TestNewKVFileList(t *testing.T) {
-	_ = testOpenKVFileList(t)
+	var list = testOpenKVFileList(t)
+	err := list.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestKVFileList_Add(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
 
 	err := list.Add(stringutil.Md5("123456"), &caches.Item{
 		Type:       caches.ItemTypeFile,
@@ -67,6 +66,9 @@ func TestKVFileList_Add_Many(t *testing.T) {
 	}
 
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
 
 	const start = 0
 	const count = 1_000_000
@@ -113,6 +115,9 @@ func TestKVFileList_Add_Many_Suffix(t *testing.T) {
 	}
 
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
 
 	const start = 0
 	const count = 1000
@@ -155,6 +160,10 @@ func TestKVFileList_Add_Many_Suffix(t *testing.T) {
 
 func TestKVFileList_Exist(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	for _, hash := range []string{
 		stringutil.Md5("123456"),
 		stringutil.Md5("654321"),
@@ -169,6 +178,10 @@ func TestKVFileList_Exist(t *testing.T) {
 
 func TestKVFileList_ExistQuick(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	for _, hash := range []string{
 		stringutil.Md5("123456"),
 		stringutil.Md5("654321"),
@@ -183,6 +196,10 @@ func TestKVFileList_ExistQuick(t *testing.T) {
 
 func TestKVFileList_Remove(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	for _, hash := range []string{
 		stringutil.Md5("123456"),
 		stringutil.Md5("654321"),
@@ -196,6 +213,10 @@ func TestKVFileList_Remove(t *testing.T) {
 
 func TestKVFileList_CleanAll(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.CleanAll()
 	if err != nil {
 		t.Fatal(err)
@@ -208,6 +229,10 @@ func TestKVFileList_Inspect(t *testing.T) {
 	}
 
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	err := list.TestInspect(t)
 	if err != nil {
 		t.Fatal(err)
@@ -216,6 +241,10 @@ func TestKVFileList_Inspect(t *testing.T) {
 
 func TestKVFileList_Purge(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 	count, err := list.Purge(4_000, func(hash string) error {
 		//t.Log("hash:", hash)
@@ -229,6 +258,10 @@ func TestKVFileList_Purge(t *testing.T) {
 
 func TestKVFileList_PurgeLFU(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 	err := list.PurgeLFU(20000, func(hash string) error {
 		t.Log("hash:", hash)
@@ -242,6 +275,10 @@ func TestKVFileList_PurgeLFU(t *testing.T) {
 
 func TestKVFileList_Count(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 	count, err := list.Count()
 	if err != nil {
@@ -252,6 +289,10 @@ func TestKVFileList_Count(t *testing.T) {
 
 func TestKVFileList_Stat(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 	stat, err := list.Stat(func(hash string) bool {
 		return true
@@ -264,6 +305,10 @@ func TestKVFileList_Stat(t *testing.T) {
 
 func TestKVFileList_CleanPrefix(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 
 	defer func() {
@@ -279,6 +324,10 @@ func TestKVFileList_CleanPrefix(t *testing.T) {
 
 func TestKVFileList_CleanMatchPrefix(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 
 	defer func() {
@@ -294,6 +343,10 @@ func TestKVFileList_CleanMatchPrefix(t *testing.T) {
 
 func TestKVFileList_CleanMatchKey(t *testing.T) {
 	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
 	var before = time.Now()
 
 	defer func() {
