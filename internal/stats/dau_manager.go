@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
@@ -227,6 +228,9 @@ func (this *DAUManager) Close() error {
 }
 
 func (this *DAUManager) CleanStats() error {
+	var tr = trackers.Begin("STAT:DAU_CLEAN_STATS")
+	defer tr.End()
+
 	// day
 	{
 		var date = timeutil.Format("Ymd", time.Now().AddDate(0, 0, -2))
