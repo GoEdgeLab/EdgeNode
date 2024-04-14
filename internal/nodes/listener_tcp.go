@@ -145,6 +145,12 @@ func (this *TCPListener) handleConn(server *serverconfigs.ServerConfig, conn net
 		stats.SharedTrafficStatManager.Add(server.UserId, server.Id, "", 0, 0, 1, 0, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
 	}
 
+	// DAU统计
+	clientIP, _, parseErr := net.SplitHostPort(conn.RemoteAddr().String())
+	if parseErr == nil {
+		stats.SharedDAUManager.AddIP(server.Id, clientIP)
+	}
+
 	originConn, err := this.connectOrigin(server.Id, serverName, server.ReverseProxy, conn.RemoteAddr().String())
 	if err != nil {
 		_ = conn.Close()

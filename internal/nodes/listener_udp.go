@@ -359,9 +359,9 @@ type UDPConn struct {
 	isClosed      bool
 }
 
-func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyListener UDPPacketListener, cm any, serverConn *net.UDPConn) *UDPConn {
+func NewUDPConn(server *serverconfigs.ServerConfig, clientAddr net.Addr, proxyListener UDPPacketListener, cm any, serverConn *net.UDPConn) *UDPConn {
 	var conn = &UDPConn{
-		addr:          addr,
+		addr:          clientAddr,
 		proxyListener: proxyListener,
 		serverConn:    serverConn,
 		activatedAt:   time.Now().Unix(),
@@ -371,6 +371,12 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyListener
 	// 统计
 	if server != nil {
 		stats.SharedTrafficStatManager.Add(server.UserId, server.Id, "", 0, 0, 1, 0, 0, 0, 0, server.ShouldCheckTrafficLimit(), server.PlanId())
+
+		// DAU统计
+		clientIP, _, parseErr := net.SplitHostPort(clientAddr.String())
+		if parseErr == nil {
+			stats.SharedDAUManager.AddIP(server.Id, clientIP)
+		}
 	}
 
 	// 处理ControlMessage
@@ -392,7 +398,7 @@ func NewUDPConn(server *serverconfigs.ServerConfig, addr net.Addr, proxyListener
 			if n > 0 {
 				conn.activatedAt = time.Now().Unix()
 
-				_, writingErr := proxyListener.WriteTo(buffer[:n], cm, addr)
+				_, writingErr := proxyListener.WriteTo(buffer[:n], cm, clientAddr)
 				if writingErr != nil {
 					conn.isOk = false
 					break
