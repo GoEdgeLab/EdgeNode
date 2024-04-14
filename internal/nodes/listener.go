@@ -91,11 +91,6 @@ func (this *Listener) listenTCP() error {
 			BaseListener: BaseListener{Group: this.group},
 			Listener:     netListener,
 		}
-	case serverconfigs.ProtocolUnix:
-		this.listener = &UnixListener{
-			BaseListener: BaseListener{Group: this.group},
-			Listener:     netListener,
-		}
 	default:
 		return errors.New("unknown protocol '" + protocol.String() + "'")
 	}
