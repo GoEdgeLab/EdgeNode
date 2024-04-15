@@ -1126,6 +1126,7 @@ func (this *Node) tuneSystemParameters() {
 		{name: "net.core.wmem_default", minValue: 4 << 20},
 		{name: "net.core.rmem_max", minValue: 32 << 20},
 		{name: "net.core.wmem_max", minValue: 32 << 20},
+		{name: "vm.max_map_count", minValue: 256 << 10},
 	}
 
 	// vm
