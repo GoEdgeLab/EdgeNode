@@ -118,11 +118,11 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 					}
 				}
 
-				buf := utils.BytePool1k.Get()
-				_, _ = io.CopyBuffer(writer, resp.Body, buf)
+				var buf = utils.BytePool1k.Get()
+				_, _ = io.CopyBuffer(writer, resp.Body, buf.Bytes)
 				utils.BytePool1k.Put(buf)
 			} else {
-				path := this.URL
+				var path = this.URL
 				if !filepath.IsAbs(this.URL) {
 					path = Tea.Root + string(os.PathSeparator) + path
 				}

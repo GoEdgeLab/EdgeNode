@@ -388,17 +388,17 @@ func NewUDPConn(server *serverconfigs.ServerConfig, clientAddr net.Addr, proxyLi
 	}
 
 	goman.New(func() {
-		var buffer = utils.BytePool4k.Get()
+		var buf = utils.BytePool4k.Get()
 		defer func() {
-			utils.BytePool4k.Put(buffer)
+			utils.BytePool4k.Put(buf)
 		}()
 
 		for {
-			n, err := serverConn.Read(buffer)
+			n, err := serverConn.Read(buf.Bytes)
 			if n > 0 {
 				conn.activatedAt = time.Now().Unix()
 
-				_, writingErr := proxyListener.WriteTo(buffer[:n], cm, clientAddr)
+				_, writingErr := proxyListener.WriteTo(buf.Bytes[:n], cm, clientAddr)
 				if writingErr != nil {
 					conn.isOk = false
 					break

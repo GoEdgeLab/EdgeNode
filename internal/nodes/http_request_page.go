@@ -104,7 +104,7 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 						this.writer.WriteHeader(status)
 					}
 					var buf = utils.BytePool1k.Get()
-					_, err = utils.CopyWithFilter(this.writer, fp, buf, func(p []byte) []byte {
+					_, err = utils.CopyWithFilter(this.writer, fp, buf.Bytes, func(p []byte) []byte {
 						return []byte(this.Format(string(p)))
 					})
 					utils.BytePool1k.Put(buf)

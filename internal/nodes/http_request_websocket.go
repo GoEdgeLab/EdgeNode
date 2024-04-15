@@ -181,10 +181,10 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		var buf = utils.BytePool4k.Get()
 		defer utils.BytePool4k.Put(buf)
 		for {
-			n, err := originConn.Read(buf)
+			n, err := originConn.Read(buf.Bytes)
 			if n > 0 {
 				this.writer.sentBodyBytes += int64(n)
-				_, err = clientConn.Write(buf[:n])
+				_, err = clientConn.Write(buf.Bytes[:n])
 				if err != nil {
 					break
 				}

@@ -327,7 +327,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 		respHeader.Set("Content-Range", ranges[0].ComposeContentRangeHeader(types.String(fileSize)))
 		this.writer.WriteHeader(http.StatusPartialContent)
 
-		ok, err := httpRequestReadRange(resp.Body, buf, ranges[0].Start(), ranges[0].End(), func(buf []byte, n int) error {
+		ok, err := httpRequestReadRange(resp.Body, buf.Bytes, ranges[0].Start(), ranges[0].End(), func(buf []byte, n int) error {
 			_, err := this.writer.Write(buf[:n])
 			return err
 		})
@@ -379,7 +379,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 				}
 			}
 
-			ok, err := httpRequestReadRange(resp.Body, buf, r.Start(), r.End(), func(buf []byte, n int) error {
+			ok, err := httpRequestReadRange(resp.Body, buf.Bytes, r.Start(), r.End(), func(buf []byte, n int) error {
 				_, err := this.writer.Write(buf[:n])
 				return err
 			})
@@ -404,7 +404,7 @@ func (this *HTTPRequest) doRoot() (isBreak bool) {
 			return true
 		}
 	} else {
-		_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+		_, err = io.CopyBuffer(this.writer, resp.Body, buf.Bytes)
 		if err != nil {
 			if !this.canIgnore(err) {
 				logs.Error(err)

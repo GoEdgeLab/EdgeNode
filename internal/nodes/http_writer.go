@@ -882,7 +882,7 @@ func (this *HTTPWriter) SendFile(status int, path string) (int64, error) {
 	var buf = bufPool.Get()
 	defer bufPool.Put(buf)
 
-	written, err := io.CopyBuffer(this, fp, buf)
+	written, err := io.CopyBuffer(this, fp, buf.Bytes)
 	if err != nil {
 		return written, err
 	}
@@ -903,7 +903,7 @@ func (this *HTTPWriter) SendResp(resp *http.Response) (int64, error) {
 	var buf = bufPool.Get()
 	defer bufPool.Put(buf)
 
-	return io.CopyBuffer(this, resp.Body, buf)
+	return io.CopyBuffer(this, resp.Body, buf.Bytes)
 }
 
 // Redirect 跳转

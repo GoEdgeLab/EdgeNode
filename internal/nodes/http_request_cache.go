@@ -342,8 +342,8 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 	this.writer.SetSentHeaderBytes(reader.HeaderSize())
 	var headerPool = this.bytePool(reader.HeaderSize())
 	var headerBuf = headerPool.Get()
-	err = reader.ReadHeader(headerBuf, func(n int) (goNext bool, readErr error) {
-		headerData = append(headerData, headerBuf[:n]...)
+	err = reader.ReadHeader(headerBuf.Bytes, func(n int) (goNext bool, readErr error) {
+		headerData = append(headerData, headerBuf.Bytes[:n]...)
 		for {
 			var nIndex = bytes.Index(headerData, []byte{'\n'})
 			if nIndex >= 0 {
@@ -501,8 +501,8 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 			var pool = this.bytePool(fileSize)
 			var bodyBuf = pool.Get()
-			err = reader.ReadBodyRange(bodyBuf, ranges[0].Start(), ranges[0].End(), func(n int) (goNext bool, readErr error) {
-				_, readErr = this.writer.Write(bodyBuf[:n])
+			err = reader.ReadBodyRange(bodyBuf.Bytes, ranges[0].Start(), ranges[0].End(), func(n int) (goNext bool, readErr error) {
+				_, readErr = this.writer.Write(bodyBuf.Bytes[:n])
 				if readErr != nil {
 					return false, errWritingToClient
 				}
@@ -557,8 +557,8 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 
 				var pool = this.bytePool(fileSize)
 				var bodyBuf = pool.Get()
-				err = reader.ReadBodyRange(bodyBuf, r.Start(), r.End(), func(n int) (goNext bool, readErr error) {
-					_, readErr = this.writer.Write(bodyBuf[:n])
+				err = reader.ReadBodyRange(bodyBuf.Bytes, r.Start(), r.End(), func(n int) (goNext bool, readErr error) {
+					_, readErr = this.writer.Write(bodyBuf.Bytes[:n])
 					if readErr != nil {
 						return false, errWritingToClient
 					}
@@ -592,9 +592,9 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				var pool = this.bytePool(fileSize)
 				var bodyBuf = pool.Get()
 				if fp, canSendFile := this.writer.canSendfile(); canSendFile {
-					this.writer.sentBodyBytes, err = io.CopyBuffer(this.writer.rawWriter, fp, bodyBuf)
+					this.writer.sentBodyBytes, err = io.CopyBuffer(this.writer.rawWriter, fp, bodyBuf.Bytes)
 				} else {
-					_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf)
+					_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf.Bytes)
 				}
 				pool.Put(bodyBuf)
 			} else {
@@ -604,7 +604,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 				} else {
 					var pool = this.bytePool(fileSize)
 					var bodyBuf = pool.Get()
-					_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf)
+					_, err = io.CopyBuffer(this.writer, resp.Body, bodyBuf.Bytes)
 					pool.Put(bodyBuf)
 				}
 			}

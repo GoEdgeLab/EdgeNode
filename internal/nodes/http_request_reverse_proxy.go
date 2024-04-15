@@ -547,7 +547,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	if resp.ContentLength == 0 && len(resp.TransferEncoding) == 0 {
 		// 即使内容为0，也需要读取一次，以便于触发相关事件
 		var buf = utils.BytePool4k.Get()
-		_, _ = io.CopyBuffer(this.writer, resp.Body, buf)
+		_, _ = io.CopyBuffer(this.writer, resp.Body, buf.Bytes)
 		utils.BytePool4k.Put(buf)
 		_ = resp.Body.Close()
 		respBodyIsClosed = true
@@ -562,9 +562,9 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	var err error
 	if shouldAutoFlush {
 		for {
-			n, readErr := resp.Body.Read(buf)
+			n, readErr := resp.Body.Read(buf.Bytes)
 			if n > 0 {
-				_, err = this.writer.Write(buf[:n])
+				_, err = this.writer.Write(buf.Bytes[:n])
 				this.writer.Flush()
 				if err != nil {
 					break
@@ -582,10 +582,10 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			resp.ContentLength < (128<<20) { // TODO configure max content-length in cache policy OR CacheRef
 			var requestIsCanceled = false
 			for {
-				n, readErr := resp.Body.Read(buf)
+				n, readErr := resp.Body.Read(buf.Bytes)
 
 				if n > 0 && !requestIsCanceled {
-					_, err = this.writer.Write(buf[:n])
+					_, err = this.writer.Write(buf.Bytes[:n])
 					if err != nil {
 						requestIsCanceled = true
 					}
@@ -596,7 +596,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 				}
 			}
 		} else {
-			_, err = io.CopyBuffer(this.writer, resp.Body, buf)
+			_, err = io.CopyBuffer(this.writer, resp.Body, buf.Bytes)
 		}
 	}
 	pool.Put(buf)

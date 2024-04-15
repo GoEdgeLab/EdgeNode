@@ -1278,6 +1278,7 @@ func (this *FileStorage) hotLoop() {
 		}
 
 		var buf = utils.BytePool16k.Get()
+
 		defer utils.BytePool16k.Put(buf)
 		for _, item := range result[:size] {
 			reader, err := this.openReader(item.Key, false, false, false)
@@ -1319,8 +1320,8 @@ func (this *FileStorage) hotLoop() {
 				continue
 			}
 
-			err = reader.ReadHeader(buf, func(n int) (goNext bool, err error) {
-				_, err = writer.WriteHeader(buf[:n])
+			err = reader.ReadHeader(buf.Bytes, func(n int) (goNext bool, err error) {
+				_, err = writer.WriteHeader(buf.Bytes[:n])
 				return
 			})
 			if err != nil {
@@ -1329,10 +1330,10 @@ func (this *FileStorage) hotLoop() {
 				continue
 			}
 
-			err = reader.ReadBody(buf, func(n int) (goNext bool, err error) {
+			err = reader.ReadBody(buf.Bytes, func(n int) (goNext bool, err error) {
 				goNext = true
 				if n > 0 {
-					_, err = writer.Write(buf[:n])
+					_, err = writer.Write(buf.Bytes[:n])
 					if err != nil {
 						goNext = false
 					}

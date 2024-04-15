@@ -188,14 +188,14 @@ func (this *TCPListener) handleConn(server *serverconfigs.ServerConfig, conn net
 
 	// 从源站读取
 	goman.New(func() {
-		var originBuffer = utils.BytePool16k.Get()
+		var originBuf = utils.BytePool16k.Get()
 		defer func() {
-			utils.BytePool16k.Put(originBuffer)
+			utils.BytePool16k.Put(originBuf)
 		}()
 		for {
-			n, err := originConn.Read(originBuffer)
+			n, err := originConn.Read(originBuf.Bytes)
 			if n > 0 {
-				_, err = conn.Write(originBuffer[:n])
+				_, err = conn.Write(originBuf.Bytes[:n])
 				if err != nil {
 					closer()
 					break
@@ -214,9 +214,9 @@ func (this *TCPListener) handleConn(server *serverconfigs.ServerConfig, conn net
 	})
 
 	// 从客户端读取
-	var clientBuffer = utils.BytePool16k.Get()
+	var clientBuf = utils.BytePool16k.Get()
 	defer func() {
-		utils.BytePool16k.Put(clientBuffer)
+		utils.BytePool16k.Put(clientBuf)
 	}()
 	for {
 		// 是否已达到流量限制
@@ -225,9 +225,9 @@ func (this *TCPListener) handleConn(server *serverconfigs.ServerConfig, conn net
 			return nil
 		}
 
-		n, err := conn.Read(clientBuffer)
+		n, err := conn.Read(clientBuf.Bytes)
 		if n > 0 {
-			_, err = originConn.Write(clientBuffer[:n])
+			_, err = originConn.Write(clientBuf.Bytes[:n])
 			if err != nil {
 				break
 			}
