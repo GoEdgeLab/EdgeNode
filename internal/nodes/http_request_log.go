@@ -9,7 +9,7 @@ import (
 
 const (
 	// AccessLogMaxRequestBodySize 访问日志存储的请求内容最大尺寸 TODO 此值应该可以在访问日志页设置
-	AccessLogMaxRequestBodySize = 2 * 1024 * 1024
+	AccessLogMaxRequestBodySize = 2 << 20
 )
 
 // 日志

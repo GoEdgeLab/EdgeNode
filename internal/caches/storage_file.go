@@ -18,7 +18,6 @@ import (
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
-	"github.com/TeaOSLab/EdgeNode/internal/utils/sizes"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/rands"
@@ -312,12 +311,12 @@ func (this *FileStorage) Init() error {
 		var totalSize = this.TotalDiskSize()
 		var cost = time.Since(before).Seconds() * 1000
 		var sizeMB = types.String(totalSize) + " Bytes"
-		if totalSize > 1*sizes.G {
-			sizeMB = fmt.Sprintf("%.3f G", float64(totalSize)/float64(sizes.G))
-		} else if totalSize > 1*sizes.M {
-			sizeMB = fmt.Sprintf("%.3f M", float64(totalSize)/float64(sizes.M))
-		} else if totalSize > 1*sizes.K {
-			sizeMB = fmt.Sprintf("%.3f K", float64(totalSize)/float64(sizes.K))
+		if totalSize > (1 << 30) {
+			sizeMB = fmt.Sprintf("%.3f GiB", float64(totalSize)/(1<<30))
+		} else if totalSize > (1 << 20) {
+			sizeMB = fmt.Sprintf("%.3f MiB", float64(totalSize)/(1<<20))
+		} else if totalSize > (1 << 10) {
+			sizeMB = fmt.Sprintf("%.3f KiB", float64(totalSize)/(1<<10))
 		}
 
 		var mmapTag = "disabled"
@@ -1441,7 +1440,7 @@ func (this *FileStorage) increaseHit(key string, hash string, reader Reader) {
 
 		// 增加到热点
 		// 这里不收录缓存尺寸过大的文件
-		if memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < 128*sizes.M {
+		if memoryStorage != nil && reader.BodySize() > 0 && reader.BodySize() < (128<<20) {
 			this.hotMapLocker.Lock()
 			hotItem, ok := this.hotMap[key]
 

@@ -213,7 +213,7 @@ func (this *Node) Start() {
 	events.Notify(events.EventLoaded)
 
 	// 设置rlimit
-	_ = utils.SetRLimit(1024 * 1024)
+	_ = utils.SetRLimit(1 << 20)
 
 	// 连接API
 	goman.New(func() {

@@ -664,7 +664,7 @@ func TestFileStorage_ScanGarbageCaches(t *testing.T) {
 func BenchmarkFileStorage_Read(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	_ = utils.SetRLimit(1024 * 1024)
+	_ = utils.SetRLimit(1 << 20)
 
 	var storage = NewFileStorage(&serverconfigs.HTTPCachePolicy{
 		Id:   1,

@@ -282,14 +282,14 @@ func (this *APIStream) handleStatCache(message *pb.NodeStreamMessage) error {
 	}
 
 	sizeFormat := ""
-	if stat.Size < 1024 {
+	if stat.Size < (1 << 10) {
 		sizeFormat = strconv.FormatInt(stat.Size, 10) + " Bytes"
-	} else if stat.Size < 1024*1024 {
-		sizeFormat = fmt.Sprintf("%.2f KB", float64(stat.Size)/1024)
-	} else if stat.Size < 1024*1024*1024 {
-		sizeFormat = fmt.Sprintf("%.2f MB", float64(stat.Size)/1024/1024)
+	} else if stat.Size < (1 << 20) {
+		sizeFormat = fmt.Sprintf("%.2f KiB", float64(stat.Size)/(1<<10))
+	} else if stat.Size < (1 << 30) {
+		sizeFormat = fmt.Sprintf("%.2f MiB", float64(stat.Size)/(1<<20))
 	} else {
-		sizeFormat = fmt.Sprintf("%.2f GB", float64(stat.Size)/1024/1024/1024)
+		sizeFormat = fmt.Sprintf("%.2f GiB", float64(stat.Size)/(1<<30))
 	}
 	this.replyOk(message.RequestId, "size:"+sizeFormat+", count:"+strconv.Itoa(stat.Count))
 
