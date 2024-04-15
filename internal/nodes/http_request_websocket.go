@@ -128,8 +128,8 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 	go func() {
 		// 读取第一个响应
 		var respReader = NewWebsocketResponseReader(originConn)
-		resp, err := http.ReadResponse(bufio.NewReader(respReader), this.RawReq)
-		if err != nil || resp == nil {
+		resp, respErr := http.ReadResponse(bufio.NewReader(respReader), this.RawReq)
+		if respErr != nil || resp == nil {
 			if resp != nil && resp.Body != nil {
 				_ = resp.Body.Close()
 			}
@@ -160,8 +160,8 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		if headerIndex > 0 {
 			var leftBytes = headerBytes[headerIndex+4:]
 			if len(leftBytes) > 0 {
-				_, err = clientConn.Write(leftBytes)
-				if err != nil {
+				_, writeErr := clientConn.Write(leftBytes)
+				if writeErr != nil {
 					if resp.Body != nil {
 						_ = resp.Body.Close()
 					}
@@ -181,22 +181,25 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		var buf = utils.BytePool4k.Get()
 		defer utils.BytePool4k.Put(buf)
 		for {
-			n, err := originConn.Read(buf.Bytes)
+			n, readErr := originConn.Read(buf.Bytes)
 			if n > 0 {
 				this.writer.sentBodyBytes += int64(n)
-				_, err = clientConn.Write(buf.Bytes[:n])
-				if err != nil {
+				_, writeErr := clientConn.Write(buf.Bytes[:n])
+				if writeErr != nil {
 					break
 				}
 			}
-			if err != nil {
+			if readErr != nil {
 				break
 			}
 		}
 		_ = clientConn.Close()
 		_ = originConn.Close()
 	}()
-	_, _ = io.Copy(originConn, clientConn)
+
+	var buf = utils.BytePool4k.Get()
+	_, _ = io.CopyBuffer(originConn, clientConn, buf.Bytes)
+	utils.BytePool4k.Put(buf)
 
 	return
 }

@@ -119,7 +119,9 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	// 清空请求内容
 	var req = request.WAFRaw()
 	if req.ContentLength > 0 && req.Body != nil {
-		_, _ = io.Copy(io.Discard, req.Body)
+		var buf = utils.BytePool16k.Get()
+		_, _ = io.CopyBuffer(io.Discard, req.Body, buf.Bytes)
+		utils.BytePool16k.Put(buf)
 		_ = req.Body.Close()
 	}
 

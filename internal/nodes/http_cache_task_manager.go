@@ -16,6 +16,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	connutils "github.com/TeaOSLab/EdgeNode/internal/utils/conns"
 	"github.com/iwind/TeaGo/Tea"
 	"io"
@@ -245,7 +246,9 @@ func (this *HTTPCacheTaskManager) fetchKey(key *pb.HTTPCacheTaskKey) error {
 	}
 
 	// 读取内容，以便于生成缓存
-	_, err = io.Copy(io.Discard, resp.Body)
+	var buf = utils.BytePool16k.Get()
+	_, err = io.CopyBuffer(io.Discard, resp.Body, buf.Bytes)
+	utils.BytePool16k.Put(buf)
 	if err != nil {
 		if err != io.EOF {
 			err = this.simplifyErr(err)
