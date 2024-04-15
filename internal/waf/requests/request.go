@@ -39,7 +39,7 @@ type Request interface {
 	WAFMaxRequestSize() int64
 
 	// Format 格式化变量
-	Format(string) string
+	Format(varString string) string
 
 	// ProcessResponseHeaders 处理响应Header
 	ProcessResponseHeaders(headers http.Header, status int)

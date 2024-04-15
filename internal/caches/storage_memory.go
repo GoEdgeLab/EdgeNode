@@ -560,6 +560,11 @@ func (this *MemoryStorage) flushItem(fullKey string) {
 	if !isInList {
 		for i := 0; i < 1000; i++ {
 			isInList, _, err = this.list.Exist(types.String(hash))
+			if err != nil {
+				remotelogs.Error("CACHE", "flush items failed: "+err.Error())
+				time.Sleep(1 * time.Second)
+				continue
+			}
 			if isInList {
 				break
 			}

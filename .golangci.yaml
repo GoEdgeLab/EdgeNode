@@ -73,3 +73,4 @@ linters:
     - noctx
     - rowserrcheck
     - tagliatelle
+    - protogetter

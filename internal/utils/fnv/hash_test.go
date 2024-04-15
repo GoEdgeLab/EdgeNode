@@ -18,7 +18,7 @@ func TestHash(t *testing.T) {
 func BenchmarkHashString(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			fnv.HashString("abcdefh")
+			_ = fnv.HashString("abcdefh")
 		}
 	})
 }
