@@ -89,6 +89,14 @@ func NewBandwidthStatManager() *BandwidthStatManager {
 }
 
 func (this *BandwidthStatManager) Start() {
+	// 初始化DAU统计
+	{
+		err := SharedDAUManager.Init()
+		if err != nil {
+			remotelogs.Error("DAU_MANAGER", "initialize DAU manager failed: "+err.Error())
+		}
+	}
+
 	// 从上次数据中恢复
 	this.locker.Lock()
 	this.recover()

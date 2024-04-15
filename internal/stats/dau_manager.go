@@ -4,7 +4,6 @@ package stats
 
 import (
 	"encoding/json"
-	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
@@ -25,21 +24,14 @@ import (
 
 var SharedDAUManager = NewDAUManager()
 
-func init() {
-	if teaconst.IsMain {
-		err := SharedDAUManager.Init()
-		if err != nil {
-			remotelogs.Error("DAU_MANAGER", "initialize DAU manager failed: "+err.Error())
-		}
-	}
-}
-
 type IPInfo struct {
 	IP       string
 	ServerId int64
 }
 
 type DAUManager struct {
+	isReady bool
+
 	cacheFile string
 
 	ipChan  chan IPInfo
@@ -148,6 +140,8 @@ func (this *DAUManager) Init() error {
 		_ = this.Close()
 	})
 
+	this.isReady = true
+
 	return nil
 }
 
@@ -162,6 +156,10 @@ func (this *DAUManager) AddIP(serverId int64, ip string) {
 }
 
 func (this *DAUManager) processIP(serverId int64, ip string) error {
+	if !this.isReady {
+		return nil
+	}
+
 	// day
 	var date = fasttime.Now().Ymd()
 
@@ -228,6 +226,10 @@ func (this *DAUManager) Close() error {
 }
 
 func (this *DAUManager) CleanStats() error {
+	if !this.isReady {
+		return nil
+	}
+
 	var tr = trackers.Begin("STAT:DAU_CLEAN_STATS")
 	defer tr.End()
 
