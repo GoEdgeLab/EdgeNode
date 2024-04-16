@@ -18,12 +18,8 @@ func NewDeflateWriter(writer io.Writer, level int) (Writer, error) {
 	return sharedDeflateWriterPool.Get(writer, level)
 }
 
-func newDeflateWriter(writer io.Writer, level int) (Writer, error) {
-	if level <= 0 {
-		level = flate.BestSpeed
-	} else if level > flate.BestCompression {
-		level = flate.BestCompression
-	}
+func newDeflateWriter(writer io.Writer) (Writer, error) {
+	var level = GenerateCompressLevel(flate.BestSpeed, flate.BestCompression)
 
 	flateWriter, err := flate.NewWriter(writer, level)
 	if err != nil {

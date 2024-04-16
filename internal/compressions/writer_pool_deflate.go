@@ -5,7 +5,6 @@ package compressions
 import (
 	"compress/flate"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"io"
 )
 
@@ -16,11 +15,7 @@ func init() {
 		return
 	}
 
-	var maxSize = memutils.SystemMemoryGB() * 256
-	if maxSize == 0 {
-		maxSize = 256
-	}
-	sharedDeflateWriterPool = NewWriterPool(maxSize, flate.BestCompression, func(writer io.Writer, level int) (Writer, error) {
-		return newDeflateWriter(writer, level)
+	sharedDeflateWriterPool = NewWriterPool(CalculatePoolSize(), flate.BestCompression, func(writer io.Writer, level int) (Writer, error) {
+		return newDeflateWriter(writer)
 	})
 }

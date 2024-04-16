@@ -11,6 +11,7 @@ type Writer interface {
 	RawClose() error
 	Close() error
 	Level() int
+	IncreaseHit() uint32
 
 	SetPool(pool *WriterPool)
 	ResetFinish()

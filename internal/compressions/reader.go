@@ -9,6 +9,7 @@ type Reader interface {
 	Reset(reader io.Reader) error
 	RawClose() error
 	Close() error
+	IncreaseHit() uint32
 
 	SetPool(pool *ReaderPool)
 	ResetFinish()

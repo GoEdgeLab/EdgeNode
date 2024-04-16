@@ -18,21 +18,18 @@ func NewZSTDWriter(writer io.Writer, level int) (Writer, error) {
 	return sharedZSTDWriterPool.Get(writer, level)
 }
 
-func newZSTDWriter(writer io.Writer, level int) (Writer, error) {
-	if level < 0 {
-		level = 0
-	}
+func newZSTDWriter(writer io.Writer) (Writer, error) {
+	var level = 1
+	var zstdLevel = zstd.SpeedFastest
 
-	var zstdLevel = zstd.EncoderLevelFromZstd(level)
-
-	zstdWriter, err := zstd.NewWriter(writer, zstd.WithEncoderLevel(zstdLevel))
+	zstdWriter, err := zstd.NewWriter(writer, zstd.WithEncoderLevel(zstdLevel), zstd.WithWindowSize(16<<10), zstd.WithLowerEncoderMem(true))
 	if err != nil {
 		return nil, err
 	}
 
 	return &ZSTDWriter{
-		writer: zstdWriter,
-		level:  level,
+		writer:    zstdWriter,
+		level:     level,
 	}, nil
 }
 

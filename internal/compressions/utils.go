@@ -5,8 +5,10 @@ package compressions
 import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"io"
 	"net/http"
+	"runtime"
 )
 
 type ContentEncoding = string
@@ -87,4 +89,32 @@ func WrapHTTPResponse(resp *http.Response) {
 	resp.Header.Del("Content-Encoding")
 	resp.Header.Del("Content-Length")
 	resp.Body = reader
+}
+
+// 系统CPU线程数
+var countCPU = runtime.NumCPU()
+
+// GenerateCompressLevel 根据系统资源自动生成压缩级别
+func GenerateCompressLevel(minLevel int, maxLevel int) (level int) {
+	if countCPU < 16 {
+		return minLevel
+	}
+
+	if countCPU < 32 {
+		return min(3, maxLevel)
+	}
+
+	return min(5, maxLevel)
+}
+
+// CalculatePoolSize 计算Pool尺寸
+func CalculatePoolSize() int {
+	var maxSize = memutils.SystemMemoryGB() * 64
+	if maxSize == 0 {
+		maxSize = 128
+	}
+	if maxSize > 4096 {
+		maxSize = 4096
+	}
+	return maxSize
 }

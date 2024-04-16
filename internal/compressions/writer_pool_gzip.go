@@ -5,7 +5,6 @@ package compressions
 import (
 	"compress/gzip"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"io"
 )
 
@@ -16,11 +15,8 @@ func init() {
 		return
 	}
 
-	var maxSize = memutils.SystemMemoryGB() * 256
-	if maxSize == 0 {
-		maxSize = 256
-	}
-	sharedGzipWriterPool = NewWriterPool(maxSize, gzip.BestCompression, func(writer io.Writer, level int) (Writer, error) {
-		return newGzipWriter(writer, level)
+
+	sharedGzipWriterPool = NewWriterPool(CalculatePoolSize(), gzip.BestCompression, func(writer io.Writer, level int) (Writer, error) {
+		return newGzipWriter(writer)
 	})
 }

@@ -6,6 +6,8 @@ import (
 	"io"
 )
 
+const maxWriterHits = 1 << 20
+
 type WriterPool struct {
 	m       map[int]chan Writer // level => chan Writer
 	newFunc func(writer io.Writer, level int) (Writer, error)
@@ -49,6 +51,11 @@ func (this *WriterPool) Get(parentWriter io.Writer, level int) (Writer, error) {
 }
 
 func (this *WriterPool) Put(writer Writer) {
+	if writer.IncreaseHit() > maxWriterHits {
+		// do nothing to discard it
+		return
+	}
+
 	var level = writer.Level()
 	c, ok := this.m[level]
 	if !ok {

@@ -4,7 +4,6 @@ package compressions
 
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/klauspost/compress/zstd"
 	"io"
 )
@@ -16,11 +15,7 @@ func init() {
 		return
 	}
 
-	var maxSize = memutils.SystemMemoryGB() * 256
-	if maxSize == 0 {
-		maxSize = 256
-	}
-	sharedZSTDWriterPool = NewWriterPool(maxSize, int(zstd.SpeedBestCompression), func(writer io.Writer, level int) (Writer, error) {
-		return newZSTDWriter(writer, level)
+	sharedZSTDWriterPool = NewWriterPool(CalculatePoolSize(), int(zstd.SpeedBestCompression), func(writer io.Writer, level int) (Writer, error) {
+		return newZSTDWriter(writer)
 	})
 }

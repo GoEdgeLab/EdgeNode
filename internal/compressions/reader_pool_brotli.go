@@ -4,7 +4,6 @@ package compressions
 
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"io"
 )
 
@@ -15,11 +14,8 @@ func init() {
 		return
 	}
 
-	var maxSize = memutils.SystemMemoryGB() * 256
-	if maxSize == 0 {
-		maxSize = 256
-	}
-	sharedBrotliReaderPool = NewReaderPool(maxSize, func(reader io.Reader) (Reader, error) {
+
+	sharedBrotliReaderPool = NewReaderPool(CalculatePoolSize(), func(reader io.Reader) (Reader, error) {
 		return newBrotliReader(reader)
 	})
 }
