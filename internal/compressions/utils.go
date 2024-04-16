@@ -109,12 +109,12 @@ func GenerateCompressLevel(minLevel int, maxLevel int) (level int) {
 
 // CalculatePoolSize 计算Pool尺寸
 func CalculatePoolSize() int {
-	var maxSize = memutils.SystemMemoryGB() * 64
+	var maxSize = memutils.SystemMemoryGB() * 32
 	if maxSize == 0 {
 		maxSize = 128
 	}
-	if maxSize > 4096 {
-		maxSize = 4096
+	if maxSize > 2048 {
+		maxSize = 2048
 	}
 	return maxSize
 }
