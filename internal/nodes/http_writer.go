@@ -619,12 +619,13 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		return
 	}
 
-	// 分区内容不压缩，防止读取失败
-	if !this.compressionConfig.EnablePartialContent && this.StatusCode() == http.StatusPartialContent {
+	// 检查URL
+	if !this.compressionConfig.MatchURL(this.req.URL()) {
 		return
 	}
 
-	if this.compressionConfig.Level < 0 {
+	// 分区内容不压缩，防止读取失败
+	if !this.compressionConfig.EnablePartialContent && this.StatusCode() == http.StatusPartialContent {
 		return
 	}
 
