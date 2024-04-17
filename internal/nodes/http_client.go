@@ -7,15 +7,17 @@ import (
 
 // HTTPClient HTTP客户端
 type HTTPClient struct {
-	rawClient *http.Client
-	accessAt  int64
+	rawClient       *http.Client
+	accessAt        int64
+	isProxyProtocol bool
 }
 
 // NewHTTPClient 获取新客户端对象
-func NewHTTPClient(rawClient *http.Client) *HTTPClient {
+func NewHTTPClient(rawClient *http.Client, isProxyProtocol bool) *HTTPClient {
 	return &HTTPClient{
-		rawClient: rawClient,
-		accessAt:  fasttime.Now().Unix(),
+		rawClient:       rawClient,
+		accessAt:        fasttime.Now().Unix(),
+		isProxyProtocol: isProxyProtocol,
 	}
 }
 
@@ -32,6 +34,11 @@ func (this *HTTPClient) UpdateAccessTime() {
 // AccessTime 获取访问时间
 func (this *HTTPClient) AccessTime() int64 {
 	return this.accessAt
+}
+
+// IsProxyProtocol 判断是否为PROXY Protocol
+func (this *HTTPClient) IsProxyProtocol() bool {
+	return this.isProxyProtocol
 }
 
 // Close 关闭

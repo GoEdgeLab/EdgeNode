@@ -7,6 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/cespare/xxhash/v2"
 	"github.com/pires/go-proxyproto"
 	"golang.org/x/net/http2"
 	"net"
@@ -25,7 +26,7 @@ const httpClientProxyProtocolTag = "@ProxyProtocol@"
 
 // HTTPClientPool 客户端池
 type HTTPClientPool struct {
-	clientsMap map[string]*HTTPClient // backend key => client
+	clientsMap map[uint64]*HTTPClient // origin key => client
 
 	cleanTicker *time.Ticker
 
@@ -36,7 +37,7 @@ type HTTPClientPool struct {
 func NewHTTPClientPool() *HTTPClientPool {
 	var pool = &HTTPClientPool{
 		cleanTicker: time.NewTicker(1 * time.Hour),
-		clientsMap:  map[string]*HTTPClient{},
+		clientsMap:  map[uint64]*HTTPClient{},
 	}
 
 	goman.New(func() {
@@ -51,19 +52,22 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 	origin *serverconfigs.OriginConfig,
 	originAddr string,
 	proxyProtocol *serverconfigs.ProxyProtocolConfig,
-	followRedirects bool) (rawClient *http.Client, err error) {
+	followRedirects bool,
+	host string) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
 
-	var key = origin.UniqueKey() + "@" + originAddr
+	var rawKey = origin.UniqueKey() + "@" + originAddr + "@" + host
 
 	// if we are under available ProxyProtocol, we add client ip to key to make every client unique
 	var isProxyProtocol = false
 	if proxyProtocol != nil && proxyProtocol.IsOn {
-		key += httpClientProxyProtocolTag + req.requestRemoteAddr(true)
+		rawKey += httpClientProxyProtocolTag + req.requestRemoteAddr(true)
 		isProxyProtocol = true
 	}
+
+	var key = xxhash.Sum64String(rawKey)
 
 	var isLnRequest = origin.Id == 0
 
@@ -144,18 +148,18 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				// 普通的连接
-				conn, err := (&net.Dialer{
+				conn, dialErr := (&net.Dialer{
 					Timeout:   connectionTimeout,
 					KeepAlive: 1 * time.Minute,
 				}).DialContext(ctx, network, originAddr)
-				if err != nil {
-					return nil, err
+				if dialErr != nil {
+					return nil, dialErr
 				}
 
 				// 处理PROXY protocol
-				err = this.handlePROXYProtocol(conn, req, proxyProtocol)
-				if err != nil {
-					return nil, err
+				proxyErr := this.handlePROXYProtocol(conn, req, proxyProtocol)
+				if proxyErr != nil {
+					return nil, proxyErr
 				}
 
 				return NewOriginConn(conn), nil
@@ -199,7 +203,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		},
 	}
 
-	this.clientsMap[key] = NewHTTPClient(rawClient)
+	this.clientsMap[key] = NewHTTPClient(rawClient, isProxyProtocol)
 
 	return rawClient, nil
 }
@@ -209,14 +213,14 @@ func (this *HTTPClientPool) cleanClients() {
 	for range this.cleanTicker.C {
 		var nowTime = fasttime.Now().Unix()
 
-		var expiredKeys = []string{}
+		var expiredKeys []uint64
 		var expiredClients = []*HTTPClient{}
 
 		// lookup expired clients
 		this.locker.RLock()
 		for k, client := range this.clientsMap {
 			if client.AccessTime() < nowTime-86400 ||
-				(strings.Contains(k, httpClientProxyProtocolTag) && client.AccessTime() < nowTime-3600) { // 超过 N 秒没有调用就关闭
+				(client.IsProxyProtocol() && client.AccessTime() < nowTime-3600) { // 超过 N 秒没有调用就关闭
 				expiredKeys = append(expiredKeys, k)
 				expiredClients = append(expiredClients, client)
 			}
