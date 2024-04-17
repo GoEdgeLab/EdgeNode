@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
@@ -52,19 +53,38 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 	origin *serverconfigs.OriginConfig,
 	originAddr string,
 	proxyProtocol *serverconfigs.ProxyProtocolConfig,
-	followRedirects bool,
-	host string) (rawClient *http.Client, err error) {
+	followRedirects bool) (rawClient *http.Client, err error) {
 	if origin.Addr == nil {
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
 
-	var rawKey = origin.UniqueKey() + "@" + originAddr + "@" + host
+	if req.RawReq.URL == nil {
+		err = errors.New("invalid request url")
+		return
+	}
+	var originHost = req.RawReq.URL.Host
+	var urlPort = req.RawReq.URL.Port()
+	if len(urlPort) == 0 {
+		if req.RawReq.URL.Scheme == "http" {
+			urlPort = "80"
+		} else {
+			urlPort = "443"
+		}
+	}
+	originHost = configutils.QuoteIP(originHost) + ":" + urlPort
+
+	var rawKey = origin.UniqueKey() + "@" + originAddr + "@" + originHost
 
 	// if we are under available ProxyProtocol, we add client ip to key to make every client unique
 	var isProxyProtocol = false
 	if proxyProtocol != nil && proxyProtocol.IsOn {
 		rawKey += httpClientProxyProtocolTag + req.requestRemoteAddr(true)
 		isProxyProtocol = true
+	}
+
+	// follow redirects
+	if followRedirects {
+		rawKey += "@follow"
 	}
 
 	var key = xxhash.Sum64String(rawKey)
@@ -146,17 +166,24 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 
 	var transport = &HTTPClientTransport{
 		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// 普通的连接
+			DialContext: func(ctx context.Context, network string, addr string) (net.Conn, error) {
+				var realAddr = originAddr
+
+				// for redirections
+				if originHost != addr {
+					realAddr = addr
+				}
+
+				// connect
 				conn, dialErr := (&net.Dialer{
 					Timeout:   connectionTimeout,
 					KeepAlive: 1 * time.Minute,
-				}).DialContext(ctx, network, originAddr)
+				}).DialContext(ctx, network, realAddr)
 				if dialErr != nil {
 					return nil, dialErr
 				}
 
-				// 处理PROXY protocol
+				// handle PROXY protocol
 				proxyErr := this.handlePROXYProtocol(conn, req, proxyProtocol)
 				if proxyErr != nil {
 					return nil, proxyErr
@@ -187,16 +214,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		CheckRedirect: func(targetReq *http.Request, via []*http.Request) error {
 			// 是否跟随
 			if followRedirects {
-				var schemeIsSame = true
-				for _, r := range via {
-					if r.URL.Scheme != targetReq.URL.Scheme {
-						schemeIsSame = false
-						break
-					}
-				}
-				if schemeIsSame {
-					return nil
-				}
+				return nil
 			}
 
 			return http.ErrUseLastResponse
