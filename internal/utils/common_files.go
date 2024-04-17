@@ -22,6 +22,9 @@ var commonFileExtensionsMap = map[string]zero.Zero{
 	".fnt":   zero.New(),
 	".svg":   zero.New(),
 	".map":   zero.New(),
+	".avif":  zero.New(),
+	".bmp":   zero.New(),
+	".cur":   zero.New(),
 }
 
 // IsCommonFileExtension 判断是否为常用文件扩展名
