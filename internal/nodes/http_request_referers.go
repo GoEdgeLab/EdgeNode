@@ -12,6 +12,11 @@ func (this *HTTPRequest) doCheckReferers() (shouldStop bool) {
 		return
 	}
 
+	// 检查URL
+	if !this.web.Referers.MatchURL(this.URL()) {
+		return
+	}
+
 	var origin = this.RawReq.Header.Get("Origin")
 
 	const cacheSeconds = "3600" // 时间不能过长，防止修改设置后长期无法生效
