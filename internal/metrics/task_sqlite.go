@@ -13,7 +13,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
-	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
@@ -42,7 +42,7 @@ type SQLiteTask struct {
 	db            *dbs.DB
 	statTableName string
 
-	cleanTicker  *utils.Ticker
+	cleanTicker  *time.Ticker
 	uploadTicker *utils.Ticker
 
 	cleanVersion int32
@@ -207,18 +207,16 @@ func (this *SQLiteTask) Start() error {
 	})
 
 	// 清理
-	this.cleanTicker = utils.NewTicker(24 * time.Hour)
+	this.cleanTicker = time.NewTicker(24 * time.Hour)
 	goman.New(func() {
-		for this.cleanTicker.Next() {
-			fsutils.WaitLoad(15, 16, 1*time.Hour)
-
+		idles.RunTicker(this.cleanTicker, func() {
 			var tr = trackers.Begin("METRIC:CLEAN_EXPIRED")
 			err := this.CleanExpired()
 			tr.End()
 			if err != nil {
 				remotelogs.Error("METRIC", "clean expired stats failed: "+err.Error())
 			}
-		}
+		})
 	})
 
 	// 上传

@@ -5,6 +5,7 @@ package fsutils
 import (
 	"encoding/json"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/shirou/gopsutil/v3/load"
 	"os"
@@ -55,7 +56,7 @@ func init() {
 	}
 
 	// test disk
-	go func() {
+	goman.New(func() {
 		// load last result from local disk
 		cacheData, cacheErr := os.ReadFile(Tea.Root + "/data/" + diskSpeedDataFile)
 		if cacheErr == nil {
@@ -83,17 +84,17 @@ func init() {
 				}
 			}
 		}
-	}()
+	})
 
 	// check high load
-	go func() {
+	goman.New(func() {
 		var ticker = time.NewTicker(5 * time.Second)
 		for range ticker.C {
 			stat, _ := load.Avg()
 			IsInExtremelyHighLoad = stat != nil && stat.Load1 > extremelyHighLoad1Threshold
 			IsInHighLoad = stat != nil && stat.Load1 > highLoad1Threshold && !DiskIsFast()
 		}
-	}()
+	})
 }
 
 func DiskIsFast() bool {
@@ -145,8 +146,12 @@ func calculateDiskMaxWrites() {
 func WaitLoad(maxLoad float64, maxLoops int, delay time.Duration) {
 	for i := 0; i < maxLoops; i++ {
 		stat, err := load.Avg()
-		if err == nil && stat.Load1 > maxLoad {
-			time.Sleep(delay)
+		if err == nil {
+			if stat.Load1 > maxLoad {
+				time.Sleep(delay)
+			} else {
+				return
+			}
 		}
 	}
 }

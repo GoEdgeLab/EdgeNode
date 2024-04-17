@@ -3,6 +3,7 @@
 package counters
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	syncutils "github.com/TeaOSLab/EdgeNode/internal/utils/sync"
@@ -56,11 +57,11 @@ func (this *Counter[T]) WithGC() *Counter[T] {
 		return this
 	}
 	this.gcTicker = time.NewTicker(1 * time.Second)
-	go func() {
+	goman.New(func() {
 		for range this.gcTicker.C {
 			this.GC()
 		}
-	}()
+	})
 
 	return this
 }

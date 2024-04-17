@@ -10,7 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
-	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
 	"testing"
 	"time"
@@ -78,14 +78,15 @@ func (this *KVIPList) init() error {
 			this.cleanTicker.Stop()
 		})
 
-		for range this.cleanTicker.C {
-			fsutils.WaitLoad(15, 16, 1*time.Hour)
-
+		idles.RunTicker(this.cleanTicker, func() {
+			if this.isClosed {
+				return
+			}
 			deleteErr := this.DeleteExpiredItems()
 			if deleteErr != nil {
 				remotelogs.Error("IP_LIST_DB", "clean expired items failed: "+deleteErr.Error())
 			}
-		}
+		})
 	})
 
 	return nil

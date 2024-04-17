@@ -22,7 +22,7 @@ func TestWrites(t *testing.T) {
 }
 
 func TestWaitLoad(t *testing.T) {
-	fsutils.WaitLoad(100, 1, 1 * time.Minute)
+	fsutils.WaitLoad(100, 5, 1*time.Minute)
 }
 
 func BenchmarkWrites(b *testing.B) {

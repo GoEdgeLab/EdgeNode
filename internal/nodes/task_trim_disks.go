@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
-	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"runtime"
 	"time"
 )
@@ -29,16 +29,13 @@ func (this *TrimDisksTask) Start() {
 	}
 
 	var ticker = time.NewTicker(2 * 24 * time.Hour) // every 2 days
-	for range ticker.C {
-		// prevent system overload
-		fsutils.WaitLoad(15, 24, 1*time.Hour)
-
+	idles.RunTicker(ticker, func() {
 		// run the task
 		err = this.loop()
 		if err != nil {
 			remotelogs.Warn("TRIM_DISKS", "trim disks failed: "+err.Error())
 		}
-	}
+	})
 }
 
 // run the task once

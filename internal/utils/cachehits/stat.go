@@ -5,6 +5,7 @@ package cachehits
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/iwind/TeaGo/Tea"
 	"sync"
@@ -58,7 +59,7 @@ func NewStat(goodRatio uint64) *Stat {
 }
 
 func (this *Stat) init() {
-	for range this.ticker.C {
+	idles.RunTicker(this.ticker, func() {
 		var currentTime = fasttime.Now().Unix()
 
 		this.mu.RLock()
@@ -73,7 +74,7 @@ func (this *Stat) init() {
 			}
 		}
 		this.mu.RUnlock()
-	}
+	})
 }
 
 func (this *Stat) IncreaseCached(category string) {

@@ -10,6 +10,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/rpc"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/Tea"
@@ -38,9 +39,9 @@ func init() {
 
 	var ticker = time.NewTicker(24 * time.Hour)
 	goman.New(func() {
-		for range ticker.C {
+		idles.RunTicker(ticker, func() {
 			SharedIPListManager.DeleteExpiredItems()
-		}
+		})
 	})
 }
 
@@ -54,7 +55,7 @@ type IPListManager struct {
 	fetchPageSize int64
 
 	listMap map[int64]*IPList
-	mu  sync.RWMutex
+	mu      sync.RWMutex
 
 	isFirstTime bool
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	byteutils "github.com/TeaOSLab/EdgeNode/internal/utils/byte"
-	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/cockroachdb/pebble"
@@ -37,7 +37,7 @@ type KVTask struct {
 	serverIdMapLocker sync.Mutex
 
 	statsTicker  *utils.Ticker
-	cleanTicker  *utils.Ticker
+	cleanTicker  *time.Ticker
 	uploadTicker *utils.Ticker
 
 	valuesCacheMap map[string]int64 // hash => value
@@ -285,18 +285,16 @@ func (this *KVTask) Start() error {
 	})
 
 	// 清理
-	this.cleanTicker = utils.NewTicker(24 * time.Hour)
+	this.cleanTicker = time.NewTicker(24 * time.Hour)
 	goman.New(func() {
-		for this.cleanTicker.Next() {
-			fsutils.WaitLoad(15, 16, 1*time.Hour)
-
+		idles.RunTicker(this.cleanTicker, func() {
 			var tr = trackers.Begin("METRIC:CLEAN_EXPIRED")
 			err := this.CleanExpired()
 			tr.End()
 			if err != nil {
 				remotelogs.Error("METRIC", "clean expired stats failed: "+err.Error())
 			}
-		}
+		})
 	})
 
 	// 上传

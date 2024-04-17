@@ -9,7 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
-	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/kvstore"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/types"
@@ -87,14 +87,12 @@ func (this *DAUManager) Init() error {
 
 	// clean expires items
 	goman.New(func() {
-		for range this.cleanTicker.C {
-			fsutils.WaitLoad(15, 16, 1*time.Hour)
-
+		idles.RunTicker(this.cleanTicker, func() {
 			err := this.CleanStats()
 			if err != nil {
 				remotelogs.Error("DAU_MANAGER", "clean stats failed: "+err.Error())
 			}
-		}
+		})
 	})
 
 	// dump ip to kvstore
@@ -208,6 +206,8 @@ func (this *DAUManager) TestInspect(t *testing.T) {
 }
 
 func (this *DAUManager) Close() error {
+	this.cleanTicker.Stop()
+
 	this.statLocker.Lock()
 	var statMap = this.statMap
 	this.statMap = map[string]int64{}
