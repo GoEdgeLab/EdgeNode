@@ -4,7 +4,6 @@ package compressions
 
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	"github.com/andybalholm/brotli"
 	"io"
 )
 
@@ -15,7 +14,7 @@ func init() {
 		return
 	}
 
-	sharedBrotliWriterPool = NewWriterPool(CalculatePoolSize(), brotli.BestCompression, func(writer io.Writer, level int) (Writer, error) {
+	sharedBrotliWriterPool = NewWriterPool(CalculatePoolSize(), func(writer io.Writer, level int) (Writer, error) {
 		return newBrotliWriter(writer)
 	})
 }

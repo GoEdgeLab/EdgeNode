@@ -3,7 +3,6 @@
 package compressions
 
 import (
-	"compress/gzip"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"io"
 )
@@ -15,8 +14,7 @@ func init() {
 		return
 	}
 
-
-	sharedGzipWriterPool = NewWriterPool(CalculatePoolSize(), gzip.BestCompression, func(writer io.Writer, level int) (Writer, error) {
+	sharedGzipWriterPool = NewWriterPool(CalculatePoolSize(), func(writer io.Writer, level int) (Writer, error) {
 		return newGzipWriter(writer)
 	})
 }

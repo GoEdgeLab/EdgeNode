@@ -614,6 +614,11 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 		return
 	}
 
+	// 检查是否正繁忙
+	if compressions.IsBusy() {
+		return
+	}
+
 	// 分区内容不压缩，防止读取失败
 	if !this.compressionConfig.EnablePartialContent && this.StatusCode() == http.StatusPartialContent {
 		return
@@ -733,7 +738,9 @@ func (this *HTTPWriter) PrepareCompression(resp *http.Response, size int64) {
 	// compression writer
 	compressionWriter, err := compressions.NewWriter(this.writer, compressionType, int(this.compressionConfig.Level))
 	if err != nil {
-		remotelogs.Error("HTTP_WRITER", err.Error())
+		if !compressions.CanIgnore(err) {
+			remotelogs.Error("HTTP_WRITER", "open compress writer failed: "+err.Error())
+		}
 		header.Del("Content-Encoding")
 		if this.compressionCacheWriter != nil {
 			_ = this.compressionCacheWriter.Discard()

@@ -4,7 +4,6 @@ package compressions
 
 import (
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
-	"github.com/klauspost/compress/zstd"
 	"io"
 )
 
@@ -15,7 +14,7 @@ func init() {
 		return
 	}
 
-	sharedZSTDWriterPool = NewWriterPool(CalculatePoolSize(), int(zstd.SpeedBestCompression), func(writer io.Writer, level int) (Writer, error) {
+	sharedZSTDWriterPool = NewWriterPool(CalculatePoolSize(), func(writer io.Writer, level int) (Writer, error) {
 		return newZSTDWriter(writer)
 	})
 }
