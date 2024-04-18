@@ -12,7 +12,7 @@ import (
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	setutils "github.com/TeaOSLab/EdgeNode/internal/utils/sets"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/iwind/TeaGo/types"
 	"math"
 	"runtime"

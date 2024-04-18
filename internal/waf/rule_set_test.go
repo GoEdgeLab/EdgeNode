@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/maps"
 	"net/http"

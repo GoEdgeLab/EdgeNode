@@ -4,7 +4,7 @@ import (
 	"fmt"
 	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"

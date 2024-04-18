@@ -99,7 +99,7 @@ func (this *Cache[T]) Write(key string, value T, expiredAt int64) (ok bool) {
 	if expiredAt > maxExpiredAt {
 		expiredAt = maxExpiredAt
 	}
-	var uint64Key = HashKey([]byte(key))
+	var uint64Key = HashKeyString(key)
 	var pieceIndex = uint64Key % this.countPieces
 	return this.pieces[pieceIndex].Add(uint64Key, &Item[T]{
 		Value:     value,
@@ -121,18 +121,18 @@ func (this *Cache[T]) IncreaseInt64(key string, delta T, expiredAt int64, extend
 	if expiredAt > maxExpiredAt {
 		expiredAt = maxExpiredAt
 	}
-	var uint64Key = HashKey([]byte(key))
+	var uint64Key = HashKeyString(key)
 	var pieceIndex = uint64Key % this.countPieces
 	return this.pieces[pieceIndex].IncreaseInt64(uint64Key, delta, expiredAt, extend)
 }
 
 func (this *Cache[T]) Read(key string) (item *Item[T]) {
-	var uint64Key = HashKey([]byte(key))
+	var uint64Key = HashKeyString(key)
 	return this.pieces[uint64Key%this.countPieces].Read(uint64Key)
 }
 
 func (this *Cache[T]) Delete(key string) {
-	var uint64Key = HashKey([]byte(key))
+	var uint64Key = HashKeyString(key)
 	this.pieces[uint64Key%this.countPieces].Delete(uint64Key)
 }
 

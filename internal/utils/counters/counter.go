@@ -7,7 +7,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	syncutils "github.com/TeaOSLab/EdgeNode/internal/utils/sync"
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"sync"
 	"time"
 )

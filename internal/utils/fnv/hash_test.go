@@ -22,3 +22,11 @@ func BenchmarkHashString(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkHashString_Long(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = fnv.HashString("HELLO,WORLDHELLO,WORLDHELLO,WORLDHELLO,WORLDHELLO,WORLDHELLO,WORLD")
+		}
+	})
+}

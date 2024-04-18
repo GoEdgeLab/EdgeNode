@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/rands"
 	"github.com/iwind/TeaGo/types"
