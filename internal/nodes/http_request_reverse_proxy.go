@@ -315,7 +315,7 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	if requestErr != nil {
 		// 客户端取消请求，则不提示
 		var httpErr *url.Error
-		ok := errors.As(requestErr, &httpErr)
+		var ok = errors.As(requestErr, &httpErr)
 		if !ok {
 			if isHTTPOrigin {
 				SharedOriginStateManager.Fail(origin, requestHost, this.reverseProxy, func() {
@@ -361,18 +361,16 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 		} else {
 			// 是否为客户端方面的错误
 			var isClientError = false
-			if ok {
-				if errors.Is(httpErr, context.Canceled) {
-					// 如果是服务器端主动关闭，则无需提示
-					if this.isConnClosed() {
-						this.disableLog = true
-						return
-					}
-
-					isClientError = true
-					this.addError(errors.New(httpErr.Op + " " + httpErr.URL + ": client closed the connection"))
-					this.writer.WriteHeader(499) // 仿照nginx
+			if errors.Is(httpErr, context.Canceled) {
+				// 如果是服务器端主动关闭，则无需提示
+				if this.isConnClosed() {
+					this.disableLog = true
+					return
 				}
+
+				isClientError = true
+				this.addError(errors.New(httpErr.Op + " " + httpErr.URL + ": client closed the connection"))
+				this.writer.WriteHeader(499) // 仿照nginx
 			}
 
 			if !isClientError {
