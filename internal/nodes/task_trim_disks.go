@@ -5,6 +5,7 @@ package nodes
 import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
+	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	executils "github.com/TeaOSLab/EdgeNode/internal/utils/exec"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"runtime"
@@ -56,6 +57,8 @@ func (this *TrimDisksTask) loop() error {
 	if err != nil {
 		return fmt.Errorf("'fstrim' command not found: %w", err)
 	}
+
+	defer trackers.Begin("TRIM_DISKS").End()
 
 	var cmd = executils.NewCmd(trimExe, "-a").
 		WithStderr()
