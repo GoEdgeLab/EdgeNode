@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/shared"
+	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
@@ -289,8 +290,44 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 			this.RawReq.URL.Scheme = "http"
 		}
 
+		// request origin with Accept-Encoding: gzip, ...
+		var rawAcceptEncoding string
+		var acceptEncodingChanged bool
+		if this.nodeConfig != nil &&
+			this.nodeConfig.GlobalServerConfig != nil &&
+			this.nodeConfig.GlobalServerConfig.HTTPAll.RequestOriginsWithEncodings &&
+			this.RawReq.ProtoAtLeast(1, 1) &&
+			this.RawReq.Header != nil {
+			rawAcceptEncoding = this.RawReq.Header.Get("Accept-Encoding")
+			if len(rawAcceptEncoding) == 0 {
+				this.RawReq.Header.Set("Accept-Encoding", "gzip")
+				acceptEncodingChanged = true
+			} else if strings.Index(rawAcceptEncoding, "gzip") < 0 {
+				this.RawReq.Header.Set("Accept-Encoding", rawAcceptEncoding+", gzip")
+				acceptEncodingChanged = true
+			}
+		}
+
 		// 开始请求
 		resp, requestErr = client.Do(this.RawReq)
+
+		// recover Accept-Encoding
+		if acceptEncodingChanged {
+			if len(rawAcceptEncoding) > 0 {
+				this.RawReq.Header.Set("Accept-Encoding", rawAcceptEncoding)
+			} else {
+				this.RawReq.Header.Del("Accept-Encoding")
+			}
+
+			if resp != nil && resp.Header != nil && resp.Header.Get("Content-Encoding") == "gzip" {
+				bodyReader, gzipErr := compressions.NewGzipReader(resp.Body)
+				if gzipErr == nil {
+					resp.Body = bodyReader
+				}
+				resp.TransferEncoding = nil
+				resp.Header.Del("Content-Encoding")
+			}
+		}
 	} else if origin.OSS != nil { // OSS源站
 		var goNext bool
 		resp, goNext, requestErrCode, _, requestErr = this.doOSSOrigin(origin)

@@ -50,6 +50,7 @@ type HTTPRequest struct {
 	isHealthCheck bool
 
 	// 共享参数
+	// DO NOT change the variable after created
 	nodeConfig *nodeconfigs.NodeConfig
 
 	// ln request
