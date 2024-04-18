@@ -9,6 +9,7 @@ import (
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/shirou/gopsutil/v3/load"
+	"math"
 	"os"
 	"sort"
 	"time"
@@ -18,7 +19,7 @@ const maxSamples = 7
 const cacheFile = "idles.cache"
 
 var hourlyLoadMap = map[int]*HourlyLoad{}
-var minLoadHour = -1
+var sharedMinLoadHours []int
 
 type HourlyLoad struct {
 	Hour   int       `json:"hour"`
@@ -35,7 +36,10 @@ func init() {
 	{
 		data, err := os.ReadFile(Tea.Root + "/data/" + cacheFile)
 		if err == nil {
-			_ = json.Unmarshal(data, &hourlyLoadMap)
+			err = json.Unmarshal(data, &hourlyLoadMap)
+			if err == nil {
+				calculateMinLoadHours()
+			}
 		}
 	}
 
@@ -70,36 +74,37 @@ func CheckHourlyLoad(hour int) {
 	for _, v := range hourlyLoad.Values {
 		sum += v
 	}
-	hourlyLoad.Avg = sum / float64(len(hourlyLoad.Values))
+	hourlyLoad.Avg = math.Ceil(sum/float64(len(hourlyLoad.Values))*10) / 10 // fix precision
 
-	// calculate min load hour
-	var allLoads = []*HourlyLoad{}
-	for _, v := range hourlyLoadMap {
-		allLoads = append(allLoads, v)
-	}
-
-	sort.Slice(allLoads, func(i, j int) bool {
-		return allLoads[i].Avg < allLoads[j].Avg
-	})
-
-	minLoadHour = allLoads[0].Hour
-
-	// write to cache
-	hourlyLoadMapJSON, err := json.Marshal(hourlyLoadMap)
-	if err == nil {
-		_ = os.WriteFile(Tea.Root+"/data/"+cacheFile, hourlyLoadMapJSON, 0666)
-	}
+	calculateMinLoadHours()
 }
 
 func Run(f func()) {
 	defer f()
 
-	if minLoadHour < 0 {
+	var minLoadHours = sharedMinLoadHours // copy
+
+	if len(minLoadHours) == 0 {
 		fsutils.WaitLoad(15, 8, time.Hour)
 		return
 	}
 
 	var hour = time.Now().Hour()
+	var minLoadHour = -1
+	for _, v := range minLoadHours {
+		if v == hour {
+			minLoadHour = v
+			break
+		}
+		if v > hour {
+			minLoadHour = v
+			break
+		}
+	}
+	if minLoadHour < 0 {
+		minLoadHour = minLoadHours[0]
+	}
+
 	if minLoadHour == hour {
 		fsutils.WaitLoad(15, 10, time.Minute)
 		return
@@ -119,8 +124,39 @@ func RunTicker(ticker *time.Ticker, f func()) {
 	}
 }
 
-func TestMinLoadHour() int {
-	return minLoadHour
+func calculateMinLoadHours() {
+	var allLoads = []*HourlyLoad{}
+	for _, v := range hourlyLoadMap {
+		allLoads = append(allLoads, v)
+	}
+
+	sort.Slice(allLoads, func(i, j int) bool {
+		return allLoads[i].Avg < allLoads[j].Avg
+	})
+
+	var minAvgLoad = allLoads[0].Avg
+	var newMinLoadHours []int
+	for _, v := range allLoads {
+		if v.Avg == minAvgLoad {
+			newMinLoadHours = append(newMinLoadHours, v.Hour)
+		}
+	}
+	sort.Ints(newMinLoadHours)
+	sharedMinLoadHours = newMinLoadHours
+
+	// write to cache
+	hourlyLoadMapJSON, err := json.Marshal(hourlyLoadMap)
+	if err == nil {
+		_ = os.WriteFile(Tea.Root+"/data/"+cacheFile, hourlyLoadMapJSON, 0666)
+	}
+}
+
+func TestMinLoadHours() []int {
+	return sharedMinLoadHours
+}
+
+func TestSetMinLoadHours(minLoadHours []int) {
+	sharedMinLoadHours = minLoadHours
 }
 
 func TestHourlyLoadMap() map[int]*HourlyLoad {

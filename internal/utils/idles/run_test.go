@@ -5,7 +5,8 @@ package idles_test
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/idles"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
-	"github.com/iwind/TeaGo/logs"
+	_ "github.com/iwind/TeaGo/bootstrap"
+	"github.com/iwind/TeaGo/types"
 	timeutil "github.com/iwind/TeaGo/utils/time"
 	"testing"
 	"time"
@@ -13,17 +14,21 @@ import (
 
 func TestCheckHourlyLoad(t *testing.T) {
 	for i := 0; i < 10; i++ {
+		idles.CheckHourlyLoad(5)
 		idles.CheckHourlyLoad(1)
-		idles.CheckHourlyLoad(2)
 		idles.CheckHourlyLoad(3)
+		idles.CheckHourlyLoad(2)
+		idles.CheckHourlyLoad(4)
 	}
 
-	t.Log(idles.TestMinLoadHour())
-	logs.PrintAsJSON(idles.TestHourlyLoadMap(), t)
+	t.Log(idles.TestMinLoadHours())
+	for h, v := range idles.TestHourlyLoadMap() {
+		t.Log(types.String(h)+":", v.Avg)
+	}
 }
 
 func TestRun(t *testing.T) {
-	//idles.CheckHourlyLoad(time.Now().Hour())
+	idles.TestSetMinLoadHours([]int{0, time.Now().Hour()})
 	idles.Run(func() {
 		t.Log("run once")
 	})
