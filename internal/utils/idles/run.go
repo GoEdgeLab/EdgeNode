@@ -16,7 +16,7 @@ import (
 )
 
 const maxSamples = 7
-const cacheFile = "idles.cache"
+const cacheFile = "idle_hours.cache"
 
 var hourlyLoadMap = map[int]*HourlyLoad{}
 var sharedMinLoadHours []int
