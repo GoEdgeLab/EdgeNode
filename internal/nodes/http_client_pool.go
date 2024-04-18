@@ -24,6 +24,7 @@ import (
 var SharedHTTPClientPool = NewHTTPClientPool()
 
 const httpClientProxyProtocolTag = "@ProxyProtocol@"
+const maxHTTPRedirects = 8
 
 // HTTPClientPool 客户端池
 type HTTPClientPool struct {
@@ -212,8 +213,8 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		Timeout:   readTimeout,
 		Transport: transport,
 		CheckRedirect: func(targetReq *http.Request, via []*http.Request) error {
-			// 是否跟随
-			if followRedirects {
+			// follow redirects
+			if followRedirects && len(via) <= maxHTTPRedirects {
 				return nil
 			}
 
