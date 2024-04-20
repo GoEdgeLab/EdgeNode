@@ -188,6 +188,11 @@ func (this *PartialRanges) Reset() {
 	this.Ranges = [][2]int64{}
 }
 
+// IsCompleted 是否已下载完整
+func (this *PartialRanges) IsCompleted() bool {
+	return len(this.Ranges) == 1 && this.Ranges[0][0] == 0 && this.Ranges[0][1] == this.BodySize-1
+}
+
 func (this *PartialRanges) merge(index int) {
 	// forward
 	var lastIndex = index

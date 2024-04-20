@@ -279,7 +279,7 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 			}
 
 			if len(rangeHeader) > 0 {
-				pReader, ranges := this.tryPartialReader(storage, key, useStale, rangeHeader)
+				pReader, ranges := this.tryPartialReader(storage, key, useStale, rangeHeader, this.cacheRef.ForcePartialContent)
 				if pReader != nil {
 					isPartialCache = true
 					reader = pReader
@@ -650,7 +650,7 @@ func (this *HTTPRequest) addExpiresHeader(expiresAt int64) {
 }
 
 // 尝试读取区间缓存
-func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key string, useStale bool, rangeHeader string) (caches.Reader, []rangeutils.Range) {
+func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key string, useStale bool, rangeHeader string, forcePartialContent bool) (caches.Reader, []rangeutils.Range) {
 	// 尝试读取Partial cache
 	if len(rangeHeader) == 0 {
 		return nil, nil
@@ -678,15 +678,18 @@ func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key s
 		}
 	}()
 
+	// 检查是否已下载完整
+	if !forcePartialContent &&
+		len(ranges) > 0 &&
+		ranges[0][0] == 0 &&
+		ranges[0][1] < 0 &&
+		!partialReader.IsCompleted() {
+		return nil, nil
+	}
+
 	// 检查范围
-	//const maxFirstSpan = 16 << 20 // TODO 可以在缓存策略中设置此值
+	// 这里 **切记不要** 为末尾位置指定一个中间值，因为部分软件客户端不支持
 	for index, r := range ranges {
-		// 没有指定结束位置时，自动指定一个
-		/**if r.Start() >= 0 && r.End() == -1 {
-			if partialReader.MaxLength() > r.Start()+maxFirstSpan {
-				r[1] = r.Start() + maxFirstSpan
-			}
-		}**/
 		r1, ok := r.Convert(partialReader.MaxLength())
 		if !ok {
 			return nil, nil
