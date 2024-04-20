@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/iwind/TeaGo/types"
-	"os"
 	"strconv"
 )
 
@@ -70,7 +69,7 @@ func NewPartialRangesFromJSON(data []byte) (*PartialRanges, error) {
 
 // NewPartialRangesFromFile 从文件中加载范围信息
 func NewPartialRangesFromFile(path string) (*PartialRanges, error) {
-	data, err := os.ReadFile(path)
+	data, err := SharedPartialRangesQueue.Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +171,8 @@ func (this *PartialRanges) Bytes() []byte {
 
 // WriteToFile 写入到文件中
 func (this *PartialRanges) WriteToFile(path string) error {
-	return os.WriteFile(path, this.Bytes(), 0666)
+	SharedPartialRangesQueue.Put(path, this.Bytes())
+	return nil
 }
 
 // Max 获取最大位置

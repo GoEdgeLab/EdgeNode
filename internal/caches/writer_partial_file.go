@@ -228,6 +228,7 @@ func (this *PartialFileWriter) Discard() error {
 	_ = this.rawWriter.Close()
 	fsutils.WriteEnd()
 
+	SharedPartialRangesQueue.Delete(this.rangePath)
 	_ = os.Remove(this.rangePath)
 
 	err := os.Remove(this.rawWriter.Name())
@@ -261,5 +262,7 @@ func (this *PartialFileWriter) IsNew() bool {
 
 func (this *PartialFileWriter) remove() {
 	_ = os.Remove(this.rawWriter.Name())
+
+	SharedPartialRangesQueue.Delete(this.rangePath)
 	_ = os.Remove(this.rangePath)
 }

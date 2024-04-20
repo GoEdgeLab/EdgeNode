@@ -1486,6 +1486,7 @@ func (this *FileStorage) removeCacheFile(path string) error {
 		_, statErr := os.Stat(partialPath)
 		if statErr == nil {
 			_ = os.Remove(partialPath)
+			SharedPartialRangesQueue.Delete(partialPath)
 		}
 	}
 	return err

@@ -145,6 +145,8 @@ func (this *PartialFileReader) IsCompleted() bool {
 }
 
 func (this *PartialFileReader) discard() error {
+	SharedPartialRangesQueue.Delete(this.rangePath)
 	_ = os.Remove(this.rangePath)
+
 	return this.FileReader.discard()
 }
