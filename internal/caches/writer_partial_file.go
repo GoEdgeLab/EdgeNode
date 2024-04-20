@@ -127,6 +127,32 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 		return nil
 	}
 
+	// prevent extending too much space in a single writing
+	var maxOffset = this.ranges.Max()
+	if offset-maxOffset > 16<<20 {
+		var maxExtendSize int64 = 32 << 20
+		if fsutils.DiskIsExtremelyFast() {
+			maxExtendSize = 128 << 20
+		} else if fsutils.DiskIsFast() {
+			maxExtendSize = 64 << 20
+		}
+		if offset-maxOffset > maxExtendSize {
+			stat, err := this.rawWriter.Stat()
+			if err != nil {
+				return nil
+			}
+
+			// extend min size to prepare for file tail
+			const extendSizePerStep = 8 << 20
+			if stat.Size()+extendSizePerStep <= this.bodyOffset+offset+int64(len(data)) {
+				fsutils.WriteBegin()
+				_ = this.rawWriter.Truncate(stat.Size() + extendSizePerStep)
+				fsutils.WriteEnd()
+				return nil
+			}
+		}
+	}
+
 	if this.bodyOffset == 0 {
 		var keyLength = 0
 		if this.ranges.Version == 0 { // 以往的版本包含有Key
