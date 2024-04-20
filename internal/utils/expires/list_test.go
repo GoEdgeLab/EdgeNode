@@ -35,22 +35,28 @@ func TestList_Add_Overwrite(t *testing.T) {
 	var list = expires.NewList()
 	list.Add(1, timestamp+1)
 	list.Add(1, timestamp+1)
+	list.Add(2, timestamp+1)
 	list.Add(1, timestamp+2)
 	logs.PrintAsJSON(list.ExpireMap(), t)
 	logs.PrintAsJSON(list.ItemsMap(), t)
 
 	var a = assert.NewAssertion(t)
-	a.IsTrue(len(list.ItemsMap()) == 1)
-	a.IsTrue(len(list.ExpireMap()) == 1)
+	a.IsTrue(len(list.ItemsMap()) == 2)
+	a.IsTrue(len(list.ExpireMap()) == 2)
 	a.IsTrue(list.ItemsMap()[1] == timestamp+2)
 }
 
 func TestList_Remove(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
 	var list = expires.NewList()
 	list.Add(1, time.Now().Unix()+1)
 	list.Remove(1)
 	logs.PrintAsJSON(list.ExpireMap(), t)
 	logs.PrintAsJSON(list.ItemsMap(), t)
+
+	a.IsTrue(len(list.ExpireMap()) == 0)
+	a.IsTrue(len(list.ItemsMap()) == 0)
 }
 
 func TestList_GC(t *testing.T) {
@@ -122,8 +128,8 @@ func TestList_ManyItems(t *testing.T) {
 		list.Add(uint64(i), time.Now().Unix()+1)
 	}
 
-	now := time.Now()
-	count := 0
+	var now = time.Now()
+	var count = 0
 	list.OnGC(func(itemId uint64) {
 		count++
 	})
@@ -156,12 +162,12 @@ func TestList_Map_Performance(t *testing.T) {
 	var timestamp = time.Now().Unix()
 
 	{
-		m := map[int64]int64{}
+		var m = map[int64]int64{}
 		for i := 0; i < 1_000_000; i++ {
 			m[int64(i)] = timestamp
 		}
 
-		now := time.Now()
+		var now = time.Now()
 		for i := 0; i < 100_000; i++ {
 			delete(m, int64(i))
 		}
@@ -169,12 +175,12 @@ func TestList_Map_Performance(t *testing.T) {
 	}
 
 	{
-		m := map[uint64]int64{}
+		var m = map[uint64]int64{}
 		for i := 0; i < 1_000_000; i++ {
 			m[uint64(i)] = timestamp
 		}
 
-		now := time.Now()
+		var now = time.Now()
 		for i := 0; i < 100_000; i++ {
 			delete(m, uint64(i))
 		}
@@ -182,12 +188,12 @@ func TestList_Map_Performance(t *testing.T) {
 	}
 
 	{
-		m := map[uint32]int64{}
+		var m = map[uint32]int64{}
 		for i := 0; i < 1_000_000; i++ {
 			m[uint32(i)] = timestamp
 		}
 
-		now := time.Now()
+		var now = time.Now()
 		for i := 0; i < 100_000; i++ {
 			delete(m, uint32(i))
 		}
@@ -211,7 +217,7 @@ func Benchmark_Map_Uint64(b *testing.B) {
 	var i uint64
 	var count uint64 = 1_000_000
 
-	m := map[uint64]uint64{}
+	var m = map[uint64]uint64{}
 	for i = 0; i < count; i++ {
 		m[i] = timestamp
 	}
@@ -231,14 +237,14 @@ func BenchmarkList_GC(b *testing.B) {
 	for m := 0; m < 1_000; m++ {
 		var list = expires.NewList()
 		for j := 0; j < 10_000; j++ {
-			list.Add(uint64(j), fasttime.Now().Unix()+int64(rand.Int()%1_000_000))
+			list.Add(uint64(j), fasttime.Now().Unix()+int64(rand.Int()%10_000_000))
 		}
 		lists = append(lists, list)
 	}
 
-	b.ResetTimer()
-
 	var timestamp = time.Now().Unix()
+
+	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {

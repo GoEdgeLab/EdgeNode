@@ -55,17 +55,19 @@ func (this *List) Add(itemId uint64, expiresAt int64) {
 		if oldExpiresAt == expiresAt {
 			return
 		}
-		delete(this.expireMap, oldExpiresAt)
+		delete(this.expireMap[oldExpiresAt], itemId)
+		if len(this.expireMap[oldExpiresAt]) == 0 {
+			delete(this.expireMap, oldExpiresAt)
+		}
 	}
 
 	expireItemMap, ok := this.expireMap[expiresAt]
 	if ok {
 		expireItemMap[itemId] = zero.New()
 	} else {
-		expireItemMap = ItemMap{
+		this.expireMap[expiresAt] = ItemMap{
 			itemId: zero.New(),
 		}
-		this.expireMap[expiresAt] = expireItemMap
 	}
 
 	this.itemsMap[itemId] = expiresAt
