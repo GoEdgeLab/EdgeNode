@@ -256,11 +256,9 @@ func (this *HTTPRequest) doCacheRead(useStale bool) (shouldStop bool) {
 		if this.web.Compression != nil && this.web.Compression.IsOn {
 			_, encoding, ok := this.web.Compression.MatchAcceptEncoding(this.RawReq.Header.Get("Accept-Encoding"))
 			if ok {
-				if reader == nil {
-					reader, _ = storage.OpenReader(key+caches.SuffixCompression+encoding, useStale, false)
-					if reader != nil {
-						tags = append(tags, encoding)
-					}
+				reader, _ = storage.OpenReader(key+caches.SuffixCompression+encoding, useStale, false)
+				if reader != nil {
+					tags = append(tags, encoding)
 				}
 			}
 		}
