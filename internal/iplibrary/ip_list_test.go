@@ -245,19 +245,37 @@ func TestIPList_Contains_Many(t *testing.T) {
 func TestIPList_ContainsAll(t *testing.T) {
 	var a = assert.NewAssertion(t)
 
-	var list = iplibrary.NewIPList()
-	list.Add(&iplibrary.IPItem{
-		Id:     1,
-		Type:   "all",
-		IPFrom: nil,
-	})
-	var b = list.Contains(iputils.ToBytes("192.168.1.1"))
-	a.IsTrue(b)
+	{
+		var list = iplibrary.NewIPList()
+		list.Add(&iplibrary.IPItem{
+			Id:     1,
+			Type:   "all",
+			IPFrom: nil,
+		})
+		var b = list.Contains(iputils.ToBytes("192.168.1.1"))
+		a.IsTrue(b)
 
-	list.Delete(1)
+		list.Delete(1)
 
-	b = list.Contains(iputils.ToBytes("192.168.1.1"))
-	a.IsFalse(b)
+		b = list.Contains(iputils.ToBytes("192.168.1.1"))
+		a.IsFalse(b)
+	}
+
+	{
+		var list = iplibrary.NewIPList()
+		list.Add(&iplibrary.IPItem{
+			Id:     1,
+			Type:   "all",
+			IPFrom: iputils.ToBytes("0.0.0.0"),
+		})
+		var b = list.Contains(iputils.ToBytes("192.168.1.1"))
+		a.IsTrue(b)
+
+		list.Delete(1)
+
+		b = list.Contains(iputils.ToBytes("192.168.1.1"))
+		a.IsFalse(b)
+	}
 }
 
 func TestIPList_ContainsIPStrings(t *testing.T) {

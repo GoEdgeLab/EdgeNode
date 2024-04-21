@@ -221,15 +221,15 @@ func (this *IPList) addItem(item *IPItem, lock bool, sortable bool) {
 	this.itemsMap[item.Id] = item
 
 	// 展开
-	if !IsZero(item.IPFrom) {
+	if item.Type == IPItemTypeAll {
+		this.allItemsMap[item.Id] = item
+	} else if !IsZero(item.IPFrom) {
 		if !IsZero(item.IPTo) {
 			this.sortedRangeItems = append(this.sortedRangeItems, item)
 			shouldSort = true
 		} else {
 			this.ipMap[ToHex(item.IPFrom)] = item
 		}
-	} else {
-		this.allItemsMap[item.Id] = item
 	}
 
 	if item.ExpiredAt > 0 {
@@ -310,6 +310,12 @@ func (this *IPList) deleteItem(itemId uint64) {
 	// 从buffer中删除
 	delete(this.bufferItemsMap, itemId)
 
+	// 从all items中删除
+	_, ok := this.allItemsMap[itemId]
+	if ok {
+		delete(this.allItemsMap, itemId)
+	}
+
 	// 检查是否存在
 	oldItem, existsOld := this.itemsMap[itemId]
 	if !existsOld {
@@ -326,13 +332,6 @@ func (this *IPList) deleteItem(itemId uint64) {
 	}
 
 	delete(this.itemsMap, itemId)
-
-	// 是否为All Item
-	_, ok := this.allItemsMap[itemId]
-	if ok {
-		delete(this.allItemsMap, itemId)
-		return
-	}
 
 	// 删除排序中的Item
 	if !IsZero(oldItem.IPTo) {
