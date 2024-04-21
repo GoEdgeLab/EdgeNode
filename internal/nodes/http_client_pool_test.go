@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
+	"net/http"
 	"runtime"
 	"testing"
 	"time"
@@ -11,6 +12,13 @@ import (
 
 func TestHTTPClientPool_Client(t *testing.T) {
 	var pool = NewHTTPClientPool()
+
+	rawReq, err := http.NewRequest(http.MethodGet, "https://example.com/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var req = &HTTPRequest{RawReq: rawReq}
 
 	{
 		var origin = &serverconfigs.OriginConfig{
@@ -23,14 +31,14 @@ func TestHTTPClientPool_Client(t *testing.T) {
 			t.Fatal(err)
 		}
 		{
-			client, err := pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false, "example.com")
+			client, err := pool.Client(req, origin, origin.Addr.PickAddress(), nil, false)
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Log("client:", client)
 		}
 		for i := 0; i < 10; i++ {
-			client, err := pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false, "example.com")
+			client, err := pool.Client(req, origin, origin.Addr.PickAddress(), nil, false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +62,7 @@ func TestHTTPClientPool_cleanClients(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		t.Log("get", i)
-		_, _ = pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false, "example.com")
+		_, _ = pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false)
 
 		if testutils.IsSingleTesting() {
 			time.Sleep(1 * time.Second)
@@ -79,6 +87,6 @@ func BenchmarkHTTPClientPool_Client(b *testing.B) {
 
 	var pool = NewHTTPClientPool()
 	for i := 0; i < b.N; i++ {
-		_, _ = pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false, "example.com")
+		_, _ = pool.Client(nil, origin, origin.Addr.PickAddress(), nil, false)
 	}
 }

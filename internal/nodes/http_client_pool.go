@@ -59,7 +59,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		return nil, errors.New("origin addr should not be empty (originId:" + strconv.FormatInt(origin.Id, 10) + ")")
 	}
 
-	if req.RawReq.URL == nil {
+	if req == nil || req.RawReq == nil || req.RawReq.URL == nil {
 		err = errors.New("invalid request url")
 		return
 	}
