@@ -679,7 +679,6 @@ func (this *HTTPRequest) tryPartialReader(storage caches.StorageInterface, key s
 	// 检查是否已下载完整
 	if !forcePartialContent &&
 		len(ranges) > 0 &&
-		ranges[0][0] == 0 &&
 		ranges[0][1] < 0 &&
 		!partialReader.IsCompleted() {
 		return nil, nil
