@@ -155,10 +155,10 @@ func (this *IPListManager) Init() {
 			if readErr != nil {
 				remotelogs.Error("IP_LIST_MANAGER", "read ip list from local database failed: "+readErr.Error())
 			} else {
+				this.processItems(items, false)
 				if !goNext {
 					break
 				}
-				this.processItems(items, false)
 			}
 			offset += int64(l)
 		}
