@@ -206,6 +206,7 @@ func TestList_Map_Performance(t *testing.T) {
 
 func BenchmarkList_Add(b *testing.B) {
 	var list = expires.NewList()
+	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			list.Add(rand.Uint64(), fasttime.Now().Unix()+int64(rand.Int()%10_000_000))
