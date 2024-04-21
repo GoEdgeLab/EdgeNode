@@ -11,6 +11,7 @@ import (
 	"github.com/shirou/gopsutil/v3/load"
 	"math"
 	"os"
+	"slices"
 	"sort"
 	"time"
 )
@@ -122,6 +123,11 @@ func RunTicker(ticker *time.Ticker, f func()) {
 	for range ticker.C {
 		Run(f)
 	}
+}
+
+func IsMinHour() bool {
+	var minLoadHours = sharedMinLoadHours // copy
+	return len(minLoadHours) > 0 && slices.Contains(minLoadHours, time.Now().Hour())
 }
 
 func calculateMinLoadHours() {

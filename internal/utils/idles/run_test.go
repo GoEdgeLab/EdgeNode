@@ -44,3 +44,7 @@ func TestRunTicker(t *testing.T) {
 		t.Log(timeutil.Format("H:i:s"), "run once")
 	})
 }
+
+func TestIsMinHour(t *testing.T) {
+	t.Log(idles.IsMinHour())
+}

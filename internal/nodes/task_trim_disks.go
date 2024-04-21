@@ -24,15 +24,17 @@ func NewTrimDisksTask() *TrimDisksTask {
 // Start the task
 func (this *TrimDisksTask) Start() {
 	// execute once
-	err := this.loop()
-	if err != nil {
-		remotelogs.Warn("TRIM_DISKS", "trim disks failed: "+err.Error())
+	if idles.IsMinHour() {
+		err := this.loop()
+		if err != nil {
+			remotelogs.Warn("TRIM_DISKS", "trim disks failed: "+err.Error())
+		}
 	}
 
 	var ticker = time.NewTicker(2 * 24 * time.Hour) // every 2 days
 	idles.RunTicker(ticker, func() {
 		// run the task
-		err = this.loop()
+		err := this.loop()
 		if err != nil {
 			remotelogs.Warn("TRIM_DISKS", "trim disks failed: "+err.Error())
 		}
