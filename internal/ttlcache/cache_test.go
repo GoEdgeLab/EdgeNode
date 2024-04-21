@@ -204,11 +204,14 @@ func TestCache_GC2(t *testing.T) {
 
 	var cache2 = NewCache[int](NewPiecesOption(5))
 	for i := 0; i < 1_000_000; i++ {
-		cache2.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 10)))
+		cache2.Write(strconv.Itoa(i), i, time.Now().Unix()+int64(rands.Int(0, 20)))
 	}
 
 	for i := 0; i < 3600; i++ {
 		t.Log(timeutil.Format("H:i:s"), cache1.Count(), "items", cache2.Count(), "items")
+		if cache1.Count() == 0 && cache2.Count() == 0 {
+			break
+		}
 		time.Sleep(1 * time.Second)
 	}
 }
