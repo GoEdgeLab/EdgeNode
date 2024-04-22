@@ -825,6 +825,9 @@ func (this *HTTPRequest) Format(source string) string {
 		case "requestTime":
 			return fmt.Sprintf("%.6f", this.requestCost)
 		case "requestMethod":
+			if len(this.RawReq.Method) == 0 {
+				return http.MethodGet
+			}
 			return this.RawReq.Method
 		case "requestFilename":
 			filename := this.requestFilename()
