@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/TeaOSLab/EdgeCommon/pkg/configutils"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
@@ -71,8 +70,9 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 		} else {
 			urlPort = "443"
 		}
+
+		originHost = originHost + ":" + urlPort
 	}
-	originHost = configutils.QuoteIP(originHost) + ":" + urlPort
 
 	var rawKey = origin.UniqueKey() + "@" + originAddr + "@" + originHost
 
@@ -171,7 +171,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 				var realAddr = originAddr
 
 				// for redirections
-				if originHost != addr {
+				if followRedirects && originHost != addr {
 					realAddr = addr
 				}
 
