@@ -71,7 +71,7 @@ func (this *HTTPClientPool) Client(req *HTTPRequest,
 			urlPort = "443"
 		}
 
-		originHost = originHost + ":" + urlPort
+		originHost += ":" + urlPort
 	}
 
 	var rawKey = origin.UniqueKey() + "@" + originAddr + "@" + originHost
