@@ -91,7 +91,7 @@ func TestKVFileList_Add_Many(t *testing.T) {
 				err := list.Add(stringutil.Md5(strconv.Itoa(i)), &caches.Item{
 					Type:       caches.ItemTypeFile,
 					Key:        "https://www.example.com/index.html" + strconv.Itoa(i),
-					ExpiresAt:  time.Now().Unix() + 60,
+					ExpiresAt:  time.Now().Unix() + 3600,
 					StaleAt:    0,
 					HeaderSize: 0,
 					BodySize:   int64(rand.Int() % 1_000_000),
@@ -176,6 +176,32 @@ func TestKVFileList_Exist(t *testing.T) {
 	}
 }
 
+func TestKVFileList_ExistMany(t *testing.T) {
+	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
+	var countFound int
+	var count = 10
+	if testutils.IsSingleTesting() {
+		count = 2_000_000
+	}
+
+	var before = time.Now()
+	for i := 0; i < count; i++ {
+		ok, _, err := list.Exist(stringutil.Md5(strconv.Itoa(i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ok {
+			countFound++
+		}
+	}
+	var costSeconds = time.Since(before).Seconds()
+	t.Log("total:", costSeconds*1000, "ms", "found:", countFound, "qps:", fmt.Sprintf("%.2fK/s", float64(count)/costSeconds/1000), "per read:", fmt.Sprintf("%.4fms", costSeconds*1000/float64(count)))
+}
+
 func TestKVFileList_ExistQuick(t *testing.T) {
 	var list = testOpenKVFileList(t)
 	defer func() {
@@ -209,6 +235,28 @@ func TestKVFileList_Remove(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func TestKVFileList_RemoveMany(t *testing.T) {
+	var list = testOpenKVFileList(t)
+	defer func() {
+		_ = list.Close()
+	}()
+
+	var count = 10
+	if testutils.IsSingleTesting() {
+		count = 2_000_000
+	}
+
+	var before = time.Now()
+	for i := 0; i < count; i++ {
+		err := list.Remove(stringutil.Md5(strconv.Itoa(i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	var costSeconds = time.Since(before).Seconds()
+	t.Log("total:", costSeconds*1000, "ms", "qps:", fmt.Sprintf("%.2fK/s", float64(count)/costSeconds/1000), "per delete:", fmt.Sprintf("%.4fms", costSeconds*1000/float64(count)))
 }
 
 func TestKVFileList_CleanAll(t *testing.T) {
