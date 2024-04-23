@@ -15,12 +15,22 @@ type Tx[T any] struct {
 	batch *pebble.Batch
 }
 
-func NewTx[T any](table *Table[T], readOnly bool) *Tx[T] {
+func NewTx[T any](table *Table[T], readOnly bool) (*Tx[T], error) {
+	if table.db == nil {
+		return nil, errors.New("the table has not been added to a db")
+	}
+	if table.db.store == nil {
+		return nil, errors.New("the db has not been added to a store")
+	}
+	if table.db.store.rawDB == nil {
+		return nil, errors.New("the store has not been opened")
+	}
+
 	return &Tx[T]{
 		table:    table,
 		readOnly: readOnly,
 		batch:    table.db.store.rawDB.NewIndexedBatch(),
-	}
+	}, nil
 }
 
 func (this *Tx[T]) Set(key string, value T) error {

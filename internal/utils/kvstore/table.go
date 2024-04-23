@@ -196,12 +196,15 @@ func (this *Table[T]) ReadTx(fn func(tx *Tx[T]) error) error {
 		return NewTableClosedErr(this.name)
 	}
 
-	var tx = NewTx[T](this, true)
+	tx, err := NewTx[T](this, true)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		_ = tx.Close()
 	}()
 
-	err := fn(tx)
+	err = fn(tx)
 	if err != nil {
 		return err
 	}
@@ -214,12 +217,15 @@ func (this *Table[T]) WriteTx(fn func(tx *Tx[T]) error) error {
 		return NewTableClosedErr(this.name)
 	}
 
-	var tx = NewTx[T](this, false)
+	tx, err := NewTx[T](this, false)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		_ = tx.Close()
 	}()
 
-	err := fn(tx)
+	err = fn(tx)
 	if err != nil {
 		return err
 	}
@@ -232,12 +238,15 @@ func (this *Table[T]) WriteTxSync(fn func(tx *Tx[T]) error) error {
 		return NewTableClosedErr(this.name)
 	}
 
-	var tx = NewTx[T](this, false)
+	tx, err := NewTx[T](this, false)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		_ = tx.Close()
 	}()
 
-	err := fn(tx)
+	err = fn(tx)
 	if err != nil {
 		return err
 	}

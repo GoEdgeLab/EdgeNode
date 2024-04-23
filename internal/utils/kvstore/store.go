@@ -13,6 +13,7 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -43,6 +44,31 @@ func NewStore(storeName string) (*Store, error) {
 	_, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
 		_ = os.MkdirAll(path, 0777)
+	}
+
+	return &Store{
+		name:   storeName,
+		path:   path,
+		locker: fsutils.NewLocker(path + "/.fs"),
+	}, nil
+}
+
+// NewStoreWithPath create store with path
+func NewStoreWithPath(path string) (*Store, error) {
+	if !strings.HasSuffix(path, ".store") {
+		return nil, errors.New("store path must contains a '.store' suffix")
+	}
+
+	_, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		_ = os.MkdirAll(path, 0777)
+	}
+
+	var storeName = filepath.Base(path)
+	storeName = strings.TrimSuffix(storeName, ".store")
+
+	if !IsValidName(storeName) {
+		return nil, errors.New("invalid store name '" + storeName + "'")
 	}
 
 	return &Store{
@@ -115,6 +141,10 @@ func DefaultStore() (*Store, error) {
 	})
 
 	return defaultSore, resultErr
+}
+
+func (this *Store) Path() string {
+	return this.path
 }
 
 func (this *Store) Open() error {
