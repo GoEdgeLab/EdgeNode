@@ -10,7 +10,13 @@ func NewBytesValueEncoder[T []byte]() *BytesValueEncoder[T] {
 }
 
 func (this *BytesValueEncoder[T]) Encode(value T) ([]byte, error) {
-	return value, nil
+	if len(value) == 0 {
+		return nil, nil
+	}
+
+	var resultValue = make([]byte, len(value))
+	copy(resultValue, value)
+	return resultValue, nil
 }
 
 func (this *BytesValueEncoder[T]) EncodeField(value T, fieldName string) ([]byte, error) {
@@ -19,6 +25,11 @@ func (this *BytesValueEncoder[T]) EncodeField(value T, fieldName string) ([]byte
 }
 
 func (this *BytesValueEncoder[T]) Decode(valueData []byte) (value T, err error) {
-	value = valueData
+	if len(valueData) == 0 {
+		return
+	}
+
+	value = make([]byte, len(valueData))
+	copy(value, valueData)
 	return
 }
