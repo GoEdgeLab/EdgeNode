@@ -10,11 +10,12 @@ import (
 )
 
 type FileReader struct {
-	bFile      *BlocksFile
-	fp         *os.File
-	fileHeader *FileHeader
+	bFile *BlocksFile
+	fp    *os.File
 
-	pos int64
+	fileHeader *FileHeader
+	pos        int64
+	bPos       int64
 }
 
 func NewFileReader(bFile *BlocksFile, fp *os.File, fileHeader *FileHeader) *FileReader {
@@ -22,6 +23,7 @@ func NewFileReader(bFile *BlocksFile, fp *os.File, fileHeader *FileHeader) *File
 		bFile:      bFile,
 		fp:         fp,
 		fileHeader: fileHeader,
+		bPos:       -1,
 	}
 }
 
@@ -61,11 +63,35 @@ func (this *FileReader) ReadAt(b []byte, offset int64) (n int, err error) {
 		bufLen = int(bTo - bFrom)
 	}
 
-	n, err = this.fp.ReadAt(b[:bufLen], bFrom)
+	AckReadThread()
+	defer ReleaseReadThread()
+
+	if bFrom == this.bPos { // read continuous
+		n, err = this.fp.Read(b[:bufLen])
+	} else { // read from offset
+		_, err = this.fp.Seek(bFrom, io.SeekStart)
+		if err != nil {
+			return
+		}
+		n, err = this.fp.Read(b[:bufLen])
+	}
+	if n > 0 {
+		this.bPos = bFrom + int64(n)
+	}
 
 	return
 }
 
+func (this *FileReader) Reset(fileHeader *FileHeader) {
+	this.fileHeader = fileHeader
+	this.pos = 0
+	this.bPos = -1
+}
+
 func (this *FileReader) Close() error {
+	return this.bFile.CloseFileReader(this)
+}
+
+func (this *FileReader) Free() error {
 	return this.fp.Close()
 }

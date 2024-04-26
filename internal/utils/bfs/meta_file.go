@@ -52,7 +52,9 @@ func OpenMetaFile(filename string, mu *sync.RWMutex) (*MetaFile, error) {
 }
 
 func (this *MetaFile) load() error {
+	AckReadThread()
 	_, err := this.fp.Seek(0, io.SeekStart)
+	ReleaseReadThread()
 	if err != nil {
 		return err
 	}
@@ -62,7 +64,9 @@ func (this *MetaFile) load() error {
 	var buf = make([]byte, 4<<10)
 	var blockBytes []byte
 	for {
+		AckReadThread()
 		n, readErr := this.fp.Read(buf)
+		ReleaseReadThread()
 		if n > 0 {
 			blockBytes = append(blockBytes, buf[:n]...)
 			for len(blockBytes) > 4 {
@@ -180,12 +184,17 @@ func (this *MetaFile) WriteClose(hash string, headerSize int64, bodySize int64) 
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
+	AckReadThread()
 	_, err = this.fp.Seek(0, io.SeekEnd)
+	ReleaseReadThread()
 	if err != nil {
 		return err
 	}
 
+	AckWriteThread()
 	_, err = this.fp.Write(blockBytes)
+	ReleaseWriteThread()
+
 	this.isModified = true
 	return err
 }
@@ -205,7 +214,9 @@ func (this *MetaFile) RemoveFile(hash string) error {
 			return err
 		}
 
+		AckWriteThread()
 		_, err = this.fp.Write(blockBytes)
+		ReleaseWriteThread()
 		if err != nil {
 			return err
 		}
@@ -263,17 +274,23 @@ func (this *MetaFile) Compact() error {
 		buf.Write(blockBytes)
 	}
 
+	AckWriteThread()
 	err := this.fp.Truncate(int64(buf.Len()))
+	ReleaseWriteThread()
 	if err != nil {
 		return err
 	}
 
+	AckReadThread()
 	_, err = this.fp.Seek(0, io.SeekStart)
+	ReleaseReadThread()
 	if err != nil {
 		return err
 	}
 
+	AckWriteThread()
 	_, err = this.fp.Write(buf.Bytes())
+	ReleaseWriteThread()
 	this.isModified = true
 	return err
 }
@@ -283,7 +300,9 @@ func (this *MetaFile) SyncUnsafe() error {
 		return nil
 	}
 
+	AckWriteThread()
 	err := this.fp.Sync()
+	ReleaseWriteThread()
 	if err != nil {
 		return err
 	}

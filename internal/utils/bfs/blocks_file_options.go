@@ -4,7 +4,6 @@ package bfs
 
 type BlockFileOptions struct {
 	BytesPerSync int64
-	MaxOpenFiles int // TODO 需要实现，主要用于OpenFileReader
 }
 
 func (this *BlockFileOptions) EnsureDefaults() {

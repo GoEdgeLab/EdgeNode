@@ -33,6 +33,8 @@ type BlocksFile struct {
 
 	writtenBytes int64
 	syncAt       time.Time
+
+	readerPool chan *FileReader
 }
 
 func NewBlocksFileWithRawFile(fp *os.File, options *BlockFileOptions) (*BlocksFile, error) {
@@ -52,7 +54,9 @@ func NewBlocksFileWithRawFile(fp *os.File, options *BlockFileOptions) (*BlocksFi
 		return nil, fmt.Errorf("load '%s' failed: %w", mFilename, err)
 	}
 
+	AckReadThread()
 	_, err = fp.Seek(0, io.SeekEnd)
+	ReleaseReadThread()
 	if err != nil {
 		_ = fp.Close()
 		_ = mFile.Close()
@@ -60,11 +64,12 @@ func NewBlocksFileWithRawFile(fp *os.File, options *BlockFileOptions) (*BlocksFi
 	}
 
 	return &BlocksFile{
-		fp:     fp,
-		mFile:  mFile,
-		mu:     mu,
-		opt:    options,
-		syncAt: time.Now(),
+		fp:         fp,
+		mFile:      mFile,
+		mu:         mu,
+		opt:        options,
+		syncAt:     time.Now(),
+		readerPool: make(chan *FileReader, 32),
 	}, nil
 }
 
@@ -112,7 +117,9 @@ func (this *BlocksFile) Write(hash string, blockType BlockType, b []byte, origin
 		return
 	}
 
+	AckWriteThread()
 	n, err = this.fp.Write(b)
+	ReleaseWriteThread()
 
 	if err == nil {
 		if n > 0 {
@@ -156,8 +163,6 @@ func (this *BlocksFile) OpenFileReader(fileHash string, isPartial bool) (*FileRe
 		return nil, err
 	}
 
-	// TODO 需要设置单个BFile文件的maxOpenFiles
-
 	this.mu.RLock()
 	err = this.checkStatus()
 	this.mu.RUnlock()
@@ -181,11 +186,28 @@ func (this *BlocksFile) OpenFileReader(fileHash string, isPartial bool) (*FileRe
 		return nil, os.ErrNotExist
 	}
 
+	// 先尝试从Pool中获取
+	select {
+	case reader := <-this.readerPool:
+		reader.Reset(header)
+		return reader, nil
+	default:
+	}
+
 	fp, err := os.Open(this.fp.Name())
 	if err != nil {
 		return nil, err
 	}
 	return NewFileReader(this, fp, header), nil
+}
+
+func (this *BlocksFile) CloseFileReader(reader *FileReader) error {
+	select {
+	case this.readerPool <- reader:
+		return nil
+	default:
+		return reader.Free()
+	}
 }
 
 func (this *BlocksFile) ExistFile(fileHash string) bool {
@@ -246,6 +268,8 @@ func (this *BlocksFile) RemoveAll() error {
 	this.isClosed = true
 
 	_ = this.mFile.RemoveAll()
+
+	this.closeReaderPool()
 	_ = this.fp.Close()
 	return os.Remove(this.fp.Name())
 }
@@ -262,6 +286,8 @@ func (this *BlocksFile) Close() error {
 	this.isClosed = true
 
 	_ = this.mFile.Close()
+
+	this.closeReaderPool()
 
 	return this.fp.Close()
 }
@@ -286,7 +312,9 @@ func (this *BlocksFile) sync(force bool) error {
 
 	this.writtenBytes = 0
 
+	AckWriteThread()
 	err := this.fp.Sync()
+	ReleaseWriteThread()
 	if err != nil {
 		return err
 	}
@@ -298,4 +326,15 @@ func (this *BlocksFile) sync(force bool) error {
 	}
 
 	return nil
+}
+
+func (this *BlocksFile) closeReaderPool() {
+	for {
+		select {
+		case reader := <-this.readerPool:
+			_ = reader.Free()
+		default:
+			return
+		}
+	}
 }
