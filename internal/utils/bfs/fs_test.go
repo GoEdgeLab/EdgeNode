@@ -13,7 +13,10 @@ import (
 )
 
 func TestFS_OpenFileWriter(t *testing.T) {
-	var fs = bfs.NewFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	fs, openErr := bfs.OpenFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
 	defer func() {
 		_ = fs.Close()
 	}()
@@ -54,7 +57,10 @@ func TestFS_OpenFileWriter(t *testing.T) {
 }
 
 func TestFS_OpenFileReader(t *testing.T) {
-	var fs = bfs.NewFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	fs, openErr := bfs.OpenFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
 	defer func() {
 		_ = fs.Close()
 	}()
@@ -76,7 +82,10 @@ func TestFS_OpenFileReader(t *testing.T) {
 }
 
 func TestFS_ExistFile(t *testing.T) {
-	var fs = bfs.NewFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	fs, openErr := bfs.OpenFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
 	defer func() {
 		_ = fs.Close()
 	}()
@@ -89,7 +98,10 @@ func TestFS_ExistFile(t *testing.T) {
 }
 
 func TestFS_RemoveFile(t *testing.T) {
-	var fs = bfs.NewFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	fs, openErr := bfs.OpenFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
 	defer func() {
 		_ = fs.Close()
 	}()

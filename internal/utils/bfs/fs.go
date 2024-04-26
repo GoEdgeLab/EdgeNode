@@ -4,6 +4,7 @@ package bfs
 
 import (
 	"errors"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"log"
 	"sync"
 	"time"
@@ -19,10 +20,18 @@ type FS struct {
 	isClosed bool
 
 	syncTicker *time.Ticker
+
+	locker *fsutils.Locker
 }
 
-func NewFS(dir string, options *FSOptions) *FS {
+func OpenFS(dir string, options *FSOptions) (*FS, error) {
 	options.EnsureDefaults()
+
+	var locker = fsutils.NewLocker(dir + "/fs")
+	err := locker.Lock()
+	if err != nil {
+		return nil, err
+	}
 
 	var fs = &FS{
 		dir:        dir,
@@ -30,9 +39,10 @@ func NewFS(dir string, options *FSOptions) *FS {
 		mu:         &sync.RWMutex{},
 		opt:        options,
 		syncTicker: time.NewTicker(1 * time.Second),
+		locker:     locker,
 	}
 	go fs.init()
-	return fs
+	return fs, nil
 }
 
 func (this *FS) init() {
@@ -47,7 +57,7 @@ func (this *FS) OpenFileWriter(hash string, bodySize int64, isPartial bool) (*Fi
 		return nil, errors.New("invalid body size for partial content")
 	}
 
-	bFile, err := this.openBFileForWriting(hash)
+	bFile, err := this.openBFileForHashWriting(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +65,7 @@ func (this *FS) OpenFileWriter(hash string, bodySize int64, isPartial bool) (*Fi
 }
 
 func (this *FS) OpenFileReader(hash string, isPartial bool) (*FileReader, error) {
-	bFile, err := this.openBFileForReading(hash)
+	bFile, err := this.openBFileForHashReading(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +73,7 @@ func (this *FS) OpenFileReader(hash string, isPartial bool) (*FileReader, error)
 }
 
 func (this *FS) ExistFile(hash string) (bool, error) {
-	bFile, err := this.openBFileForReading(hash)
+	bFile, err := this.openBFileForHashReading(hash)
 	if err != nil {
 		return false, err
 	}
@@ -71,7 +81,7 @@ func (this *FS) ExistFile(hash string) (bool, error) {
 }
 
 func (this *FS) RemoveFile(hash string) error {
-	bFile, err := this.openBFileForWriting(hash)
+	bFile, err := this.openBFileForHashWriting(hash)
 	if err != nil {
 		return err
 	}
@@ -90,6 +100,12 @@ func (this *FS) Close() error {
 		}
 	}
 	this.mu.Unlock()
+
+	err := this.locker.Release()
+	if err != nil {
+		lastErr = err
+	}
+
 	return lastErr
 }
 
@@ -139,7 +155,7 @@ func (this *FS) syncLoop() {
 	}
 }
 
-func (this *FS) openBFileForWriting(hash string) (*BlocksFile, error) {
+func (this *FS) openBFileForHashWriting(hash string) (*BlocksFile, error) {
 	err := CheckHashErr(hash)
 	if err != nil {
 		return nil, err
@@ -160,7 +176,7 @@ func (this *FS) openBFileForWriting(hash string) (*BlocksFile, error) {
 	return this.openBFile(bPath, bName)
 }
 
-func (this *FS) openBFileForReading(hash string) (*BlocksFile, error) {
+func (this *FS) openBFileForHashReading(hash string) (*BlocksFile, error) {
 	err := CheckHashErr(hash)
 	if err != nil {
 		return nil, err
