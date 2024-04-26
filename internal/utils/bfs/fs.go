@@ -5,12 +5,11 @@ package bfs
 import (
 	"errors"
 	"log"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
 
+// FS 文件系统管理
 type FS struct {
 	dir string
 	opt *FSOptions
@@ -44,68 +43,39 @@ func (this *FS) init() {
 }
 
 func (this *FS) OpenFileWriter(hash string, bodySize int64, isPartial bool) (*FileWriter, error) {
-	err := CheckHashErr(hash)
-	if err != nil {
-		return nil, err
-	}
-
 	if isPartial && bodySize <= 0 {
 		return nil, errors.New("invalid body size for partial content")
 	}
 
-	bPath, bName, err := this.bPathForHash(hash)
+	bFile, err := this.openBFileForWriting(hash)
 	if err != nil {
 		return nil, err
 	}
-
-	// check directory
-	// TODO 需要改成提示找不到文件的时候再检查
-	_, err = os.Stat(filepath.Dir(bPath))
-	if err != nil && os.IsNotExist(err) {
-		_ = os.MkdirAll(filepath.Dir(bPath), 0777)
-	}
-
-	this.mu.Lock()
-	defer this.mu.Unlock()
-	bFile, ok := this.bMap[bName]
-	if ok {
-		return bFile.OpenFileWriter(hash, bodySize, isPartial)
-	}
-
-	bFile, err = NewBlocksFile(bPath, &BlockFileOptions{
-		BytesPerSync: this.opt.BytesPerSync,
-	})
-	if err != nil {
-		return nil, err
-	}
-	this.bMap[bName] = bFile
 	return bFile.OpenFileWriter(hash, bodySize, isPartial)
 }
 
 func (this *FS) OpenFileReader(hash string, isPartial bool) (*FileReader, error) {
-	err := CheckHashErr(hash)
+	bFile, err := this.openBFileForReading(hash)
 	if err != nil {
 		return nil, err
 	}
+	return bFile.OpenFileReader(hash, isPartial)
+}
 
-	_, bName, err := this.bPathForHash(hash)
+func (this *FS) ExistFile(hash string) (bool, error) {
+	bFile, err := this.openBFileForReading(hash)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-
-	this.mu.Lock()
-	defer this.mu.Unlock()
-	bFile, ok := this.bMap[bName]
-	if ok {
-		return bFile.OpenFileReader(hash, isPartial)
-	}
-
-	return nil, os.ErrNotExist
+	return bFile.ExistFile(hash), nil
 }
 
 func (this *FS) RemoveFile(hash string) error {
-	// TODO 需要实现
-	return nil
+	bFile, err := this.openBFileForWriting(hash)
+	if err != nil {
+		return err
+	}
+	return bFile.RemoveFile(hash)
 }
 
 func (this *FS) Close() error {
@@ -167,4 +137,66 @@ func (this *FS) syncLoop() {
 			log.Println("BFS", "sync failed: "+err.Error())
 		}
 	}
+}
+
+func (this *FS) openBFileForWriting(hash string) (*BlocksFile, error) {
+	err := CheckHashErr(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	bPath, bName, err := this.bPathForHash(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	this.mu.RLock()
+	bFile, ok := this.bMap[bName]
+	this.mu.RUnlock()
+	if ok {
+		return bFile, nil
+	}
+
+	return this.openBFile(bPath, bName)
+}
+
+func (this *FS) openBFileForReading(hash string) (*BlocksFile, error) {
+	err := CheckHashErr(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	bPath, bName, err := this.bPathForHash(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	this.mu.RLock()
+	bFile, ok := this.bMap[bName]
+	this.mu.RUnlock()
+	if ok {
+		return bFile, nil
+	}
+
+	return this.openBFile(bPath, bName)
+}
+
+func (this *FS) openBFile(bPath string, bName string) (*BlocksFile, error) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	// lookup again
+	bFile, ok := this.bMap[bName]
+	if ok {
+		return bFile, nil
+	}
+
+	bFile, err := OpenBlocksFile(bPath, &BlockFileOptions{
+		BytesPerSync: this.opt.BytesPerSync,
+	})
+	if err != nil {
+		return nil, err
+	}
+	this.bMap[bName] = bFile
+	return bFile, nil
 }

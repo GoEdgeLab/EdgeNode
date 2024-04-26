@@ -14,7 +14,7 @@ import (
 )
 
 func TestNewFileWriter(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestNewFileWriter(t *testing.T) {
 }
 
 func TestNewFileWriter_LargeFile(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestNewFileWriter_LargeFile(t *testing.T) {
 }
 
 func TestFileWriter_WriteBodyAt(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
 		t.Fatal(err)
 	}

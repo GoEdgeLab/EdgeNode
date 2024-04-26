@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -45,7 +46,7 @@ func NewBlocksFileWithRawFile(fp *os.File, options *BlockFileOptions) (*BlocksFi
 	var mu = &sync.RWMutex{}
 
 	var mFilename = strings.TrimSuffix(bFilename, BFileExt) + MFileExt
-	mFile, err := NewMetaFile(mFilename, mu)
+	mFile, err := OpenMetaFile(mFilename, mu)
 	if err != nil {
 		_ = fp.Close()
 		return nil, fmt.Errorf("load '%s' failed: %w", mFilename, err)
@@ -67,12 +68,23 @@ func NewBlocksFileWithRawFile(fp *os.File, options *BlockFileOptions) (*BlocksFi
 	}, nil
 }
 
-func NewBlocksFile(filename string, options *BlockFileOptions) (*BlocksFile, error) {
+func OpenBlocksFile(filename string, options *BlockFileOptions) (*BlocksFile, error) {
 	// TODO 考虑是否使用flock锁定，防止多进程写冲突
 	fp, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		return nil, fmt.Errorf("open blocks file failed: %w", err)
+		if os.IsNotExist(err) {
+			var dir = filepath.Dir(filename)
+			_ = os.MkdirAll(dir, 0777)
+
+			// try again
+			fp, err = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0666)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("open blocks file failed: %w", err)
+		}
 	}
+
 	return NewBlocksFileWithRawFile(fp, options)
 }
 
@@ -154,7 +166,7 @@ func (this *BlocksFile) OpenFileReader(fileHash string, isPartial bool) (*FileRe
 	}
 
 	// 是否存在
-	header, ok := this.mFile.CloneHeader(fileHash)
+	header, ok := this.mFile.CloneFileHeader(fileHash)
 	if !ok {
 		return nil, os.ErrNotExist
 	}
@@ -176,14 +188,22 @@ func (this *BlocksFile) OpenFileReader(fileHash string, isPartial bool) (*FileRe
 	return NewFileReader(this, fp, header), nil
 }
 
+func (this *BlocksFile) ExistFile(fileHash string) bool {
+	err := CheckHashErr(fileHash)
+	if err != nil {
+		return false
+	}
+
+	return this.mFile.ExistFile(fileHash)
+}
+
 func (this *BlocksFile) RemoveFile(fileHash string) error {
 	err := CheckHashErr(fileHash)
 	if err != nil {
 		return err
 	}
 
-	// TODO 需要实现
-	return nil
+	return this.mFile.RemoveFile(fileHash)
 }
 
 func (this *BlocksFile) Sync() error {

@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewMetaFile(t *testing.T) {
-	mFile, err := bfs.NewMetaFile("testdata/test.m", &sync.RWMutex{})
+	mFile, err := bfs.OpenMetaFile("testdata/test.m", &sync.RWMutex{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,13 +19,13 @@ func TestNewMetaFile(t *testing.T) {
 		_ = mFile.Close()
 	}()
 
-	var header, _ = mFile.Header(bfs.Hash("123456"))
+	var header, _ = mFile.FileHeader(bfs.Hash("123456"))
 	logs.PrintAsJSON(header, t)
 	//logs.PrintAsJSON(mFile.Headers(), t)
 }
 
 func TestMetaFile_WriteMeta(t *testing.T) {
-	mFile, err := bfs.NewMetaFile("testdata/test.m", &sync.RWMutex{})
+	mFile, err := bfs.OpenMetaFile("testdata/test.m", &sync.RWMutex{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestMetaFile_WriteMeta(t *testing.T) {
 }
 
 func TestMetaFile_Write(t *testing.T) {
-	mFile, err := bfs.NewMetaFile("testdata/test.m", &sync.RWMutex{})
+	mFile, err := bfs.OpenMetaFile("testdata/test.m", &sync.RWMutex{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestMetaFile_Write(t *testing.T) {
 }
 
 func TestMetaFile_RemoveFile(t *testing.T) {
-	mFile, err := bfs.NewMetaFile("testdata/test.m", &sync.RWMutex{})
+	mFile, err := bfs.OpenMetaFile("testdata/test.m", &sync.RWMutex{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestMetaFile_RemoveFile(t *testing.T) {
 }
 
 func TestMetaFile_Compact(t *testing.T) {
-	mFile, err := bfs.NewMetaFile("testdata/test.m", &sync.RWMutex{})
+	mFile, err := bfs.OpenMetaFile("testdata/test.m", &sync.RWMutex{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestMetaFile_Compact(t *testing.T) {
 }
 
 func TestMetaFile_RemoveAll(t *testing.T) {
-	mFile, err := bfs.NewMetaFile("testdata/test.m", &sync.RWMutex{})
+	mFile, err := bfs.OpenMetaFile("testdata/test.m", &sync.RWMutex{})
 	if err != nil {
 		t.Fatal(err)
 	}

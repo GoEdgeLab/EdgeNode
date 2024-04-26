@@ -6,18 +6,23 @@ import (
 	"fmt"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/bfs"
 	"io"
+	"os"
 	"testing"
 	"time"
 )
 
 func TestFileReader_Read_SmallBuf(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	reader, err := bFile.OpenFileReader(bfs.Hash("123456"), false)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 
@@ -41,13 +46,21 @@ func TestFileReader_Read_SmallBuf(t *testing.T) {
 }
 
 func TestFileReader_Read_LargeBuff(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 
 	reader, err := bFile.OpenFileReader(bfs.Hash("123456"), false)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 
@@ -71,13 +84,21 @@ func TestFileReader_Read_LargeBuff(t *testing.T) {
 }
 
 func TestFileReader_Read_LargeFile(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 
 	reader, err := bFile.OpenFileReader(bfs.Hash("123456@LARGE"), false)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 
@@ -104,13 +125,21 @@ func TestFileReader_Read_LargeFile(t *testing.T) {
 }
 
 func TestFileReader_ReadAt(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 
 	reader, err := bFile.OpenFileReader(bfs.Hash("123456"), false)
 	if err != nil {
+		if os.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 

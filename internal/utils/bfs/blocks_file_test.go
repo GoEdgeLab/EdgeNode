@@ -9,7 +9,7 @@ import (
 )
 
 func TestBlocksFile_RemoveAll(t *testing.T) {
-	bFile, err := bfs.NewBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	bFile, err := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return

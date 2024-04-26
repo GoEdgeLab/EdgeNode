@@ -28,7 +28,7 @@ type MetaFile struct {
 	modifiedHashMap map[string]zero.Zero
 }
 
-func NewMetaFile(filename string, mu *sync.RWMutex) (*MetaFile, error) {
+func OpenMetaFile(filename string, mu *sync.RWMutex) (*MetaFile, error) {
 	fp, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		return nil, err
@@ -160,7 +160,6 @@ func (this *MetaFile) WriteClose(hash string, headerSize int64, bodySize int64) 
 	this.mu.Lock()
 	header, ok := this.headerMap[hash]
 	if ok {
-		// TODO 计算headerSize, bodySize
 		// TODO 检查bodySize和expectedBodySize是否一致，如果不一致则从headerMap中删除
 
 		header.ModifiedAt = fasttime.Now().Unix()
@@ -186,7 +185,6 @@ func (this *MetaFile) WriteClose(hash string, headerSize int64, bodySize int64) 
 		return err
 	}
 
-	// TODO 考虑自动sync的机制
 	_, err = this.fp.Write(blockBytes)
 	this.isModified = true
 	return err
@@ -217,14 +215,14 @@ func (this *MetaFile) RemoveFile(hash string) error {
 	return nil
 }
 
-func (this *MetaFile) Header(hash string) (header *FileHeader, ok bool) {
+func (this *MetaFile) FileHeader(hash string) (header *FileHeader, ok bool) {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	header, ok = this.headerMap[hash]
 	return
 }
 
-func (this *MetaFile) CloneHeader(hash string) (header *FileHeader, ok bool) {
+func (this *MetaFile) CloneFileHeader(hash string) (header *FileHeader, ok bool) {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	header, ok = this.headerMap[hash]
@@ -236,10 +234,18 @@ func (this *MetaFile) CloneHeader(hash string) (header *FileHeader, ok bool) {
 	return
 }
 
-func (this *MetaFile) Headers() map[string]*FileHeader {
+func (this *MetaFile) FileHeaders() map[string]*FileHeader {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	return this.headerMap
+}
+
+func (this *MetaFile) ExistFile(hash string) bool {
+	this.mu.RLock()
+	defer this.mu.RUnlock()
+
+	_, ok := this.headerMap[hash]
+	return ok
 }
 
 // Compact the meta file
@@ -294,6 +300,7 @@ func (this *MetaFile) SyncUnsafe() error {
 	return nil
 }
 
+// Close 关闭当前文件
 func (this *MetaFile) Close() error {
 	return this.fp.Close()
 }
@@ -365,5 +372,6 @@ func (this *MetaFile) decodeHeader(data []byte) (*FileHeader, error) {
 		return nil, err
 	}
 
+	header.IsWriting = false
 	return header, nil
 }

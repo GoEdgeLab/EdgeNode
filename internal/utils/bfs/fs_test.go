@@ -4,11 +4,12 @@ package bfs_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/bfs"
-	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
+	"github.com/iwind/TeaGo/logs"
+	"io"
 	"testing"
-	"time"
 )
 
 func TestFS_OpenFileWriter(t *testing.T) {
@@ -18,19 +19,29 @@ func TestFS_OpenFileWriter(t *testing.T) {
 	}()
 
 	{
-		writer, err := fs.OpenFileWriter(bfs.Hash("123456"), 100, true)
+		writer, err := fs.OpenFileWriter(bfs.Hash("123456"), -1, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = writer.WriteMeta(200, fasttime.Now().Unix()+3600, -1)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		_, err = writer.WriteBody([]byte("Hello, World"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = writer.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	{
-		writer, err := fs.OpenFileWriter(bfs.Hash("123456"), 100, true)
+		writer, err := fs.OpenFileWriter(bfs.Hash("654321"), 100, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -40,8 +51,58 @@ func TestFS_OpenFileWriter(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
 
-	if testutils.IsSingleTesting() {
-		time.Sleep(2 * time.Second)
+func TestFS_OpenFileReader(t *testing.T) {
+	var fs = bfs.NewFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	defer func() {
+		_ = fs.Close()
+	}()
+
+	reader, err := fs.OpenFileReader(bfs.Hash("123456"), false)
+	if err != nil {
+		if bfs.IsNotExist(err) {
+			t.Log(err)
+			return
+		}
+		t.Fatal(err)
 	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(data))
+	logs.PrintAsJSON(reader.FileHeader(), t)
+}
+
+func TestFS_ExistFile(t *testing.T) {
+	var fs = bfs.NewFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	defer func() {
+		_ = fs.Close()
+	}()
+
+	exist, err := fs.ExistFile(bfs.Hash("123456"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("exist:", exist)
+}
+
+func TestFS_RemoveFile(t *testing.T) {
+	var fs = bfs.NewFS(Tea.Root+"/data/bfs/test", bfs.DefaultFSOptions)
+	defer func() {
+		_ = fs.Close()
+	}()
+
+	var hash = bfs.Hash("123456")
+	err := fs.RemoveFile(hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exist, err := fs.ExistFile(bfs.Hash("123456"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("exist:", exist)
 }

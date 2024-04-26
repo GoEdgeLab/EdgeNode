@@ -10,19 +10,23 @@ import (
 )
 
 type FileReader struct {
-	bFile  *BlocksFile
-	fp     *os.File
-	header *FileHeader
+	bFile      *BlocksFile
+	fp         *os.File
+	fileHeader *FileHeader
 
 	pos int64
 }
 
-func NewFileReader(bFile *BlocksFile, fp *os.File, header *FileHeader) *FileReader {
+func NewFileReader(bFile *BlocksFile, fp *os.File, fileHeader *FileHeader) *FileReader {
 	return &FileReader{
-		bFile:  bFile,
-		fp:     fp,
-		header: header,
+		bFile:      bFile,
+		fp:         fp,
+		fileHeader: fileHeader,
 	}
+}
+
+func (this *FileReader) FileHeader() *FileHeader {
+	return this.fileHeader
 }
 
 func (this *FileReader) Read(b []byte) (n int, err error) {
@@ -33,12 +37,12 @@ func (this *FileReader) Read(b []byte) (n int, err error) {
 }
 
 func (this *FileReader) ReadAt(b []byte, offset int64) (n int, err error) {
-	if offset >= this.header.MaxOffset() {
+	if offset >= this.fileHeader.MaxOffset() {
 		err = io.EOF
 		return
 	}
 
-	blockInfo, ok := this.header.BlockAt(offset)
+	blockInfo, ok := this.fileHeader.BlockAt(offset)
 	if !ok {
 		err = errors.New("could not find block at '" + types.String(offset) + "'")
 		return
