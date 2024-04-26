@@ -157,7 +157,11 @@ func (this *Store) Open() error {
 		Logger: NewLogger(),
 	}
 
-	var memoryMB = memutils.SystemMemoryGB() * 1
+	if fsutils.DiskIsFast() {
+		opt.BytesPerSync = 1 << 20
+	}
+
+	var memoryMB = memutils.SystemMemoryGB() * 2
 	if memoryMB > 256 {
 		memoryMB = 256
 	}
