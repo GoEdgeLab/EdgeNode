@@ -48,6 +48,52 @@ func TestNewMetaFile_Large(t *testing.T) {
 	t.Logf("cost: %.2fms, qps: %.2fms/file", costMs, costMs/float64(count))
 }
 
+func TestNewMetaFile_Memory(t *testing.T) {
+	var count = 2
+
+	if testutils.IsSingleTesting() {
+		count = 100
+	}
+
+	var stat1 = testutils.ReadMemoryStat()
+
+	var mFiles []*bfs.MetaFile
+
+	for i := 0; i < count; i++ {
+		mFile, err := bfs.OpenMetaFile("testdata/test2.m", &sync.RWMutex{})
+		if err != nil {
+			if bfs.IsNotExist(err) {
+				continue
+			}
+			t.Fatal(err)
+		}
+
+		_ = mFile.Close()
+		mFiles = append(mFiles, mFile)
+	}
+
+	var stat2 = testutils.ReadMemoryStat()
+	t.Log((stat2.HeapInuse-stat1.HeapInuse)>>20, "MiB")
+}
+
+func TestMetaFile_FileHeaders(t *testing.T) {
+	mFile, openErr := bfs.OpenMetaFile("testdata/test2.m", &sync.RWMutex{})
+	if openErr != nil {
+		if bfs.IsNotExist(openErr) {
+			return
+		}
+		t.Fatal(openErr)
+	}
+	_ = mFile.Close()
+	for hash, lazyHeader := range mFile.FileHeaders() {
+		header, err := lazyHeader.FileHeaderUnsafe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(hash, header.ModifiedAt, header.BodySize)
+	}
+}
+
 func TestMetaFile_WriteMeta(t *testing.T) {
 	mFile, err := bfs.OpenMetaFile("testdata/test.m", &sync.RWMutex{})
 	if err != nil {

@@ -21,11 +21,11 @@ const Version1 = 1
 type MetaFile struct {
 	fp        *os.File
 	filename  string
-	headerMap map[string]*FileHeader // hash => *FileHeader
-	mu        *sync.RWMutex          // TODO 考虑单独一个，不要和bFile共享？
+	headerMap map[string]*LazyFileHeader // hash => *LazyFileHeader
+	mu        *sync.RWMutex              // TODO 考虑单独一个，不要和bFile共享？
 
 	isModified      bool
-	modifiedHashMap map[string]zero.Zero
+	modifiedHashMap map[string]zero.Zero // hash => Zero
 }
 
 func OpenMetaFile(filename string, mu *sync.RWMutex) (*MetaFile, error) {
@@ -37,7 +37,7 @@ func OpenMetaFile(filename string, mu *sync.RWMutex) (*MetaFile, error) {
 	var mFile = &MetaFile{
 		filename:        filename,
 		fp:              fp,
-		headerMap:       map[string]*FileHeader{},
+		headerMap:       map[string]*LazyFileHeader{},
 		mu:              mu,
 		modifiedHashMap: map[string]zero.Zero{},
 	}
@@ -59,7 +59,7 @@ func (this *MetaFile) load() error {
 		return err
 	}
 
-	// TODO 考虑文件最后一行未写完整的情形
+	// TODO 检查文件是否完整
 
 	var buf = make([]byte, 4<<10)
 	var blockBytes []byte
@@ -82,11 +82,7 @@ func (this *MetaFile) load() error {
 
 				switch action {
 				case MetaActionNew:
-					header, decodeHeaderErr := this.decodeHeader(data)
-					if decodeHeaderErr != nil {
-						return decodeHeaderErr
-					}
-					this.headerMap[hash] = header
+					this.headerMap[hash] = NewLazyFileHeaderFromData(data)
 				case MetaActionRemove:
 					delete(this.headerMap, hash)
 				}
@@ -106,16 +102,17 @@ func (this *MetaFile) load() error {
 }
 
 func (this *MetaFile) WriteMeta(hash string, status int, expiresAt int64, expectedFileSize int64) error {
+
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	this.headerMap[hash] = &FileHeader{
+	this.headerMap[hash] = NewLazyFileHeader(&FileHeader{
 		Version:         Version1,
 		ExpiresAt:       expiresAt,
 		Status:          status,
 		ExpiredBodySize: expectedFileSize,
 		IsWriting:       true,
-	}
+	})
 
 	this.modifiedHashMap[hash] = zero.Zero{}
 
@@ -123,9 +120,14 @@ func (this *MetaFile) WriteMeta(hash string, status int, expiresAt int64, expect
 }
 
 func (this *MetaFile) WriteHeaderBlockUnsafe(hash string, bOffsetFrom int64, bOffsetTo int64) error {
-	header, ok := this.headerMap[hash]
+	lazyHeader, ok := this.headerMap[hash]
 	if !ok {
 		return nil
+	}
+
+	header, err := lazyHeader.FileHeaderUnsafe()
+	if err != nil {
+		return err
 	}
 
 	// TODO 合并相邻block
@@ -140,9 +142,14 @@ func (this *MetaFile) WriteHeaderBlockUnsafe(hash string, bOffsetFrom int64, bOf
 }
 
 func (this *MetaFile) WriteBodyBlockUnsafe(hash string, bOffsetFrom int64, bOffsetTo int64, originOffsetFrom int64, originOffsetTo int64) error {
-	header, ok := this.headerMap[hash]
+	lazyHeader, ok := this.headerMap[hash]
 	if !ok {
 		return nil
+	}
+
+	header, err := lazyHeader.FileHeaderUnsafe()
+	if err != nil {
+		return err
 	}
 
 	// TODO 合并相邻block
@@ -162,21 +169,27 @@ func (this *MetaFile) WriteClose(hash string, headerSize int64, bodySize int64) 
 	// TODO 考虑单个hash多次重复调用的情况
 
 	this.mu.Lock()
-	header, ok := this.headerMap[hash]
-	if ok {
-		// TODO 检查bodySize和expectedBodySize是否一致，如果不一致则从headerMap中删除
-
-		header.ModifiedAt = fasttime.Now().Unix()
-		header.HeaderSize = headerSize
-		header.BodySize = bodySize
-		header.Compact()
-	}
-	this.mu.Unlock()
+	lazyHeader, ok := this.headerMap[hash]
 	if !ok {
+		this.mu.Unlock()
 		return nil
 	}
 
-	blockBytes, err := this.encodeHeader(hash, header)
+	header, err := lazyHeader.FileHeaderUnsafe()
+	if err != nil {
+		return err
+	}
+
+	this.mu.Unlock()
+
+	// TODO 检查bodySize和expectedBodySize是否一致，如果不一致则从headerMap中删除
+
+	header.ModifiedAt = fasttime.Now().Unix()
+	header.HeaderSize = headerSize
+	header.BodySize = bodySize
+	header.Compact()
+
+	blockBytes, err := this.encodeFileHeader(hash, header)
 	if err != nil {
 		return err
 	}
@@ -229,20 +242,45 @@ func (this *MetaFile) RemoveFile(hash string) error {
 func (this *MetaFile) FileHeader(hash string) (header *FileHeader, ok bool) {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
-	header, ok = this.headerMap[hash]
+
+	lazyHeader, ok := this.headerMap[hash]
+
+	if ok {
+		var err error
+		header, err = lazyHeader.FileHeaderUnsafe()
+		if err != nil {
+			ok = false
+		}
+	}
 	return
 }
 
 func (this *MetaFile) FileHeaderUnsafe(hash string) (header *FileHeader, ok bool) {
-	header, ok = this.headerMap[hash]
+	lazyHeader, ok := this.headerMap[hash]
+
+	if ok {
+		var err error
+		header, err = lazyHeader.FileHeaderUnsafe()
+		if err != nil {
+			ok = false
+		}
+	}
+
 	return
 }
 
 func (this *MetaFile) CloneFileHeader(hash string) (header *FileHeader, ok bool) {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
-	header, ok = this.headerMap[hash]
+	lazyHeader, ok := this.headerMap[hash]
 	if !ok {
+		return
+	}
+
+	var err error
+	header, err = lazyHeader.FileHeaderUnsafe()
+	if err != nil {
+		ok = false
 		return
 	}
 
@@ -250,7 +288,7 @@ func (this *MetaFile) CloneFileHeader(hash string) (header *FileHeader, ok bool)
 	return
 }
 
-func (this *MetaFile) FileHeaders() map[string]*FileHeader {
+func (this *MetaFile) FileHeaders() map[string]*LazyFileHeader {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	return this.headerMap
@@ -271,8 +309,13 @@ func (this *MetaFile) Compact() error {
 	defer this.mu.Unlock()
 
 	var buf = bytes.NewBuffer(nil)
-	for hash, header := range this.headerMap {
-		blockBytes, err := this.encodeHeader(hash, header)
+	for hash, lazyHeader := range this.headerMap {
+		header, err := lazyHeader.FileHeaderUnsafe()
+		if err != nil {
+			return err
+		}
+
+		blockBytes, err := this.encodeFileHeader(hash, header)
 		if err != nil {
 			return err
 		}
@@ -313,8 +356,12 @@ func (this *MetaFile) SyncUnsafe() error {
 	}
 
 	for hash := range this.modifiedHashMap {
-		header, ok := this.headerMap[hash]
+		lazyHeader, ok := this.headerMap[hash]
 		if ok {
+			header, decodeErr := lazyHeader.FileHeaderUnsafe()
+			if decodeErr != nil {
+				return decodeErr
+			}
 			header.IsWriting = false
 		}
 	}
@@ -335,7 +382,8 @@ func (this *MetaFile) RemoveAll() error {
 	return os.Remove(this.fp.Name())
 }
 
-func (this *MetaFile) encodeHeader(hash string, header *FileHeader) ([]byte, error) {
+// encode file header to data bytes
+func (this *MetaFile) encodeFileHeader(hash string, header *FileHeader) ([]byte, error) {
 	headerJSON, err := json.Marshal(header)
 	if err != nil {
 		return nil, err
@@ -362,24 +410,4 @@ func (this *MetaFile) encodeHeader(hash string, header *FileHeader) ([]byte, err
 	}
 
 	return EncodeMetaBlock(MetaActionNew, hash, buf.Bytes())
-}
-
-func (this *MetaFile) decodeHeader(data []byte) (*FileHeader, error) {
-	gzReader, err := gzip.NewReader(bytes.NewBuffer(data))
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		_ = gzReader.Close()
-	}()
-
-	var header = &FileHeader{}
-	err = json.NewDecoder(gzReader).Decode(header)
-	if err != nil {
-		return nil, err
-	}
-
-	header.IsWriting = false
-	return header, nil
 }

@@ -41,7 +41,11 @@ func DecodeMetaBlock(blockBytes []byte) (action MetaAction, hash string, data []
 	hash = string(blockBytes[5 : 5+HashLen])
 
 	if action == MetaActionNew {
-		data = blockBytes[dataOffset:]
+		var rawData = blockBytes[dataOffset:]
+		if len(rawData) > 0 {
+			data = make([]byte, len(rawData))
+			copy(data, rawData)
+		}
 	}
 
 	return

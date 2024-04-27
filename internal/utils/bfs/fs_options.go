@@ -2,7 +2,11 @@
 
 package bfs
 
-import "time"
+import (
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
+	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
+	"time"
+)
 
 type FSOptions struct {
 	MaxOpenFiles int
@@ -13,10 +17,19 @@ type FSOptions struct {
 
 func (this *FSOptions) EnsureDefaults() {
 	if this.MaxOpenFiles <= 0 {
-		this.MaxOpenFiles = 4 << 10
+		// 根据内存计算最大打开文件数
+		var maxOpenFiles = memutils.SystemMemoryGB() * 64
+		if maxOpenFiles > (4 << 10) {
+			maxOpenFiles = 4 << 10
+		}
+		this.MaxOpenFiles = maxOpenFiles
 	}
 	if this.BytesPerSync <= 0 {
-		this.BytesPerSync = 1 << 20 // TODO 根据硬盘实际写入速度进行调整
+		if fsutils.DiskIsFast() {
+			this.BytesPerSync = 1 << 20 // TODO 根据硬盘实际写入速度进行调整
+		} else {
+			this.BytesPerSync = 512 << 10
+		}
 	}
 	if this.SyncTimeout <= 0 {
 		this.SyncTimeout = 1 * time.Second
@@ -27,8 +40,8 @@ func (this *FSOptions) EnsureDefaults() {
 }
 
 var DefaultFSOptions = &FSOptions{
-	MaxOpenFiles: 4 << 10,
-	BytesPerSync: 1 << 20, // TODO 根据硬盘实际写入速度进行调整
+	MaxOpenFiles: 1 << 10,
+	BytesPerSync: 512 << 10,
 	SyncTimeout:  1 * time.Second,
 	MaxSyncFiles: 32,
 }
