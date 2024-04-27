@@ -95,8 +95,6 @@ func (this *FS) OpenFileWriter(hash string, bodySize int64, isPartial bool) (*Fi
 		return nil, errors.New("invalid body size for partial content")
 	}
 
-	// TODO 限制同一个hash同时只能有一个Writer
-
 	bFile, err := this.openBFileForHashWriting(hash)
 	if err != nil {
 		return nil, err

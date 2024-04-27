@@ -5,6 +5,7 @@ package bfs
 import (
 	"errors"
 	"fmt"
+	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,8 +32,9 @@ type BlocksFile struct {
 
 	mu *sync.RWMutex
 
-	writtenBytes int64
-	syncAt       time.Time
+	writtenBytes   int64
+	writingFileMap map[string]zero.Zero // hash => Zero
+	syncAt         time.Time
 
 	readerPool chan *FileReader
 }
@@ -64,12 +66,13 @@ func NewBlocksFileWithRawFile(fp *os.File, options *BlockFileOptions) (*BlocksFi
 	}
 
 	return &BlocksFile{
-		fp:         fp,
-		mFile:      mFile,
-		mu:         mu,
-		opt:        options,
-		syncAt:     time.Now(),
-		readerPool: make(chan *FileReader, 32),
+		fp:             fp,
+		mFile:          mFile,
+		mu:             mu,
+		opt:            options,
+		syncAt:         time.Now(),
+		readerPool:     make(chan *FileReader, 32),
+		writingFileMap: map[string]zero.Zero{},
 	}, nil
 }
 
@@ -101,8 +104,6 @@ func (this *BlocksFile) Write(hash string, blockType BlockType, b []byte, origin
 	if len(b) == 0 {
 		return
 	}
-
-	// TODO 实现 originOffset
 
 	this.mu.Lock()
 	defer this.mu.Unlock()
@@ -144,10 +145,15 @@ func (this *BlocksFile) OpenFileWriter(fileHash string, bodySize int64, isPartia
 		return nil, err
 	}
 
-	// TODO 限制对同一个Hash同时只能有一个Writer
-
 	this.mu.Lock()
 	defer this.mu.Unlock()
+
+	_, isWriting := this.writingFileMap[fileHash]
+	if isWriting {
+		err = ErrFileIsWriting
+		return
+	}
+	this.writingFileMap[fileHash] = zero.Zero{}
 
 	err = this.checkStatus()
 	if err != nil {
@@ -302,6 +308,12 @@ func (this *BlocksFile) Close() error {
 
 func (this *BlocksFile) TestReaderPool() chan *FileReader {
 	return this.readerPool
+}
+
+func (this *BlocksFile) removeWritingFile(hash string) {
+	this.mu.Lock()
+	delete(this.writingFileMap, hash)
+	this.mu.Unlock()
 }
 
 func (this *BlocksFile) checkStatus() error {

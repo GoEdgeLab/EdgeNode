@@ -233,6 +233,11 @@ func (this *MetaFile) FileHeader(hash string) (header *FileHeader, ok bool) {
 	return
 }
 
+func (this *MetaFile) FileHeaderUnsafe(hash string) (header *FileHeader, ok bool) {
+	header, ok = this.headerMap[hash]
+	return
+}
+
 func (this *MetaFile) CloneFileHeader(hash string) (header *FileHeader, ok bool) {
 	this.mu.RLock()
 	defer this.mu.RUnlock()

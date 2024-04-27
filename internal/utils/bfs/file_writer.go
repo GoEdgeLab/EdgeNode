@@ -79,6 +79,10 @@ func (this *FileWriter) WriteBodyAt(b []byte, offset int64) (n int, err error) {
 }
 
 func (this *FileWriter) Close() error {
+	defer func() {
+		this.bFile.removeWritingFile(this.hash)
+	}()
+
 	if !this.isPartial && !this.hasMeta {
 		return errors.New("no meta found")
 	}
