@@ -5,9 +5,11 @@ package bfs_test
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/bfs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/logs"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestNewMetaFile(t *testing.T) {
@@ -22,6 +24,28 @@ func TestNewMetaFile(t *testing.T) {
 	var header, _ = mFile.FileHeader(bfs.Hash("123456"))
 	logs.PrintAsJSON(header, t)
 	//logs.PrintAsJSON(mFile.Headers(), t)
+}
+
+func TestNewMetaFile_Large(t *testing.T) {
+	var count = 2
+
+	if testutils.IsSingleTesting() {
+		count = 100
+	}
+
+	var before = time.Now()
+	for i := 0; i < count; i++ {
+		mFile, err := bfs.OpenMetaFile("testdata/test2.m", &sync.RWMutex{})
+		if err != nil {
+			if bfs.IsNotExist(err) {
+				continue
+			}
+			t.Fatal(err)
+		}
+		_ = mFile.Close()
+	}
+	var costMs = time.Since(before).Seconds() * 1000
+	t.Logf("cost: %.2fms, qps: %.2fms/file", costMs, costMs/float64(count))
 }
 
 func TestMetaFile_WriteMeta(t *testing.T) {

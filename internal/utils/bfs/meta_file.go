@@ -369,24 +369,8 @@ func (this *MetaFile) decodeHeader(data []byte) (*FileHeader, error) {
 		_ = gzReader.Close()
 	}()
 
-	var resultBuf = bytes.NewBuffer(nil)
-
-	var buf = make([]byte, 4096)
-	for {
-		n, readErr := gzReader.Read(buf)
-		if n > 0 {
-			resultBuf.Write(buf[:n])
-		}
-		if readErr != nil {
-			if readErr == io.EOF {
-				break
-			}
-			return nil, readErr
-		}
-	}
-
 	var header = &FileHeader{}
-	err = json.Unmarshal(resultBuf.Bytes(), header)
+	err = json.NewDecoder(gzReader).Decode(header)
 	if err != nil {
 		return nil, err
 	}

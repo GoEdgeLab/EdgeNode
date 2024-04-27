@@ -204,3 +204,34 @@ func TestFileReader_ReadAt(t *testing.T) {
 		}
 	}
 }
+
+func TestFileReader_Pool(t *testing.T) {
+	bFile, openErr := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	if openErr != nil {
+		if os.IsNotExist(openErr) {
+			t.Log(openErr)
+			return
+		}
+		t.Fatal(openErr)
+	}
+
+	for i := 0; i < 10; i++ {
+		reader, err := bFile.OpenFileReader(bfs.Hash("123456"), false)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			t.Fatal(err)
+		}
+
+		go func() {
+			err = reader.Close()
+			if err != nil {
+				t.Log(err)
+			}
+		}()
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	t.Log(len(bFile.TestReaderPool()))
+}

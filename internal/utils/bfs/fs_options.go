@@ -5,7 +5,7 @@ package bfs
 import "time"
 
 type FSOptions struct {
-	MaxOpenFiles int // TODO 需要实现
+	MaxOpenFiles int
 	BytesPerSync int64
 	SyncTimeout  time.Duration
 	MaxSyncFiles int

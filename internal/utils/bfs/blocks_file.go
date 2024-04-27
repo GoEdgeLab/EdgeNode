@@ -189,12 +189,17 @@ func (this *BlocksFile) OpenFileReader(fileHash string, isPartial bool) (*FileRe
 	// 先尝试从Pool中获取
 	select {
 	case reader := <-this.readerPool:
+		if reader == nil {
+			return nil, ErrClosed
+		}
 		reader.Reset(header)
 		return reader, nil
 	default:
 	}
 
+	AckReadThread()
 	fp, err := os.Open(this.fp.Name())
+	ReleaseReadThread()
 	if err != nil {
 		return nil, err
 	}
@@ -270,18 +275,21 @@ func (this *BlocksFile) RemoveAll() error {
 	_ = this.mFile.RemoveAll()
 
 	this.closeReaderPool()
+
 	_ = this.fp.Close()
 	return os.Remove(this.fp.Name())
 }
 
+// Close 关闭当前文件
 func (this *BlocksFile) Close() error {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	err := this.sync(true)
-	if err != nil {
-		return err
+	if this.isClosed {
+		return nil
 	}
+
+	_ = this.sync(true)
 
 	this.isClosed = true
 
@@ -290,6 +298,10 @@ func (this *BlocksFile) Close() error {
 	this.closeReaderPool()
 
 	return this.fp.Close()
+}
+
+func (this *BlocksFile) TestReaderPool() chan *FileReader {
+	return this.readerPool
 }
 
 func (this *BlocksFile) checkStatus() error {
@@ -332,7 +344,9 @@ func (this *BlocksFile) closeReaderPool() {
 	for {
 		select {
 		case reader := <-this.readerPool:
-			_ = reader.Free()
+			if reader != nil {
+				_ = reader.Free()
+			}
 		default:
 			return
 		}

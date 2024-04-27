@@ -5,10 +5,14 @@ package bfs_test
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/bfs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/linkedlist"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/Tea"
 	_ "github.com/iwind/TeaGo/bootstrap"
 	"github.com/iwind/TeaGo/logs"
+	"github.com/iwind/TeaGo/types"
 	"io"
+	"os"
 	"testing"
 )
 
@@ -117,4 +121,73 @@ func TestFS_RemoveFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("exist:", exist)
+}
+
+func TestFS_OpenFileWriter_Close(t *testing.T) {
+	if !testutils.IsSingleTesting() {
+		return
+	}
+
+	fs, openErr := bfs.OpenFS(Tea.Root+"/data/bfs/test", &bfs.FSOptions{
+		MaxOpenFiles: 4 << 10,
+	})
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
+	defer func() {
+		_ = fs.Close()
+	}()
+
+	var count = 10
+	if testutils.IsSingleTesting() {
+		count = 1000
+	}
+
+	for i := 0; i < count; i++ {
+		//t.Log("open", i)
+		writer, err := fs.OpenFileWriter(bfs.Hash(types.String(i)), -1, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = writer.Close()
+	}
+
+	t.Log(len(fs.TestBMap()), "block files, pid:", os.Getpid())
+
+	var p = func() {
+		var bNames []string
+		fs.TestBList().Range(func(item *linkedlist.Item[string]) (goNext bool) {
+			bNames = append(bNames, item.Value)
+			return true
+		})
+
+		if len(bNames) != len(fs.TestBMap()) {
+			t.Fatal("len(bNames)!=len(bMap)")
+		}
+
+		t.Log("["+types.String(len(bNames))+"]", bNames)
+	}
+
+	p()
+
+	{
+		writer, err := fs.OpenFileWriter(bfs.Hash(types.String(10)), -1, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = writer.Close()
+	}
+
+	p()
+
+	// testing closing
+	for i := 0; i < 3; i++ {
+		writer, err := fs.OpenFileWriter(bfs.Hash(types.String(0)), -1, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = writer.Close()
+	}
+
+	p()
 }
