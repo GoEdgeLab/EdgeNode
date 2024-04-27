@@ -15,6 +15,8 @@ type FileReader struct {
 
 	fileHeader *FileHeader
 	pos        int64
+
+	isClosed bool
 }
 
 func NewFileReader(bFile *BlocksFile, fp *os.File, fileHeader *FileHeader) *FileReader {
@@ -74,6 +76,10 @@ func (this *FileReader) Reset(fileHeader *FileHeader) {
 }
 
 func (this *FileReader) Close() error {
+	if this.isClosed {
+		return nil
+	}
+	this.isClosed = true
 	return this.bFile.CloseFileReader(this)
 }
 

@@ -328,22 +328,7 @@ func (this *FS) openBFile(bPath string, bName string) (*BlocksFile, error) {
 
 	// 检查是否超出maxOpenFiles
 	if this.bList.Len() > this.opt.MaxOpenFiles {
-		var firstBName = this.bList.Shift().Value
-		var firstBFile = this.bMap[firstBName]
-		delete(this.bMap, firstBName)
-		delete(this.bItemMap, firstBName)
-
-		this.closingBMap[firstBFile.Filename()] = zero.Zero{}
-
-		// MUST run in goroutine
-		go func() {
-			// 因为 closingBChan 可能已经关闭
-			defer func() {
-				recover()
-			}()
-
-			this.closingBChan <- firstBFile
-		}()
+		this.shiftOpenFiles()
 	}
 
 	return bFile, nil
@@ -365,4 +350,45 @@ func (this *FS) processClosingBFiles() {
 	this.mu.Lock()
 	delete(this.closingBMap, bFile.Filename())
 	this.mu.Unlock()
+}
+
+func (this *FS) shiftOpenFiles() {
+	var count = this.bList.Len() - this.opt.MaxOpenFiles
+	if count <= 0 {
+		return
+	}
+
+	var bNames []string
+	this.bList.Range(func(item *linkedlist.Item[string]) (goNext bool) {
+		var bName = item.Value
+		var bFile = this.bMap[bName]
+		if bFile.CanClose() {
+			bNames = append(bNames, bName)
+			count--
+		}
+		return count > 0
+	})
+
+	for _, bName := range bNames {
+		var bFile = this.bMap[bName]
+		var item = this.bItemMap[bName]
+
+		// clean
+		delete(this.bMap, bName)
+		delete(this.bItemMap, bName)
+		this.bList.Remove(item)
+
+		// add to closing queue
+		this.closingBMap[bFile.Filename()] = zero.Zero{}
+
+		// MUST run in goroutine
+		go func(bFile *BlocksFile) {
+			// 因为 closingBChan 可能已经关闭
+			defer func() {
+				recover()
+			}()
+
+			this.closingBChan <- bFile
+		}(bFile)
+	}
 }

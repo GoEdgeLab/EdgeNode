@@ -4,9 +4,42 @@ package bfs_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/bfs"
+	"github.com/iwind/TeaGo/assert"
 	"os"
 	"testing"
 )
+
+func TestBlocksFile_CanClose(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
+	bFile, openErr := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)
+	if openErr != nil {
+		if os.IsNotExist(openErr) {
+			return
+		}
+		t.Fatal(openErr)
+	}
+
+	reader, err := bFile.OpenFileReader(bfs.Hash("123456"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a.IsTrue(!bFile.CanClose())
+
+	err = reader.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// duplicated close
+	err = reader.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a.IsTrue(bFile.CanClose())
+}
 
 func TestBlocksFile_OpenFileWriter_SameHash(t *testing.T) {
 	bFile, openErr := bfs.OpenBlocksFile("testdata/test.b", bfs.DefaultBlockFileOptions)

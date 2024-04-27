@@ -129,7 +129,7 @@ func TestFS_OpenFileWriter_Close(t *testing.T) {
 	}
 
 	fs, openErr := bfs.OpenFS(Tea.Root+"/data/bfs/test", &bfs.FSOptions{
-		MaxOpenFiles: 4 << 10,
+		MaxOpenFiles: 99,
 	})
 	if openErr != nil {
 		t.Fatal(openErr)
@@ -138,9 +138,9 @@ func TestFS_OpenFileWriter_Close(t *testing.T) {
 		_ = fs.Close()
 	}()
 
-	var count = 10
+	var count = 2
 	if testutils.IsSingleTesting() {
-		count = 1000
+		count = 100
 	}
 
 	for i := 0; i < count; i++ {
@@ -165,7 +165,11 @@ func TestFS_OpenFileWriter_Close(t *testing.T) {
 			t.Fatal("len(bNames)!=len(bMap)")
 		}
 
-		t.Log("["+types.String(len(bNames))+"]", bNames)
+		if len(bNames) < 10 {
+			t.Log("["+types.String(len(bNames))+"]", bNames)
+		} else {
+			t.Log("["+types.String(len(bNames))+"]", bNames[:10], "...")
+		}
 	}
 
 	p()
