@@ -5,7 +5,6 @@ package bfs
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/klauspost/compress/gzip"
 )
 
 // LazyFileHeader load file header lazily to save memory
@@ -31,18 +30,30 @@ func (this *LazyFileHeader) FileHeaderUnsafe() (*FileHeader, error) {
 		return this.fileHeader, nil
 	}
 
-	// TODO 使用pool管理gzip
-	gzReader, err := gzip.NewReader(bytes.NewBuffer(this.rawData))
+	var jsonPrefix = []byte("json:")
+
+	var header = &FileHeader{}
+
+	// json
+	if bytes.HasPrefix(this.rawData, jsonPrefix) {
+		err := json.Unmarshal(this.rawData[len(jsonPrefix):], header)
+		if err != nil {
+			return nil, err
+		}
+		return header, nil
+	}
+
+	decompressor, err := SharedDecompressPool.Get(bytes.NewBuffer(this.rawData))
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() {
-		_ = gzReader.Close()
+		_ = decompressor.Close()
+		SharedDecompressPool.Put(decompressor)
 	}()
 
-	var header = &FileHeader{}
-	err = json.NewDecoder(gzReader).Decode(header)
+	err = json.NewDecoder(decompressor).Decode(header)
 	if err != nil {
 		return nil, err
 	}

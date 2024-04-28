@@ -3,6 +3,8 @@
 package bfs
 
 import (
+	"encoding/json"
+	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"sort"
 )
 
@@ -18,6 +20,35 @@ type FileHeader struct {
 	BodyBlocks      []BlockInfo `json:"9,omitempty"`
 	IsCompleted     bool        `json:"10,omitempty"`
 	IsWriting       bool        `json:"11,omitempty"`
+}
+
+func (this *FileHeader) BlockAt(offset int64) (blockInfo BlockInfo, ok bool) {
+	var l = len(this.BodyBlocks)
+	if l == 1 {
+		if this.BodyBlocks[0].Contains(offset) {
+			return this.BodyBlocks[0], true
+		}
+		return
+	}
+
+	sort.Search(l, func(i int) bool {
+		if this.BodyBlocks[i].Contains(offset) {
+			blockInfo = this.BodyBlocks[i]
+			ok = true
+			return true
+		}
+		return this.BodyBlocks[i].OriginOffsetFrom > offset
+	})
+
+	return
+}
+
+func (this *FileHeader) MaxOffset() int64 {
+	var l = len(this.BodyBlocks)
+	if l > 0 {
+		return this.BodyBlocks[l-1].OriginOffsetTo
+	}
+	return 0
 }
 
 func (this *FileHeader) Compact() {
@@ -65,31 +96,37 @@ func (this *FileHeader) Clone() *FileHeader {
 	}
 }
 
-func (this *FileHeader) BlockAt(offset int64) (blockInfo BlockInfo, ok bool) {
-	var l = len(this.BodyBlocks)
-	if l == 1 {
-		if this.BodyBlocks[0].Contains(offset) {
-			return this.BodyBlocks[0], true
-		}
-		return
+func (this *FileHeader) Encode(hash string) ([]byte, error) {
+	headerJSON, err := json.Marshal(this)
+	if err != nil {
+		return nil, err
 	}
 
-	sort.Search(l, func(i int) bool {
-		if this.BodyBlocks[i].Contains(offset) {
-			blockInfo = this.BodyBlocks[i]
-			ok = true
-			return true
-		}
-		return this.BodyBlocks[i].OriginOffsetFrom > offset
-	})
-
-	return
-}
-
-func (this *FileHeader) MaxOffset() int64 {
-	var l = len(this.BodyBlocks)
-	if l > 0 {
-		return this.BodyBlocks[l-1].OriginOffsetTo
+	// we do not compress data which size is less than 100 bytes
+	if len(headerJSON) < 100 {
+		return EncodeMetaBlock(MetaActionNew, hash, append([]byte("json:"), headerJSON...))
 	}
-	return 0
+
+	var buf = utils.SharedBufferPool.Get()
+	defer utils.SharedBufferPool.Put(buf)
+
+	compressor, err := SharedCompressPool.Get(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = compressor.Write(headerJSON)
+	if err != nil {
+		_ = compressor.Close()
+		SharedCompressPool.Put(compressor)
+		return nil, err
+	}
+
+	err = compressor.Close()
+	SharedCompressPool.Put(compressor)
+	if err != nil {
+		return nil, err
+	}
+
+	return EncodeMetaBlock(MetaActionNew, hash, buf.Bytes())
 }

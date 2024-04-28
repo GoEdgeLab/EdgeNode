@@ -3,9 +3,13 @@
 package bfs_test
 
 import (
+	"encoding/json"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/bfs"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/iwind/TeaGo/assert"
 	"github.com/iwind/TeaGo/logs"
+	"math/rand"
+	"runtime"
 	"testing"
 )
 
@@ -176,6 +180,120 @@ func TestFileHeader_Clone(t *testing.T) {
 	a.IsTrue(header.BodyBlocks[0].OriginOffsetFrom != clonedHeader.BodyBlocks[0].OriginOffsetFrom)
 }
 
+func TestFileHeader_Encode(t *testing.T) {
+	{
+		var header = &bfs.FileHeader{
+			Version:    1,
+			Status:     200,
+			ModifiedAt: fasttime.Now().Unix(),
+			ExpiresAt:  fasttime.Now().Unix() + 3600,
+			BodySize:   1 << 20,
+			HeaderSize: 1 << 10,
+			BodyBlocks: []bfs.BlockInfo{
+				{
+					BFileOffsetFrom: 1 << 10,
+					BFileOffsetTo:   1 << 20,
+				},
+			},
+		}
+		data, err := header.Encode(bfs.Hash("123456"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		jsonBytes, _ := json.Marshal(header)
+		t.Log(len(header.BodyBlocks), "blocks", len(data), "bytes", "json:", len(jsonBytes), "bytes")
+
+		_, _, _, err = bfs.DecodeMetaBlock(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	{
+		var header = &bfs.FileHeader{
+			Version:    1,
+			Status:     200,
+			BodyBlocks: []bfs.BlockInfo{},
+		}
+		var offset int64
+		for {
+			var end = offset + 16<<10
+			if end > 256<<10 {
+				break
+			}
+
+			header.BodyBlocks = append(header.BodyBlocks, bfs.BlockInfo{
+				BFileOffsetFrom: offset,
+				BFileOffsetTo:   end,
+			})
+
+			offset = end
+		}
+		data, err := header.Encode(bfs.Hash("123456"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		jsonBytes, _ := json.Marshal(header)
+		t.Log(len(header.BodyBlocks), "blocks", len(data), "bytes", "json:", len(jsonBytes), "bytes")
+	}
+
+	{
+		var header = &bfs.FileHeader{
+			Version:    1,
+			Status:     200,
+			BodyBlocks: []bfs.BlockInfo{},
+		}
+		var offset int64
+		for {
+			var end = offset + 16<<10
+			if end > 512<<10 {
+				break
+			}
+
+			header.BodyBlocks = append(header.BodyBlocks, bfs.BlockInfo{
+				BFileOffsetFrom: offset,
+				BFileOffsetTo:   end,
+			})
+
+			offset = end
+		}
+		data, err := header.Encode(bfs.Hash("123456"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		jsonBytes, _ := json.Marshal(header)
+		t.Log(len(header.BodyBlocks), "blocks", len(data), "bytes", "json:", len(jsonBytes), "bytes")
+	}
+
+	{
+		var header = &bfs.FileHeader{
+			Version:    1,
+			Status:     200,
+			BodyBlocks: []bfs.BlockInfo{},
+		}
+		var offset int64
+		for {
+			var end = offset + 16<<10
+			if end > 1<<20 {
+				break
+			}
+
+			header.BodyBlocks = append(header.BodyBlocks, bfs.BlockInfo{
+				BFileOffsetFrom: offset,
+				BFileOffsetTo:   end,
+			})
+
+			offset = end
+		}
+		data, err := header.Encode(bfs.Hash("123456"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		jsonBytes, _ := json.Marshal(header)
+		t.Log(len(header.BodyBlocks), "blocks", len(data), "bytes", "json:", len(jsonBytes), "bytes")
+	}
+}
+
 func BenchmarkFileHeader_Compact(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var header = &bfs.FileHeader{
@@ -196,4 +314,41 @@ func BenchmarkFileHeader_Compact(b *testing.B) {
 
 		header.Compact()
 	}
+}
+
+func BenchmarkFileHeader_Encode(b *testing.B) {
+	runtime.GOMAXPROCS(12)
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			var header = &bfs.FileHeader{
+				Version:    1,
+				Status:     200,
+				ModifiedAt: rand.Int63(),
+				BodySize:   rand.Int63(),
+				BodyBlocks: []bfs.BlockInfo{},
+			}
+			var offset int64
+			for {
+				var end = offset + 16<<10
+				if end > 2<<20 {
+					break
+				}
+
+				header.BodyBlocks = append(header.BodyBlocks, bfs.BlockInfo{
+					BFileOffsetFrom: offset + int64(rand.Int()%1000000),
+					BFileOffsetTo:   end + int64(rand.Int()%1000000),
+				})
+
+				offset = end
+			}
+
+			var hash = bfs.Hash("123456")
+
+			_, err := header.Encode(hash)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }

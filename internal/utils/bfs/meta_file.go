@@ -5,11 +5,8 @@ package bfs
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
-	"github.com/klauspost/compress/gzip"
 	"io"
 	"os"
 	"sync"
@@ -189,7 +186,7 @@ func (this *MetaFile) WriteClose(hash string, headerSize int64, bodySize int64) 
 	header.BodySize = bodySize
 	header.Compact()
 
-	blockBytes, err := this.encodeFileHeader(hash, header)
+	blockBytes, err := header.Encode(hash)
 	if err != nil {
 		return err
 	}
@@ -315,7 +312,7 @@ func (this *MetaFile) Compact() error {
 			return err
 		}
 
-		blockBytes, err := this.encodeFileHeader(hash, header)
+		blockBytes, err := header.Encode(hash)
 		if err != nil {
 			return err
 		}
@@ -380,34 +377,4 @@ func (this *MetaFile) Close() error {
 func (this *MetaFile) RemoveAll() error {
 	_ = this.fp.Close()
 	return os.Remove(this.fp.Name())
-}
-
-// encode file header to data bytes
-func (this *MetaFile) encodeFileHeader(hash string, header *FileHeader) ([]byte, error) {
-	headerJSON, err := json.Marshal(header)
-	if err != nil {
-		return nil, err
-	}
-
-	var buf = utils.SharedBufferPool.Get()
-	defer utils.SharedBufferPool.Put(buf)
-
-	// TODO 考虑使用gzip pool
-	gzWriter, err := gzip.NewWriterLevel(buf, gzip.BestSpeed)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = gzWriter.Write(headerJSON)
-	if err != nil {
-		_ = gzWriter.Close()
-		return nil, err
-	}
-
-	err = gzWriter.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	return EncodeMetaBlock(MetaActionNew, hash, buf.Bytes())
 }
