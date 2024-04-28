@@ -141,6 +141,84 @@ func TestFileHeader_Compact(t *testing.T) {
 	}
 }
 
+func TestFileHeader_Compact_Merge(t *testing.T) {
+	var a = assert.NewAssertion(t)
+
+	var header = &bfs.FileHeader{
+		Version: 1,
+		Status:  200,
+		HeaderBlocks: []bfs.BlockInfo{
+			{
+				BFileOffsetFrom:  1000,
+				BFileOffsetTo:    1100,
+				OriginOffsetFrom: 1200,
+				OriginOffsetTo:   1300,
+			},
+			{
+				BFileOffsetFrom:  1100,
+				BFileOffsetTo:    1200,
+				OriginOffsetFrom: 1300,
+				OriginOffsetTo:   1400,
+			},
+		},
+		BodyBlocks: []bfs.BlockInfo{
+			{
+				BFileOffsetFrom:  0,
+				BFileOffsetTo:    100,
+				OriginOffsetFrom: 200,
+				OriginOffsetTo:   300,
+			},
+			{
+				BFileOffsetFrom:  100,
+				BFileOffsetTo:    200,
+				OriginOffsetFrom: 300,
+				OriginOffsetTo:   400,
+			},
+			{
+				BFileOffsetFrom:  200,
+				BFileOffsetTo:    300,
+				OriginOffsetFrom: 400,
+				OriginOffsetTo:   500,
+			},
+		},
+	}
+	header.Compact()
+	logs.PrintAsJSON(header.HeaderBlocks)
+	logs.PrintAsJSON(header.BodyBlocks)
+
+	a.IsTrue(len(header.HeaderBlocks) == 1)
+	a.IsTrue(len(header.BodyBlocks) == 1)
+}
+
+func TestFileHeader_Compact_Merge2(t *testing.T) {
+	var header = &bfs.FileHeader{
+		Version: 1,
+		Status:  200,
+		BodyBlocks: []bfs.BlockInfo{
+			{
+				BFileOffsetFrom:  0,
+				BFileOffsetTo:    100,
+				OriginOffsetFrom: 200,
+				OriginOffsetTo:   300,
+			},
+			{
+				BFileOffsetFrom:  101,
+				BFileOffsetTo:    200,
+				OriginOffsetFrom: 301,
+				OriginOffsetTo:   400,
+			},
+			{
+				BFileOffsetFrom:  200,
+				BFileOffsetTo:    300,
+				OriginOffsetFrom: 400,
+				OriginOffsetTo:   500,
+			},
+		},
+	}
+	header.Compact()
+	logs.PrintAsJSON(header.BodyBlocks)
+}
+
 func TestFileHeader_Clone(t *testing.T) {
 	var a = assert.NewAssertion(t)
 

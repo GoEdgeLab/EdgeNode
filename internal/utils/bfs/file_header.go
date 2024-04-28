@@ -51,19 +51,89 @@ func (this *FileHeader) MaxOffset() int64 {
 	return 0
 }
 
+// Compact blocks
 func (this *FileHeader) Compact() {
-	// TODO 合并相邻的headerBlocks和bodyBlocks（必须是对应的BFile offset也要相邻）
+	this.compactHeader()
+	this.compactBody()
+}
 
-	if len(this.BodyBlocks) > 0 {
-		sort.Slice(this.BodyBlocks, func(i, j int) bool {
-			var block1 = this.BodyBlocks[i]
-			var block2 = this.BodyBlocks[j]
-			if block1.OriginOffsetFrom == block1.OriginOffsetFrom {
-				return block1.OriginOffsetTo < block2.OriginOffsetTo
+// compact header blocks
+func (this *FileHeader) compactHeader() {
+	var l = len(this.HeaderBlocks)
+	if l > 1 {
+		// 合并
+		var newBlocks []BlockInfo
+		var newIndex int
+		for index, currentBlock := range this.HeaderBlocks {
+			if index == 0 {
+				newBlocks = append(newBlocks, currentBlock)
+				newIndex++
+				continue
 			}
-			return block1.OriginOffsetFrom < block2.OriginOffsetFrom
-		})
 
+			var lastBlock = newBlocks[newIndex-1]
+			if currentBlock.OriginOffsetFrom >= lastBlock.OriginOffsetFrom &&
+				currentBlock.OriginOffsetFrom <= /* MUST gte */ lastBlock.OriginOffsetTo &&
+				currentBlock.OriginOffsetFrom-lastBlock.OriginOffsetFrom == currentBlock.BFileOffsetFrom-lastBlock.BFileOffsetFrom /* 两侧距离一致 */ {
+				if currentBlock.OriginOffsetTo > lastBlock.OriginOffsetTo {
+					lastBlock.OriginOffsetTo = currentBlock.OriginOffsetTo
+					lastBlock.BFileOffsetTo = currentBlock.BFileOffsetTo
+					newBlocks[newIndex-1] = lastBlock
+				}
+			} else {
+				newBlocks = append(newBlocks, currentBlock)
+				newIndex++
+			}
+		}
+		this.HeaderBlocks = newBlocks
+	}
+}
+
+// sort and compact body blocks
+func (this *FileHeader) compactBody() {
+	var l = len(this.BodyBlocks)
+
+	if l > 0 {
+		if l > 1 {
+			// 排序
+			sort.Slice(this.BodyBlocks, func(i, j int) bool {
+				var block1 = this.BodyBlocks[i]
+				var block2 = this.BodyBlocks[j]
+				if block1.OriginOffsetFrom == block1.OriginOffsetFrom {
+					return block1.OriginOffsetTo < block2.OriginOffsetTo
+				}
+				return block1.OriginOffsetFrom < block2.OriginOffsetFrom
+			})
+
+			// 合并
+			var newBlocks []BlockInfo
+			var newIndex int
+			for index, currentBlock := range this.BodyBlocks {
+				if index == 0 {
+					newBlocks = append(newBlocks, currentBlock)
+					newIndex++
+					continue
+				}
+
+				var lastBlock = newBlocks[newIndex-1]
+				if currentBlock.OriginOffsetFrom >= lastBlock.OriginOffsetFrom &&
+					currentBlock.OriginOffsetFrom <= /* MUST gte */ lastBlock.OriginOffsetTo &&
+					currentBlock.OriginOffsetFrom-lastBlock.OriginOffsetFrom == currentBlock.BFileOffsetFrom-lastBlock.BFileOffsetFrom /* 两侧距离一致 */ {
+					if currentBlock.OriginOffsetTo > lastBlock.OriginOffsetTo {
+						lastBlock.OriginOffsetTo = currentBlock.OriginOffsetTo
+						lastBlock.BFileOffsetTo = currentBlock.BFileOffsetTo
+						newBlocks[newIndex-1] = lastBlock
+					}
+				} else {
+					newBlocks = append(newBlocks, currentBlock)
+					newIndex++
+				}
+			}
+			this.BodyBlocks = newBlocks
+			l = len(this.BodyBlocks)
+		}
+
+		// 检查是否已完成
 		var isCompleted = true
 		if this.BodyBlocks[0].OriginOffsetFrom != 0 || this.BodyBlocks[len(this.BodyBlocks)-1].OriginOffsetTo != this.BodySize {
 			isCompleted = false
@@ -80,6 +150,7 @@ func (this *FileHeader) Compact() {
 	}
 }
 
+// Clone current header
 func (this *FileHeader) Clone() *FileHeader {
 	return &FileHeader{
 		Version:         this.Version,
