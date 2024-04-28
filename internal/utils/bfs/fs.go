@@ -4,6 +4,7 @@ package bfs
 
 import (
 	"errors"
+	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/linkedlist"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
@@ -151,11 +152,19 @@ func (this *FS) Close() error {
 
 	var lastErr error
 	this.mu.Lock()
-	for _, bFile := range this.bMap {
-		err := bFile.Close()
-		if err != nil {
-			lastErr = err
+	if len(this.bMap) > 0 {
+		var g = goman.NewTaskGroup()
+		for _, bFile := range this.bMap {
+			var bFileCopy = bFile
+			g.Run(func() {
+				err := bFileCopy.Close()
+				if err != nil {
+					lastErr = err
+				}
+			})
 		}
+
+		g.Wait()
 	}
 	this.mu.Unlock()
 
@@ -213,8 +222,17 @@ func (this *FS) syncLoop() {
 	this.mu.RUnlock()
 
 	for _, bFile := range bFiles {
+		if bFile.IsClosing() {
+			continue
+		}
+
 		err := bFile.ForceSync()
 		if err != nil {
+			// check again
+			if bFile.IsClosing() {
+				continue
+			}
+
 			// TODO 可以在options自定义一个logger
 			log.Println("BFS", "sync failed: "+err.Error())
 		}
@@ -262,46 +280,34 @@ func (this *FS) openBFileForHashReading(hash string) (*BlocksFile, error) {
 		return nil, err
 	}
 
-	this.mu.RLock()
+	err = this.waitBFile(bPath)
+	if err != nil {
+		return nil, err
+	}
+
+	this.mu.Lock()
 	bFile, ok := this.bMap[bName]
-	this.mu.RUnlock()
 	if ok {
 		// 调整当前BFile所在位置
-		this.mu.Lock()
 		item, itemOk := this.bItemMap[bName]
 		if itemOk {
 			this.bList.Remove(item)
 			this.bList.Push(item)
 		}
 		this.mu.Unlock()
-
 		return bFile, nil
 	}
+
+	this.mu.Unlock()
 
 	return this.openBFile(bPath, bName)
 }
 
 func (this *FS) openBFile(bPath string, bName string) (*BlocksFile, error) {
 	// check closing queue
-	this.mu.RLock()
-	_, isClosing := this.closingBMap[bPath]
-	this.mu.RUnlock()
-	if isClosing {
-		var maxWaits = 30_000
-		for {
-			this.mu.RLock()
-			_, isClosing = this.closingBMap[bPath]
-			this.mu.RUnlock()
-			if !isClosing {
-				break
-			}
-			time.Sleep(1 * time.Millisecond)
-			maxWaits--
-
-			if maxWaits < 0 {
-				return nil, errors.New("open blocks file timeout")
-			}
-		}
+	err := this.waitBFile(bPath)
+	if err != nil {
+		return nil, err
 	}
 
 	this.mu.Lock()
@@ -313,12 +319,18 @@ func (this *FS) openBFile(bPath string, bName string) (*BlocksFile, error) {
 		return bFile, nil
 	}
 
-	bFile, err := OpenBlocksFile(bPath, &BlockFileOptions{
+	// TODO 不要把 OpenBlocksFile 放入到 mu 中？
+	bFile, err = OpenBlocksFile(bPath, &BlockFileOptions{
 		BytesPerSync: this.opt.BytesPerSync,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	// 防止被关闭
+	bFile.IncrRef()
+	defer bFile.DecrRef()
+
 	this.bMap[bName] = bFile
 
 	// 加入到列表中
@@ -352,21 +364,26 @@ func (this *FS) processClosingBFiles() {
 	this.mu.Unlock()
 }
 
+// 弹出超出BFile数量限制的BFile
 func (this *FS) shiftOpenFiles() {
-	var count = this.bList.Len() - this.opt.MaxOpenFiles
+	var l = this.bList.Len()
+	var count = l - this.opt.MaxOpenFiles
 	if count <= 0 {
 		return
 	}
 
 	var bNames []string
+	var searchCount int
 	this.bList.Range(func(item *linkedlist.Item[string]) (goNext bool) {
+		searchCount++
+
 		var bName = item.Value
 		var bFile = this.bMap[bName]
 		if bFile.CanClose() {
 			bNames = append(bNames, bName)
 			count--
 		}
-		return count > 0
+		return count > 0 && searchCount < 8 && searchCount < l-8
 	})
 
 	for _, bName := range bNames {
@@ -391,4 +408,30 @@ func (this *FS) shiftOpenFiles() {
 			this.closingBChan <- bFile
 		}(bFile)
 	}
+}
+
+func (this *FS) waitBFile(bPath string) error {
+	this.mu.RLock()
+	_, isClosing := this.closingBMap[bPath]
+	this.mu.RUnlock()
+	if !isClosing {
+		return nil
+	}
+
+	var maxWaits = 30_000
+	for {
+		this.mu.RLock()
+		_, isClosing = this.closingBMap[bPath]
+		this.mu.RUnlock()
+		if !isClosing {
+			break
+		}
+		time.Sleep(1 * time.Millisecond)
+		maxWaits--
+
+		if maxWaits < 0 {
+			return errors.New("open blocks file timeout")
+		}
+	}
+	return nil
 }

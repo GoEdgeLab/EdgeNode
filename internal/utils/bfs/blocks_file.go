@@ -38,8 +38,8 @@ type BlocksFile struct {
 	writingFileMap map[string]zero.Zero // hash => Zero
 	syncAt         time.Time
 
-	readerPool        chan *FileReader
-	countReadingFiles int32
+	readerPool chan *FileReader
+	countRefs  int32
 }
 
 func NewBlocksFileWithRawFile(fp *os.File, options *BlockFileOptions) (*BlocksFile, error) {
@@ -202,7 +202,7 @@ func (this *BlocksFile) OpenFileReader(fileHash string, isPartial bool) (*FileRe
 			return nil, ErrClosed
 		}
 		reader.Reset(header)
-		atomic.AddInt32(&this.countReadingFiles, 1)
+		atomic.AddInt32(&this.countRefs, 1)
 		return reader, nil
 	default:
 	}
@@ -214,12 +214,12 @@ func (this *BlocksFile) OpenFileReader(fileHash string, isPartial bool) (*FileRe
 		return nil, err
 	}
 
-	atomic.AddInt32(&this.countReadingFiles, 1)
+	atomic.AddInt32(&this.countRefs, 1)
 	return NewFileReader(this, fp, header), nil
 }
 
 func (this *BlocksFile) CloseFileReader(reader *FileReader) error {
-	atomic.AddInt32(&this.countReadingFiles, -1)
+	defer atomic.AddInt32(&this.countRefs, -1)
 
 	select {
 	case this.readerPool <- reader:
@@ -296,10 +296,10 @@ func (this *BlocksFile) RemoveAll() error {
 
 // CanClose 检查是否可以关闭
 func (this *BlocksFile) CanClose() bool {
-	this.mu.Lock()
-	defer this.mu.Unlock()
+	this.mu.RLock()
+	defer this.mu.RUnlock()
 
-	if len(this.writingFileMap) > 0 || atomic.LoadInt32(&this.countReadingFiles) > 0 {
+	if len(this.writingFileMap) > 0 || atomic.LoadInt32(&this.countRefs) > 0 {
 		return false
 	}
 
@@ -327,6 +327,19 @@ func (this *BlocksFile) Close() error {
 	return this.fp.Close()
 }
 
+// IsClosing 判断当前文件是否正在关闭或者已关闭
+func (this *BlocksFile) IsClosing() bool {
+	return this.isClosed || this.isClosing
+}
+
+func (this *BlocksFile) IncrRef() {
+	atomic.AddInt32(&this.countRefs, 1)
+}
+
+func (this *BlocksFile) DecrRef() {
+	atomic.AddInt32(&this.countRefs, -1)
+}
+
 func (this *BlocksFile) TestReaderPool() chan *FileReader {
 	return this.readerPool
 }
@@ -339,7 +352,7 @@ func (this *BlocksFile) removeWritingFile(hash string) {
 
 func (this *BlocksFile) checkStatus() error {
 	if this.isClosed || this.isClosing {
-		return ErrClosed
+		return fmt.Errorf("check status failed: %w", ErrClosed)
 	}
 	return nil
 }
@@ -355,14 +368,16 @@ func (this *BlocksFile) sync(force bool) error {
 		}
 	}
 
-	this.writtenBytes = 0
-
-	AckWriteThread()
-	err := this.fp.Sync()
-	ReleaseWriteThread()
-	if err != nil {
-		return err
+	if this.writtenBytes > 0 {
+		AckWriteThread()
+		err := this.fp.Sync()
+		ReleaseWriteThread()
+		if err != nil {
+			return err
+		}
 	}
+
+	this.writtenBytes = 0
 
 	this.syncAt = time.Now()
 
