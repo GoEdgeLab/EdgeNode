@@ -103,6 +103,8 @@ type HTTPRequest struct {
 	disableLog bool // 是否在当前请求中关闭Log
 	forceLog   bool // 是否强制记录日志
 
+	disableMetrics bool // 不记录统计指标
+
 	isHijacked bool
 
 	// script相关操作
@@ -458,7 +460,7 @@ func (this *HTTPRequest) doEnd() {
 		stats.SharedDAUManager.AddIP(this.ReqServer.Id, this.requestRemoteAddr(true))
 
 		// 指标
-		if metrics.SharedManager.HasHTTPMetrics() {
+		if !this.disableMetrics && metrics.SharedManager.HasHTTPMetrics() {
 			this.doMetricsResponse()
 		}
 

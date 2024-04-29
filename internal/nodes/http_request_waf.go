@@ -546,4 +546,6 @@ func (this *HTTPRequest) DisableStat() {
 	if this.web != nil {
 		this.web.StatRef = nil
 	}
+
+	this.disableMetrics = true
 }
