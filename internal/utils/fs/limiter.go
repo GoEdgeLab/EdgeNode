@@ -3,6 +3,7 @@
 package fsutils
 
 import (
+	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"runtime"
 	"time"
 )
@@ -68,5 +69,13 @@ func (this *Limiter) TryAck() bool {
 }
 
 func (this *Limiter) Release() {
-	this.threads <- struct{}{}
+	select {
+	case this.threads <- struct{}{}:
+	default:
+		remotelogs.Error("FS_LIMITER", "Limiter Ack()/Release() should appeared as a pair")
+	}
+}
+
+func (this *Limiter) FreeThreads() int {
+	return len(this.threads)
 }
