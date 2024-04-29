@@ -393,7 +393,11 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 	// 尝试通过MMAP读取
 	if estimatedSize > 0 {
+		if !fsutils.ReaderLimiter.TryAck() {
+			return nil, ErrServerIsBusy
+		}
 		reader, err := this.tryMMAPReader(isPartial, estimatedSize, path)
+		fsutils.ReaderLimiter.Release()
 		if err != nil {
 			return nil, err
 		}
@@ -412,7 +416,11 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 	var err error
 	if openFile == nil {
+		if !fsutils.ReaderLimiter.TryAck() {
+			return nil, ErrServerIsBusy
+		}
 		fp, err = os.OpenFile(path, os.O_RDONLY, 0444)
+		fsutils.ReaderLimiter.Release()
 		if err != nil {
 			if !os.IsNotExist(err) {
 				return nil, err

@@ -3,6 +3,7 @@ package caches
 import (
 	"encoding/binary"
 	"errors"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -174,7 +175,9 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 	var headerSize = this.headerSize
 
 	for {
+		fsutils.ReaderLimiter.Ack()
 		n, err := this.fp.Read(buf)
+		fsutils.ReaderLimiter.Release()
 		if n > 0 {
 			if n < headerSize {
 				goNext, e := callback(n)
@@ -236,7 +239,9 @@ func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
 	}
 
 	for {
+		fsutils.ReaderLimiter.Ack()
 		n, err := this.fp.Read(buf)
+		fsutils.ReaderLimiter.Release()
 		if n > 0 {
 			goNext, e := callback(n)
 			if e != nil {
@@ -267,7 +272,9 @@ func (this *FileReader) Read(buf []byte) (n int, err error) {
 		return
 	}
 
+	fsutils.ReaderLimiter.Ack()
 	n, err = this.fp.Read(buf)
+	fsutils.ReaderLimiter.Release()
 	if err != nil && err != io.EOF {
 		_ = this.discard()
 	}
@@ -299,13 +306,17 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 		isOk = true
 		return ErrInvalidRange
 	}
+	fsutils.ReaderLimiter.Ack()
 	_, err := this.fp.Seek(offset, io.SeekStart)
+	fsutils.ReaderLimiter.Release()
 	if err != nil {
 		return err
 	}
 
 	for {
+		fsutils.ReaderLimiter.Ack()
 		n, err := this.fp.Read(buf)
+		fsutils.ReaderLimiter.Release()
 		if n > 0 {
 			var n2 = int(end-offset) + 1
 			if n2 <= n {
@@ -375,7 +386,9 @@ func (this *FileReader) Close() error {
 }
 
 func (this *FileReader) readToBuff(fp *os.File, buf []byte) (ok bool, err error) {
+	fsutils.ReaderLimiter.Ack()
 	n, err := fp.Read(buf)
+	fsutils.ReaderLimiter.Release()
 	if err != nil {
 		return false, err
 	}

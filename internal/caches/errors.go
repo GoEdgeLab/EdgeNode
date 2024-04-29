@@ -55,3 +55,7 @@ func IsCapacityError(err error) bool {
 	var capacityErr *CapacityError
 	return errors.As(err, &capacityErr)
 }
+
+func IsBusyError(err error) bool {
+	return err != nil && errors.Is(err, ErrServerIsBusy)
+}
