@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/iwind/TeaGo/logs"
 	"github.com/iwind/TeaGo/types"
@@ -593,9 +594,9 @@ func (this *SQLiteFileListDB) shouldRecover() bool {
 
 // 删除数据库文件
 func (this *SQLiteFileListDB) deleteDB() {
-	_ = os.Remove(this.dbPath)
-	_ = os.Remove(this.dbPath + "-shm")
-	_ = os.Remove(this.dbPath + "-wal")
+	_ = fsutils.Remove(this.dbPath)
+	_ = fsutils.Remove(this.dbPath + "-shm")
+	_ = fsutils.Remove(this.dbPath + "-wal")
 }
 
 // 加载Hash列表

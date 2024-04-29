@@ -406,5 +406,5 @@ func (this *FileReader) discard() error {
 	}
 
 	// remove file
-	return os.Remove(this.fp.Name())
+	return fsutils.Remove(this.fp.Name())
 }

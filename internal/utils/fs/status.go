@@ -9,7 +9,6 @@ import (
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/shirou/gopsutil/v3/load"
 	"os"
-	"sync/atomic"
 	"time"
 )
 
@@ -37,9 +36,8 @@ const (
 )
 
 var (
-	DiskSpeed           = SpeedLow
-	DiskMaxWrites int32 = 32
-	DiskSpeedMB   float64
+	DiskSpeed   = SpeedLow
+	DiskSpeedMB float64
 )
 
 var IsInHighLoad = false
@@ -65,7 +63,6 @@ func init() {
 			if err == nil && cache.SpeedMB > 0 {
 				DiskSpeedMB = cache.SpeedMB
 				DiskSpeed = cache.Speed
-				calculateDiskMaxWrites()
 			}
 		}
 
@@ -107,39 +104,6 @@ func DiskIsExtremelyFast() bool {
 		return false
 	}
 	return DiskSpeed == SpeedExtremelyFast
-}
-
-var countWrites int32 = 0
-
-func WriteReady() bool {
-	if IsInExtremelyHighLoad {
-		return false
-	}
-
-	return atomic.LoadInt32(&countWrites) < DiskMaxWrites
-}
-
-func WriteBegin() {
-	atomic.AddInt32(&countWrites, 1)
-}
-
-func WriteEnd() {
-	atomic.AddInt32(&countWrites, -1)
-}
-
-func calculateDiskMaxWrites() {
-	switch DiskSpeed {
-	case SpeedExtremelyFast:
-		DiskMaxWrites = 32
-	case SpeedFast:
-		DiskMaxWrites = 16
-	case SpeedLow:
-		DiskMaxWrites = 8
-	case SpeedExtremelySlow:
-		DiskMaxWrites = 4
-	default:
-		DiskMaxWrites = 4
-	}
 }
 
 // WaitLoad wait system load to downgrade

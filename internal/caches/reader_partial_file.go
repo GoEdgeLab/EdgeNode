@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -146,7 +147,7 @@ func (this *PartialFileReader) IsCompleted() bool {
 
 func (this *PartialFileReader) discard() error {
 	SharedPartialRangesQueue.Delete(this.rangePath)
-	_ = os.Remove(this.rangePath)
+	_ = fsutils.Remove(this.rangePath)
 
 	return this.FileReader.discard()
 }

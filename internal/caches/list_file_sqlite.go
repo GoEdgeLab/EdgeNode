@@ -11,6 +11,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils/dbs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/zero"
 	"github.com/iwind/TeaGo/types"
 	"os"
@@ -486,7 +487,7 @@ func (this *SQLiteFileList) UpgradeV3(oldDir string, brokenOnError bool) error {
 	remotelogs.Println("CACHE", "upgrading local database from '"+oldDir+"' ...")
 
 	defer func() {
-		_ = os.Remove(indexDBPath)
+		_ = fsutils.Remove(indexDBPath)
 		remotelogs.Println("CACHE", "upgrading local database finished")
 	}()
 

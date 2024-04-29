@@ -54,9 +54,9 @@ func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
 	if !this.isNew {
 		return
 	}
-	fsutils.WriteBegin()
+	fsutils.WriterLimiter.Ack()
 	n, err = this.rawWriter.Write(data)
-	fsutils.WriteEnd()
+	fsutils.WriterLimiter.Release()
 	this.headerSize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -65,9 +65,9 @@ func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
 }
 
 func (this *PartialFileWriter) AppendHeader(data []byte) error {
-	fsutils.WriteBegin()
+	fsutils.WriterLimiter.Ack()
 	_, err := this.rawWriter.Write(data)
-	fsutils.WriteEnd()
+	fsutils.WriterLimiter.Release()
 	if err != nil {
 		_ = this.Discard()
 	} else {
@@ -94,7 +94,9 @@ func (this *PartialFileWriter) WriteHeaderLength(headerLength int) error {
 		_ = this.Discard()
 		return err
 	}
+	fsutils.WriterLimiter.Ack()
 	_, err = this.rawWriter.Write(bytes4)
+	fsutils.WriterLimiter.Release()
 	if err != nil {
 		_ = this.Discard()
 		return err
@@ -104,9 +106,9 @@ func (this *PartialFileWriter) WriteHeaderLength(headerLength int) error {
 
 // Write 写入数据
 func (this *PartialFileWriter) Write(data []byte) (n int, err error) {
-	fsutils.WriteBegin()
+	fsutils.WriterLimiter.Ack()
 	n, err = this.rawWriter.Write(data)
-	fsutils.WriteEnd()
+	fsutils.WriterLimiter.Release()
 	this.bodySize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -145,9 +147,9 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 			// extend min size to prepare for file tail
 			const extendSizePerStep = 8 << 20
 			if stat.Size()+extendSizePerStep <= this.bodyOffset+offset+int64(len(data)) {
-				fsutils.WriteBegin()
+				fsutils.WriterLimiter.Ack()
 				_ = this.rawWriter.Truncate(stat.Size() + extendSizePerStep)
-				fsutils.WriteEnd()
+				fsutils.WriterLimiter.Release()
 				return nil
 			}
 		}
@@ -161,9 +163,9 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 		this.bodyOffset = SizeMeta + int64(keyLength) + this.headerSize
 	}
 
-	fsutils.WriteBegin()
+	fsutils.WriterLimiter.Ack()
 	_, err := this.rawWriter.WriteAt(data, this.bodyOffset+offset)
-	fsutils.WriteEnd()
+	fsutils.WriterLimiter.Release()
 	if err != nil {
 		return err
 	}
@@ -190,7 +192,9 @@ func (this *PartialFileWriter) WriteBodyLength(bodyLength int64) error {
 		_ = this.Discard()
 		return err
 	}
+	fsutils.WriterLimiter.Ack()
 	_, err = this.rawWriter.Write(bytes8)
+	fsutils.WriterLimiter.Release()
 	if err != nil {
 		_ = this.Discard()
 		return err
@@ -207,9 +211,9 @@ func (this *PartialFileWriter) Close() error {
 	this.ranges.BodySize = this.bodySize
 	err := this.ranges.WriteToFile(this.rangePath)
 	if err != nil {
-		fsutils.WriteBegin()
+		fsutils.WriterLimiter.Ack()
 		_ = this.rawWriter.Close()
-		fsutils.WriteEnd()
+		fsutils.WriterLimiter.Release()
 		this.remove()
 		return err
 	}
@@ -218,25 +222,25 @@ func (this *PartialFileWriter) Close() error {
 	if this.isNew {
 		err = this.WriteHeaderLength(types.Int(this.headerSize))
 		if err != nil {
-			fsutils.WriteBegin()
+			fsutils.WriterLimiter.Ack()
 			_ = this.rawWriter.Close()
-			fsutils.WriteEnd()
+			fsutils.WriterLimiter.Release()
 			this.remove()
 			return err
 		}
 		err = this.WriteBodyLength(this.bodySize)
 		if err != nil {
-			fsutils.WriteBegin()
+			fsutils.WriterLimiter.Ack()
 			_ = this.rawWriter.Close()
-			fsutils.WriteEnd()
+			fsutils.WriterLimiter.Release()
 			this.remove()
 			return err
 		}
 	}
 
-	fsutils.WriteBegin()
+	fsutils.WriterLimiter.Ack()
 	err = this.rawWriter.Close()
-	fsutils.WriteEnd()
+	fsutils.WriterLimiter.Release()
 	if err != nil {
 		this.remove()
 	}
@@ -250,14 +254,16 @@ func (this *PartialFileWriter) Discard() error {
 		this.endFunc()
 	})
 
-	fsutils.WriteBegin()
+	fsutils.WriterLimiter.Ack()
 	_ = this.rawWriter.Close()
-	fsutils.WriteEnd()
+	fsutils.WriterLimiter.Release()
 
 	SharedPartialRangesQueue.Delete(this.rangePath)
-	_ = os.Remove(this.rangePath)
 
-	err := os.Remove(this.rawWriter.Name())
+	_ = fsutils.Remove(this.rangePath)
+
+	err := fsutils.Remove(this.rawWriter.Name())
+
 	return err
 }
 
@@ -287,8 +293,9 @@ func (this *PartialFileWriter) IsNew() bool {
 }
 
 func (this *PartialFileWriter) remove() {
-	_ = os.Remove(this.rawWriter.Name())
+	_ = fsutils.Remove(this.rawWriter.Name())
 
 	SharedPartialRangesQueue.Delete(this.rangePath)
-	_ = os.Remove(this.rangePath)
+
+	_ = fsutils.Remove(this.rangePath)
 }

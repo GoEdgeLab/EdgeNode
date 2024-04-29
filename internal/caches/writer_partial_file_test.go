@@ -4,6 +4,7 @@ package caches_test
 
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/caches"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/types"
 	"os"
 	"testing"
@@ -15,7 +16,7 @@ func TestPartialFileWriter_Write(t *testing.T) {
 	_ = os.Remove(path)
 
 	var reader = func() {
-		data, err := os.ReadFile(path)
+		data, err := fsutils.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}

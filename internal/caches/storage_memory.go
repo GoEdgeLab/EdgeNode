@@ -189,7 +189,7 @@ func (this *MemoryStorage) openWriter(key string, expiresAt int64, status int, h
 	if isDirty &&
 		this.parentStorage != nil &&
 		this.dirtyQueueSize > 0 &&
-		len(this.dirtyChan) >= this.dirtyQueueSize-int(fsutils.DiskMaxWrites) /** delta **/ { // 缓存时间过长
+		len(this.dirtyChan) >= this.dirtyQueueSize-64 /** delta **/ { // 缓存时间过长
 		return nil, ErrWritingQueueFull
 	}
 

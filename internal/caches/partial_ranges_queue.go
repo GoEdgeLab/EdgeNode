@@ -7,8 +7,8 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
-	"os"
 	"sync"
 )
 
@@ -91,7 +91,7 @@ func (this *PartialRangesQueue) Get(filename string) ([]byte, error) {
 		return data, nil
 	}
 
-	return os.ReadFile(filename)
+	return fsutils.ReadFile(filename)
 }
 
 // Delete ranges filename
@@ -119,7 +119,7 @@ func (this *PartialRangesQueue) Dump() {
 			continue
 		}
 
-		err := os.WriteFile(filename, data, 0666)
+		err := fsutils.WriteFile(filename, data, 0666)
 		if err != nil {
 			remotelogs.Println("PARTIAL_RANGES_QUEUE", "write file '"+filename+"' failed: "+err.Error())
 		}
