@@ -256,6 +256,11 @@ func (this *FS) openBFileForHashWriting(hash string) (*BlocksFile, error) {
 	if ok {
 		// 调整当前BFile所在位置
 		this.mu.Lock()
+
+		if bFile.IsClosing() {
+			// TODO 需要重新等待打开
+		}
+
 		item, itemOk := this.bItemMap[bName]
 		if itemOk {
 			this.bList.Remove(item)

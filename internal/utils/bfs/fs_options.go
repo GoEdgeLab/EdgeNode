@@ -18,9 +18,9 @@ type FSOptions struct {
 func (this *FSOptions) EnsureDefaults() {
 	if this.MaxOpenFiles <= 0 {
 		// 根据内存计算最大打开文件数
-		var maxOpenFiles = memutils.SystemMemoryGB() * 64
-		if maxOpenFiles > (4 << 10) {
-			maxOpenFiles = 4 << 10
+		var maxOpenFiles = memutils.SystemMemoryGB() * 128
+		if maxOpenFiles > (8 << 10) {
+			maxOpenFiles = 8 << 10
 		}
 		this.MaxOpenFiles = maxOpenFiles
 	}

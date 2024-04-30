@@ -316,7 +316,8 @@ func (this *BlocksFile) Close() error {
 		return nil
 	}
 
-	_ = this.sync(true)
+	// TODO 决定是否同步
+	//_ = this.sync(true)
 
 	this.isClosed = true
 
