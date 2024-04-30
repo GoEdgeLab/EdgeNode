@@ -616,11 +616,13 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	if isNewCreated && existsFile {
 		flags |= os.O_TRUNC
 	}
-	if !fsutils.WriterLimiter.TryAck() {
+	if !isFlushing && !fsutils.WriterLimiter.TryAck() {
 		return nil, ErrServerIsBusy
 	}
 	writer, err := os.OpenFile(tmpPath, flags, 0666)
-	fsutils.WriterLimiter.Release()
+	if !isFlushing {
+		fsutils.WriterLimiter.Release()
+	}
 	if err != nil {
 		if os.IsNotExist(err) {
 			_ = os.MkdirAll(dir, 0777)
