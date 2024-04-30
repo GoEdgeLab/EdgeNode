@@ -28,6 +28,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
 	_ "github.com/TeaOSLab/EdgeNode/internal/utils/agents" // 引入Agent管理器
 	_ "github.com/TeaOSLab/EdgeNode/internal/utils/clock"  // 触发时钟更新
+	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/jsonutils"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
 	"github.com/TeaOSLab/EdgeNode/internal/waf"
@@ -879,6 +880,10 @@ func (this *Node) listenSock() error {
 func (this *Node) onReload(config *nodeconfigs.NodeConfig, reloadAll bool) {
 	nodeconfigs.ResetNodeConfig(config)
 	sharedNodeConfig = config
+
+	// 并发读写数
+	fsutils.ReaderLimiter.SetThreads(config.MaxConcurrentReads)
+	fsutils.WriterLimiter.SetThreads(config.MaxConcurrentWrites)
 
 	if reloadAll {
 		// 缓存策略

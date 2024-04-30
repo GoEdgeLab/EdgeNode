@@ -6,9 +6,31 @@ import (
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/testutils"
 	"github.com/iwind/TeaGo/assert"
+	"math/rand"
+	"sync"
 	"testing"
 	"time"
 )
+
+func TestLimiter_SetThreads(t *testing.T) {
+	var limiter = fsutils.NewLimiter(4)
+
+	var concurrent = 1024
+
+	var wg = sync.WaitGroup{}
+	wg.Add(concurrent)
+
+	for i := 0; i < concurrent; i++ {
+		go func() {
+			defer wg.Done()
+
+			limiter.SetThreads(rand.Int() % 128)
+			limiter.TryAck()
+		}()
+	}
+
+	wg.Wait()
+}
 
 func TestLimiter_Ack(t *testing.T) {
 	var a = assert.NewAssertion(t)

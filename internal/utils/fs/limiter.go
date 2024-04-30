@@ -3,26 +3,27 @@
 package fsutils
 
 import (
-	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"runtime"
 	"time"
 )
 
 var maxThreads = runtime.NumCPU()
-var WriterLimiter = NewLimiter(maxThreads)
-var ReaderLimiter = NewLimiter(maxThreads)
+var WriterLimiter = NewLimiter(max(maxThreads, 4))
+var ReaderLimiter = NewLimiter(max(maxThreads*2, 8))
 
 type Limiter struct {
-	threads chan struct{}
-	timers  chan *time.Timer
+	threads      chan struct{}
+	count        int
+	countDefault int
+	timers       chan *time.Timer
 }
 
 func NewLimiter(threads int) *Limiter {
 	if threads < 4 {
 		threads = 4
 	}
-	if threads > 32 {
-		threads = 32
+	if threads > 64 {
+		threads = 64
 	}
 
 	var threadsChan = make(chan struct{}, threads)
@@ -31,8 +32,26 @@ func NewLimiter(threads int) *Limiter {
 	}
 
 	return &Limiter{
-		threads: threadsChan,
-		timers:  make(chan *time.Timer, 2048),
+		countDefault: threads,
+		count:        threads,
+		threads:      threadsChan,
+		timers:       make(chan *time.Timer, 4096),
+	}
+}
+
+func (this *Limiter) SetThreads(newThreads int) {
+	if newThreads <= 0 {
+		newThreads = this.countDefault
+	}
+
+	if newThreads != this.count {
+		var threadsChan = make(chan struct{}, newThreads)
+		for i := 0; i < newThreads; i++ {
+			threadsChan <- struct{}{}
+		}
+
+		this.threads = threadsChan
+		this.count = newThreads
 	}
 }
 
@@ -72,7 +91,7 @@ func (this *Limiter) Release() {
 	select {
 	case this.threads <- struct{}{}:
 	default:
-		remotelogs.Error("FS_LIMITER", "Limiter Ack()/Release() should appeared as a pair")
+		// 由于容量可能有变化，这里忽略多余的thread
 	}
 }
 
