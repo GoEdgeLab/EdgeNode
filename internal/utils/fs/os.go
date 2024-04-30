@@ -26,6 +26,8 @@ func ReadFile(filename string) (data []byte, err error) {
 }
 
 func WriteFile(filename string, data []byte, perm os.FileMode) (err error) {
+	WriterLimiter.Ack()
 	err = os.WriteFile(filename, data, perm)
+	WriterLimiter.Release()
 	return
 }

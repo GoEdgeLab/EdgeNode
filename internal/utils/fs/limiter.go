@@ -41,7 +41,7 @@ func (this *Limiter) Ack() {
 }
 
 func (this *Limiter) TryAck() bool {
-	const timeoutDuration = 500 * time.Millisecond
+	const timeoutDuration = 1 * time.Second
 
 	var timeout *time.Timer
 	select {
