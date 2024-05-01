@@ -2,7 +2,9 @@
 
 package fsutils
 
-import "os"
+import (
+	"os"
+)
 
 func Remove(filename string) (err error) {
 	WriterLimiter.Ack()
@@ -29,5 +31,26 @@ func WriteFile(filename string, data []byte, perm os.FileMode) (err error) {
 	WriterLimiter.Ack()
 	err = os.WriteFile(filename, data, perm)
 	WriterLimiter.Release()
+	return
+}
+
+func OpenFile(name string, flag int, perm os.FileMode) (f *os.File, err error) {
+	if flag&os.O_RDONLY == os.O_RDONLY {
+		ReaderLimiter.Ack()
+	}
+
+	f, err = os.OpenFile(name, flag, perm)
+
+	if flag&os.O_RDONLY == os.O_RDONLY {
+		ReaderLimiter.Release()
+	}
+
+	return
+}
+
+func Open(name string) (f *os.File, err error) {
+	ReaderLimiter.Ack()
+	f, err = os.Open(name)
+	ReaderLimiter.Release()
 	return
 }

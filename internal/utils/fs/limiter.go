@@ -8,8 +8,8 @@ import (
 )
 
 var maxThreads = runtime.NumCPU()
-var WriterLimiter = NewLimiter(max(maxThreads, 4))
-var ReaderLimiter = NewLimiter(max(maxThreads*2, 8))
+var WriterLimiter = NewLimiter(max(maxThreads, 8))
+var ReaderLimiter = NewLimiter(max(maxThreads, 8))
 
 type Limiter struct {
 	threads      chan struct{}
@@ -60,7 +60,7 @@ func (this *Limiter) Ack() {
 }
 
 func (this *Limiter) TryAck() bool {
-	const timeoutDuration = 1 * time.Second
+	const timeoutDuration = 500 * time.Millisecond
 
 	var timeout *time.Timer
 	select {

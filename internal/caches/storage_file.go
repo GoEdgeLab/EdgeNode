@@ -380,6 +380,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 	// 检查文件记录是否已过期
 	var estimatedSize int64
+	var existInList bool
 	if !useStale {
 		exists, filesize, err := this.list.Exist(hash)
 		if err != nil {
@@ -389,6 +390,7 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 			return nil, ErrNotFound
 		}
 		estimatedSize = filesize
+		existInList = true
 	}
 
 	// 尝试通过MMAP读取
@@ -412,7 +414,13 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 	var err error
 	if openFile == nil {
+		if existInList {
+			fsutils.ReaderLimiter.Ack()
+		}
 		fp, err = os.OpenFile(path, os.O_RDONLY, 0444)
+		if existInList {
+			fsutils.ReaderLimiter.Release()
+		}
 		if err != nil {
 			if !os.IsNotExist(err) {
 				return nil, err
@@ -583,7 +591,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 		// 数据库中是否存在
 		existsCacheItem, _, _ := this.list.Exist(hash)
 		if existsCacheItem {
-			readerFp, err := os.OpenFile(tmpPath, os.O_RDONLY, 0444)
+			readerFp, err := fsutils.OpenFile(tmpPath, os.O_RDONLY, 0444)
 			if err == nil {
 				var partialReader = NewPartialFileReader(readerFp)
 				err = partialReader.Init()
@@ -616,8 +624,10 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	if isNewCreated && existsFile {
 		flags |= os.O_TRUNC
 	}
-	if !isFlushing && !fsutils.WriterLimiter.TryAck() {
-		return nil, ErrServerIsBusy
+	if !isFlushing {
+		if !fsutils.WriterLimiter.TryAck() {
+			return nil, ErrServerIsBusy
+		}
 	}
 	writer, err := os.OpenFile(tmpPath, flags, 0666)
 	if !isFlushing {

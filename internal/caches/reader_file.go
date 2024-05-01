@@ -314,8 +314,9 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 	}
 
 	for {
+		var n int
 		fsutils.ReaderLimiter.Ack()
-		n, err := this.fp.Read(buf)
+		n, err = this.fp.Read(buf)
 		fsutils.ReaderLimiter.Release()
 		if n > 0 {
 			var n2 = int(end-offset) + 1
