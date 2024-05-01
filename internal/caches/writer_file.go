@@ -6,14 +6,13 @@ import (
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/types"
 	"io"
-	"os"
 	"strings"
 	"sync"
 )
 
 type FileWriter struct {
 	storage   StorageInterface
-	rawWriter *os.File
+	rawWriter *fsutils.File
 	key       string
 
 	metaHeaderSize int
@@ -26,9 +25,11 @@ type FileWriter struct {
 	maxSize   int64
 	endFunc   func()
 	once      sync.Once
+
+	modifiedBytes int
 }
 
-func NewFileWriter(storage StorageInterface, rawWriter *os.File, key string, expiredAt int64, metaHeaderSize int, metaBodySize int64, maxSize int64, endFunc func()) *FileWriter {
+func NewFileWriter(storage StorageInterface, rawWriter *fsutils.File, key string, expiredAt int64, metaHeaderSize int, metaBodySize int64, maxSize int64, endFunc func()) *FileWriter {
 	return &FileWriter{
 		storage:        storage,
 		key:            key,
@@ -43,9 +44,7 @@ func NewFileWriter(storage StorageInterface, rawWriter *os.File, key string, exp
 
 // WriteHeader 写入数据
 func (this *FileWriter) WriteHeader(data []byte) (n int, err error) {
-	fsutils.WriterLimiter.Ack()
 	n, err = this.rawWriter.Write(data)
-	fsutils.WriterLimiter.Release()
 	this.headerSize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -79,7 +78,7 @@ func (this *FileWriter) Write(data []byte) (n int, err error) {
 	var l = len(data)
 	if l > (2 << 20) {
 		var offset = 0
-		const bufferSize = 256 << 10
+		const bufferSize = 64 << 10
 		for {
 			var end = offset + bufferSize
 			if end > l {
@@ -145,24 +144,18 @@ func (this *FileWriter) Close() error {
 
 	err := this.WriteHeaderLength(types.Int(this.headerSize))
 	if err != nil {
-		fsutils.WriterLimiter.Ack()
 		_ = this.rawWriter.Close()
-		fsutils.WriterLimiter.Release()
 		_ = fsutils.Remove(path)
 		return err
 	}
 	err = this.WriteBodyLength(this.bodySize)
 	if err != nil {
-		fsutils.WriterLimiter.Ack()
 		_ = this.rawWriter.Close()
-		fsutils.WriterLimiter.Release()
 		_ = fsutils.Remove(path)
 		return err
 	}
 
-	fsutils.WriterLimiter.Ack()
 	err = this.rawWriter.Close()
-	fsutils.WriterLimiter.Release()
 	if err != nil {
 		_ = fsutils.Remove(path)
 	} else if strings.HasSuffix(path, FileTmpSuffix) {
@@ -181,9 +174,7 @@ func (this *FileWriter) Discard() error {
 		this.endFunc()
 	})
 
-	fsutils.WriterLimiter.Ack()
 	_ = this.rawWriter.Close()
-	fsutils.WriterLimiter.Release()
 
 	err := fsutils.Remove(this.rawWriter.Name())
 	return err
@@ -211,9 +202,7 @@ func (this *FileWriter) ItemType() ItemType {
 }
 
 func (this *FileWriter) write(data []byte) (n int, err error) {
-	fsutils.WriterLimiter.Ack()
 	n, err = this.rawWriter.Write(data)
-	fsutils.WriterLimiter.Release()
 	this.bodySize += int64(n)
 
 	if this.maxSize > 0 && this.bodySize > this.maxSize {
@@ -227,5 +216,6 @@ func (this *FileWriter) write(data []byte) (n int, err error) {
 	if err != nil {
 		_ = this.Discard()
 	}
+
 	return
 }

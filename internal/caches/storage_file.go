@@ -439,12 +439,12 @@ func (this *FileStorage) openReader(key string, allowMemory bool, useStale bool,
 
 	var reader Reader
 	if isPartial {
-		var partialFileReader = NewPartialFileReader(fp)
+		var partialFileReader = NewPartialFileReader(fsutils.NewFile(fp, fsutils.FlagRead))
 		partialFileReader.openFile = openFile
 		partialFileReader.openFileCache = openFileCache
 		reader = partialFileReader
 	} else {
-		var fileReader = NewFileReader(fp)
+		var fileReader = NewFileReader(fsutils.NewFile(fp, fsutils.FlagRead))
 		fileReader.openFile = openFile
 		fileReader.openFileCache = openFileCache
 		reader = fileReader
@@ -593,7 +593,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 		if existsCacheItem {
 			readerFp, err := fsutils.OpenFile(tmpPath, os.O_RDONLY, 0444)
 			if err == nil {
-				var partialReader = NewPartialFileReader(readerFp)
+				var partialReader = NewPartialFileReader(fsutils.NewFile(readerFp, fsutils.FlagRead))
 				err = partialReader.Init()
 				_ = partialReader.Close()
 				if err == nil && partialReader.bodyOffset > 0 {
@@ -629,7 +629,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 			return nil, ErrServerIsBusy
 		}
 	}
-	writer, err := os.OpenFile(tmpPath, flags, 0666)
+	fp, err := os.OpenFile(tmpPath, flags, 0666)
 	if !isFlushing {
 		fsutils.WriterLimiter.Release()
 	}
@@ -639,13 +639,15 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 
 			// open file again
 			fsutils.WriterLimiter.Ack()
-			writer, err = os.OpenFile(tmpPath, flags, 0666)
+			fp, err = os.OpenFile(tmpPath, flags, 0666)
 			fsutils.WriterLimiter.Release()
 		}
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	var writer = fsutils.NewFile(fp, fsutils.FlagWrite)
 
 	var removeOnFailure = true
 	defer func() {
@@ -663,7 +665,9 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 	}()
 
 	// 尝试锁定，如果锁定失败，则直接返回
+	fsutils.WriterLimiter.Ack()
 	err = syscall.Flock(int(writer.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	fsutils.WriterLimiter.Release()
 	if err != nil {
 		removeOnFailure = false
 		return nil, fmt.Errorf("%w (003)", ErrFileIsWriting)
@@ -700,9 +704,7 @@ func (this *FileStorage) openWriter(key string, expiredAt int64, status int, hea
 			metaBodySize = bodySize
 		}
 
-		fsutils.WriterLimiter.Ack()
 		_, err = writer.Write(metaBytes)
-		fsutils.WriterLimiter.Release()
 		if err != nil {
 			return nil, err
 		}

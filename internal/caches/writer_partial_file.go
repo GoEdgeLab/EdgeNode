@@ -7,12 +7,11 @@ import (
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	"github.com/iwind/TeaGo/types"
 	"io"
-	"os"
 	"sync"
 )
 
 type PartialFileWriter struct {
-	rawWriter *os.File
+	rawWriter *fsutils.File
 	key       string
 
 	metaHeaderSize int
@@ -33,7 +32,7 @@ type PartialFileWriter struct {
 	rangePath string
 }
 
-func NewPartialFileWriter(rawWriter *os.File, key string, expiredAt int64, metaHeaderSize int, metaBodySize int64, isNew bool, isPartial bool, bodyOffset int64, ranges *PartialRanges, endFunc func()) *PartialFileWriter {
+func NewPartialFileWriter(rawWriter *fsutils.File, key string, expiredAt int64, metaHeaderSize int, metaBodySize int64, isNew bool, isPartial bool, bodyOffset int64, ranges *PartialRanges, endFunc func()) *PartialFileWriter {
 	return &PartialFileWriter{
 		key:            key,
 		rawWriter:      rawWriter,
@@ -54,9 +53,7 @@ func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
 	if !this.isNew {
 		return
 	}
-	fsutils.WriterLimiter.Ack()
 	n, err = this.rawWriter.Write(data)
-	fsutils.WriterLimiter.Release()
 	this.headerSize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -65,9 +62,7 @@ func (this *PartialFileWriter) WriteHeader(data []byte) (n int, err error) {
 }
 
 func (this *PartialFileWriter) AppendHeader(data []byte) error {
-	fsutils.WriterLimiter.Ack()
 	_, err := this.rawWriter.Write(data)
-	fsutils.WriterLimiter.Release()
 	if err != nil {
 		_ = this.Discard()
 	} else {
@@ -94,9 +89,7 @@ func (this *PartialFileWriter) WriteHeaderLength(headerLength int) error {
 		_ = this.Discard()
 		return err
 	}
-	fsutils.WriterLimiter.Ack()
 	_, err = this.rawWriter.Write(bytes4)
-	fsutils.WriterLimiter.Release()
 	if err != nil {
 		_ = this.Discard()
 		return err
@@ -106,9 +99,7 @@ func (this *PartialFileWriter) WriteHeaderLength(headerLength int) error {
 
 // Write 写入数据
 func (this *PartialFileWriter) Write(data []byte) (n int, err error) {
-	fsutils.WriterLimiter.Ack()
 	n, err = this.rawWriter.Write(data)
-	fsutils.WriterLimiter.Release()
 	this.bodySize += int64(n)
 	if err != nil {
 		_ = this.Discard()
@@ -132,11 +123,14 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 	// prevent extending too much space in a single writing
 	var maxOffset = this.ranges.Max()
 	if offset-maxOffset > 16<<20 {
+		var extendSizePerStep int64 = 1 << 20
 		var maxExtendSize int64 = 32 << 20
 		if fsutils.DiskIsExtremelyFast() {
 			maxExtendSize = 128 << 20
+			extendSizePerStep = 4 << 20
 		} else if fsutils.DiskIsFast() {
 			maxExtendSize = 64 << 20
+			extendSizePerStep = 2 << 20
 		}
 		if offset-maxOffset > maxExtendSize {
 			stat, err := this.rawWriter.Stat()
@@ -145,11 +139,8 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 			}
 
 			// extend min size to prepare for file tail
-			const extendSizePerStep = 8 << 20
 			if stat.Size()+extendSizePerStep <= this.bodyOffset+offset+int64(len(data)) {
-				fsutils.WriterLimiter.Ack()
 				_ = this.rawWriter.Truncate(stat.Size() + extendSizePerStep)
-				fsutils.WriterLimiter.Release()
 				return nil
 			}
 		}
@@ -163,9 +154,7 @@ func (this *PartialFileWriter) WriteAt(offset int64, data []byte) error {
 		this.bodyOffset = SizeMeta + int64(keyLength) + this.headerSize
 	}
 
-	fsutils.WriterLimiter.Ack()
 	_, err := this.rawWriter.WriteAt(data, this.bodyOffset+offset)
-	fsutils.WriterLimiter.Release()
 	if err != nil {
 		return err
 	}
@@ -192,9 +181,7 @@ func (this *PartialFileWriter) WriteBodyLength(bodyLength int64) error {
 		_ = this.Discard()
 		return err
 	}
-	fsutils.WriterLimiter.Ack()
 	_, err = this.rawWriter.Write(bytes8)
-	fsutils.WriterLimiter.Release()
 	if err != nil {
 		_ = this.Discard()
 		return err
@@ -211,9 +198,7 @@ func (this *PartialFileWriter) Close() error {
 	this.ranges.BodySize = this.bodySize
 	err := this.ranges.WriteToFile(this.rangePath)
 	if err != nil {
-		fsutils.WriterLimiter.Ack()
 		_ = this.rawWriter.Close()
-		fsutils.WriterLimiter.Release()
 		this.remove()
 		return err
 	}
@@ -222,25 +207,19 @@ func (this *PartialFileWriter) Close() error {
 	if this.isNew {
 		err = this.WriteHeaderLength(types.Int(this.headerSize))
 		if err != nil {
-			fsutils.WriterLimiter.Ack()
 			_ = this.rawWriter.Close()
-			fsutils.WriterLimiter.Release()
 			this.remove()
 			return err
 		}
 		err = this.WriteBodyLength(this.bodySize)
 		if err != nil {
-			fsutils.WriterLimiter.Ack()
 			_ = this.rawWriter.Close()
-			fsutils.WriterLimiter.Release()
 			this.remove()
 			return err
 		}
 	}
 
-	fsutils.WriterLimiter.Ack()
 	err = this.rawWriter.Close()
-	fsutils.WriterLimiter.Release()
 	if err != nil {
 		this.remove()
 	}
@@ -254,9 +233,7 @@ func (this *PartialFileWriter) Discard() error {
 		this.endFunc()
 	})
 
-	fsutils.WriterLimiter.Ack()
 	_ = this.rawWriter.Close()
-	fsutils.WriterLimiter.Release()
 
 	SharedPartialRangesQueue.Delete(this.rangePath)
 

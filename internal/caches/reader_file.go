@@ -11,7 +11,7 @@ import (
 )
 
 type FileReader struct {
-	fp *os.File
+	fp *fsutils.File
 
 	openFile      *OpenFile
 	openFileCache *OpenFileCache
@@ -29,7 +29,7 @@ type FileReader struct {
 	isClosed bool
 }
 
-func NewFileReader(fp *os.File) *FileReader {
+func NewFileReader(fp *fsutils.File) *FileReader {
 	return &FileReader{fp: fp}
 }
 
@@ -175,9 +175,7 @@ func (this *FileReader) ReadHeader(buf []byte, callback ReaderFunc) error {
 	var headerSize = this.headerSize
 
 	for {
-		fsutils.ReaderLimiter.Ack()
 		n, err := this.fp.Read(buf)
-		fsutils.ReaderLimiter.Release()
 		if n > 0 {
 			if n < headerSize {
 				goNext, e := callback(n)
@@ -239,9 +237,7 @@ func (this *FileReader) ReadBody(buf []byte, callback ReaderFunc) error {
 	}
 
 	for {
-		fsutils.ReaderLimiter.Ack()
 		n, err := this.fp.Read(buf)
-		fsutils.ReaderLimiter.Release()
 		if n > 0 {
 			goNext, e := callback(n)
 			if e != nil {
@@ -272,9 +268,7 @@ func (this *FileReader) Read(buf []byte) (n int, err error) {
 		return
 	}
 
-	fsutils.ReaderLimiter.Ack()
 	n, err = this.fp.Read(buf)
-	fsutils.ReaderLimiter.Release()
 	if err != nil && err != io.EOF {
 		_ = this.discard()
 	}
@@ -306,18 +300,14 @@ func (this *FileReader) ReadBodyRange(buf []byte, start int64, end int64, callba
 		isOk = true
 		return ErrInvalidRange
 	}
-	fsutils.ReaderLimiter.Ack()
 	_, err := this.fp.Seek(offset, io.SeekStart)
-	fsutils.ReaderLimiter.Release()
 	if err != nil {
 		return err
 	}
 
 	for {
 		var n int
-		fsutils.ReaderLimiter.Ack()
 		n, err = this.fp.Read(buf)
-		fsutils.ReaderLimiter.Release()
 		if n > 0 {
 			var n2 = int(end-offset) + 1
 			if n2 <= n {
@@ -363,7 +353,7 @@ func (this *FileReader) ContainsRange(r rangeutils.Range) (r2 rangeutils.Range, 
 
 // FP 原始的文件句柄
 func (this *FileReader) FP() *os.File {
-	return this.fp
+	return this.fp.Raw()
 }
 
 func (this *FileReader) Close() error {
@@ -378,7 +368,7 @@ func (this *FileReader) Close() error {
 		} else {
 			var cacheMeta = make([]byte, len(this.meta))
 			copy(cacheMeta, this.meta)
-			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp, cacheMeta, this.header, this.LastModified(), this.bodySize))
+			this.openFileCache.Put(this.fp.Name(), NewOpenFile(this.fp.Raw(), cacheMeta, this.header, this.LastModified(), this.bodySize))
 		}
 		return nil
 	}
@@ -386,10 +376,8 @@ func (this *FileReader) Close() error {
 	return this.fp.Close()
 }
 
-func (this *FileReader) readToBuff(fp *os.File, buf []byte) (ok bool, err error) {
-	fsutils.ReaderLimiter.Ack()
+func (this *FileReader) readToBuff(fp *fsutils.File, buf []byte) (ok bool, err error) {
 	n, err := fp.Read(buf)
-	fsutils.ReaderLimiter.Release()
 	if err != nil {
 		return false, err
 	}

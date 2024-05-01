@@ -8,7 +8,6 @@ import (
 	rangeutils "github.com/TeaOSLab/EdgeNode/internal/utils/ranges"
 	"github.com/iwind/TeaGo/types"
 	"io"
-	"os"
 )
 
 type PartialFileReader struct {
@@ -18,7 +17,7 @@ type PartialFileReader struct {
 	rangePath string
 }
 
-func NewPartialFileReader(fp *os.File) *PartialFileReader {
+func NewPartialFileReader(fp *fsutils.File) *PartialFileReader {
 	return &PartialFileReader{
 		FileReader: NewFileReader(fp),
 		rangePath:  PartialRangesFilePath(fp.Name()),
