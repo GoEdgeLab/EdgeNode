@@ -56,6 +56,7 @@ func init() {
 	// test disk
 	goman.New(func() {
 		// load last result from local disk
+		var countTests int
 		cacheData, cacheErr := os.ReadFile(Tea.Root + "/data/" + diskSpeedDataFile)
 		if cacheErr == nil {
 			var cache = &DiskSpeedCache{}
@@ -63,21 +64,24 @@ func init() {
 			if err == nil && cache.SpeedMB > 0 {
 				DiskSpeedMB = cache.SpeedMB
 				DiskSpeed = cache.Speed
+				countTests = cache.CountTests
 			}
 		}
 
-		// initial check
-		_, _, _ = CheckDiskIsFast()
+		if countTests < 12 {
+			// initial check
+			_, _, _ = CheckDiskIsFast()
 
-		// check every one hour
-		var ticker = time.NewTicker(1 * time.Hour)
-		var count = 0
-		for range ticker.C {
-			_, _, err := CheckDiskIsFast()
-			if err == nil {
-				count++
-				if count > 24 {
-					return
+			// check every one hour
+			var ticker = time.NewTicker(1 * time.Hour)
+			var count = 0
+			for range ticker.C {
+				_, _, err := CheckDiskIsFast()
+				if err == nil {
+					count++
+					if count > 24 {
+						return
+					}
 				}
 			}
 		}

@@ -54,3 +54,15 @@ func Open(name string) (f *os.File, err error) {
 	ReaderLimiter.Release()
 	return
 }
+
+// ExistFile 检查文件是否存在
+func ExistFile(path string) (bool, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return !stat.IsDir(), nil
+}

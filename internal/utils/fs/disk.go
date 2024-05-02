@@ -14,8 +14,9 @@ import (
 const diskSpeedDataFile = "disk.speed.json"
 
 type DiskSpeedCache struct {
-	Speed   Speed   `json:"speed"`
-	SpeedMB float64 `json:"speedMB"`
+	Speed      Speed   `json:"speed"`
+	SpeedMB    float64 `json:"speedMB"`
+	CountTests int     `json:"countTests"` // test times
 }
 
 // CheckDiskWritingSpeed test disk writing speed
@@ -76,6 +77,30 @@ func CheckDiskIsFast() (speedMB float64, isFast bool, err error) {
 		return
 	}
 
+	// read old cached info
+	var cacheFile = Tea.Root + "/data/" + diskSpeedDataFile
+	var cacheInfo = &DiskSpeedCache{}
+	{
+		cacheData, cacheErr := os.ReadFile(cacheFile)
+		if cacheErr == nil {
+			var oldCacheInfo = &DiskSpeedCache{}
+			cacheErr = json.Unmarshal(cacheData, oldCacheInfo)
+			if cacheErr == nil {
+				cacheInfo = oldCacheInfo
+			}
+		}
+	}
+
+	cacheInfo.CountTests++
+
+	defer func() {
+		// write to local file
+		cacheData, jsonErr := json.Marshal(cacheInfo)
+		if jsonErr == nil {
+			_ = os.WriteFile(cacheFile, cacheData, 0666)
+		}
+	}()
+
 	isFast = speedMB > 150
 
 	if speedMB <= DiskSpeedMB {
@@ -94,14 +119,8 @@ func CheckDiskIsFast() (speedMB float64, isFast bool, err error) {
 
 	DiskSpeedMB = speedMB
 
-	// write to local file
-	cacheData, jsonErr := json.Marshal(&DiskSpeedCache{
-		Speed:   DiskSpeed,
-		SpeedMB: DiskSpeedMB,
-	})
-	if jsonErr == nil {
-		_ = os.WriteFile(Tea.Root+"/data/"+diskSpeedDataFile, cacheData, 0666)
-	}
+	cacheInfo.Speed = DiskSpeed
+	cacheInfo.SpeedMB = DiskSpeedMB
 
 	return
 }
