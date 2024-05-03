@@ -506,6 +506,8 @@ func (this *HTTPRequest) configureWeb(web *serverconfigs.HTTPWebConfig, isTop bo
 	}
 
 	// pages
+	this.web.EnableGlobalPages = web.EnableGlobalPages
+
 	if len(web.Pages) > 0 {
 		this.web.Pages = web.Pages
 	}

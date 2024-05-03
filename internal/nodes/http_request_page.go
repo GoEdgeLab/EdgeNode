@@ -17,7 +17,7 @@ const defaultPageContentType = "text/html; charset=utf-8"
 func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 	if len(this.web.Pages) == 0 {
 		// 集群自定义页面
-		if this.nodeConfig != nil && this.ReqServer != nil {
+		if this.nodeConfig != nil && this.ReqServer != nil && this.web.EnableGlobalPages {
 			var httpPagesPolicy = this.nodeConfig.FindHTTPPagesPolicyWithClusterId(this.ReqServer.ClusterId)
 			if httpPagesPolicy != nil && httpPagesPolicy.IsOn && len(httpPagesPolicy.Pages) > 0 {
 				return this.doPageLookup(httpPagesPolicy.Pages, status)
@@ -34,7 +34,7 @@ func (this *HTTPRequest) doPage(status int) (shouldStop bool) {
 	}
 
 	// 集群自定义页面
-	if this.nodeConfig != nil && this.ReqServer != nil {
+	if this.nodeConfig != nil && this.ReqServer != nil && this.web.EnableGlobalPages {
 		var httpPagesPolicy = this.nodeConfig.FindHTTPPagesPolicyWithClusterId(this.ReqServer.ClusterId)
 		if httpPagesPolicy != nil && httpPagesPolicy.IsOn && len(httpPagesPolicy.Pages) > 0 {
 			return this.doPageLookup(httpPagesPolicy.Pages, status)
