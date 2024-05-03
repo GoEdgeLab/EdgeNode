@@ -8,6 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/compressions"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fnv"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/minifiers"
 	"github.com/iwind/TeaGo/lists"
@@ -581,9 +582,9 @@ func (this *HTTPRequest) doOriginRequest(failedOriginIds []int64, failedLnNodeId
 	// 是否有内容
 	if resp.ContentLength == 0 && len(resp.TransferEncoding) == 0 {
 		// 即使内容为0，也需要读取一次，以便于触发相关事件
-		var buf = utils.BytePool4k.Get()
+		var buf = bytepool.Pool4k.Get()
 		_, _ = io.CopyBuffer(this.writer, resp.Body, buf.Bytes)
-		utils.BytePool4k.Put(buf)
+		bytepool.Pool4k.Put(buf)
 		_ = resp.Body.Close()
 		respBodyIsClosed = true
 

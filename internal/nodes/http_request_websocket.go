@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"io"
 	"net/http"
 	"net/url"
@@ -178,8 +178,8 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		}
 
 		// 复制剩余的数据
-		var buf = utils.BytePool4k.Get()
-		defer utils.BytePool4k.Put(buf)
+		var buf = bytepool.Pool4k.Get()
+		defer bytepool.Pool4k.Put(buf)
 		for {
 			n, readErr := originConn.Read(buf.Bytes)
 			if n > 0 {
@@ -197,9 +197,9 @@ func (this *HTTPRequest) doWebsocket(requestHost string, isLastRetry bool) (shou
 		_ = originConn.Close()
 	}()
 
-	var buf = utils.BytePool4k.Get()
+	var buf = bytepool.Pool4k.Get()
 	_, _ = io.CopyBuffer(originConn, clientConn, buf.Bytes)
-	utils.BytePool4k.Put(buf)
+	bytepool.Pool4k.Put(buf)
 
 	return
 }

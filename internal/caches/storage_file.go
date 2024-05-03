@@ -14,6 +14,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/trackers"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/TeaOSLab/EdgeNode/internal/utils/fasttime"
 	fsutils "github.com/TeaOSLab/EdgeNode/internal/utils/fs"
 	memutils "github.com/TeaOSLab/EdgeNode/internal/utils/mem"
@@ -1285,9 +1286,9 @@ func (this *FileStorage) hotLoop() {
 			size = len(result) / 10
 		}
 
-		var buf = utils.BytePool16k.Get()
+		var buf = bytepool.Pool16k.Get()
 
-		defer utils.BytePool16k.Put(buf)
+		defer bytepool.Pool16k.Put(buf)
 		for _, item := range result[:size] {
 			reader, err := this.openReader(item.Key, false, false, false)
 			if err != nil {

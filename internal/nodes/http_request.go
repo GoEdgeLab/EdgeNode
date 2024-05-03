@@ -13,6 +13,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/metrics"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/iwind/TeaGo/lists"
 	"github.com/iwind/TeaGo/maps"
 	"github.com/iwind/TeaGo/types"
@@ -1985,20 +1986,17 @@ func (this *HTTPRequest) addError(err error) {
 }
 
 // 计算合适的buffer size
-func (this *HTTPRequest) bytePool(contentLength int64) *utils.BytePool {
+func (this *HTTPRequest) bytePool(contentLength int64) *bytepool.Pool {
 	if contentLength < 0 {
-		return utils.BytePool16k
+		return bytepool.Pool16k
 	}
-	if contentLength < 8192 { // 8K
-		return utils.BytePool1k
+	if contentLength < 8192 { // < 8K
+		return bytepool.Pool1k
 	}
-	if contentLength < 32768 { // 32K
-		return utils.BytePool16k
+	if contentLength < 32768 { // < 32K
+		return bytepool.Pool16k
 	}
-	if contentLength < 131072 { // 128K
-		return utils.BytePool32k
-	}
-	return utils.BytePool32k
+	return bytepool.Pool32k
 }
 
 // 检查是否可以忽略错误
@@ -2008,20 +2006,21 @@ func (this *HTTPRequest) canIgnore(err error) bool {
 	}
 
 	// 已读到头
-	if err == io.EOF || err == io.ErrUnexpectedEOF {
+	if err == io.EOF || errors.Is(err, io.ErrUnexpectedEOF) {
 		return true
 	}
 
 	// 网络错误
-	_, ok := err.(*net.OpError)
+	var opErr *net.OpError
+	ok := errors.As(err, &opErr)
 	if ok {
 		return true
 	}
 
 	// 客户端主动取消
-	if err == errWritingToClient ||
-		err == context.Canceled ||
-		err == io.ErrShortWrite ||
+	if errors.Is(err, errWritingToClient) ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, io.ErrShortWrite) ||
 		strings.Contains(err.Error(), "write: connection") ||
 		strings.Contains(err.Error(), "write: broken pipe") ||
 		strings.Contains(err.Error(), "write tcp") {

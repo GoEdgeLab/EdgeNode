@@ -3,6 +3,7 @@ package waf
 import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/types"
 	"io"
@@ -119,9 +120,9 @@ func (this *Post307Action) Perform(waf *WAF, group *RuleGroup, set *RuleSet, req
 	// 清空请求内容
 	var req = request.WAFRaw()
 	if req.ContentLength > 0 && req.Body != nil {
-		var buf = utils.BytePool16k.Get()
+		var buf = bytepool.Pool16k.Get()
 		_, _ = io.CopyBuffer(io.Discard, req.Body, buf.Bytes)
-		utils.BytePool16k.Put(buf)
+		bytepool.Pool16k.Put(buf)
 		_ = req.Body.Close()
 	}
 

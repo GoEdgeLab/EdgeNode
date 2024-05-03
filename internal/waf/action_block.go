@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/TeaOSLab/EdgeNode/internal/waf/requests"
 	"github.com/iwind/TeaGo/Tea"
 	"github.com/iwind/TeaGo/logs"
@@ -118,9 +119,9 @@ func (this *BlockAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, reque
 					}
 				}
 
-				var buf = utils.BytePool1k.Get()
+				var buf = bytepool.Pool1k.Get()
 				_, _ = io.CopyBuffer(writer, resp.Body, buf.Bytes)
-				utils.BytePool1k.Put(buf)
+				bytepool.Pool1k.Put(buf)
 			} else {
 				var path = this.URL
 				if !filepath.IsAbs(this.URL) {

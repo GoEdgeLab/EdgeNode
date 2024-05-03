@@ -9,6 +9,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/iwind/TeaGo/types"
 	"github.com/pires/go-proxyproto"
 	"golang.org/x/net/ipv4"
@@ -400,9 +401,9 @@ func NewUDPConn(server *serverconfigs.ServerConfig, clientAddr net.Addr, proxyLi
 	}
 
 	goman.New(func() {
-		var buf = utils.BytePool4k.Get()
+		var buf = bytepool.Pool4k.Get()
 		defer func() {
-			utils.BytePool4k.Put(buf)
+			bytepool.Pool4k.Put(buf)
 		}()
 
 		for {

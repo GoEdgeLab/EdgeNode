@@ -8,7 +8,7 @@ import (
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/iwind/TeaGo/types"
 	"github.com/pires/go-proxyproto"
 	"net"
@@ -188,9 +188,9 @@ func (this *TCPListener) handleConn(server *serverconfigs.ServerConfig, conn net
 
 	// 从源站读取
 	goman.New(func() {
-		var originBuf = utils.BytePool16k.Get()
+		var originBuf = bytepool.Pool16k.Get()
 		defer func() {
-			utils.BytePool16k.Put(originBuf)
+			bytepool.Pool16k.Put(originBuf)
 		}()
 		for {
 			n, err := originConn.Read(originBuf.Bytes)
@@ -214,9 +214,9 @@ func (this *TCPListener) handleConn(server *serverconfigs.ServerConfig, conn net
 	})
 
 	// 从客户端读取
-	var clientBuf = utils.BytePool16k.Get()
+	var clientBuf = bytepool.Pool16k.Get()
 	defer func() {
-		utils.BytePool16k.Put(clientBuf)
+		bytepool.Pool16k.Put(clientBuf)
 	}()
 	for {
 		// 是否已达到流量限制

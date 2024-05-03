@@ -4,6 +4,7 @@ import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"github.com/iwind/TeaGo/Tea"
 	"net/http"
 	"os"
@@ -103,11 +104,11 @@ func (this *HTTPRequest) doPageLookup(pages []*serverconfigs.HTTPPageConfig, sta
 						this.writer.Prepare(nil, stat.Size(), status, true)
 						this.writer.WriteHeader(status)
 					}
-					var buf = utils.BytePool1k.Get()
+					var buf = bytepool.Pool1k.Get()
 					_, err = utils.CopyWithFilter(this.writer, fp, buf.Bytes, func(p []byte) []byte {
 						return []byte(this.Format(string(p)))
 					})
-					utils.BytePool1k.Put(buf)
+					bytepool.Pool1k.Put(buf)
 					if err != nil {
 						if !this.canIgnore(err) {
 							remotelogs.Warn("HTTP_REQUEST_PAGE", "write to client failed: "+err.Error())

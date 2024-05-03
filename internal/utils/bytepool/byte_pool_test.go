@@ -1,8 +1,8 @@
-package utils_test
+package bytepool_test
 
 import (
 	"bytes"
-	"github.com/TeaOSLab/EdgeNode/internal/utils"
+	"github.com/TeaOSLab/EdgeNode/internal/utils/bytepool"
 	"runtime"
 	"sync"
 	"testing"
@@ -12,9 +12,9 @@ func TestBytePool_Memory(t *testing.T) {
 	var stat1 = &runtime.MemStats{}
 	runtime.ReadMemStats(stat1)
 
-	var pool = utils.NewBytePool(32 * 1024)
+	var pool = bytepool.NewPool(32 * 1024)
 	for i := 0; i < 20480; i++ {
-		pool.Put(&utils.BytesBuf{
+		pool.Put(&bytepool.Buf{
 			Bytes: make([]byte, 32*1024),
 		})
 	}
@@ -33,7 +33,7 @@ func TestBytePool_Memory(t *testing.T) {
 func BenchmarkBytePool_Get(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var pool = utils.NewBytePool(1)
+	var pool = bytepool.NewPool(1)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -46,7 +46,7 @@ func BenchmarkBytePool_Get(b *testing.B) {
 func BenchmarkBytePool_Get_Parallel(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	var pool = utils.NewBytePool(1024)
+	var pool = bytepool.NewPool(1024)
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -82,7 +82,7 @@ func BenchmarkBytePool_Get_Sync2(b *testing.B) {
 
 	var pool = &sync.Pool{
 		New: func() any {
-			return &utils.BytesBuf{
+			return &bytepool.Buf{
 				Bytes: make([]byte, 1024),
 			}
 		},
@@ -127,7 +127,7 @@ func BenchmarkBytePool_Copy_Wrapper_4(b *testing.B) {
 
 	var pool = &sync.Pool{
 		New: func() any {
-			return &utils.BytesBuf{
+			return &bytepool.Buf{
 				Bytes: make([]byte, size),
 			}
 		},
@@ -136,7 +136,7 @@ func BenchmarkBytePool_Copy_Wrapper_4(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var buf = pool.Get().(*utils.BytesBuf)
+			var buf = pool.Get().(*bytepool.Buf)
 			copy(buf.Bytes, data)
 			pool.Put(buf)
 		}
@@ -171,7 +171,7 @@ func BenchmarkBytePool_Copy_Wrapper_16(b *testing.B) {
 
 	var pool = &sync.Pool{
 		New: func() any {
-			return &utils.BytesBuf{
+			return &bytepool.Buf{
 				Bytes: make([]byte, size),
 			}
 		},
@@ -180,7 +180,7 @@ func BenchmarkBytePool_Copy_Wrapper_16(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var buf = pool.Get().(*utils.BytesBuf)
+			var buf = pool.Get().(*bytepool.Buf)
 			copy(buf.Bytes, data)
 			pool.Put(buf)
 		}
@@ -194,7 +194,7 @@ func BenchmarkBytePool_Copy_Wrapper_Buf_16(b *testing.B) {
 
 	var pool = &sync.Pool{
 		New: func() any {
-			return &utils.BytesBuf{
+			return &bytepool.Buf{
 				Bytes: make([]byte, size),
 			}
 		},
@@ -203,7 +203,7 @@ func BenchmarkBytePool_Copy_Wrapper_Buf_16(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var bytesPtr = pool.Get().(*utils.BytesBuf)
+			var bytesPtr = pool.Get().(*bytepool.Buf)
 			var buf = bytesPtr.Bytes
 			copy(buf, data)
 			pool.Put(bytesPtr)
@@ -220,9 +220,9 @@ func BenchmarkBytePool_Copy_Wrapper_BytePool_16(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var bytesPtr = utils.BytePool16k.Get()
+			var bytesPtr = bytepool.Pool16k.Get()
 			copy(bytesPtr.Bytes, data)
-			utils.BytePool16k.Put(bytesPtr)
+			bytepool.Pool16k.Put(bytesPtr)
 		}
 	})
 }
@@ -255,7 +255,7 @@ func BenchmarkBytePool_Copy_Wrapper_32(b *testing.B) {
 
 	var pool = &sync.Pool{
 		New: func() any {
-			return &utils.BytesBuf{
+			return &bytepool.Buf{
 				Bytes: make([]byte, size),
 			}
 		},
@@ -264,7 +264,7 @@ func BenchmarkBytePool_Copy_Wrapper_32(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			var buf = pool.Get().(*utils.BytesBuf)
+			var buf = pool.Get().(*bytepool.Buf)
 			copy(buf.Bytes, data)
 			pool.Put(buf)
 		}
