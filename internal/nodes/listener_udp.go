@@ -3,7 +3,9 @@ package nodes
 import (
 	"errors"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs"
+	"github.com/TeaOSLab/EdgeNode/internal/firewalls"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
+	"github.com/TeaOSLab/EdgeNode/internal/iplibrary"
 	"github.com/TeaOSLab/EdgeNode/internal/remotelogs"
 	"github.com/TeaOSLab/EdgeNode/internal/stats"
 	"github.com/TeaOSLab/EdgeNode/internal/utils"
@@ -164,7 +166,7 @@ func (this *UDPListener) servePacketListener(listener UDPPacketListener) error {
 		}
 	})
 
-	var buffer = make([]byte, 4*1024)
+	var buffer = make([]byte, 4<<10)
 	for {
 		if this.isClosed {
 			return nil
@@ -181,6 +183,16 @@ func (this *UDPListener) servePacketListener(listener UDPPacketListener) error {
 				return nil
 			}
 			return err
+		}
+
+		// 检查IP名单
+		clientIP, _, parseHostErr := net.SplitHostPort(clientAddr.String())
+		if parseHostErr == nil {
+			ok, _, expiresAt := iplibrary.AllowIP(clientIP, firstServer.Id)
+			if !ok {
+				firewalls.DropTemporaryTo(clientIP, expiresAt)
+				continue
+			}
 		}
 
 		if n > 0 {
