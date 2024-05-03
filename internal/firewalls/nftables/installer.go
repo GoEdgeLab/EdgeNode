@@ -90,18 +90,26 @@ func (this *Installer) Install() error {
 	}
 
 	var cmd *executils.Cmd
+	var aptCmd *executils.Cmd
 
 	// check dnf
-	dnfExe, err := executils.LookPath("dnf")
-	if err == nil {
-		cmd = executils.NewCmd(dnfExe, "-y", "install", "nftables")
+	{
+		dnfExe, err := executils.LookPath("dnf")
+		if err == nil {
+			cmd = executils.NewCmd(dnfExe, "-y", "install", "nftables")
+		}
 	}
 
 	// check apt
 	if cmd == nil {
-		aptExe, err := executils.LookPath("apt")
+		aptGetExe, err := executils.LookPath("apt-get")
 		if err == nil {
-			cmd = executils.NewCmd(aptExe, "install", "nftables")
+			cmd = executils.NewCmd(aptGetExe, "install", "nftables")
+		}
+
+		aptExe, aptErr := executils.LookPath("apt")
+		if aptErr == nil {
+			aptCmd = executils.NewCmd(aptExe, "install", "nftables")
 		}
 	}
 
@@ -119,9 +127,19 @@ func (this *Installer) Install() error {
 
 	cmd.WithTimeout(10 * time.Minute)
 	cmd.WithStderr()
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("%w: %s", err, cmd.Stderr())
+		// try 'apt-get' instead of 'apt'
+		if aptCmd != nil {
+			cmd = aptCmd
+			cmd.WithTimeout(10 * time.Minute)
+			cmd.WithStderr()
+			err = cmd.Run()
+		}
+
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, cmd.Stderr())
+		}
 	}
 
 	remotelogs.Println("NFTABLES", "installed nftables with command '"+cmd.String()+"' successfully")
