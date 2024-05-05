@@ -8,8 +8,8 @@ import (
 )
 
 var maxThreads = runtime.NumCPU()
-var WriterLimiter = NewLimiter(max(maxThreads*8, 16))
-var ReaderLimiter = NewLimiter(max(maxThreads*8, 16))
+var WriterLimiter = NewLimiter(max(maxThreads*16, 32))
+var ReaderLimiter = NewLimiter(max(maxThreads*16, 32))
 
 type Limiter struct {
 	threads      chan struct{}
@@ -19,8 +19,8 @@ type Limiter struct {
 }
 
 func NewLimiter(threads int) *Limiter {
-	if threads < 16 {
-		threads = 16
+	if threads < 32 {
+		threads = 32
 	}
 	if threads > 1024 {
 		threads = 1024
