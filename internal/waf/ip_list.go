@@ -62,8 +62,8 @@ type IPList struct {
 	id     uint64
 	locker sync.RWMutex
 
-	lastIP   string // 加入到 recordIPTaskChan 之前尽可能去重
-	lastTime int64
+	lastIPInfo string // 加入到 recordIPTaskChan 之前尽可能去重
+	lastTime   int64
 }
 
 // NewIPList 获取新对象
@@ -132,11 +132,11 @@ func (this *IPList) RecordIP(ipType string,
 		}
 
 		// 加入队列等待上传
-		if this.lastIP != ip || fasttime.Now().Unix()-this.lastTime > 3 /** 3秒外才允许重复添加 **/ {
+		if this.lastIPInfo != ip+"@"+ipType || fasttime.Now().Unix()-this.lastTime > 3 /** 3秒外才允许重复添加 **/ {
 			select {
 			case recordIPTaskChan <- &recordIPTask{
 				ip:                            ip,
-				listId:                        firewallconfigs.GlobalListId,
+				listId:                        firewallconfigs.GlobalBlackListId,
 				expiresAt:                     expiresAt,
 				level:                         firewallconfigs.DefaultEventLevel,
 				serverId:                      scopeServerId,
@@ -146,7 +146,7 @@ func (this *IPList) RecordIP(ipType string,
 				sourceHTTPFirewallRuleSetId:   setId,
 				reason:                        reason,
 			}:
-				this.lastIP = ip
+				this.lastIPInfo = ip + "@" + ipType
 				this.lastTime = fasttime.Now().Unix()
 			default:
 			}

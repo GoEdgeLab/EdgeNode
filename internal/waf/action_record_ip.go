@@ -3,6 +3,7 @@ package waf
 import (
 	"github.com/TeaOSLab/EdgeCommon/pkg/rpc/pb"
 	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/firewallconfigs"
+	"github.com/TeaOSLab/EdgeCommon/pkg/serverconfigs/ipconfigs"
 	teaconst "github.com/TeaOSLab/EdgeNode/internal/const"
 	"github.com/TeaOSLab/EdgeNode/internal/events"
 	"github.com/TeaOSLab/EdgeNode/internal/goman"
@@ -126,21 +127,39 @@ func (this *RecordIPAction) Code() string {
 }
 
 func (this *RecordIPAction) IsAttack() bool {
-	return this.Type == "black"
+	return this.Type == ipconfigs.IPListTypeBlack
 }
 
 func (this *RecordIPAction) WillChange() bool {
-	return this.Type == "black"
+	return this.Type == ipconfigs.IPListTypeBlack
 }
 
 func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, request requests.Request, writer http.ResponseWriter) PerformResult {
 	var ipListId = this.IPListId
-	if ipListId <= 0 {
-		ipListId = firewallconfigs.GlobalListId
+
+
+	if ipListId <= 0 || firewallconfigs.IsGlobalListId(ipListId) {
+		// server or policy list ids
+		switch this.Type {
+		case ipconfigs.IPListTypeWhite:
+			ipListId = waf.AllowListId
+		case ipconfigs.IPListTypeBlack:
+			ipListId = waf.DenyListId
+		case ipconfigs.IPListTypeGrey:
+			ipListId = waf.GreyListId
+		}
+
+		// global list ids
+		if ipListId <= 0 {
+			ipListId = firewallconfigs.FindGlobalListIdWithType(this.Type)
+			if ipListId <= 0 {
+				ipListId = firewallconfigs.GlobalBlackListId
+			}
+		}
 	}
 
 	// 是否已删除
-	var ipListIsAvailable = (ipListId == firewallconfigs.GlobalListId) || (ipListId > 0 && !this.IPListIsDeleted && !ExistDeletedIPList(ipListId))
+	var ipListIsAvailable = (firewallconfigs.IsGlobalListId(ipListId)) || (ipListId > 0 && !this.IPListIsDeleted && !ExistDeletedIPList(ipListId))
 
 	// 是否在本地白名单中
 	if SharedIPWhiteList.Contains("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP()) {
@@ -159,7 +178,10 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 	}
 	var expiresAt = time.Now().Unix() + int64(timeout)
 
-	if this.Type == "black" {
+	var isGrey bool
+	var isWhite bool
+
+	if this.Type == ipconfigs.IPListTypeBlack {
 		request.ProcessResponseHeaders(writer.Header(), http.StatusForbidden)
 		writer.WriteHeader(http.StatusForbidden)
 
@@ -169,7 +191,11 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		if ipListIsAvailable {
 			SharedIPBlackList.Add(IPTypeAll, this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
 		}
+	} else if this.Type == ipconfigs.IPListTypeGrey {
+		isGrey = true
 	} else {
+		isWhite = true
+
 		// 加入本地白名单
 		if ipListIsAvailable {
 			SharedIPWhiteList.Add("set:"+types.String(set.Id), this.Scope, request.WAFServerId(), request.WAFRemoteIP(), expiresAt)
@@ -205,9 +231,8 @@ func (this *RecordIPAction) Perform(waf *WAF, group *RuleGroup, set *RuleSet, re
 		}
 	}
 
-	var isWhite = this.Type != "black"
 	return PerformResult{
-		ContinueRequest: isWhite,
+		ContinueRequest: isWhite || isGrey,
 		IsAllowed:       isWhite,
 		AllowScope:      AllowScopeGlobal,
 	}

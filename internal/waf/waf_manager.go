@@ -69,6 +69,20 @@ func (this *WAFManager) ConvertWAF(policy *firewallconfigs.HTTPFirewallPolicy) (
 
 	// inbound
 	if policy.Inbound != nil && policy.Inbound.IsOn {
+		// ip lists
+		if policy.Inbound.AllowListRef != nil && policy.Inbound.AllowListRef.IsOn && policy.Inbound.AllowListRef.ListId > 0 {
+			w.AllowListId = policy.Inbound.AllowListRef.ListId
+		}
+
+		if policy.Inbound.DenyListRef != nil && policy.Inbound.DenyListRef.IsOn && policy.Inbound.DenyListRef.ListId > 0 {
+			w.DenyListId = policy.Inbound.DenyListRef.ListId
+		}
+
+		if policy.Inbound.GreyListRef != nil && policy.Inbound.GreyListRef.IsOn && policy.Inbound.GreyListRef.ListId > 0 {
+			w.GreyListId = policy.Inbound.GreyListRef.ListId
+		}
+
+		// groups
 		for _, group := range policy.Inbound.Groups {
 			g := &RuleGroup{
 				Id:          group.Id,

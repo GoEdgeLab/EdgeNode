@@ -213,6 +213,18 @@ func (this *IPListManager) fetch() (hasNext bool, err error) {
 		}
 		return false, err
 	}
+
+	// 更新版本号
+	defer func() {
+		if itemsResp.Version > this.lastVersion {
+			this.lastVersion = itemsResp.Version
+			err = this.db.UpdateMaxVersion(itemsResp.Version)
+			if err != nil {
+				remotelogs.Error("IP_LIST_MANAGER", "update max version to database: "+err.Error())
+			}
+		}
+	}()
+
 	var items = itemsResp.IpItems
 	if len(items) == 0 {
 		return false, nil
@@ -323,13 +335,6 @@ func (this *IPListManager) processItems(items []*pb.IPItem, fromRemote bool) {
 	if len(changedLists) > 0 {
 		for changedList := range changedLists {
 			changedList.Sort()
-		}
-	}
-
-	if fromRemote {
-		var latestVersion = items[len(items)-1].Version
-		if latestVersion > this.lastVersion {
-			this.lastVersion = latestVersion
 		}
 	}
 }

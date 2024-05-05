@@ -8,6 +8,7 @@ type IPListDB interface {
 	Name() string
 	DeleteExpiredItems() error
 	ReadMaxVersion() (int64, error)
+	UpdateMaxVersion(version int64) error
 	ReadItems(offset int64, size int64) (items []*pb.IPItem, goNext bool, err error)
 	AddItem(item *pb.IPItem) error
 }
